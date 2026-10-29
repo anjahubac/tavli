@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/settings/ai_keys_screen.dart';
+import '../features/settings/profile_screen.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
@@ -10,7 +12,7 @@ final appRouter = GoRouter(
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => HomeShell(shell: shell),
       branches: [
-        for (final tab in tabs)
+        for (final tab in tabs.where((t) => t.path != '/profile'))
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -20,6 +22,20 @@ final appRouter = GoRouter(
               ),
             ],
           ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
+              routes: [
+                GoRoute(
+                  path: 'ai-keys',
+                  builder: (context, state) => const AiKeysScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
       ],
     ),
   ],
