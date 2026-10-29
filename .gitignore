@@ -55,3 +55,4 @@ secrets.*.json
 .env.*
 *.env
 !.env.example
+!secrets.example.json

@@ -7,23 +7,23 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `secrets.example.json` (empty values) at repo root and whitelist it in `.gitignore` (`!secrets.example.json`)
+- [x] T001 Add `secrets.example.json` (empty values) at repo root and whitelist it in `.gitignore` (`!secrets.example.json`)
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T002 [P] Test: `LayeredKeySource` order (own then built-in), empty values dropped, no keys → empty list in `test/ai/key_source_test.dart`
-- [ ] T003 Add `KeyOrigin`, `ApiCredential`, `KeySource`, `BuiltInKeys` (`fromEnvironment`), `LayeredKeySource` in `lib/ai/key_store.dart`
-- [ ] T004 Add `origin` to `ModelStatusStore` methods and `InMemoryModelStatusStore` in `lib/ai/model_status_store.dart`
-- [ ] T005 Test: drift store keeps pauses separately per origin; migration v1 → v2 opens cleanly, in `test/data/drift_model_status_store_test.dart`
-- [ ] T006 Add `keyOrigin` column + PK to `ModelStatuses`, `schemaVersion` 2 with migration in `lib/data/database.dart`; regenerate `database.g.dart`
-- [ ] T007 Make `DriftModelStatusStore` origin-aware in `lib/data/drift_model_status_store.dart`
-- [ ] T008 Add `origin` to `AttemptLog` (`lib/ai/ai_errors.dart`) and `AIResult` (`lib/ai/ai_router.dart`)
+- [x] T002 [P] Test: `LayeredKeySource` order (own then built-in), empty values dropped, no keys → empty list in `test/ai/key_source_test.dart`
+- [x] T003 Add `KeyOrigin`, `ApiCredential`, `KeySource`, `BuiltInKeys` (`fromEnvironment`), `LayeredKeySource` in `lib/ai/key_store.dart`
+- [x] T004 Add `origin` to `ModelStatusStore` methods and `InMemoryModelStatusStore` in `lib/ai/model_status_store.dart`
+- [x] T005 Test: drift store keeps pauses separately per origin; migration v1 → v2 opens cleanly, in `test/data/drift_model_status_store_test.dart`
+- [x] T006 Add `keyOrigin` column + PK to `ModelStatuses`, `schemaVersion` 2 with migration in `lib/data/database.dart`; regenerate `database.g.dart`
+- [x] T007 Make `DriftModelStatusStore` origin-aware in `lib/data/drift_model_status_store.dart`
+- [x] T008 Add `origin` to `AttemptLog` (`lib/ai/ai_errors.dart`) and `AIResult` (`lib/ai/ai_router.dart`)
 
 ## Phase 3: User Story 1 + 2 — built-in key works, own key first (P1)
 
-- [ ] T009 [US1][US2] Tests in `test/ai/ai_router_test.dart`: only built-in key works; own key used first; own 429 → same model with built-in; own paused → skipped while built-in used; built-in pause does not affect own; own key rejected → built-in still used and `invalidProviders` contains provider; built-in rejected → not in `invalidProviders`; `nextAvailableAt` considers both origins; `resetProvider` clears only own-key state
-- [ ] T010 [US1][US2] `AIRouter` takes `KeySource`; inner credential loop; per-origin rejected/missing/paused state in `lib/ai/ai_router.dart`
-- [ ] T011 [US1] `builtInKeysProvider` + `keySourceProvider`; router uses key source in `lib/providers.dart`
+- [x] T009 [US1][US2] Tests in `test/ai/ai_router_test.dart`: only built-in key works; own key used first; own 429 → same model with built-in; own paused → skipped while built-in used; built-in pause does not affect own; own key rejected → built-in still used and `invalidProviders` contains provider; built-in rejected → not in `invalidProviders`; `nextAvailableAt` considers both origins; `resetProvider` clears only own-key state
+- [x] T010 [US1][US2] `AIRouter` takes `KeySource`; inner credential loop; per-origin rejected/missing/paused state in `lib/ai/ai_router.dart`
+- [x] T011 [US1] `builtInKeysProvider` + `keySourceProvider`; router uses key source in `lib/providers.dart`
 
 ## Phase 4: User Story 3 — show which AI is used (P2)
 

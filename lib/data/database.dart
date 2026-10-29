@@ -131,13 +131,16 @@ class AppSettings extends Table {
 class ModelStatuses extends Table {
   TextColumn get provider => text()();
   TextColumn get model => text()();
+
+  /// KeyOrigin.name: limiti važe posebno za svaki ključ.
+  TextColumn get keyOrigin => text().withDefault(const Constant('user'))();
   DateTimeColumn get blockedUntil => dateTime().nullable()();
   IntColumn get requestsToday => integer().withDefault(const Constant(0))();
   TextColumn get usageDay => text().nullable()(); // yyyy-mm-dd
   TextColumn get lastError => text().nullable()();
 
   @override
-  Set<Column> get primaryKey => {provider, model};
+  Set<Column> get primaryKey => {provider, model, keyOrigin};
 }
 
 @DriftDatabase(
@@ -160,5 +163,17 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // Samo keš pauza (najduže jedan dan), pa tabelu pravimo iznova
+        // umesto kopiranja redova u novi primarni ključ.
+        await m.deleteTable(modelStatuses.actualTableName);
+        await m.createTable(modelStatuses);
+      }
+    },
+  );
 }

@@ -109,6 +109,7 @@ class RecipeAI {
       ),
       r.model,
       r.attempts,
+      origin: r.origin,
     );
   }
 

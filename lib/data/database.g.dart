@@ -4100,6 +4100,18 @@ class $ModelStatusesTable extends ModelStatuses
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _keyOriginMeta = const VerificationMeta(
+    'keyOrigin',
+  );
+  @override
+  late final GeneratedColumn<String> keyOrigin = GeneratedColumn<String>(
+    'key_origin',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('user'),
+  );
   static const VerificationMeta _blockedUntilMeta = const VerificationMeta(
     'blockedUntil',
   );
@@ -4149,6 +4161,7 @@ class $ModelStatusesTable extends ModelStatuses
   List<GeneratedColumn> get $columns => [
     provider,
     model,
+    keyOrigin,
     blockedUntil,
     requestsToday,
     usageDay,
@@ -4181,6 +4194,12 @@ class $ModelStatusesTable extends ModelStatuses
       );
     } else if (isInserting) {
       context.missing(_modelMeta);
+    }
+    if (data.containsKey('key_origin')) {
+      context.handle(
+        _keyOriginMeta,
+        keyOrigin.isAcceptableOrUnknown(data['key_origin']!, _keyOriginMeta),
+      );
     }
     if (data.containsKey('blocked_until')) {
       context.handle(
@@ -4216,7 +4235,7 @@ class $ModelStatusesTable extends ModelStatuses
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {provider, model};
+  Set<GeneratedColumn> get $primaryKey => {provider, model, keyOrigin};
   @override
   ModelStatusRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -4228,6 +4247,10 @@ class $ModelStatusesTable extends ModelStatuses
       model: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}model'],
+      )!,
+      keyOrigin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key_origin'],
       )!,
       blockedUntil: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -4257,6 +4280,9 @@ class $ModelStatusesTable extends ModelStatuses
 class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
   final String provider;
   final String model;
+
+  /// KeyOrigin.name: limiti važe posebno za svaki ključ.
+  final String keyOrigin;
   final DateTime? blockedUntil;
   final int requestsToday;
   final String? usageDay;
@@ -4264,6 +4290,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
   const ModelStatusRow({
     required this.provider,
     required this.model,
+    required this.keyOrigin,
     this.blockedUntil,
     required this.requestsToday,
     this.usageDay,
@@ -4274,6 +4301,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
     final map = <String, Expression>{};
     map['provider'] = Variable<String>(provider);
     map['model'] = Variable<String>(model);
+    map['key_origin'] = Variable<String>(keyOrigin);
     if (!nullToAbsent || blockedUntil != null) {
       map['blocked_until'] = Variable<DateTime>(blockedUntil);
     }
@@ -4291,6 +4319,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
     return ModelStatusesCompanion(
       provider: Value(provider),
       model: Value(model),
+      keyOrigin: Value(keyOrigin),
       blockedUntil: blockedUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(blockedUntil),
@@ -4312,6 +4341,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
     return ModelStatusRow(
       provider: serializer.fromJson<String>(json['provider']),
       model: serializer.fromJson<String>(json['model']),
+      keyOrigin: serializer.fromJson<String>(json['keyOrigin']),
       blockedUntil: serializer.fromJson<DateTime?>(json['blockedUntil']),
       requestsToday: serializer.fromJson<int>(json['requestsToday']),
       usageDay: serializer.fromJson<String?>(json['usageDay']),
@@ -4324,6 +4354,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
     return <String, dynamic>{
       'provider': serializer.toJson<String>(provider),
       'model': serializer.toJson<String>(model),
+      'keyOrigin': serializer.toJson<String>(keyOrigin),
       'blockedUntil': serializer.toJson<DateTime?>(blockedUntil),
       'requestsToday': serializer.toJson<int>(requestsToday),
       'usageDay': serializer.toJson<String?>(usageDay),
@@ -4334,6 +4365,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
   ModelStatusRow copyWith({
     String? provider,
     String? model,
+    String? keyOrigin,
     Value<DateTime?> blockedUntil = const Value.absent(),
     int? requestsToday,
     Value<String?> usageDay = const Value.absent(),
@@ -4341,6 +4373,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
   }) => ModelStatusRow(
     provider: provider ?? this.provider,
     model: model ?? this.model,
+    keyOrigin: keyOrigin ?? this.keyOrigin,
     blockedUntil: blockedUntil.present ? blockedUntil.value : this.blockedUntil,
     requestsToday: requestsToday ?? this.requestsToday,
     usageDay: usageDay.present ? usageDay.value : this.usageDay,
@@ -4350,6 +4383,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
     return ModelStatusRow(
       provider: data.provider.present ? data.provider.value : this.provider,
       model: data.model.present ? data.model.value : this.model,
+      keyOrigin: data.keyOrigin.present ? data.keyOrigin.value : this.keyOrigin,
       blockedUntil: data.blockedUntil.present
           ? data.blockedUntil.value
           : this.blockedUntil,
@@ -4366,6 +4400,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
     return (StringBuffer('ModelStatusRow(')
           ..write('provider: $provider, ')
           ..write('model: $model, ')
+          ..write('keyOrigin: $keyOrigin, ')
           ..write('blockedUntil: $blockedUntil, ')
           ..write('requestsToday: $requestsToday, ')
           ..write('usageDay: $usageDay, ')
@@ -4378,6 +4413,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
   int get hashCode => Object.hash(
     provider,
     model,
+    keyOrigin,
     blockedUntil,
     requestsToday,
     usageDay,
@@ -4389,6 +4425,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
       (other is ModelStatusRow &&
           other.provider == this.provider &&
           other.model == this.model &&
+          other.keyOrigin == this.keyOrigin &&
           other.blockedUntil == this.blockedUntil &&
           other.requestsToday == this.requestsToday &&
           other.usageDay == this.usageDay &&
@@ -4398,6 +4435,7 @@ class ModelStatusRow extends DataClass implements Insertable<ModelStatusRow> {
 class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
   final Value<String> provider;
   final Value<String> model;
+  final Value<String> keyOrigin;
   final Value<DateTime?> blockedUntil;
   final Value<int> requestsToday;
   final Value<String?> usageDay;
@@ -4406,6 +4444,7 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
   const ModelStatusesCompanion({
     this.provider = const Value.absent(),
     this.model = const Value.absent(),
+    this.keyOrigin = const Value.absent(),
     this.blockedUntil = const Value.absent(),
     this.requestsToday = const Value.absent(),
     this.usageDay = const Value.absent(),
@@ -4415,6 +4454,7 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
   ModelStatusesCompanion.insert({
     required String provider,
     required String model,
+    this.keyOrigin = const Value.absent(),
     this.blockedUntil = const Value.absent(),
     this.requestsToday = const Value.absent(),
     this.usageDay = const Value.absent(),
@@ -4425,6 +4465,7 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
   static Insertable<ModelStatusRow> custom({
     Expression<String>? provider,
     Expression<String>? model,
+    Expression<String>? keyOrigin,
     Expression<DateTime>? blockedUntil,
     Expression<int>? requestsToday,
     Expression<String>? usageDay,
@@ -4434,6 +4475,7 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
     return RawValuesInsertable({
       if (provider != null) 'provider': provider,
       if (model != null) 'model': model,
+      if (keyOrigin != null) 'key_origin': keyOrigin,
       if (blockedUntil != null) 'blocked_until': blockedUntil,
       if (requestsToday != null) 'requests_today': requestsToday,
       if (usageDay != null) 'usage_day': usageDay,
@@ -4445,6 +4487,7 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
   ModelStatusesCompanion copyWith({
     Value<String>? provider,
     Value<String>? model,
+    Value<String>? keyOrigin,
     Value<DateTime?>? blockedUntil,
     Value<int>? requestsToday,
     Value<String?>? usageDay,
@@ -4454,6 +4497,7 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
     return ModelStatusesCompanion(
       provider: provider ?? this.provider,
       model: model ?? this.model,
+      keyOrigin: keyOrigin ?? this.keyOrigin,
       blockedUntil: blockedUntil ?? this.blockedUntil,
       requestsToday: requestsToday ?? this.requestsToday,
       usageDay: usageDay ?? this.usageDay,
@@ -4470,6 +4514,9 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
     }
     if (model.present) {
       map['model'] = Variable<String>(model.value);
+    }
+    if (keyOrigin.present) {
+      map['key_origin'] = Variable<String>(keyOrigin.value);
     }
     if (blockedUntil.present) {
       map['blocked_until'] = Variable<DateTime>(blockedUntil.value);
@@ -4494,6 +4541,7 @@ class ModelStatusesCompanion extends UpdateCompanion<ModelStatusRow> {
     return (StringBuffer('ModelStatusesCompanion(')
           ..write('provider: $provider, ')
           ..write('model: $model, ')
+          ..write('keyOrigin: $keyOrigin, ')
           ..write('blockedUntil: $blockedUntil, ')
           ..write('requestsToday: $requestsToday, ')
           ..write('usageDay: $usageDay, ')
@@ -7798,6 +7846,7 @@ typedef $$ModelStatusesTableCreateCompanionBuilder =
     ModelStatusesCompanion Function({
       required String provider,
       required String model,
+      Value<String> keyOrigin,
       Value<DateTime?> blockedUntil,
       Value<int> requestsToday,
       Value<String?> usageDay,
@@ -7808,6 +7857,7 @@ typedef $$ModelStatusesTableUpdateCompanionBuilder =
     ModelStatusesCompanion Function({
       Value<String> provider,
       Value<String> model,
+      Value<String> keyOrigin,
       Value<DateTime?> blockedUntil,
       Value<int> requestsToday,
       Value<String?> usageDay,
@@ -7831,6 +7881,11 @@ class $$ModelStatusesTableFilterComposer
 
   ColumnFilters<String> get model => $composableBuilder(
     column: $table.model,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get keyOrigin => $composableBuilder(
+    column: $table.keyOrigin,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7874,6 +7929,11 @@ class $$ModelStatusesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get keyOrigin => $composableBuilder(
+    column: $table.keyOrigin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get blockedUntil => $composableBuilder(
     column: $table.blockedUntil,
     builder: (column) => ColumnOrderings(column),
@@ -7909,6 +7969,9 @@ class $$ModelStatusesTableAnnotationComposer
 
   GeneratedColumn<String> get model =>
       $composableBuilder(column: $table.model, builder: (column) => column);
+
+  GeneratedColumn<String> get keyOrigin =>
+      $composableBuilder(column: $table.keyOrigin, builder: (column) => column);
 
   GeneratedColumn<DateTime> get blockedUntil => $composableBuilder(
     column: $table.blockedUntil,
@@ -7960,6 +8023,7 @@ class $$ModelStatusesTableTableManager
               ({
                 Value<String> provider = const Value.absent(),
                 Value<String> model = const Value.absent(),
+                Value<String> keyOrigin = const Value.absent(),
                 Value<DateTime?> blockedUntil = const Value.absent(),
                 Value<int> requestsToday = const Value.absent(),
                 Value<String?> usageDay = const Value.absent(),
@@ -7968,6 +8032,7 @@ class $$ModelStatusesTableTableManager
               }) => ModelStatusesCompanion(
                 provider: provider,
                 model: model,
+                keyOrigin: keyOrigin,
                 blockedUntil: blockedUntil,
                 requestsToday: requestsToday,
                 usageDay: usageDay,
@@ -7978,6 +8043,7 @@ class $$ModelStatusesTableTableManager
               ({
                 required String provider,
                 required String model,
+                Value<String> keyOrigin = const Value.absent(),
                 Value<DateTime?> blockedUntil = const Value.absent(),
                 Value<int> requestsToday = const Value.absent(),
                 Value<String?> usageDay = const Value.absent(),
@@ -7986,6 +8052,7 @@ class $$ModelStatusesTableTableManager
               }) => ModelStatusesCompanion.insert(
                 provider: provider,
                 model: model,
+                keyOrigin: keyOrigin,
                 blockedUntil: blockedUntil,
                 requestsToday: requestsToday,
                 usageDay: usageDay,

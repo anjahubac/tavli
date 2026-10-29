@@ -8,16 +8,26 @@ import 'key_store.dart';
 import 'model_status_store.dart';
 
 class AIResult<T> {
-  const AIResult(this.value, this.model, this.attempts);
+  const AIResult(
+    this.value,
+    this.model,
+    this.attempts, {
+    this.origin = KeyOrigin.user,
+  });
 
   final T value;
 
   /// Model koji je dao odgovor (prikazuje se kao "Odgovorio: …").
   final ModelSpec model;
   final List<AttemptLog> attempts;
+
+  /// Ključ koji je dao odgovor (sopstveni ili ugrađeni Tavli AI).
+  final KeyOrigin origin;
 }
 
 /// Prolazi kroz lanac modela dok neki ne vrati ispravan odgovor.
+/// Za svaki model proba ključeve redom iz [KeySource] (sopstveni pa ugrađeni);
+/// pauze, odbijeni ključevi i nedostupni modeli važe posebno po ključu.
 class AIRouter {
   AIRouter({
     required this.config,
@@ -32,22 +42,31 @@ class AIRouter {
   /// Funkcija, ne vrednost: korisnik može da promeni lanac dok app radi.
   final ChainConfig Function() config;
   final ChatClient client;
-  final KeyStore keys;
+  final KeySource keys;
   final ModelStatusStore status;
   final DateTime Function() _clock;
   final Duration minuteCooldown;
   final Duration unknownDailyCooldown;
 
-  final _invalidProviders = <AIProvider>{};
+  final _invalidKeys = <String>{};
   final _unavailableModels = <String>{};
 
-  /// Provajderi čiji ključ je odbijen; UI traži od korisnika novi ključ.
-  Set<AIProvider> get invalidProviders => Set.unmodifiable(_invalidProviders);
+  static String _keySlot(AIProvider p, KeyOrigin o) => '${p.name}#${o.name}';
+  static String _modelSlot(ModelSpec m, KeyOrigin o) => '${m.key}#${o.name}';
+
+  /// Provajderi čiji je *sopstveni* ključ odbijen; UI traži novi ključ.
+  /// Odbijen ugrađeni ključ se tiho preskače.
+  Set<AIProvider> get invalidProviders => {
+    for (final p in AIProvider.values)
+      if (_invalidKeys.contains(_keySlot(p, KeyOrigin.user))) p,
+  };
 
   /// Pozvati kad korisnik sačuva novi ključ.
   void resetProvider(AIProvider provider) {
-    _invalidProviders.remove(provider);
-    _unavailableModels.removeWhere((k) => k.startsWith('${provider.name}/'));
+    _invalidKeys.remove(_keySlot(provider, KeyOrigin.user));
+    _unavailableModels.removeWhere(
+      (k) => k.startsWith('${provider.name}/') && k.endsWith('#user'),
+    );
   }
 
   /// [parse] baca [FormatException] kada JSON ne odgovara šemi; tada se
@@ -61,41 +80,48 @@ class AIRouter {
     final attempts = <AttemptLog>[];
 
     for (final m in chain) {
-      if (_invalidProviders.contains(m.provider)) {
-        attempts.add(AttemptLog(m, 'preskočen: ključ ne radi'));
-        continue;
-      }
-      if (_unavailableModels.contains(m.key)) {
-        attempts.add(AttemptLog(m, 'preskočen: model nije dostupan'));
-        continue;
-      }
-      final key = await keys.read(m.provider);
-      if (key == null || key.isEmpty) {
+      final credentials = await keys.credentialsFor(m.provider);
+      if (credentials.isEmpty) {
         attempts.add(AttemptLog(m, 'preskočen: nema ključa'));
         continue;
       }
-      final blockedUntil = await status.blockedUntil(m);
-      if (blockedUntil != null && blockedUntil.isAfter(_clock())) {
-        attempts.add(AttemptLog(m, 'preskočen: pauziran do $blockedUntil'));
-        continue;
-      }
+      for (final c in credentials) {
+        void log(String outcome) =>
+            attempts.add(AttemptLog(m, outcome, origin: c.origin));
 
-      try {
-        final value = await _attempt(m, request, key, parse);
-        attempts.add(AttemptLog(m, 'uspeh'));
-        return AIResult(value, m, attempts);
-      } on RateLimitError catch (e) {
-        final until = _cooldownUntil(m, e);
-        await status.block(m, until, e.message);
-        attempts.add(AttemptLog(m, 'limit, pauza do $until'));
-      } on AuthError catch (e) {
-        _invalidProviders.add(m.provider);
-        attempts.add(AttemptLog(m, 'ključ odbijen: ${e.message}'));
-      } on ModelNotFoundError catch (e) {
-        _unavailableModels.add(m.key);
-        attempts.add(AttemptLog(m, 'model ne postoji: ${e.message}'));
-      } on AIError catch (e) {
-        attempts.add(AttemptLog(m, e.toString()));
+        if (_invalidKeys.contains(_keySlot(m.provider, c.origin))) {
+          log('preskočen: ključ ne radi');
+          continue;
+        }
+        if (_unavailableModels.contains(_modelSlot(m, c.origin))) {
+          log('preskočen: model nije dostupan');
+          continue;
+        }
+        final blockedUntil = await status.blockedUntil(m, origin: c.origin);
+        if (blockedUntil != null && blockedUntil.isAfter(_clock())) {
+          log('preskočen: pauziran do $blockedUntil');
+          continue;
+        }
+
+        try {
+          final value = await _attempt(m, request, c, parse);
+          log('uspeh');
+          return AIResult(value, m, attempts, origin: c.origin);
+        } on RateLimitError catch (e) {
+          final until = _cooldownUntil(m, e);
+          await status.block(m, until, e.message, origin: c.origin);
+          log('limit, pauza do $until');
+        } on AuthError catch (e) {
+          _invalidKeys.add(_keySlot(m.provider, c.origin));
+          log('ključ odbijen: ${e.message}');
+        } on ModelNotFoundError catch (e) {
+          _unavailableModels.add(_modelSlot(m, c.origin));
+          log('model ne postoji: ${e.message}');
+        } on AIError catch (e) {
+          // Mreža ili loš odgovor ne zavise od ključa: odmah sledeći model.
+          log(e.toString());
+          break;
+        }
       }
     }
 
@@ -108,12 +134,12 @@ class AIRouter {
   Future<T> _attempt<T>(
     ModelSpec m,
     AIRequest request,
-    String key,
+    ApiCredential credential,
     T Function(Map<String, dynamic>) parse,
   ) async {
     for (var i = 0; ; i++) {
-      await status.recordRequest(m, _clock());
-      final raw = await client.complete(m, request, apiKey: key);
+      await status.recordRequest(m, _clock(), origin: credential.origin);
+      final raw = await client.complete(m, request, apiKey: credential.value);
       try {
         return parse(decodeJsonObject(raw));
       } on FormatException catch (e) {
@@ -142,11 +168,13 @@ class AIRouter {
     final now = _clock();
     DateTime? earliest;
     for (final m in chain) {
-      if (_invalidProviders.contains(m.provider)) continue;
-      if (_unavailableModels.contains(m.key)) continue;
-      final until = await status.blockedUntil(m);
-      if (until != null && until.isAfter(now)) {
-        if (earliest == null || until.isBefore(earliest)) earliest = until;
+      for (final c in await keys.credentialsFor(m.provider)) {
+        if (_invalidKeys.contains(_keySlot(m.provider, c.origin))) continue;
+        if (_unavailableModels.contains(_modelSlot(m, c.origin))) continue;
+        final until = await status.blockedUntil(m, origin: c.origin);
+        if (until != null && until.isAfter(now)) {
+          if (earliest == null || until.isBefore(earliest)) earliest = until;
+        }
       }
     }
     return earliest;

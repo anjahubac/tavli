@@ -16,6 +16,19 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 
 final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
 
+/// Ugrađeni ključevi iz `--dart-define-from-file=secrets.json`.
+final builtInKeysProvider = Provider<BuiltInKeys>(
+  (ref) => BuiltInKeys.fromEnvironment(),
+);
+
+/// Sopstveni ključ pa ugrađeni. Kasnije ga menja Cloudflare proxy.
+final keySourceProvider = Provider<KeySource>(
+  (ref) => LayeredKeySource(
+    ref.watch(keyStoreProvider),
+    ref.watch(builtInKeysProvider),
+  ),
+);
+
 class ChainConfigNotifier extends Notifier<ChainConfig> {
   @override
   ChainConfig build() => ChainConfig.defaults;
@@ -36,7 +49,7 @@ final aiRouterProvider = Provider<AIRouter>(
   (ref) => AIRouter(
     config: () => ref.read(chainConfigProvider),
     client: ref.watch(chatClientProvider),
-    keys: ref.watch(keyStoreProvider),
+    keys: ref.watch(keySourceProvider),
     status: DriftModelStatusStore(ref.watch(databaseProvider)),
   ),
 );

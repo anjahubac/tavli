@@ -44,6 +44,7 @@ const config = ChainConfig(
 class FakeClient implements ChatClient {
   final scripts = <String, List<Object>>{};
   final calls = <String>[];
+  final keysUsed = <String>[];
 
   void script(ModelSpec m, List<Object> responses) =>
       scripts[m.key] = [...responses];
@@ -55,6 +56,7 @@ class FakeClient implements ChatClient {
     required String apiKey,
   }) async {
     calls.add(model.key);
+    keysUsed.add(apiKey);
     final queue = scripts[model.key];
     if (queue == null || queue.isEmpty) {
       throw StateError('Nema odgovora za ${model.key}');
@@ -88,6 +90,14 @@ void main() {
   late DateTime now;
   late AIRouter router;
 
+  AIRouter makeRouter({BuiltInKeys builtIn = const BuiltInKeys()}) => AIRouter(
+    config: () => config,
+    client: client,
+    keys: LayeredKeySource(keys, builtIn),
+    status: status,
+    clock: () => now,
+  );
+
   setUp(() {
     client = FakeClient();
     status = InMemoryModelStatusStore();
@@ -96,13 +106,7 @@ void main() {
       AIProvider.groq: 'q-key',
     });
     now = DateTime.utc(2026, 10, 29, 12);
-    router = AIRouter(
-      config: () => config,
-      client: client,
-      keys: keys,
-      status: status,
-      clock: () => now,
-    );
+    router = makeRouter();
   });
 
   test('prvi model odgovara, ostali se ne zovu', () async {
@@ -290,5 +294,129 @@ void main() {
       copy.text.map((m) => m.key),
       ChainConfig.defaults.text.map((m) => m.key),
     );
+  });
+
+  group('ugrađeni ključ', () {
+    const builtIn = BuiltInKeys({AIProvider.gemini: 'b-key'});
+
+    test('radi bez sopstvenih ključeva', () async {
+      await keys.delete(AIProvider.gemini);
+      await keys.delete(AIProvider.groq);
+      router = makeRouter(builtIn: builtIn);
+      client.script(geminiPro, [okJson]);
+
+      final r = await router.run(textRequest, parseValue);
+
+      expect(r.model, geminiPro);
+      expect(r.origin, KeyOrigin.builtIn);
+      expect(r.attempts.last.origin, KeyOrigin.builtIn);
+      expect(client.keysUsed, ['b-key']);
+    });
+
+    test('sopstveni ključ ide prvi', () async {
+      router = makeRouter(builtIn: builtIn);
+      client.script(geminiPro, [okJson]);
+
+      final r = await router.run(textRequest, parseValue);
+
+      expect(r.origin, KeyOrigin.user);
+      expect(client.keysUsed, ['g-key']);
+    });
+
+    test('limit na sopstvenom -> isti model sa ugrađenim, pa pauza', () async {
+      router = makeRouter(builtIn: builtIn);
+      client.script(geminiPro, [const RateLimitError('limit'), okJson, okJson]);
+
+      final first = await router.run(textRequest, parseValue);
+      expect(first.model, geminiPro);
+      expect(first.origin, KeyOrigin.builtIn);
+      expect(client.keysUsed, ['g-key', 'b-key']);
+
+      // Sopstveni ključ je pauziran, ugrađeni nije.
+      await router.run(textRequest, parseValue);
+      expect(client.keysUsed, ['g-key', 'b-key', 'b-key']);
+      expect(await status.blockedUntil(geminiPro), isNotNull);
+      expect(
+        await status.blockedUntil(geminiPro, origin: KeyOrigin.builtIn),
+        isNull,
+      );
+    });
+
+    test('pauza ugrađenog ključa ne utiče na sopstveni', () async {
+      router = makeRouter(builtIn: builtIn);
+      await status.block(
+        geminiPro,
+        now.add(const Duration(hours: 1)),
+        'limit',
+        origin: KeyOrigin.builtIn,
+      );
+      client.script(geminiPro, [okJson]);
+
+      final r = await router.run(textRequest, parseValue);
+
+      expect(r.origin, KeyOrigin.user);
+    });
+
+    test(
+      'odbijen sopstveni ključ: ugrađeni radi, UI traži novi ključ',
+      () async {
+        router = makeRouter(builtIn: builtIn);
+        client.script(geminiPro, [const AuthError('bad'), okJson, okJson]);
+
+        final r = await router.run(textRequest, parseValue);
+        expect(r.origin, KeyOrigin.builtIn);
+        expect(router.invalidProviders, {AIProvider.gemini});
+
+        await router.run(textRequest, parseValue);
+        expect(client.keysUsed, ['g-key', 'b-key', 'b-key']);
+      },
+    );
+
+    test('odbijen ugrađeni ključ se tiho preskače', () async {
+      await keys.delete(AIProvider.gemini);
+      router = makeRouter(builtIn: builtIn);
+      client.script(geminiPro, [const AuthError('bad')]);
+      client.script(groqText, [okJson]);
+
+      final r = await router.run(textRequest, parseValue);
+
+      expect(r.model, groqText);
+      expect(router.invalidProviders, isEmpty);
+    });
+
+    test('resetProvider briše samo stanje sopstvenog ključa', () async {
+      router = makeRouter(builtIn: builtIn);
+      client.script(geminiPro, [const AuthError('own'), const AuthError('b')]);
+      client.script(groqText, [okJson, okJson]);
+      await router.run(textRequest, parseValue);
+
+      router.resetProvider(AIProvider.gemini);
+      client.script(geminiPro, [const RateLimitError('limit')]);
+      client.calls.clear();
+      await router.run(textRequest, parseValue);
+
+      // Sopstveni ključ se opet proba, ugrađeni ostaje odbijen.
+      expect(client.calls, ['gemini/pro', 'groq/text']);
+    });
+
+    test('nextAvailableAt gleda pauze oba ključa', () async {
+      await keys.delete(AIProvider.groq);
+      router = makeRouter(builtIn: builtIn);
+      client.script(geminiPro, [
+        const RateLimitError('l', retryAfter: Duration(minutes: 5)),
+        const RateLimitError('l', retryAfter: Duration(minutes: 2)),
+      ]);
+      client.script(geminiFlash, [
+        const RateLimitError('l', retryAfter: Duration(minutes: 10)),
+        const RateLimitError('l', retryAfter: Duration(minutes: 10)),
+      ]);
+
+      try {
+        await router.run(textRequest, parseValue);
+        fail('očekivana greška');
+      } on AllModelsExhausted catch (e) {
+        expect(e.nextAvailableAt, now.add(const Duration(minutes: 2)));
+      }
+    });
   });
 }

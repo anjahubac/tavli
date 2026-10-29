@@ -1,4 +1,5 @@
 import 'ai_models.dart';
+import 'key_store.dart';
 
 /// Greške koje AI klijent baca. Router na osnovu tipa odlučuje
 /// da li model pauzira, preskače provajdera ili ide dalje niz lanac.
@@ -45,13 +46,16 @@ class BadRequestError extends AIError {
 }
 
 class AttemptLog {
-  const AttemptLog(this.model, this.outcome);
+  const AttemptLog(this.model, this.outcome, {this.origin = KeyOrigin.user});
 
   final ModelSpec model;
   final String outcome;
 
+  /// Kojim ključem je pokušano.
+  final KeyOrigin origin;
+
   @override
-  String toString() => '$model: $outcome';
+  String toString() => '$model (${origin.name}): $outcome';
 }
 
 class AllModelsExhausted implements Exception {
