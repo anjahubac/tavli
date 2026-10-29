@@ -46,3 +46,12 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Secrets (API keys) — never commit
+secrets.json
+secrets.*.json
+*.secrets.json
+.env
+.env.*
+*.env
+!.env.example
