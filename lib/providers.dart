@@ -1,0 +1,46 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'ai/ai_router.dart';
+import 'ai/chain_config.dart';
+import 'ai/chat_client.dart';
+import 'ai/key_store.dart';
+import 'ai/recipe_ai.dart';
+import 'data/database.dart';
+import 'data/drift_model_status_store.dart';
+
+final databaseProvider = Provider<AppDatabase>((ref) {
+  final db = AppDatabase();
+  ref.onDispose(db.close);
+  return db;
+});
+
+final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
+
+class ChainConfigNotifier extends Notifier<ChainConfig> {
+  @override
+  ChainConfig build() => ChainConfig.defaults;
+
+  // Čuvanje u bazi dolazi sa ekranom "AI modeli" (Faza 7).
+  void set(ChainConfig config) => state = config;
+}
+
+final chainConfigProvider = NotifierProvider<ChainConfigNotifier, ChainConfig>(
+  ChainConfigNotifier.new,
+);
+
+final chatClientProvider = Provider<OpenAICompatibleClient>(
+  (ref) => OpenAICompatibleClient(),
+);
+
+final aiRouterProvider = Provider<AIRouter>(
+  (ref) => AIRouter(
+    config: () => ref.read(chainConfigProvider),
+    client: ref.watch(chatClientProvider),
+    keys: ref.watch(keyStoreProvider),
+    status: DriftModelStatusStore(ref.watch(databaseProvider)),
+  ),
+);
+
+final recipeAIProvider = Provider<RecipeAI>(
+  (ref) => RecipeAI(ref.watch(aiRouterProvider)),
+);
