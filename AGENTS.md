@@ -68,13 +68,13 @@ flutter run -d macos
 
 One feature = one spec = one branch (`NNN-short-name`).
 
-1. `/speckit.specify <what and why>` — creates `specs/NNN-name/spec.md` and the branch.
-2. `/speckit.clarify` — resolve open questions before planning.
-3. `/speckit.plan <tech notes>` — `plan.md` (+ research, data model, contracts);
+1. `/speckit-specify <what and why>` — creates `specs/NNN-name/spec.md` and the branch.
+2. `/speckit-clarify` — resolve open questions before planning.
+3. `/speckit-plan <tech notes>` — `plan.md` (+ research, data model, contracts);
    must pass the Constitution Check.
-4. `/speckit.tasks` — `tasks.md`, tests first for domain/AI parsing.
-5. `/speckit.analyze` — cross-check spec/plan/tasks consistency.
-6. `/speckit.implement` — work through tasks, checking them off.
+4. `/speckit-tasks` — `tasks.md`, tests first for domain/AI parsing.
+5. `/speckit-analyze` — cross-check spec/plan/tasks consistency.
+6. `/speckit-implement` — work through tasks, checking them off.
 
 `specs/001-foundation-ai-router/` is a backfilled example of the finished format.
 

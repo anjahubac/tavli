@@ -103,8 +103,8 @@ implement. Scope changes update the spec first.
 ## Development Workflow
 
 1. Branch from `main` as `NNN-feature-name` (Spec Kit numbering) or `chore/…` / `fix/…`.
-2. `/speckit.specify` → `/speckit.clarify` → `/speckit.plan` → `/speckit.tasks`
-   → `/speckit.analyze` → `/speckit.implement`.
+2. `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks`
+   → `/speckit-analyze` → `/speckit-implement`.
 3. Before each commit: `dart run build_runner build` (if drift tables changed),
    `flutter analyze`, `flutter test`.
 4. A feature is done when its tasks are checked off, acceptance scenarios pass,
