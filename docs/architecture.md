@@ -82,4 +82,9 @@ Key points:
 
 Keys are entered by the user on the AI keys screen and stored with
 `flutter_secure_storage` under `api_key_<provider>`. Nothing secret is in the
-repo. Bundled default keys are an open decision (see `roadmap.md`).
+repo.
+
+Built-in default keys (decided, see `roadmap.md`): for now they come from a
+local, gitignored `secrets.json` passed with `--dart-define-from-file` at
+build time; user-entered keys override them. Later the keys move to a
+Cloudflare Worker proxy, so the app ships without any key.
