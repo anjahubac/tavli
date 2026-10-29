@@ -39,6 +39,7 @@ shows "Koristi se ugrađeni Tavli AI"; the chain test log marks "Tavli AI".
 | VI. Responsive | ✅ only text added to existing cards |
 | VII. Small commits | ✅ commit per Spec Kit phase / task group |
 | VIII. One feature = one spec branch | ✅ `002-builtin-ai-keys` |
+| IX. Best practices & guardrails | ✅ strict lints, migration + test, no new deps, check.sh before commits |
 
 ## Project Structure
 
