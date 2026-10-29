@@ -137,6 +137,7 @@ class _ProviderKeyCardState extends ConsumerState<_ProviderKeyCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final usesBuiltIn = !_hasSavedKey && ref.watch(builtInKeysProvider).has(_p);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -152,14 +153,37 @@ class _ProviderKeyCardState extends ConsumerState<_ProviderKeyCard> {
                   avatar: Icon(
                     _hasSavedKey
                         ? Icons.check_circle
+                        : usesBuiltIn
+                        ? Icons.auto_awesome
                         : Icons.radio_button_unchecked,
                     size: 18,
-                    color: _hasSavedKey ? colors.primary : colors.outline,
+                    color: _hasSavedKey || usesBuiltIn
+                        ? colors.primary
+                        : colors.outline,
                   ),
-                  label: Text(_hasSavedKey ? 'Sačuvan' : 'Nema ključa'),
+                  label: Text(
+                    _hasSavedKey
+                        ? 'Sačuvan'
+                        : usesBuiltIn
+                        ? 'Tavli AI'
+                        : 'Nema ključa',
+                  ),
                 ),
               ],
             ),
+            if (usesBuiltIn) ...[
+              Text(
+                'Koristi se ugrađeni Tavli AI',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.primary,
+                ),
+              ),
+              Text(
+                'Sopstveni ključ ima prednost kad ga sačuvaš.',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
+            ],
             SelectableText(
               'Ključ praviš na ${_keyPages[_p]}',
               style: theme.textTheme.bodySmall,

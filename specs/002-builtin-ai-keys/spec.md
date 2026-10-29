@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Keys should be local to start with (built into the app from a local, never-committed file); later I plan to move them to Cloudflare once the app is tested and finished. The user's own keys take priority; when the user has no key the app uses the built-in Tavli AI."
 

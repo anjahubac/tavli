@@ -50,6 +50,7 @@ flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
+flutter run -d macos --dart-define-from-file=secrets.json   # with built-in AI keys (see secrets.example.json)
 scripts/check.sh                                            # format check + analyze + test (run before every commit)
 ```
 

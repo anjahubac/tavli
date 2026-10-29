@@ -18,7 +18,10 @@ void main() {
   late InMemoryKeyStore keys;
   late FakeAdapter adapter;
 
-  Future<void> pumpScreen(WidgetTester tester) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    BuiltInKeys builtIn = const BuiltInKeys(),
+  }) async {
     tester.view.physicalSize = const Size(800, 3000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -29,6 +32,7 @@ void main() {
       ProviderScope(
         overrides: [
           keyStoreProvider.overrideWithValue(keys),
+          builtInKeysProvider.overrideWithValue(builtIn),
           databaseProvider.overrideWithValue(db),
           chatClientProvider.overrideWithValue(
             OpenAICompatibleClient(
@@ -98,5 +102,72 @@ void main() {
 
     expect(await keys.read(AIProvider.gemini), isNull);
     expect(find.text('Ključ je obrisan.'), findsOneWidget);
+  });
+
+  group('ugrađeni Tavli AI', () {
+    const builtIn = BuiltInKeys({AIProvider.gemini: 'b-key'});
+    const inUse = 'Koristi se ugrađeni Tavli AI';
+
+    testWidgets('prikazuje se kad nema sopstvenog ključa', (tester) async {
+      adapter = FakeAdapter([]);
+      await pumpScreen(tester, builtIn: builtIn);
+
+      expect(find.text(inUse), findsOneWidget);
+      expect(find.text('b-key'), findsNothing);
+    });
+
+    testWidgets('ne prikazuje se uz sopstveni ključ', (tester) async {
+      adapter = FakeAdapter([]);
+      await keys.write(AIProvider.gemini, 'own');
+      await pumpScreen(tester, builtIn: builtIn);
+
+      expect(find.text(inUse), findsNothing);
+    });
+
+    testWidgets('ne prikazuje se bez ugrađenih ključeva', (tester) async {
+      adapter = FakeAdapter([]);
+      await pumpScreen(tester);
+
+      expect(find.text(inUse), findsNothing);
+    });
+
+    testWidgets('probni recept sa ugrađenim ključem nosi oznaku Tavli AI', (
+      tester,
+    ) async {
+      final recipe = {
+        'title': 'Palačinke',
+        'servings': 2,
+        'ingredients': [
+          {'name': 'brašno', 'quantity': 200, 'unit': 'g'},
+        ],
+        'steps': ['Umesi.'],
+      };
+      adapter = FakeAdapter([
+        (
+          200,
+          jsonEncode({
+            'choices': [
+              {
+                'message': {'content': jsonEncode(recipe)},
+              },
+            ],
+          }),
+          {},
+        ),
+      ]);
+      await pumpScreen(tester, builtIn: builtIn);
+
+      await tester.tap(find.text('Napravi probni recept'));
+      await tester.pumpAndSettle();
+      expect(adapter.requests.single.headers['Authorization'], 'Bearer b-key');
+      expect(
+        find.textContaining('Odgovorio: Gemini Pro · Tavli AI'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Kako je lanac radio'));
+      await tester.pumpAndSettle();
+      expect(find.text('Gemini Pro · Tavli AI'), findsOneWidget);
+    });
   });
 }

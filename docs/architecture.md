@@ -10,7 +10,7 @@ flowchart TD
   D["Domain — lib/domain (Recipe, Ingredient, categories)<br/>pure Dart"]
   R["AIRouter — chains, cooldowns, retries"]
   C["ChatClient — OpenAICompatibleClient (dio)"]
-  K["KeyStore — SecureKeyStore (Keychain / Keystore)"]
+  K["KeySource — LayeredKeySource<br/>own key (Keychain / Keystore) → built-in (secrets.json)"]
   S["ModelStatusStore — DriftModelStatusStore"]
   DB[("drift / SQLite — lib/data/database.dart")]
 
@@ -49,9 +49,9 @@ flowchart LR
   KIND -- no --> TC["Text chain<br/>Gemini Pro → Groq GPT-OSS 120B →<br/>Gemini Flash → Groq Llama 3.3 70B →<br/>Gemini Flash-Lite → OpenRouter Gemma 3 (free)"]
   VC --> LOOP
   TC --> LOOP
-  subgraph LOOP["for each enabled model"]
+  subgraph LOOP["for each enabled model × each key (own, then built-in)"]
     direction TB
-    SKIP{"provider key invalid?<br/>model 404?<br/>no key?<br/>cooling down?"} -- yes --> NEXT[next model]
+    SKIP{"this key rejected?<br/>model 404 for this key?<br/>no key?<br/>this key cooling down?"} -- yes --> NEXT[next key, then next model]
     SKIP -- no --> CALL["ChatClient.complete<br/>(1 quick retry on network/5xx)"]
     CALL --> PARSE{"parse JSON"}
     PARSE -- ok --> DONE["AIResult(value, model, attempts)"]
@@ -70,10 +70,13 @@ Key points:
 - Chains live in `ChainConfig` (`defaults`), filtered by `enabled` and, for
   vision, `supportsVision`. The config is read through a function so the user
   can change it at runtime.
-- Cooldowns and per-day request counts persist in the `ModelStatuses` table and
-  survive restarts.
-- Invalid providers / missing models are remembered in memory until
-  `resetProvider` (called when the user saves a new key).
+- For each model the router tries every credential from `KeySource` in order
+  (own key, then built-in Tavli key) before moving to the next model.
+- Cooldowns and per-day request counts persist in the `ModelStatuses` table
+  per (provider, model, key origin) and survive restarts.
+- Rejected keys / missing models are remembered in memory per key origin.
+  `invalidProviders` reports only rejected *own* keys; `resetProvider`
+  (called when the user saves a new key) clears own-key state only.
 - Errors thrown by `parse` other than `FormatException`/`TypeError` (e.g.
   `NotARecipeException`) stop the chain and reach the UI.
 - `aiErrorText` maps every error to a Serbian message.
@@ -84,7 +87,8 @@ Keys are entered by the user on the AI keys screen and stored with
 `flutter_secure_storage` under `api_key_<provider>`. Nothing secret is in the
 repo.
 
-Built-in default keys (decided, see `roadmap.md`): for now they come from a
-local, gitignored `secrets.json` passed with `--dart-define-from-file` at
-build time; user-entered keys override them. Later the keys move to a
-Cloudflare Worker proxy, so the app ships without any key.
+Built-in keys (spec 002) come from a local, gitignored `secrets.json` passed
+with `--dart-define-from-file=secrets.json` (see `secrets.example.json`), read
+by `BuiltInKeys.fromEnvironment()`. User-entered keys take priority. The
+built-in key is never shown in the UI. Later a Cloudflare Worker proxy replaces
+`BuiltInKeys` behind the same `KeySource` seam, so the app ships without keys.

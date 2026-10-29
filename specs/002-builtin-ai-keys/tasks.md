@@ -27,14 +27,14 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ## Phase 4: User Story 3 — show which AI is used (P2)
 
-- [ ] T012 [US3] Widget tests in `test/features/ai_keys_screen_test.dart`: "Koristi se ugrađeni Tavli AI" shown with built-in and no own key; hidden with own key; hidden without built-in; chain test run with only a built-in key marks the attempt "Tavli AI" (FR-007)
-- [ ] T013 [US3] Show "Koristi se ugrađeni Tavli AI" on provider cards in `lib/features/settings/ai_keys_screen.dart`
-- [ ] T014 [US3] Mark built-in attempts "Tavli AI" in the chain test log in `lib/features/settings/chain_test_card.dart`
+- [x] T012 [US3] Widget tests in `test/features/ai_keys_screen_test.dart`: "Koristi se ugrađeni Tavli AI" shown with built-in and no own key; hidden with own key; hidden without built-in; chain test run with only a built-in key marks the attempt "Tavli AI" (FR-007)
+- [x] T013 [US3] Show "Koristi se ugrađeni Tavli AI" on provider cards in `lib/features/settings/ai_keys_screen.dart`
+- [x] T014 [US3] Mark built-in attempts "Tavli AI" in the chain test log in `lib/features/settings/chain_test_card.dart`
 
 ## Phase 5: Polish
 
-- [ ] T015 [P] Update `docs/architecture.md` (key source, per-origin cooldowns) and `AGENTS.md` (secrets.json run command)
-- [ ] T016 `scripts/check.sh` passes; `flutter build macos --debug` succeeds; spec status → Implemented
+- [x] T015 [P] Update `docs/architecture.md` (key source, per-origin cooldowns) and `AGENTS.md` (secrets.json run command)
+- [x] T016 `scripts/check.sh` passes; `flutter build macos --debug` succeeds; spec status → Implemented
 
 ## Dependencies
 

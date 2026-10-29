@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ai/ai_errors.dart';
+import '../../ai/key_store.dart';
 import '../../domain/recipe.dart';
 import '../../providers.dart';
 import 'ai_error_text.dart';
@@ -19,6 +20,7 @@ class _ChainTestCardState extends ConsumerState<ChainTestCard> {
   final _dish = TextEditingController(text: 'palačinke');
   bool _busy = false;
   Recipe? _recipe;
+  KeyOrigin? _origin;
   String? _error;
   List<AttemptLog> _attempts = const [];
 
@@ -34,6 +36,7 @@ class _ChainTestCardState extends ConsumerState<ChainTestCard> {
     setState(() {
       _busy = true;
       _recipe = null;
+      _origin = null;
       _error = null;
       _attempts = const [];
     });
@@ -41,6 +44,7 @@ class _ChainTestCardState extends ConsumerState<ChainTestCard> {
       final r = await ref.read(recipeAIProvider).fromDishName(name);
       setState(() {
         _recipe = r.value;
+        _origin = r.origin;
         _attempts = r.attempts;
       });
     } on AllModelsExhausted catch (e) {
@@ -98,7 +102,9 @@ class _ChainTestCardState extends ConsumerState<ChainTestCard> {
               const SizedBox(height: 16),
               Text(recipe.title, style: theme.textTheme.titleLarge),
               Text(
-                'Odgovorio: ${recipe.answeredBy} · ${recipe.servings} porcije'
+                'Odgovorio: ${recipe.answeredBy}'
+                '${_origin == KeyOrigin.builtIn ? ' · $_tavliAi' : ''}'
+                ' · ${recipe.servings} porcije'
                 '${recipe.prepMinutes == null ? '' : ' · ${recipe.prepMinutes} min'}',
                 style: theme.textTheme.bodySmall,
               ),
@@ -117,7 +123,11 @@ class _ChainTestCardState extends ConsumerState<ChainTestCard> {
                     ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      title: Text(a.model.label),
+                      title: Text(
+                        a.origin == KeyOrigin.builtIn
+                            ? '${a.model.label} · $_tavliAi'
+                            : a.model.label,
+                      ),
                       subtitle: Text(a.outcome),
                     ),
                 ],
@@ -127,6 +137,8 @@ class _ChainTestCardState extends ConsumerState<ChainTestCard> {
       ),
     );
   }
+
+  static const _tavliAi = 'Tavli AI';
 
   static String _quantity(Ingredient i) {
     final q = i.quantity;
