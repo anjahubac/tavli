@@ -10,7 +10,8 @@
   (`/speckit-specify`, `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`,
   `/speckit-analyze`, `/speckit-implement`, `/speckit-checklist`,
   `/speckit-constitution`). Templates and scripts are in `.specify/`.
-- Run `flutter analyze` and `flutter test` before every commit; run
+- Follow `docs/flutter-best-practices.md` and the guardrails in `AGENTS.md`.
+- Run `scripts/check.sh` (format, analyze, test) before every commit; run
   `dart run build_runner build --delete-conflicting-outputs` after changing drift tables.
 - Never read, print or modify API keys (Keychain entries `api_key_*`, `secrets.json`).
 - Architecture and roadmap: `docs/architecture.md`, `docs/roadmap.md`.

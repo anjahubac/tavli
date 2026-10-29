@@ -68,7 +68,6 @@ class RecipeAI {
           AIRequest(
             system: recipeSystemPrompt,
             prompt: refineRecipePrompt(current, instruction),
-            temperature: 0.4,
           ),
           (json) => Recipe.fromAiJson(
             json,

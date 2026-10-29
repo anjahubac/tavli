@@ -77,9 +77,8 @@ class OpenAICompatibleClient implements ChatClient {
       throw mapDioException(e);
     }
     final choices = res.data?['choices'];
-    final message = choices is List && choices.isNotEmpty
-        ? choices.first['message']
-        : null;
+    final first = choices is List && choices.isNotEmpty ? choices.first : null;
+    final message = first is Map ? first['message'] : null;
     final content = message is Map ? message['content'] : null;
     if (content is! String || content.trim().isEmpty) {
       throw const InvalidOutputError('Prazan odgovor modela');

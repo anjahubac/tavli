@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -66,7 +68,7 @@ class _ProviderKeyCardState extends ConsumerState<_ProviderKeyCard> {
   @override
   void initState() {
     super.initState();
-    _loadSaved();
+    unawaited(_loadSaved());
   }
 
   @override

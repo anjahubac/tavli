@@ -50,9 +50,14 @@ flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
+scripts/check.sh                                            # format check + analyze + test (run before every commit)
 ```
 
 ## Code conventions
+
+Full rules: [docs/flutter-best-practices.md](docs/flutter-best-practices.md).
+Lints are strict (`analysis_options.yaml`: strict casts/inference/raw types,
+unawaited futures and context-after-await are errors).
 
 - Riverpod providers live in `lib/providers.dart` until a feature needs its own
   file; prefer `Provider`/`Notifier`; inject fakes via `ProviderScope(overrides:)`.
@@ -78,12 +83,28 @@ One feature = one spec = one branch (`NNN-short-name`).
 
 `specs/001-foundation-ai-router/` is a backfilled example of the finished format.
 
+## Guardrails for AI agents
+
+- Never commit secrets: no keys in code, tests, fixtures, docs or commit messages;
+  never read, print or edit `secrets.json` or Keychain entries.
+- Never disable, skip or delete tests to get green, and never add `// ignore:`
+  without a reason comment on the line above.
+- Never edit generated `*.g.dart` by hand — change the source and run
+  `dart run build_runner build --delete-conflicting-outputs`.
+- No new dependency without a one-line justification in the active `plan.md`.
+- No drift schema change without a `schemaVersion` bump, a migration step and a test.
+- Before each commit: `dart format lib test`, then `scripts/check.sh`
+  (format check, `flutter analyze`, `flutter test`) must pass.
+- Keep changes scoped to the active spec/branch; note unrelated issues instead of fixing them in passing.
+- Ask before destructive git operations (reset --hard, force push, branch deletion, history rewrite).
+- All new UI text in Serbian (Latin); AI only through `AIRouter`.
+
 ## Definition of done
 
 - All tasks in `tasks.md` checked; acceptance scenarios in `spec.md` satisfied.
 - New UI text is Serbian (Latin) and listed in the spec.
 - Works on phone width and wide (rail) layout.
-- `flutter analyze` clean, `flutter test` green, `flutter build macos --debug` succeeds.
+- `scripts/check.sh` passes; `flutter build macos --debug` succeeds.
 - AI calls go through `AIRouter`; failures show a Serbian message.
 - Small commits with clear messages; generated code included.
 

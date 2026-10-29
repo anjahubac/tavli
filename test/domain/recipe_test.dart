@@ -76,7 +76,7 @@ void main() {
       throwsFormatException,
     );
     expect(
-      () => parse({'title': 'X', 'ingredients': []}),
+      () => parse({'title': 'X', 'ingredients': <Object>[]}),
       throwsFormatException,
     );
     expect(

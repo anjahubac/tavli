@@ -118,6 +118,8 @@ class AIRouter {
         return parse(decodeJsonObject(raw));
       } on FormatException catch (e) {
         if (i >= 1) throw InvalidOutputError(e.message);
+        // JSON sa pogrešnim tipovima pada na cast-u u parse funkciji.
+        // ignore: avoid_catching_errors
       } on TypeError catch (e) {
         if (i >= 1) throw InvalidOutputError(e.toString());
       }

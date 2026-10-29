@@ -48,7 +48,7 @@ class _ChainTestCardState extends ConsumerState<ChainTestCard> {
         _error = aiErrorText(e);
         _attempts = e.attempts;
       });
-    } catch (e) {
+    } on Exception catch (e) {
       setState(() => _error = aiErrorText(e));
     } finally {
       if (mounted) setState(() => _busy = false);

@@ -1,9 +1,10 @@
 <!--
 Sync Impact Report
-- Version change: (template) → 1.0.0
-- Ratified principles: I–VIII (all new)
-- Added sections: Platform & Technology Constraints, Development Workflow, Governance
-- Templates requiring updates: plan-template.md "Constitution Check" gate should list principles I–VIII (✅ referenced by name; no template edits required)
+- Version change: 1.0.0 → 1.1.0 (MINOR: principle added)
+- Added principles: IX. Flutter Best Practices & Agent Guardrails
+- Modified sections: Development Workflow (scripts/check.sh), Governance (I–IX)
+- Dependent docs updated: AGENTS.md (guardrails), CLAUDE.md, docs/flutter-best-practices.md (new), analysis_options.yaml (strict lints)
+- Templates requiring updates: none (plan Constitution Check now lists I–IX)
 - Follow-up TODOs: none
 -->
 
@@ -90,6 +91,19 @@ Each feature starts with a Spec Kit spec in `specs/NNN-short-name/` on a branch
 of the same name, and follows specify → clarify → plan → tasks → analyze →
 implement. Scope changes update the spec first.
 
+### IX. Flutter Best Practices & Agent Guardrails
+
+Code MUST follow `docs/flutter-best-practices.md` (architecture layers, Riverpod
+rules, async safety, error handling, accessibility, drift migrations, security,
+testing). The strict lint set in `analysis_options.yaml` MUST NOT be loosened
+without amending this constitution. AI agents MUST follow the guardrails in
+`AGENTS.md`: no secrets, no skipped/disabled tests, no hand-edited generated
+code, no unjustified dependencies, no schema change without migration and test,
+changes scoped to the active spec, and confirmation before destructive git
+operations.
+
+**Rationale**: AI agents write most of the code; guardrails keep quality from drifting.
+
 ## Platform & Technology Constraints
 
 - Flutter (Dart ≥ 3.13), Material 3, targets Android, iOS, macOS.
@@ -106,7 +120,7 @@ implement. Scope changes update the spec first.
 2. `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks`
    → `/speckit-analyze` → `/speckit-implement`.
 3. Before each commit: `dart run build_runner build` (if drift tables changed),
-   `flutter analyze`, `flutter test`.
+   `dart format lib test`, then `scripts/check.sh` (format check, analyze, test).
 4. A feature is done when its tasks are checked off, acceptance scenarios pass,
    UI text is Serbian, and it runs on macOS debug (`flutter build macos --debug`).
 
@@ -117,7 +131,7 @@ operational guide and MUST stay consistent with it. Amendments are made by
 editing this file with a Sync Impact Report, bumping the version (MAJOR: a
 principle removed or redefined; MINOR: a principle or section added; PATCH:
 wording), and updating dependent templates and docs in the same commit. Every
-`plan.md` Constitution Check MUST evaluate principles I–VIII; violations go in
+`plan.md` Constitution Check MUST evaluate principles I–IX; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-10-30
+**Version**: 1.1.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-10-30
