@@ -61,6 +61,10 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     final List<StoredKey> keys;
     try {
       keys = await ref.read(keyStoreProvider).list();
+    } on SecretStorageException catch (e) {
+      if (!mounted) return;
+      setState(() => _loadError = 'kod ${e.code}');
+      return;
     } on Exception catch (e) {
       if (!mounted) return;
       // Tip greške, nikad sadržaj (može da sadrži ključ).

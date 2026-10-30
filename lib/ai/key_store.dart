@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'ai_models.dart';
@@ -72,6 +73,17 @@ abstract interface class KeyStore {
   Future<void> remove(String id);
 }
 
+/// Greška sistemskog skladišta (Keychain/Keystore). [code] je sistemski kod
+/// (npr. -25293 kad je pristup odbijen), bez sadržaja zapisa.
+class SecretStorageException implements Exception {
+  const SecretStorageException(this.code);
+
+  final String code;
+
+  @override
+  String toString() => 'SecretStorageException($code)';
+}
+
 /// Minimalni interfejs sigurnog skladišta (lakše se zameni u testu).
 abstract interface class SecretStorage {
   Future<String?> read(String key);
@@ -89,14 +101,22 @@ class _FlutterSecretStorage implements SecretStorage {
   );
 
   @override
-  Future<String?> read(String key) => _storage.read(key: key);
+  Future<String?> read(String key) => _guard(() => _storage.read(key: key));
 
   @override
   Future<void> write(String key, String value) =>
-      _storage.write(key: key, value: value);
+      _guard(() => _storage.write(key: key, value: value));
 
   @override
-  Future<void> delete(String key) => _storage.delete(key: key);
+  Future<void> delete(String key) => _guard(() => _storage.delete(key: key));
+
+  static Future<T> _guard<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on PlatformException catch (e) {
+      throw SecretStorageException(e.code);
+    }
+  }
 }
 
 /// Ključevi u Keychain-u (iOS, macOS) i Keystore-u (Android), kao jedna
@@ -130,7 +150,14 @@ class SecureKeyStore implements KeyStore {
     if (raw != null) return _decode(raw);
     final keys = <StoredKey>[];
     for (final p in AIProvider.values) {
-      final legacy = (await _storage.read(_legacyKey(p)))?.trim();
+      // Stari zapis je napravio prethodni build; macOS može da odbije
+      // pristup. Tada ga preskačemo: korisnik ključ može ponovo da doda.
+      final String? legacy;
+      try {
+        legacy = (await _storage.read(_legacyKey(p)))?.trim();
+      } on SecretStorageException {
+        continue;
+      }
       if (legacy == null) continue;
       if (legacy.isNotEmpty && !keys.any((k) => k.value == legacy)) {
         keys.add(
@@ -142,7 +169,11 @@ class SecureKeyStore implements KeyStore {
           ),
         );
       }
-      await _storage.delete(_legacyKey(p));
+      try {
+        await _storage.delete(_legacyKey(p));
+      } on SecretStorageException {
+        // Ostaje u Keychain-u, ali se više ne čita (lista sada postoji).
+      }
     }
     await _save(keys);
     return keys;

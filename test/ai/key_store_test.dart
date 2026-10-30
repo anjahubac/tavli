@@ -8,9 +8,13 @@ class MapSecretStorage implements SecretStorage {
   final data = <String, String>{};
   final reads = <String>[];
 
+  /// Zapisi kojima sistem odbija pristup.
+  final denied = <String>{};
+
   @override
   Future<String?> read(String key) async {
     reads.add(key);
+    if (denied.contains(key)) throw const SecretStorageException('-25293');
     return data[key];
   }
 
@@ -89,6 +93,17 @@ void main() {
       expect(await store.list(), hasLength(1));
       final saved = jsonDecode(storage.data['api_keys']!) as List<dynamic>;
       expect(saved, hasLength(1));
+    });
+
+    test('odbijen pristup starom ključu ne ruši listu', () async {
+      storage.data['api_key_gemini'] = 'AIza-old';
+      storage.denied.add('api_key_gemini');
+      storage.data['api_key_groq'] = 'gsk_old';
+
+      final keys = await store.list();
+
+      expect(keys.single.value, 'gsk_old');
+      expect(storage.data.containsKey('api_keys'), isTrue);
     });
 
     test('posle prvog čitanja čita se samo lista (jedan zapis)', () async {
