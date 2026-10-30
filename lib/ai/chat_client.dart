@@ -24,9 +24,12 @@ class OpenAICompatibleClient implements ChatClient {
            Dio(
              BaseOptions(
                connectTimeout: const Duration(seconds: 15),
-               receiveTimeout: const Duration(seconds: 90),
+               receiveTimeout: defaultReceiveTimeout,
              ),
            );
+
+  /// Koliko se čeka odgovor jednog modela pre prelaska na sledeći.
+  static const defaultReceiveTimeout = Duration(seconds: 60);
 
   final Dio _dio;
   final Duration transientRetryDelay;
@@ -39,7 +42,9 @@ class OpenAICompatibleClient implements ChatClient {
   }) async {
     try {
       return await _send(model, request, apiKey);
-    } on TransientError {
+    } on TransientError catch (e) {
+      // Spor model bi opet čekao ceo timeout: odmah ide sledeći model.
+      if (e.isTimeout) rethrow;
       // Jedan brz ponovni pokušaj na istom modelu, pa odluka ide routeru.
       await Future<void>.delayed(transientRetryDelay);
       return _send(model, request, apiKey);
@@ -116,9 +121,10 @@ class OpenAICompatibleClient implements ChatClient {
 
 AIError mapDioException(DioException e) {
   switch (e.type) {
-    case DioExceptionType.connectionTimeout:
-    case DioExceptionType.sendTimeout:
     case DioExceptionType.receiveTimeout:
+    case DioExceptionType.sendTimeout:
+      return TransientError(e.message ?? e.type.name, isTimeout: true);
+    case DioExceptionType.connectionTimeout:
     case DioExceptionType.connectionError:
       return TransientError(e.message ?? e.type.name);
     default:

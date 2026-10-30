@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/ai/ai_models.dart';
@@ -94,5 +96,33 @@ void main() {
 
     expect(app.photos.saved, isEmpty);
     expect(await app.titles(), isEmpty);
+  });
+
+  testTavli('spor AI: Prekini zaustavlja čekanje, slika ostaje', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/new/photo',
+      ai: [aiAnswer(recipeJson('Pita'))],
+    );
+    app.picker.next = fakePhoto;
+    final gate = app.adapter.gate = Completer<void>();
+
+    await tester.tap(button('Izaberi iz galerije'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Čitam recept sa slike…'), findsOneWidget);
+
+    await tester.tap(button('Prekini'));
+    await tester.pump();
+    expect(find.text('Čitanje je prekinuto.'), findsOneWidget);
+    expect(button('Pokušaj ponovo'), findsOneWidget);
+
+    // Kasni odgovor se ne prikazuje.
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Pita'), findsNothing);
+    expect(find.text('Čitanje je prekinuto.'), findsOneWidget);
   });
 }

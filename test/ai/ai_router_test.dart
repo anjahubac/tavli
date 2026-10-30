@@ -278,6 +278,12 @@ void main() {
     final vision = ChainConfig.defaults.chainFor(TaskKind.vision);
     expect(vision, isNotEmpty);
     expect(vision.every((m) => m.supportsVision), isTrue);
+    // Čitanje recepta sa slike: prvo brzi modeli, spori Pro tek posle njih.
+    expect(vision.map((m) => m.label).take(3), [
+      'Gemini Flash',
+      'Groq Llama 4 Maverick',
+      'Gemini Pro',
+    ]);
     expect(
       ChainConfig.defaults.chainFor(TaskKind.text).first.provider,
       AIProvider.gemini,

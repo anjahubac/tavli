@@ -120,4 +120,47 @@ void main() {
       throwsA(isA<InvalidOutputError>()),
     );
   });
+
+  test('isteklo vreme: bez ponovnog pokušaja, odmah sledeći model', () async {
+    final adapter = _TimeoutAdapter();
+    final client = OpenAICompatibleClient(
+      dio: Dio()..httpClientAdapter = adapter,
+      transientRetryDelay: Duration.zero,
+    );
+
+    await expectLater(
+      client.complete(model, request, apiKey: 'k'),
+      throwsA(
+        isA<TransientError>().having((e) => e.isTimeout, 'isTimeout', true),
+      ),
+    );
+    expect(adapter.calls, 1);
+  });
+
+  test('podrazumevano čekanje odgovora je 60 s', () {
+    expect(
+      OpenAICompatibleClient.defaultReceiveTimeout,
+      const Duration(seconds: 60),
+    );
+  });
+}
+
+class _TimeoutAdapter implements HttpClientAdapter {
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    calls++;
+    throw DioException.receiveTimeout(
+      timeout: const Duration(seconds: 60),
+      requestOptions: options,
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

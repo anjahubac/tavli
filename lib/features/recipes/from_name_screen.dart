@@ -26,6 +26,9 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
   String? _error;
   Recipe? _result;
 
+  /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
+  int _request = 0;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +45,7 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
   Future<void> _generate() async {
     final name = _name.text.trim();
     if (name.isEmpty || _busy) return;
+    final request = ++_request;
     setState(() {
       _busy = true;
       _error = null;
@@ -51,15 +55,20 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
       final r = await ref
           .read(recipeAIProvider)
           .fromDishName(name, servings: _servings, notes: _wishes.text.trim());
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() => _result = r.value);
     } on Exception catch (e) {
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() => _error = aiErrorText(e));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && request == _request) setState(() => _busy = false);
     }
   }
+
+  void _cancel() => setState(() {
+    _request++;
+    _busy = false;
+  });
 
   Future<void> _save(Recipe recipe) async {
     setState(() => _saving = true);
@@ -141,7 +150,7 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
                   label: const Text('Napravi recept'),
                 ),
                 const SizedBox(height: 16),
-                if (_busy) const AiBusy('Pravim recept…'),
+                if (_busy) AiBusy('Pravim recept…', onCancel: _cancel),
                 if (_error case final error?)
                   AiErrorBox(
                     error,

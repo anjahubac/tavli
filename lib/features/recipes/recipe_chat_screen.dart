@@ -29,6 +29,9 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
   String? _pending;
   Recipe? _proposal;
 
+  /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
+  int _request = 0;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +47,7 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
   Future<void> _send(Recipe current) async {
     final instruction = _input.text.trim();
     if (instruction.isEmpty || _busy) return;
+    final request = ++_request;
     setState(() {
       _busy = true;
       _error = null;
@@ -51,17 +55,17 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
     });
     try {
       final r = await ref.read(recipeAIProvider).refine(current, instruction);
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       _input.clear();
       setState(() => _proposal = r.value);
     } on Exception catch (e) {
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() {
         _error = aiErrorText(e);
         _pending = null;
       });
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && request == _request) setState(() => _busy = false);
     }
   }
 
@@ -86,6 +90,13 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Izmena je sačuvana.')));
   }
+
+  /// Tekst zahteva ostaje u polju.
+  void _cancel() => setState(() {
+    _request++;
+    _busy = false;
+    _pending = null;
+  });
 
   void _discard() => setState(() {
     _input.text = _pending ?? '';
@@ -161,7 +172,7 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
                     ].join(' · '),
                   ),
                 if (pending != null) _Bubble(text: pending),
-                if (_busy) const AiBusy('AI menja recept…'),
+                if (_busy) AiBusy('AI menja recept…', onCancel: _cancel),
                 if (_error case final error?)
                   AiErrorBox(error, actions: const []),
                 if (proposal != null)

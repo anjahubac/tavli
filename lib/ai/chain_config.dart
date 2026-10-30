@@ -79,10 +79,12 @@ class ChainConfig {
   );
 
   static const defaults = ChainConfig(
+    // Za čitanje recepta sa slike Flash je dovoljno dobar i višestruko brži
+    // od Pro modela, koji pre odgovora dugo "razmišlja".
     vision: [
-      _geminiPro,
-      _groqVision,
       _geminiFlash,
+      _groqVision,
+      _geminiPro,
       _geminiFlashLite,
       _openRouterFree,
     ],

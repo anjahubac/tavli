@@ -68,11 +68,12 @@ class AiRecipePreview extends StatelessWidget {
   }
 }
 
-/// Indikator dok AI radi.
+/// Indikator dok AI radi, uz "Prekini" kad lanac modela traje predugo.
 class AiBusy extends StatelessWidget {
-  const AiBusy(this.text, {super.key});
+  const AiBusy(this.text, {super.key, this.onCancel});
 
   final String text;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +83,13 @@ class AiBusy extends StatelessWidget {
         const LinearProgressIndicator(),
         const SizedBox(height: 8),
         Text(text, textAlign: TextAlign.center),
+        if (onCancel != null)
+          Center(
+            child: TextButton(
+              onPressed: onCancel,
+              child: const Text('Prekini'),
+            ),
+          ),
       ],
     );
   }

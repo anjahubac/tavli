@@ -30,6 +30,9 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
   bool _notARecipe = false;
   Recipe? _result;
 
+  /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
+  int _request = 0;
+
   Future<void> _pick({required bool camera}) async {
     final Uint8List? picked;
     try {
@@ -65,6 +68,7 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
   Future<void> _read() async {
     final photo = _photo;
     if (photo == null) return;
+    final request = ++_request;
     setState(() {
       _busy = true;
       _error = null;
@@ -73,20 +77,28 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
     });
     try {
       final r = await ref.read(recipeAIProvider).fromImage(AIImage(photo));
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() => _result = r.value);
     } on Exception catch (e) {
-      if (!mounted) return;
+      if (!mounted || request != _request) return;
       setState(() {
         _error = aiErrorText(e);
         _notARecipe = e is NotARecipeException;
       });
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted && request == _request) setState(() => _busy = false);
     }
   }
 
+  /// Prekida čekanje; slika ostaje pa može "Pokušaj ponovo".
+  void _cancel() => setState(() {
+    _request++;
+    _busy = false;
+    _error = 'Čitanje je prekinuto.';
+  });
+
   void _reset() => setState(() {
+    _request++;
     _photo = null;
     _result = null;
     _error = null;
@@ -156,7 +168,11 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
                   ),
                   const SizedBox(height: 16),
                 ],
-                if (_busy) const AiBusy('Čitam recept sa slike…'),
+                if (_busy)
+                  AiBusy(
+                    'Čitam recept sa slike…',
+                    onCancel: _photo == null ? null : _cancel,
+                  ),
                 if (_error case final error?)
                   AiErrorBox(
                     error,
