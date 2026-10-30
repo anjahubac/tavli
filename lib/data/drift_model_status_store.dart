@@ -5,18 +5,19 @@ import '../ai/key_store.dart';
 import '../ai/model_status_store.dart';
 import 'database.dart';
 
-/// Pauze modela preživljavaju gašenje aplikacije, posebno za svaki ključ.
+/// Pauze modela preživljavaju gašenje aplikacije, posebno za svaki ključ
+/// (kolona keyOrigin čuva [keySlot], npr. `user:<id>`).
 class DriftModelStatusStore implements ModelStatusStore {
   DriftModelStatusStore(this._db);
 
   final AppDatabase _db;
 
-  Future<ModelStatusRow?> _row(ModelSpec m, KeyOrigin origin) =>
+  Future<ModelStatusRow?> _row(ModelSpec m, String slot) =>
       (_db.select(_db.modelStatuses)..where(
             (t) =>
                 t.provider.equals(m.provider.name) &
                 t.model.equals(m.model) &
-                t.keyOrigin.equals(origin.name),
+                t.keyOrigin.equals(slot),
           ))
           .getSingleOrNull();
 
@@ -24,7 +25,8 @@ class DriftModelStatusStore implements ModelStatusStore {
   Future<DateTime?> blockedUntil(
     ModelSpec model, {
     KeyOrigin origin = KeyOrigin.user,
-  }) async => (await _row(model, origin))?.blockedUntil;
+    String? keyId,
+  }) async => (await _row(model, keySlot(origin, keyId)))?.blockedUntil;
 
   @override
   Future<void> block(
@@ -32,13 +34,14 @@ class DriftModelStatusStore implements ModelStatusStore {
     DateTime until,
     String reason, {
     KeyOrigin origin = KeyOrigin.user,
+    String? keyId,
   }) => _db
       .into(_db.modelStatuses)
       .insert(
         ModelStatusesCompanion.insert(
           provider: model.provider.name,
           model: model.model,
-          keyOrigin: Value(origin.name),
+          keyOrigin: Value(keySlot(origin, keyId)),
           blockedUntil: Value(until),
           lastError: Value(reason),
         ),
@@ -55,9 +58,10 @@ class DriftModelStatusStore implements ModelStatusStore {
     ModelSpec model,
     DateTime at, {
     KeyOrigin origin = KeyOrigin.user,
+    String? keyId,
   }) async {
     final day = at.toIso8601String().substring(0, 10);
-    final row = await _row(model, origin);
+    final row = await _row(model, keySlot(origin, keyId));
     final count = row?.usageDay == day ? row!.requestsToday + 1 : 1;
     await _db
         .into(_db.modelStatuses)
@@ -65,7 +69,7 @@ class DriftModelStatusStore implements ModelStatusStore {
           ModelStatusesCompanion.insert(
             provider: model.provider.name,
             model: model.model,
-            keyOrigin: Value(origin.name),
+            keyOrigin: Value(keySlot(origin, keyId)),
             requestsToday: Value(count),
             usageDay: Value(day),
           ),

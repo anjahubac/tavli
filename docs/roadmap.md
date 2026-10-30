@@ -19,6 +19,9 @@ Each phase below becomes one or more Spec Kit features (`specs/NNN-name/`).
   search and detail (list–detail on wide windows); add from a photo, a dish
   name or manually with a preview before saving; AI chat edits with version
   history, undo and restore; delete.
+- **AI keys list** (`specs/004-ai-keys-list`): one generic "API ključ" field
+  (service detected from the key), any number of keys per service, list of
+  added keys with check/delete; keys used in order with per-key cooldowns.
 
 ## Next
 
