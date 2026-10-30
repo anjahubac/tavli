@@ -10,7 +10,6 @@ import '../../ai/model_check.dart';
 import '../../domain/recipe_format.dart';
 import '../../providers.dart';
 import 'ai_error_text.dart';
-import 'chain_test_card.dart';
 
 enum _KeyStatus {
   works('Radi'),
@@ -375,8 +374,6 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
                             onRemove: () => _remove(k),
                           ),
                       ],
-                  const SizedBox(height: 24),
-                  const ChainTestCard(),
                 ],
               ),
             ),

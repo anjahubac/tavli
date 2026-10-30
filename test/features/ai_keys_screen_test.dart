@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -261,43 +260,12 @@ void main() {
       expect(find.textContaining('••••'), findsNothing);
     });
 
-    testWidgets('probni recept sa ugrađenim ključem nosi oznaku Tavli AI', (
-      tester,
-    ) async {
-      final recipe = {
-        'title': 'Palačinke',
-        'servings': 2,
-        'ingredients': [
-          {'name': 'brašno', 'quantity': 200, 'unit': 'g'},
-        ],
-        'steps': ['Umesi.'],
-      };
-      adapter = FakeAdapter([
-        (
-          200,
-          jsonEncode({
-            'choices': [
-              {
-                'message': {'content': jsonEncode(recipe)},
-              },
-            ],
-          }),
-          {},
-        ),
-      ]);
+    testWidgets('stranica nema sekciju „Probaj AI“', (tester) async {
+      adapter = FakeAdapter([]);
       await pumpScreen(tester, builtIn: builtIn);
 
-      await tester.tap(find.text('Napravi probni recept'));
-      await tester.pumpAndSettle();
-      expect(adapter.requests.single.headers['Authorization'], 'Bearer b-key');
-      expect(
-        find.textContaining('Odgovorio: Gemini Pro · Tavli AI'),
-        findsOneWidget,
-      );
-
-      await tester.tap(find.text('Kako je lanac radio'));
-      await tester.pumpAndSettle();
-      expect(find.text('Gemini Pro · Tavli AI'), findsOneWidget);
+      expect(find.text('Probaj AI'), findsNothing);
+      expect(find.text('Napravi probni recept'), findsNothing);
     });
   });
 }

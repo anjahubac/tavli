@@ -93,7 +93,7 @@ the next model.
 - **FR-006**: Full key values MUST never be displayed after saving, logged, or stored outside the platform secure storage.
 - **FR-007**: For each model, own keys of that service MUST be tried in add order, then the built-in key; pauses and rejections are tracked per key.
 - **FR-008**: A key saved by an earlier version MUST be migrated into the list.
-- **FR-009**: The page MUST NOT show or mention the built-in keys; the chain test ("Probaj AI") remains.
+- **FR-009**: The page MUST NOT show or mention the built-in keys. The "Probaj AI" chain test section was removed at the owner's request (2026-10-30).
 
 ### Key Entities
 
