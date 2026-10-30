@@ -45,12 +45,28 @@ flowchart TD
 `StatefulShellRoute.indexedStack` with five tabs: Recepti, Plan, Ostava,
 Kupovina, Profil. `HomeShell` shows a bottom `NavigationBar` below 720 px and a
 `NavigationRail` at ≥720 px (extended at ≥1000 px). `/profile/ai-keys` is the
-AI keys screen.
+AI keys screen, `/profile/appearance` the theme screen ("Izgled") and
+`/profile/animations` the debug-only animation gallery.
 
 Recipe routes: `/recipes` (list), `/recipes/new/{name,photo,manual}`,
 `/recipes/:id` (detail), `/recipes/:id/edit`, `/recipes/:id/chat`. When the
 content area is ≥ 840 px wide, `/recipes/:id` shows the list and the recipe side
 by side (`RecipeRoute`), otherwise the detail is a full screen.
+
+## Theme and animations
+
+- `buildTavliTheme(TavliTheme, Brightness)` (`lib/app/theme/app_theme.dart`)
+  builds `ThemeData` from an explicit `ColorScheme` (tokens in
+  `TavliPalette`) plus the `TavliColors` extension (bg, line, boxLine, tile
+  tints, motif). Screens use only `colorScheme`/`TavliColors`; fixed colours
+  live only in `lib/app/theme/` and in the animation artwork.
+- `ThemeChoice` (domain) is stored in `AppSettings` (`theme`, `theme_mode`) by
+  `SettingsRepository`; `themeControllerProvider` loads it at start and
+  `TavliApp` watches it.
+- `lib/app/animations/` holds `CustomPainter` animations built on
+  `MotionBuilder`, which shows a still end frame when
+  `MediaQuery.disableAnimations` is set. `IntroOverlay` wraps the router in
+  `MaterialApp.builder` (off in tests via `TavliApp(intro: false)`).
 
 ## AI router and fallback chains
 

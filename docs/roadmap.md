@@ -22,6 +22,14 @@ Each phase below becomes one or more Spec Kit features (`specs/NNN-name/`).
 - **AI keys list** (`specs/004-ai-keys-list`): one generic "API ključ" field
   (service detected from the key), any number of keys per service, list of
   added keys with check/delete; keys used in order with per-key cooldowns.
+- **Themes and animations** (`specs/005-themes-animations`): three themes
+  (Bosiljak, Šafran, Borovnica) in light and dark, chosen in Profil → Izgled;
+  bundled Plus Jakarta Sans; reduced-motion aware ingredient animations (intro,
+  photo scan, simmering pot, spoon refresh, empty Ostava/Kupovina) and a debug
+  "Animacije" gallery. Ready for later screens: `AnimatedCheckmark` +
+  `flyChipToTarget` + `BumpBadge` (ingredient checklist → Kupovina tab badge),
+  `ShoppingBagFull` (all bought), `PlatePlanDrop` (meal plan), `EggTimer`
+  (cooking timer).
 
 ## Next
 
