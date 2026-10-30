@@ -31,6 +31,12 @@ class RecipeVersions extends Table {
   TextColumn get recipeId => text().references(Recipes, #id)();
   TextColumn get recipeJson => text()();
   TextColumn get instruction => text().nullable()();
+
+  /// ChangeKind.name: kakva izmena je zamenila ovu verziju.
+  TextColumn get changeKind => text().withDefault(const Constant('ai'))();
+
+  /// Model koji je napravio AI izmenu.
+  TextColumn get changedBy => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 }
 
@@ -163,7 +169,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -173,6 +179,10 @@ class AppDatabase extends _$AppDatabase {
         // umesto kopiranja redova u novi primarni ključ.
         await m.deleteTable(modelStatuses.actualTableName);
         await m.createTable(modelStatuses);
+      }
+      if (from < 3) {
+        await m.addColumn(recipeVersions, recipeVersions.changeKind);
+        await m.addColumn(recipeVersions, recipeVersions.changedBy);
       }
     },
   );

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 enum RecipeSource { photo, ai, manual }
 
 /// `summary` = naziv i sastojci (dovoljno za plan i listu za kupovinu),
@@ -124,6 +126,56 @@ class Recipe {
     );
   }
 
+  Recipe copyWith({
+    String? title,
+    int? servings,
+    int? prepMinutes,
+    bool clearPrepMinutes = false,
+    List<Ingredient>? ingredients,
+    List<String>? steps,
+    String? imagePath,
+    String? answeredBy,
+  }) => Recipe(
+    id: id,
+    title: title ?? this.title,
+    servings: servings ?? this.servings,
+    prepMinutes: clearPrepMinutes ? null : (prepMinutes ?? this.prepMinutes),
+    ingredients: ingredients ?? this.ingredients,
+    steps: steps ?? this.steps,
+    source: source,
+    imagePath: imagePath ?? this.imagePath,
+    answeredBy: answeredBy ?? this.answeredBy,
+    createdAt: createdAt,
+  );
+
+  /// Ceo recept za čuvanje (npr. prethodne verzije u bazi).
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    ...toAiJson(),
+    'source': source.name,
+    'imagePath': imagePath,
+    'answeredBy': answeredBy,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+  };
+
+  /// Čita oblik iz [toJson]. Baca [FormatException] na pokvaren zapis.
+  factory Recipe.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final source = RecipeSource.values.asNameMap()[json['source']];
+    final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '');
+    if (id is! String || source == null || createdAt == null) {
+      throw const FormatException('Pokvaren zapis recepta');
+    }
+    return Recipe.fromAiJson(
+      json,
+      id: id,
+      source: source,
+      createdAt: createdAt,
+      answeredBy: json['answeredBy'] as String?,
+      imagePath: json['imagePath'] as String?,
+    );
+  }
+
   /// Oblik koji se šalje AI-ju pri izmenama recepta.
   Map<String, dynamic> toAiJson() => {
     'title': title,
@@ -133,6 +185,13 @@ class Recipe {
     'steps': steps,
   };
 }
+
+final _random = Random();
+
+/// Kratak jedinstven id recepta (vreme + slučajan broj).
+String newRecipeId(DateTime now) =>
+    '${now.microsecondsSinceEpoch.toRadixString(36)}'
+    '${_random.nextInt(1 << 32).toRadixString(36)}';
 
 double? _parseQuantity(Object? v) {
   if (v is num) return v.toDouble();

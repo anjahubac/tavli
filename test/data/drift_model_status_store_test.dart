@@ -53,13 +53,18 @@ void main() {
         raw.execute(
           "INSERT INTO model_statuses (provider, model) VALUES ('gemini', 'pro')",
         );
+        raw.execute(
+          'CREATE TABLE recipe_versions (id INTEGER PRIMARY KEY, '
+          'recipe_id TEXT NOT NULL, recipe_json TEXT NOT NULL, '
+          'instruction TEXT, created_at INTEGER NOT NULL)',
+        );
         raw.execute('PRAGMA user_version = 1');
       },
     );
     final old = AppDatabase(executor);
     addTearDown(old.close);
 
-    expect(old.schemaVersion, 2);
+    expect(old.schemaVersion, greaterThanOrEqualTo(2));
     expect(await old.select(old.modelStatuses).get(), isEmpty);
     await DriftModelStatusStore(old)
         .block(model, DateTime.utc(2026), 'x', origin: KeyOrigin.builtIn);

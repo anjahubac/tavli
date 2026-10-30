@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import '../domain/recipe.dart';
 import 'ai_models.dart';
 import 'ai_router.dart';
@@ -19,7 +17,6 @@ class RecipeAI {
 
   final AIRouter _router;
   final DateTime Function() _clock;
-  final _random = Random();
 
   Future<AIResult<Recipe>> fromImage(AIImage image, {String? imagePath}) {
     return _router
@@ -86,7 +83,7 @@ class RecipeAI {
     String? imagePath,
   }) => Recipe.fromAiJson(
     json,
-    id: _newId(),
+    id: newRecipeId(_clock()),
     source: source,
     createdAt: _clock(),
     imagePath: imagePath,
@@ -112,8 +109,4 @@ class RecipeAI {
       origin: r.origin,
     );
   }
-
-  String _newId() =>
-      '${_clock().microsecondsSinceEpoch.toRadixString(36)}'
-      '${_random.nextInt(1 << 32).toRadixString(36)}';
 }

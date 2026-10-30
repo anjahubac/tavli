@@ -724,6 +724,29 @@ class $RecipeVersionsTable extends RecipeVersions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _changeKindMeta = const VerificationMeta(
+    'changeKind',
+  );
+  @override
+  late final GeneratedColumn<String> changeKind = GeneratedColumn<String>(
+    'change_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('ai'),
+  );
+  static const VerificationMeta _changedByMeta = const VerificationMeta(
+    'changedBy',
+  );
+  @override
+  late final GeneratedColumn<String> changedBy = GeneratedColumn<String>(
+    'changed_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -741,6 +764,8 @@ class $RecipeVersionsTable extends RecipeVersions
     recipeId,
     recipeJson,
     instruction,
+    changeKind,
+    changedBy,
     createdAt,
   ];
   @override
@@ -783,6 +808,18 @@ class $RecipeVersionsTable extends RecipeVersions
         ),
       );
     }
+    if (data.containsKey('change_kind')) {
+      context.handle(
+        _changeKindMeta,
+        changeKind.isAcceptableOrUnknown(data['change_kind']!, _changeKindMeta),
+      );
+    }
+    if (data.containsKey('changed_by')) {
+      context.handle(
+        _changedByMeta,
+        changedBy.isAcceptableOrUnknown(data['changed_by']!, _changedByMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -816,6 +853,14 @@ class $RecipeVersionsTable extends RecipeVersions
         DriftSqlType.string,
         data['${effectivePrefix}instruction'],
       ),
+      changeKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}change_kind'],
+      )!,
+      changedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}changed_by'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -835,12 +880,20 @@ class RecipeVersionRow extends DataClass
   final String recipeId;
   final String recipeJson;
   final String? instruction;
+
+  /// ChangeKind.name: kakva izmena je zamenila ovu verziju.
+  final String changeKind;
+
+  /// Model koji je napravio AI izmenu.
+  final String? changedBy;
   final DateTime createdAt;
   const RecipeVersionRow({
     required this.id,
     required this.recipeId,
     required this.recipeJson,
     this.instruction,
+    required this.changeKind,
+    this.changedBy,
     required this.createdAt,
   });
   @override
@@ -851,6 +904,10 @@ class RecipeVersionRow extends DataClass
     map['recipe_json'] = Variable<String>(recipeJson);
     if (!nullToAbsent || instruction != null) {
       map['instruction'] = Variable<String>(instruction);
+    }
+    map['change_kind'] = Variable<String>(changeKind);
+    if (!nullToAbsent || changedBy != null) {
+      map['changed_by'] = Variable<String>(changedBy);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -864,6 +921,10 @@ class RecipeVersionRow extends DataClass
       instruction: instruction == null && nullToAbsent
           ? const Value.absent()
           : Value(instruction),
+      changeKind: Value(changeKind),
+      changedBy: changedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(changedBy),
       createdAt: Value(createdAt),
     );
   }
@@ -878,6 +939,8 @@ class RecipeVersionRow extends DataClass
       recipeId: serializer.fromJson<String>(json['recipeId']),
       recipeJson: serializer.fromJson<String>(json['recipeJson']),
       instruction: serializer.fromJson<String?>(json['instruction']),
+      changeKind: serializer.fromJson<String>(json['changeKind']),
+      changedBy: serializer.fromJson<String?>(json['changedBy']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -889,6 +952,8 @@ class RecipeVersionRow extends DataClass
       'recipeId': serializer.toJson<String>(recipeId),
       'recipeJson': serializer.toJson<String>(recipeJson),
       'instruction': serializer.toJson<String?>(instruction),
+      'changeKind': serializer.toJson<String>(changeKind),
+      'changedBy': serializer.toJson<String?>(changedBy),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -898,12 +963,16 @@ class RecipeVersionRow extends DataClass
     String? recipeId,
     String? recipeJson,
     Value<String?> instruction = const Value.absent(),
+    String? changeKind,
+    Value<String?> changedBy = const Value.absent(),
     DateTime? createdAt,
   }) => RecipeVersionRow(
     id: id ?? this.id,
     recipeId: recipeId ?? this.recipeId,
     recipeJson: recipeJson ?? this.recipeJson,
     instruction: instruction.present ? instruction.value : this.instruction,
+    changeKind: changeKind ?? this.changeKind,
+    changedBy: changedBy.present ? changedBy.value : this.changedBy,
     createdAt: createdAt ?? this.createdAt,
   );
   RecipeVersionRow copyWithCompanion(RecipeVersionsCompanion data) {
@@ -916,6 +985,10 @@ class RecipeVersionRow extends DataClass
       instruction: data.instruction.present
           ? data.instruction.value
           : this.instruction,
+      changeKind: data.changeKind.present
+          ? data.changeKind.value
+          : this.changeKind,
+      changedBy: data.changedBy.present ? data.changedBy.value : this.changedBy,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -927,14 +1000,23 @@ class RecipeVersionRow extends DataClass
           ..write('recipeId: $recipeId, ')
           ..write('recipeJson: $recipeJson, ')
           ..write('instruction: $instruction, ')
+          ..write('changeKind: $changeKind, ')
+          ..write('changedBy: $changedBy, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, recipeId, recipeJson, instruction, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    recipeId,
+    recipeJson,
+    instruction,
+    changeKind,
+    changedBy,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -943,6 +1025,8 @@ class RecipeVersionRow extends DataClass
           other.recipeId == this.recipeId &&
           other.recipeJson == this.recipeJson &&
           other.instruction == this.instruction &&
+          other.changeKind == this.changeKind &&
+          other.changedBy == this.changedBy &&
           other.createdAt == this.createdAt);
 }
 
@@ -951,12 +1035,16 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
   final Value<String> recipeId;
   final Value<String> recipeJson;
   final Value<String?> instruction;
+  final Value<String> changeKind;
+  final Value<String?> changedBy;
   final Value<DateTime> createdAt;
   const RecipeVersionsCompanion({
     this.id = const Value.absent(),
     this.recipeId = const Value.absent(),
     this.recipeJson = const Value.absent(),
     this.instruction = const Value.absent(),
+    this.changeKind = const Value.absent(),
+    this.changedBy = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   RecipeVersionsCompanion.insert({
@@ -964,6 +1052,8 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
     required String recipeId,
     required String recipeJson,
     this.instruction = const Value.absent(),
+    this.changeKind = const Value.absent(),
+    this.changedBy = const Value.absent(),
     required DateTime createdAt,
   }) : recipeId = Value(recipeId),
        recipeJson = Value(recipeJson),
@@ -973,6 +1063,8 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
     Expression<String>? recipeId,
     Expression<String>? recipeJson,
     Expression<String>? instruction,
+    Expression<String>? changeKind,
+    Expression<String>? changedBy,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -980,6 +1072,8 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
       if (recipeId != null) 'recipe_id': recipeId,
       if (recipeJson != null) 'recipe_json': recipeJson,
       if (instruction != null) 'instruction': instruction,
+      if (changeKind != null) 'change_kind': changeKind,
+      if (changedBy != null) 'changed_by': changedBy,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -989,6 +1083,8 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
     Value<String>? recipeId,
     Value<String>? recipeJson,
     Value<String?>? instruction,
+    Value<String>? changeKind,
+    Value<String?>? changedBy,
     Value<DateTime>? createdAt,
   }) {
     return RecipeVersionsCompanion(
@@ -996,6 +1092,8 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
       recipeId: recipeId ?? this.recipeId,
       recipeJson: recipeJson ?? this.recipeJson,
       instruction: instruction ?? this.instruction,
+      changeKind: changeKind ?? this.changeKind,
+      changedBy: changedBy ?? this.changedBy,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -1015,6 +1113,12 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
     if (instruction.present) {
       map['instruction'] = Variable<String>(instruction.value);
     }
+    if (changeKind.present) {
+      map['change_kind'] = Variable<String>(changeKind.value);
+    }
+    if (changedBy.present) {
+      map['changed_by'] = Variable<String>(changedBy.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1028,6 +1132,8 @@ class RecipeVersionsCompanion extends UpdateCompanion<RecipeVersionRow> {
           ..write('recipeId: $recipeId, ')
           ..write('recipeJson: $recipeJson, ')
           ..write('instruction: $instruction, ')
+          ..write('changeKind: $changeKind, ')
+          ..write('changedBy: $changedBy, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -5209,6 +5315,8 @@ typedef $$RecipeVersionsTableCreateCompanionBuilder =
       required String recipeId,
       required String recipeJson,
       Value<String?> instruction,
+      Value<String> changeKind,
+      Value<String?> changedBy,
       required DateTime createdAt,
     });
 typedef $$RecipeVersionsTableUpdateCompanionBuilder =
@@ -5217,6 +5325,8 @@ typedef $$RecipeVersionsTableUpdateCompanionBuilder =
       Value<String> recipeId,
       Value<String> recipeJson,
       Value<String?> instruction,
+      Value<String> changeKind,
+      Value<String?> changedBy,
       Value<DateTime> createdAt,
     });
 
@@ -5268,6 +5378,16 @@ class $$RecipeVersionsTableFilterComposer
 
   ColumnFilters<String> get instruction => $composableBuilder(
     column: $table.instruction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get changeKind => $composableBuilder(
+    column: $table.changeKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get changedBy => $composableBuilder(
+    column: $table.changedBy,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5324,6 +5444,16 @@ class $$RecipeVersionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get changeKind => $composableBuilder(
+    column: $table.changeKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get changedBy => $composableBuilder(
+    column: $table.changedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5374,6 +5504,14 @@ class $$RecipeVersionsTableAnnotationComposer
     column: $table.instruction,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get changeKind => $composableBuilder(
+    column: $table.changeKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get changedBy =>
+      $composableBuilder(column: $table.changedBy, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5436,12 +5574,16 @@ class $$RecipeVersionsTableTableManager
                 Value<String> recipeId = const Value.absent(),
                 Value<String> recipeJson = const Value.absent(),
                 Value<String?> instruction = const Value.absent(),
+                Value<String> changeKind = const Value.absent(),
+                Value<String?> changedBy = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => RecipeVersionsCompanion(
                 id: id,
                 recipeId: recipeId,
                 recipeJson: recipeJson,
                 instruction: instruction,
+                changeKind: changeKind,
+                changedBy: changedBy,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -5450,12 +5592,16 @@ class $$RecipeVersionsTableTableManager
                 required String recipeId,
                 required String recipeJson,
                 Value<String?> instruction = const Value.absent(),
+                Value<String> changeKind = const Value.absent(),
+                Value<String?> changedBy = const Value.absent(),
                 required DateTime createdAt,
               }) => RecipeVersionsCompanion.insert(
                 id: id,
                 recipeId: recipeId,
                 recipeJson: recipeJson,
                 instruction: instruction,
+                changeKind: changeKind,
+                changedBy: changedBy,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

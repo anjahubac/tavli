@@ -108,4 +108,53 @@ void main() {
     final copy = parse(r.toAiJson());
     expect(copy.toAiJson(), r.toAiJson());
   });
+
+  group('čuvanje', () {
+    final original = Recipe(
+      id: 'r1',
+      title: 'Sarma',
+      servings: 6,
+      prepMinutes: 180,
+      ingredients: const [
+        Ingredient(
+          name: 'kupus',
+          quantity: 1,
+          unit: 'glavica',
+          category: 'konzerve i tegle',
+          note: 'kiseli',
+        ),
+      ],
+      steps: const ['Umotati.'],
+      source: RecipeSource.photo,
+      imagePath: 'recipe_photos/r1.jpg',
+      answeredBy: 'Gemini Pro',
+      createdAt: DateTime.utc(2026, 10, 30, 12),
+    );
+
+    test('toJson/fromJson vraća isti recept', () {
+      final copy = Recipe.fromJson(original.toJson());
+      expect(copy.toJson(), original.toJson());
+      expect(copy.createdAt.isAtSameMomentAs(original.createdAt), isTrue);
+      expect(copy.source, RecipeSource.photo);
+    });
+
+    test('fromJson bez naziva baca FormatException', () {
+      final json = original.toJson()..['title'] = '';
+      expect(() => Recipe.fromJson(json), throwsFormatException);
+    });
+
+    test('copyWith menja samo zadata polja', () {
+      final c = original.copyWith(title: 'Posna sarma');
+      expect(c.title, 'Posna sarma');
+      expect(c.imagePath, 'recipe_photos/r1.jpg');
+      expect(c.servings, 6);
+      expect(original.copyWith(clearPrepMinutes: true).prepMinutes, isNull);
+    });
+
+    test('newRecipeId pravi različite id-jeve', () {
+      final now = DateTime(2026);
+      final ids = {for (var i = 0; i < 100; i++) newRecipeId(now)};
+      expect(ids, hasLength(100));
+    });
+  });
 }
