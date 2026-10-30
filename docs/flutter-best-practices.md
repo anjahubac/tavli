@@ -98,7 +98,8 @@ Binding for humans and AI agents. The constitution
 ## 11. Networking and AI
 
 - All AI goes through `AIRouter` (constitution III). No direct `dio` calls to AI providers from features.
-- Timeouts are set on the client (connect 15 s, receive 90 s). Retries happen only
+- Timeouts are set on the client (connect 10 s; response per model via `ModelSpec.timeout`:
+  30 s for fast models, 60 s for slow "thinking" models; a timeout is not retried). Retries happen only
   in the client (one transient retry) and router (fallback chain) — not in features.
 - Responses are validated by parse functions that throw `FormatException`.
 

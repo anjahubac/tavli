@@ -24,6 +24,7 @@ class ModelSpec {
     this.supportsVision = false,
     this.enabled = true,
     this.dailyResetUtcHour,
+    this.timeout = const Duration(seconds: 30),
   });
 
   final AIProvider provider;
@@ -36,6 +37,10 @@ class ModelSpec {
   /// to ne objavljuje, pa se koristi Retry-After ili podrazumevana pauza.
   final int? dailyResetUtcHour;
 
+  /// Koliko se čeka odgovor pre prelaska na sledeći model. Brzi modeli
+  /// odgovaraju za par sekundi; modeli koji "razmišljaju" traže više.
+  final Duration timeout;
+
   String get key => '${provider.name}/$model';
 
   ModelSpec copyWith({bool? enabled}) => ModelSpec(
@@ -45,6 +50,7 @@ class ModelSpec {
     supportsVision: supportsVision,
     enabled: enabled ?? this.enabled,
     dailyResetUtcHour: dailyResetUtcHour,
+    timeout: timeout,
   );
 
   Map<String, dynamic> toJson() => {
@@ -54,6 +60,7 @@ class ModelSpec {
     'supportsVision': supportsVision,
     'enabled': enabled,
     'dailyResetUtcHour': dailyResetUtcHour,
+    'timeoutSeconds': timeout.inSeconds,
   };
 
   factory ModelSpec.fromJson(Map<String, dynamic> json) => ModelSpec(
@@ -63,6 +70,7 @@ class ModelSpec {
     supportsVision: json['supportsVision'] as bool? ?? false,
     enabled: json['enabled'] as bool? ?? true,
     dailyResetUtcHour: json['dailyResetUtcHour'] as int?,
+    timeout: Duration(seconds: json['timeoutSeconds'] as int? ?? 30),
   );
 
   @override

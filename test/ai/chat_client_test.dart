@@ -137,11 +137,24 @@ void main() {
     expect(adapter.calls, 1);
   });
 
-  test('podrazumevano čekanje odgovora je 60 s', () {
-    expect(
-      OpenAICompatibleClient.defaultReceiveTimeout,
-      const Duration(seconds: 60),
+  test('čekanje odgovora zavisi od modela', () async {
+    final (client, adapter) = clientWith([
+      (200, completion('{"ok":true}'), {}),
+      (200, completion('{"ok":true}'), {}),
+    ]);
+    await client.complete(model, request, apiKey: 'k');
+    await client.complete(
+      const ModelSpec(
+        provider: AIProvider.gemini,
+        model: 'pro',
+        label: 'Pro',
+        timeout: Duration(seconds: 60),
+      ),
+      request,
+      apiKey: 'k',
     );
+    expect(adapter.requests[0].receiveTimeout, const Duration(seconds: 30));
+    expect(adapter.requests[1].receiveTimeout, const Duration(seconds: 60));
   });
 }
 

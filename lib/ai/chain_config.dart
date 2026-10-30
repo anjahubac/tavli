@@ -40,6 +40,7 @@ class ChainConfig {
     label: 'Gemini Pro',
     supportsVision: true,
     dailyResetUtcHour: 8,
+    timeout: Duration(seconds: 60),
   );
   static const _geminiFlash = ModelSpec(
     provider: AIProvider.gemini,

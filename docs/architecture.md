@@ -70,7 +70,7 @@ flowchart LR
     PARSE -- FormatException --> RETRY["ask same model once more"] --> PARSE2{ok?}
     PARSE2 -- no --> NEXT
     PARSE2 -- yes --> DONE
-    CALL -- "timeout (60 s), no retry" --> NEXT
+    CALL -- "timeout (30 s, Pro 60 s), no retry" --> NEXT
     CALL -- "429" --> COOL["persist cooldown:<br/>Retry-After / 60 s / daily reset (08:00 UTC Gemini) / 1 h"] --> NEXT
     CALL -- "401/403/bad key" --> INV["mark provider invalid"] --> NEXT
     CALL -- "404" --> MISS["mark model unavailable"] --> NEXT

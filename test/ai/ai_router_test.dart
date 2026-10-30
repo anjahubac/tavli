@@ -278,6 +278,14 @@ void main() {
     final vision = ChainConfig.defaults.chainFor(TaskKind.vision);
     expect(vision, isNotEmpty);
     expect(vision.every((m) => m.supportsVision), isTrue);
+    // Brzi modeli čekaju 30 s, Pro (dugo razmišlja) 60 s.
+    for (final m in vision) {
+      expect(
+        m.timeout,
+        Duration(seconds: m.label == 'Gemini Pro' ? 60 : 30),
+        reason: m.label,
+      );
+    }
     // Čitanje recepta sa slike: prvo brzi modeli, spori Pro tek posle njih.
     expect(vision.map((m) => m.label).take(3), [
       'Gemini Flash',

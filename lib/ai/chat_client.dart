@@ -20,16 +20,7 @@ class OpenAICompatibleClient implements ChatClient {
     Dio? dio,
     this.transientRetryDelay = const Duration(seconds: 1),
   }) : _dio =
-           dio ??
-           Dio(
-             BaseOptions(
-               connectTimeout: const Duration(seconds: 15),
-               receiveTimeout: defaultReceiveTimeout,
-             ),
-           );
-
-  /// Koliko se čeka odgovor jednog modela pre prelaska na sledeći.
-  static const defaultReceiveTimeout = Duration(seconds: 60);
+           dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
 
   final Dio _dio;
   final Duration transientRetryDelay;
@@ -55,7 +46,10 @@ class OpenAICompatibleClient implements ChatClient {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         '${provider.baseUrl}models',
-        options: Options(headers: _headers(provider, apiKey)),
+        options: Options(
+          headers: _headers(provider, apiKey),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
       );
       return [
         for (final m in (res.data?['data'] as List? ?? const []))
@@ -76,7 +70,11 @@ class OpenAICompatibleClient implements ChatClient {
       res = await _dio.post<Map<String, dynamic>>(
         '${model.provider.baseUrl}chat/completions',
         data: buildBody(model, request),
-        options: Options(headers: _headers(model.provider, apiKey)),
+        // Ceo odgovor stiže odjednom, pa je ovo vreme do odgovora modela.
+        options: Options(
+          headers: _headers(model.provider, apiKey),
+          receiveTimeout: model.timeout,
+        ),
       );
     } on DioException catch (e) {
       throw mapDioException(e);
