@@ -25,17 +25,18 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ## Phase 4: User Story 2 — consistent look (P1)
 
-- [ ] T010 [US2] Remove the seed colour; component themes per FR-006; nav bar top line in `home_shell.dart`; screens on `main` (profile, AI keys, chain test card, placeholders) use theme tokens only (grep check: no `Color(`/`Colors.` outside `lib/app/theme` and `lib/app/animations`)
+- [ ] T010 [US2] Remove the seed colour; recipe list as bordered cards with tint thumbnails, search field 50/16, extended FAB radius 20 (copy "Dodaj recept" unchanged), nav bar top line in `home_shell.dart`; all screens use theme tokens only (grep check: no `Color(`/`Colors.` outside `lib/app/theme` and `lib/app/animations`)
 
 ## Phase 5: User Story 3 — AI waiting animations (P2)
 
 - [ ] T011 [US3] Test: `SimmeringPot` rotates messages, static with reduced motion; `PhotoScan` scan line runs while scanning, chips appear one by one in `test/app/animations_test.dart`
 - [ ] T012 [US3] `lib/app/animations/motion.dart`, `simmering_pot.dart`, `photo_scan.dart`
+- [ ] T013 [US3] Wire: `AiBusy` shows the pot (name, chat); photo screen shows `PhotoScan` while reading and ingredient chips on the preview; existing recipe tests stay green
 
 ## Phase 6: User Story 4 — intro and empty states (P2)
 
 - [ ] T014 [US4] Test: intro shows the active motif, fades after ≈1,8 s, tap skips; Ostava/Kupovina empty states; spoon refresh indicator appears on pull in `test/app/animations_test.dart` + `test/app/home_shell_test.dart`
-- [ ] T015 [US4] `intro_motif.dart`, `intro_overlay.dart`, `empty_fridge.dart`, `spoon_refresh.dart`; empty states in `placeholder_screen.dart`/router
+- [ ] T015 [US4] `intro_motif.dart`, `intro_overlay.dart`, `empty_fridge.dart`, `spoon_refresh.dart`; empty states in `placeholder_screen.dart`/router; spoon refresh on the recipes list
 
 ## Phase 7: User Story 5 — animations for later screens + gallery (P3)
 
@@ -46,9 +47,3 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 - [ ] T018 Update `docs/architecture.md` (theme + animations), `docs/roadmap.md`, `AGENTS.md` structure
 - [ ] T019 `scripts/check.sh` green; `flutter build macos --debug` succeeds
-
-## Follow-up (after PR #1 `003-recipe-screens` merges into `main`)
-
-- [ ] T020 Rebase `005-themes-animations` onto `main`
-- [ ] T021 Recipe screens on theme tokens: bordered recipe cards with tint thumbnails, search 50/16, FAB radius 20
-- [ ] T022 `PhotoScan` on "Iz slike" (scan while reading, ingredient chips on the preview); `SimmeringPot` in `AiBusy` (dish name, chat); `SpoonRefresh` around the recipes list; recipe widget tests use `pump(duration)` where a loop runs

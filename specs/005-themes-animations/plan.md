@@ -18,9 +18,8 @@ Animations are `CustomPainter`s driven by `AnimationController`s, wrapped in a
 shared `MotionLoop`/`MotionOnce` base that reads
 `MediaQuery.disableAnimationsOf` and paints the static end frame instead of
 ticking. They live in `lib/app/animations/` and are plugged into the intro
-overlay and the Ostava/Kupovina empty tabs; all nine are shown in a debug-only
-gallery. Recipe screens (PR #1, not on `main`) get the theme tokens, the AI
-waiting animations and the spoon refresh in a follow-up after rebase.
+overlay, photo/name/chat AI waiting states, the recipes list refresh and the
+Ostava/Kupovina empty tabs; the rest are shown in a debug-only gallery.
 
 ## Technical Context
 
@@ -32,7 +31,7 @@ waiting animations and the spoon refresh in a follow-up after rebase.
 **Project Type**: mobile/desktop app (single Flutter project)
 **Performance Goals**: animations at 60 fps with a single `CustomPaint` each; no image assets
 **Constraints**: offline (font bundled); reduced motion honoured; no new packages
-**Scale/Scope**: 1 theme module, 1 settings repository, 1 screen, 9 animation widgets, 1 gallery; recipe screens out of scope until PR #1 merges
+**Scale/Scope**: 1 theme module, 1 settings repository, 1 screen, 9 animation widgets, 1 gallery
 
 ### Assets (not a dependency)
 
@@ -54,7 +53,7 @@ waiting animations and the spoon refresh in a follow-up after rebase.
 | V. Test-first | ✅ `ThemeChoice` parsing and `SettingsRepository` tests first; widget tests for persistence, all 6 `ThemeData`, each animation incl. reduced motion |
 | VI. Responsive | ✅ appearance screen and gallery constrained to 720 px; tested at phone and wide |
 | VII. Small commits | ✅ spec, theme, screens restyle, animations, wiring, docs |
-| VIII. One spec branch | ✅ `005-themes-animations` from `main` |
+| VIII. One spec branch | ✅ `005-themes-animations` (based on `003-recipe-screens`, see research) |
 | IX. Best practices & guardrails | ✅ theme colours only, controllers disposed, no new dependency |
 
 ## Project Structure
@@ -100,6 +99,7 @@ lib/app/animations/egg_timer.dart          egg bobbing in boiling water (new)
 lib/features/settings/appearance_screen.dart  "Izgled" (new)
 lib/features/settings/animations_gallery_screen.dart  debug gallery (new)
 lib/features/settings/profile_screen.dart  + Izgled, + Animacije (debug)
+lib/features/recipes/*                     theme tokens, card tiles, AiBusy pot, photo scan, spoon refresh
 test/domain/theme_choice_test.dart
 test/data/settings_repository_test.dart
 test/app/theme_test.dart                   6 ThemeData combos, tokens

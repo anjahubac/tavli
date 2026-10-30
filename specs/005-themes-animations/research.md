@@ -40,12 +40,13 @@
 
 ## Branch base
 
-- **Decision**: branch from `main` (owner's rule). `main` has no recipe
-  screens yet (PR #1 open), so their restyle and the AI-waiting/refresh wiring
-  are a follow-up after PR #1 merges and this branch is rebased.
+- **Decision**: branch from `003-recipe-screens` (PR #1, open) instead of
+  `main`: `main` lacks the recipe screens that must be themed. `004-ai-keys-list`
+  is being edited in parallel, so it is not used as base; the AI keys screen
+  only needs theme tokens, so a later merge is small.
 
 ## Tests and endless animations
 
 - Looping animations keep `pumpAndSettle` from finishing. Widget tests that
   hold a waiting state use `pump(duration)`; the intro is off in
-  shell tests (`TavliApp(intro: false)`) and covered by its own test.
+  `pumpTavli` (`TavliApp(intro: false)`) and covered by its own test.

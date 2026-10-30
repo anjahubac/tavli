@@ -25,11 +25,8 @@ in the project conversation; these remaining details were decided by Claude:
 - Q: Does the intro show on every start? → A: Yes, briefly (≈1,8 s) while the
   app loads, then it fades; a tap skips it. With reduced motion the static end
   frame is shown for the same short time.
-- Q: Branch base? → A: `main` (owner's standing rule: new branches always
-  start from `main`). The recipe screens of `003-recipe-screens` (PR #1) are not
-  on `main`, so they are not restyled here: after PR #1 merges, this branch is
-  rebased onto `main` and a follow-up task switches the recipe screens to the
-  theme tokens and plugs in the AI waiting animations and the spoon refresh.
+- Q: Branch base? → A: `003-recipe-screens` (recipe screens are not on `main`
+  yet and must be themed too); retarget after #1 merges.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -50,7 +47,7 @@ switches immediately, and the choice is kept after a restart.
 2. **Given** "Profil" → "Izgled", **When** the user taps "Šafran", **Then** the app recolours at once and the "Šafran" card shows as selected.
 3. **Given** mode "Tamna", **When** the system is light, **Then** the app is still dark.
 4. **Given** a chosen theme and mode, **When** the app restarts, **Then** the same theme and mode are used.
-5. **Given** any of the 6 theme/mode combinations, **Then** every screen on this branch (shell, profile, appearance, AI keys, tab placeholders, gallery) uses only that theme's colours — no fixed colours that clash in dark mode. Recipe screens follow after PR #1 (see Assumptions).
+5. **Given** any of the 6 theme/mode combinations, **Then** every screen (recipes list, detail, add/edit, chat, AI keys, profile, placeholders) uses only that theme's colours — no fixed colours that clash in dark mode.
 
 ---
 
@@ -67,7 +64,7 @@ slightly tight headings.
 
 **Acceptance Scenarios**:
 
-1. **Given** any card (e.g. on "Izgled" or in the AI keys screen), **Then** it has the surface colour, a 1 px line border, radius 16–24 and no shadow. (Recipe tiles with tint thumbnails come with the recipe-screen follow-up.)
+1. **Given** the recipes list, **Then** recipe cards have the surface colour, a 1 px line border, radius 16–24 and no shadow; recipe tiles without a photo use the theme's tint colours.
 2. **Given** the bottom bar on a phone, **Then** the active tab has a container-coloured pill and its label in the on-container colour.
 
 ---
@@ -80,7 +77,7 @@ name (or applies a chat change), a pot simmers with steam and bubbles and a
 message rotates: "Seckam luk…", "Dodajem začine…", "Mešam…", "Probam da li
 je slano…".
 
-**Independent Test**: on this branch the two animations are shown in the "Animacije" gallery with the exact behaviour below; they plug into "Iz slike" / "Po nazivu jela" / the AI chat in the recipe-screen follow-up.
+**Independent Test**: start "Iz slike" / "Po nazivu jela" with a slow fake AI; the animations show until the answer.
 
 **Acceptance Scenarios**:
 
@@ -98,16 +95,15 @@ blueberries dropping into a bowl (Borovnica), with "Tavli" and "Recepti, plan
 obroka i kupovina na jednom mestu". The empty "Ostava" tab shows a fridge whose
 door opens, its light flickers, and it is empty: "Ostava je prazna" / "Vreme je
 za nabavku". The empty "Kupovina" tab shows the theme motif with "Lista je
-prazna" / "Označi sastojke u receptu i pojaviće se ovde." A pull-to-refresh
-with a wooden spoon stirring in a pot replaces the plain spinner (gallery now,
-recipes list in the follow-up).
+prazna" / "Označi sastojke u receptu i pojaviće se ovde." Pulling the recipes
+list down shows a wooden spoon stirring in a pot instead of the plain spinner.
 
 **Acceptance Scenarios**:
 
 1. **Given** app start, **Then** the intro with the active motif shows for about 1,8 s and fades; tapping it skips it.
 2. **Given** the "Ostava" tab, **Then** the fridge animation and "Ostava je prazna" / "Vreme je za nabavku" are shown.
 3. **Given** the "Kupovina" tab, **Then** the theme motif and "Lista je prazna" are shown.
-4. **Given** the spoon refresh demo in the gallery, **When** pulled down, **Then** the spoon-in-pot indicator is shown while it refreshes.
+4. **Given** the recipes list, **When** pulled down, **Then** the spoon-in-pot indicator is shown while it refreshes.
 
 ---
 
@@ -150,8 +146,8 @@ can be seen in a debug-only "Animacije" gallery in "Profil":
 - **FR-008**: The nine animations (intro motif ×3, photo scan with ingredient chips, simmering pot with rotating messages, ingredient check with flying chip and badge bump, filled shopping bag, empty fridge, spoon pull-to-refresh, plate on plan day, egg timer) MUST exist as reusable pieces.
 - **FR-009**: Every animation MUST show a static end state when the platform asks for reduced motion.
 - **FR-010**: The intro MUST follow the active theme, last ≈1,8 s, be skippable by tap, and never block the app on error.
-- **FR-011**: The photo-scan and simmering-pot animations MUST be ready to wrap the AI waiting states (photo, dish name, chat); wiring happens in the recipe-screen follow-up after PR #1.
-- **FR-012**: "Ostava" and "Kupovina" tabs MUST show their animated empty states; the spoon pull-to-refresh MUST be a reusable wrapper (recipes list in the follow-up).
+- **FR-011**: The photo-scan animation MUST be shown on "Iz slike" while the AI works; the simmering pot on "Po nazivu jela" and while a chat change is being prepared.
+- **FR-012**: "Ostava" and "Kupovina" tabs MUST show their animated empty states; the recipes list MUST use the spoon pull-to-refresh.
 - **FR-013**: A debug-only "Animacije" gallery reachable from "Profil" MUST show every animation with its Serbian name.
 - **FR-014**: Each animation MUST have a Serbian semantic label for screen readers.
 
@@ -195,9 +191,4 @@ na tanjiru", "Jaje se kuva".
   shopping list when all items are bought; `PlatePlanDrop` into the meal-plan
   calendar; `EggTimer` into a cooking mode.
 - The recipes list has no remote data; pull-to-refresh re-reads the local list.
-- **Follow-up after PR #1 (003-recipe-screens) merges**: rebase this branch on
-  `main`, switch the recipe screens to theme tokens (bordered recipe cards with
-  tint thumbnails, search 50/16, FAB radius 20), show `PhotoScan` on "Iz slike"
-  (scan while reading, ingredient chips on the preview), `SimmeringPot` in
-  `AiBusy` (dish name, chat) and wrap the recipes list in `SpoonRefresh`.
 - Contrast of the approved palettes is accepted as designed.
