@@ -33,37 +33,38 @@ Last updated: 2026-10-30.
 
 - **Hide built-in keys** (branch `fix/hide-builtin-keys`, PR #4): the keys page
   never shows built-in keys. Awaiting merge.
-- **Themes & animations** (`005-themes-animations`): three themes — Bosiljak
+- **Themes & animations** (`005-themes-animations`, implemented locally, 194 tests, awaiting review): three themes — Bosiljak
   (default), Šafran, Borovnica — each light and dark, switchable in Profil
   (Svetla / Tamna / Kao sistem); recipe screens restyled; eight animations
   (photo scan chips, simmering pot, check → cart, full bag, empty fridge,
   pull-to-refresh spoon, meal plan plate, egg timer) plus a themed splash;
-  respects reduced motion. Restart from a fresh `main`.
+  respects reduced motion.
 
 ## Next
 
-Order matters: the account and household come early, so that every feature
-built after them stores its data per household and syncs from day one, instead
-of migrating many local-only tables later.
+The account comes first: every feature, including the shopping list, is
+available only after sign-up and sign-in, because all data is saved to the
+account and shared per household.
 
-1. **Ingredient checklist → shopping list**: tick ingredients on a recipe and
-   send the missing ones to a shopping list grouped by store category.
-2. **Account & login**: an account is required from first launch, because all
+1. **Account & login**: an account is required from first launch, because all
    data is saved to it. Passwordless sign-in: Sign in with Apple, Google, and
    email with a 6-digit code. Existing local data moves into the account once,
    on first sign-in. Profile (name, avatar), sign out, delete account in the
    app (store requirement), data export.
-3. **Household (domaćinstvo)**: every user always belongs to one household; a
+2. **Household (domaćinstvo)**: every user always belongs to one household; a
    personal one is created at sign-up, so "alone" and "with family" use the
    same model. Invite by link, 6-character code or QR (expires in 7 days,
    revocable); join with a confirmation screen; roles Vlasnik / Član; leave,
    remove a member, transfer ownership. Shared: shopping list, pantry, meal
    plan, recipes. Not shared: AI keys, theme, personal preferences.
-4. **Sync**: drift stays the local source of truth (offline first); outbox for
+3. **Sync**: drift stays the local source of truth (offline first); outbox for
    local changes, pull by cursor, realtime "something changed" per household,
-   client-generated UUID v7, soft deletes, last write wins per field. Shopping
-   list first, then recipes (and photos). Backend: Supabase (auth, Postgres
-   with Row Level Security, realtime, EU region) unless decided otherwise.
+   client-generated UUID v7, soft deletes, last write wins per field. Existing
+   recipes (and photos) first. Backend: Supabase (auth, Postgres with Row Level
+   Security, realtime, EU region) unless decided otherwise.
+4. **Ingredient checklist → shopping list**: tick ingredients on a recipe and
+   send the missing ones to a shopping list grouped by store category. Built
+   shared per household and synced from the start.
 5. **Pantry-based suggestions**: pantry (Ostava) management and AI suggestions
    for dishes from what is at home. Shared per household.
 6. **Meal plan**: weekly or monthly plan with breakfast/lunch/dinner toggles,
@@ -86,6 +87,7 @@ of migrating many local-only tables later.
 ## Open decisions (account & household)
 
 Proposal: <https://claude.ai/artifact/A9M8mfChMncTQW43DRVV6d>
+Full plan with flows: <https://claude.ai/artifact/KLvzjyHrPn6HWjnDwFvF5z>
 
 - Backend: Supabase (recommended), all Cloudflare, or Firebase.
 - Sign-in methods: Apple + Google + email code (recommended).
