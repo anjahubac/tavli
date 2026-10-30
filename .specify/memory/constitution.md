@@ -1,10 +1,12 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0 (MINOR: principle added)
-- Added principles: IX. Flutter Best Practices & Agent Guardrails
-- Modified sections: Development Workflow (scripts/check.sh), Governance (I–IX)
-- Dependent docs updated: AGENTS.md (guardrails), CLAUDE.md, docs/flutter-best-practices.md (new), analysis_options.yaml (strict lints)
-- Templates requiring updates: none (plan Constitution Check now lists I–IX)
+- Version change: 1.1.0 → 1.2.0 (MINOR: workflow rules added)
+- Modified sections: Development Workflow (branch from latest main only, no stacked
+  branches, everything via PR, git best practices)
+- Dependent docs updated: AGENTS.md (Spec Kit workflow, guardrails),
+  docs/flutter-best-practices.md §17 (git rules), CLAUDE.md,
+  .specify/templates/plan-template.md and spec-template.md (base branch)
+- Templates requiring updates: none further
 - Follow-up TODOs: none
 -->
 
@@ -116,7 +118,13 @@ operations.
 
 ## Development Workflow
 
-1. Branch from `main` as `NNN-feature-name` (Spec Kit numbering) or `chore/…` / `fix/…`.
+1. Every new branch MUST be created from the latest `main`
+   (`git fetch origin && git switch -c <branch> origin/main`) and named
+   `NNN-feature-name` (Spec Kit numbering) or `chore/…` / `fix/…` / `docs/…`.
+   Branches MUST NOT be stacked on other unmerged branches; nothing is committed
+   directly to `main` — every change lands through a pull request. Git
+   conventions (commit messages, rebasing, force-push rules) are in
+   `docs/flutter-best-practices.md` §17.
 2. `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks`
    → `/speckit-analyze` → `/speckit-implement`.
 3. Before each commit: `dart run build_runner build` (if drift tables changed),
@@ -134,4 +142,4 @@ wording), and updating dependent templates and docs in the same commit. Every
 `plan.md` Constitution Check MUST evaluate principles I–IX; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-10-30
+**Version**: 1.2.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-10-30

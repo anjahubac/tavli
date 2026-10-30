@@ -72,7 +72,10 @@ unawaited futures and context-after-await are errors).
 
 ## Spec Kit workflow
 
-One feature = one spec = one branch (`NNN-short-name`).
+One feature = one spec = one branch (`NNN-short-name`). **Every new branch is
+created from the latest `main`** (`git fetch origin && git switch -c NNN-name origin/main`),
+never from another feature branch; full git rules are in
+[docs/flutter-best-practices.md §17](docs/flutter-best-practices.md).
 
 1. `/speckit-specify <what and why>` — creates `specs/NNN-name/spec.md` and the branch.
 2. `/speckit-clarify` — resolve open questions before planning.
@@ -97,6 +100,8 @@ One feature = one spec = one branch (`NNN-short-name`).
 - Before each commit: `dart format lib test`, then `scripts/check.sh`
   (format check, `flutter analyze`, `flutter test`) must pass.
 - Keep changes scoped to the active spec/branch; note unrelated issues instead of fixing them in passing.
+- Branch only from the latest `main`; never stack a branch on another unmerged branch.
+  Never commit directly to `main` — open a PR from the branch.
 - Ask before destructive git operations (reset --hard, force push, branch deletion, history rewrite).
 - All new UI text in Serbian (Latin); AI only through `AIRouter`.
 

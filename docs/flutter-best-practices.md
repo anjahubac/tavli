@@ -142,7 +142,32 @@ Binding for humans and AI agents. The constitution
 
 ## 17. Git and commits
 
-- Branches: `NNN-feature` (Spec Kit), `chore/…`, `fix/…`.
-- Small commits, imperative subject ≤ 72 chars, body explains why.
-- Before every commit: `scripts/check.sh` (format, analyze, test).
-- No force-push, history rewrite of shared branches, or branch deletion without asking.
+**Branching**
+
+- Every new branch starts from the latest `main`:
+  `git fetch origin && git switch -c <branch> origin/main`.
+  Never branch from another feature branch (no stacked branches). If new work
+  depends on an unmerged branch, merge that PR first (or ask the owner).
+- Branch names: `NNN-short-name` (Spec Kit feature), `chore/…`, `fix/…`, `docs/…`.
+- One branch = one topic = one PR into `main`. Keep branches short-lived.
+- Never commit directly to `main`; everything lands through a pull request.
+- Before opening or updating a PR, bring the branch up to date with `main`
+  (`git fetch origin && git rebase origin/main` on your own unshared branch,
+  otherwise `git merge origin/main`) and run `scripts/check.sh`.
+
+**Commits**
+
+- Small commits that each build and pass `scripts/check.sh`; one logical change per commit.
+- Subject in imperative mood, ≤ 72 chars, with a type and optional scope:
+  `feat(003): …`, `fix(ai): …`, `spec(004): …`, `docs: …`, `chore: …`, `test: …`, `refactor: …`.
+- The body explains *why*, not what the diff already shows.
+- Generated code (`*.g.dart`) is committed with the source change that produced it.
+- Never commit secrets, `secrets.json`, build output or IDE files (keep `.gitignore` current).
+
+**Pull requests and history**
+
+- PR title follows the commit convention; the body says what changed, why, and how it was tested.
+- Merge only with green `scripts/check.sh`; resolve conflicts on the branch, not on `main`.
+- No force-push to `main`. On your own feature branch use `--force-with-lease`, and only after asking.
+- No history rewrite of shared branches, no branch deletion, no `reset --hard` without asking.
+- Delete a branch after its PR is merged (ask first if someone else might use it).
