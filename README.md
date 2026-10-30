@@ -38,6 +38,8 @@ Detaljan pregled razvoja nalazi se u [planu razvoja](docs/roadmap.md).
 Razvijeno u Flutteru za Android, iOS i macOS. Podaci se čuvaju lokalno uz
 Drift (SQLite), stanje aplikacije vodi Riverpod, a navigaciju go_router.
 
+
+
 ## English
 
 **From a meal idea to a recipe that suits your taste.**
