@@ -38,6 +38,7 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
   String? _message;
   bool _messageIsError = false;
   List<StoredKey>? _keys;
+  String? _loadError;
   final _status = <String, _KeyStatus>{};
   final _models = <String, List<ModelAvailability>>{};
   final _checking = <String>{};
@@ -56,7 +57,15 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
   }
 
   Future<void> _load() async {
-    final keys = await ref.read(keyStoreProvider).list();
+    final List<StoredKey> keys;
+    try {
+      keys = await ref.read(keyStoreProvider).list();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      // Tip greške, nikad sadržaj (može da sadrži ključ).
+      setState(() => _loadError = e.runtimeType.toString());
+      return;
+    }
     if (!mounted) return;
     final rejected = ref.read(aiRouterProvider).invalidKeyIds;
     setState(() {
@@ -300,8 +309,33 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
                   const SizedBox(height: 24),
                   Text('Dodati ključevi', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  if (keys == null)
-                    const Center(child: CircularProgressIndicator())
+                  if (_loadError case final error?) ...[
+                    Text(
+                      'Ključevi nisu učitani iz sigurnog skladišta ($error).',
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() => _loadError = null);
+                          unawaited(_load());
+                        },
+                        child: const Text('Pokušaj ponovo'),
+                      ),
+                    ),
+                  ] else if (keys == null)
+                    const Column(
+                      children: [
+                        Center(child: CircularProgressIndicator()),
+                        SizedBox(height: 8),
+                        Text(
+                          'Ako macOS traži lozinku za Keychain, izaberi '
+                          '„Always Allow“.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    )
                   else if (keys.isEmpty)
                     const Text('Još nema dodatih ključeva.')
                   else

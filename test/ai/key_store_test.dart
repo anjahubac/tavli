@@ -6,9 +6,13 @@ import 'package:tavli/ai/key_store.dart';
 
 class MapSecretStorage implements SecretStorage {
   final data = <String, String>{};
+  final reads = <String>[];
 
   @override
-  Future<String?> read(String key) async => data[key];
+  Future<String?> read(String key) async {
+    reads.add(key);
+    return data[key];
+  }
 
   @override
   Future<void> write(String key, String value) async => data[key] = value;
@@ -85,6 +89,20 @@ void main() {
       expect(await store.list(), hasLength(1));
       final saved = jsonDecode(storage.data['api_keys']!) as List<dynamic>;
       expect(saved, hasLength(1));
+    });
+
+    test('posle prvog čitanja čita se samo lista (jedan zapis)', () async {
+      await store.list();
+      storage.reads.clear();
+
+      await store.list();
+
+      expect(storage.reads, ['api_keys']);
+    });
+
+    test('pokvaren zapis liste daje praznu listu, ne grešku', () async {
+      storage.data['api_keys'] = 'nije json';
+      expect(await store.list(), isEmpty);
     });
   });
 

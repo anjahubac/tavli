@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
@@ -15,7 +16,7 @@ import 'package:tavli/providers.dart';
 import '../helpers/fake_adapter.dart';
 
 void main() {
-  late InMemoryKeyStore keys;
+  late KeyStore keys;
   late FakeAdapter adapter;
 
   Future<void> pumpScreen(
@@ -180,6 +181,21 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('greška skladišta: poruka umesto beskonačnog učitavanja', (
+    tester,
+  ) async {
+    adapter = FakeAdapter([]);
+    keys = _BrokenKeyStore();
+    await pumpScreen(tester);
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(
+      find.textContaining('Ključevi nisu učitani iz sigurnog skladišta'),
+      findsOneWidget,
+    );
+    expect(find.text('Pokušaj ponovo'), findsOneWidget);
+  });
+
   testWidgets('brisanje ključa uz potvrdu', (tester) async {
     adapter = FakeAdapter([]);
     await keys.add(AIProvider.groq, 'gsk_old-7777');
@@ -263,4 +279,10 @@ void main() {
       expect(find.text('Gemini Pro · Tavli AI'), findsOneWidget);
     });
   });
+}
+
+class _BrokenKeyStore extends InMemoryKeyStore {
+  @override
+  Future<List<StoredKey>> list() async =>
+      throw const FileSystemException('keychain');
 }

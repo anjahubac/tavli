@@ -125,21 +125,13 @@ class SecureKeyStore implements KeyStore {
   @override
   Future<List<StoredKey>> list() async {
     final raw = await _storage.read(_listKey);
+    // Kad lista postoji, stari zapisi su već prebačeni: jedno čitanje
+    // Keychain-a umesto četiri (svako može da traži lozinku na macOS-u).
+    if (raw != null) return _decode(raw);
     final keys = <StoredKey>[];
-    if (raw != null) {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        for (final k in decoded) {
-          final key = StoredKey.fromJson(k);
-          if (key != null) keys.add(key);
-        }
-      }
-    }
-    var migrated = false;
     for (final p in AIProvider.values) {
       final legacy = (await _storage.read(_legacyKey(p)))?.trim();
       if (legacy == null) continue;
-      migrated = true;
       if (legacy.isNotEmpty && !keys.any((k) => k.value == legacy)) {
         keys.add(
           StoredKey(
@@ -150,14 +142,21 @@ class SecureKeyStore implements KeyStore {
           ),
         );
       }
+      await _storage.delete(_legacyKey(p));
     }
-    if (migrated) {
-      await _save(keys);
-      for (final p in AIProvider.values) {
-        await _storage.delete(_legacyKey(p));
-      }
-    }
+    await _save(keys);
     return keys;
+  }
+
+  static List<StoredKey> _decode(String raw) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return const [];
+    }
+    if (decoded is! List) return const [];
+    return [for (final k in decoded) ?StoredKey.fromJson(k)];
   }
 
   @override
