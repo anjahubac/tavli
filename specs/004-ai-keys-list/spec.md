@@ -20,6 +20,7 @@ The owner was away; these answers are the recommended defaults, taken so work co
 - Q: Is a key checked before it is saved? → A: Yes, with the free model-list request. A rejected key is not saved. If the check cannot run (no network), the key is saved and marked "Nije provereno".
 - Q: Several keys for the same service — in what order are they used? → A: In the order they were added; each key has its own rate-limit pauses, so when one key's free limit runs out the next key of the same service is tried before the built-in Tavli key.
 - Q: How is a saved key shown? → A: Service name, the last 4 characters ("••••a1B2"), date added and status. The full key is never shown again.
+- Q: Should the page mention the built-in Tavli keys? → A: No (owner, 2026-10-30). The page shows only keys the user added; built-in keys work silently in the background. This replaces spec 002 FR-006's "Koristi se ugrađeni Tavli AI" note.
 - Q: What happens to the single key per service saved by earlier versions? → A: It is moved into the new list automatically on first open.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -59,7 +60,7 @@ section says "Još nema dodatih ključeva."
 1. **Given** two Gemini keys and one Groq key, **Then** all three are listed, grouped by service in add order.
 2. **Given** "Obriši", **Then** "Obrisati ključ ••••a1B2?" is asked; on "Obriši" the key is removed.
 3. **Given** "Proveri", **Then** the status updates and the chain models available for that key are shown.
-4. **Given** no own key for a service and a built-in key, **Then** a note "Koristi se ugrađeni Tavli AI: {servisi}" is shown under the list.
+4. **Given** built-in keys and no own keys, **Then** the list says "Još nema dodatih ključeva." and nothing about built-in keys is shown.
 
 ---
 
@@ -92,7 +93,7 @@ the next model.
 - **FR-006**: Full key values MUST never be displayed after saving, logged, or stored outside the platform secure storage.
 - **FR-007**: For each model, own keys of that service MUST be tried in add order, then the built-in key; pauses and rejections are tracked per key.
 - **FR-008**: A key saved by an earlier version MUST be migrated into the list.
-- **FR-009**: The built-in Tavli AI note and the chain test ("Probaj AI") remain on the page.
+- **FR-009**: The page MUST NOT show or mention the built-in keys; the chain test ("Probaj AI") remains.
 
 ### Key Entities
 

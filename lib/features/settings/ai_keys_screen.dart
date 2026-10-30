@@ -22,7 +22,8 @@ enum _KeyStatus {
   final String label;
 }
 
-/// Jedno polje za dodavanje bilo kog ključa i lista dodatih ključeva.
+/// Jedno polje za dodavanje bilo kog ključa i lista ključeva koje je
+/// korisnik dodao. Ugrađeni ključevi aplikacije se ovde nikad ne pominju.
 class AiKeysScreen extends ConsumerStatefulWidget {
   const AiKeysScreen({super.key});
 
@@ -193,13 +194,6 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     final keys = _keys;
     final detected = detectProvider(_input.text);
     final hasText = _input.text.trim().isNotEmpty;
-    final builtIn = ref.watch(builtInKeysProvider);
-    final usesBuiltIn = keys == null
-        ? const <AIProvider>[]
-        : [
-            for (final p in AIProvider.values)
-              if (builtIn.has(p) && !keys.any((k) => k.provider == p)) p,
-          ];
     return Scaffold(
       appBar: AppBar(title: const Text('AI ključevi')),
       body: ListView(
@@ -360,20 +354,6 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
                             onRemove: () => _remove(k),
                           ),
                       ],
-                  if (usesBuiltIn.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Koristi se ugrađeni Tavli AI: '
-                      '${usesBuiltIn.map((p) => p.label).join(', ')}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    Text(
-                      'Sopstveni ključ ima prednost kad ga dodaš.',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
                   const SizedBox(height: 24),
                   const ChainTestCard(),
                 ],

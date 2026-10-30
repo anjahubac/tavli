@@ -215,29 +215,17 @@ void main() {
 
   group('ugrađeni Tavli AI', () {
     const builtIn = BuiltInKeys({AIProvider.gemini: 'b-key'});
-    const inUse = 'Koristi se ugrađeni Tavli AI: Gemini';
 
-    testWidgets('prikazuje se kad nema sopstvenog ključa', (tester) async {
+    testWidgets('ugrađeni ključevi se ne prikazuju na stranici', (
+      tester,
+    ) async {
       adapter = FakeAdapter([]);
       await pumpScreen(tester, builtIn: builtIn);
 
-      expect(find.text(inUse), findsOneWidget);
-      expect(find.text('b-key'), findsNothing);
-    });
-
-    testWidgets('ne prikazuje se uz sopstveni ključ', (tester) async {
-      adapter = FakeAdapter([]);
-      await keys.add(AIProvider.gemini, 'own');
-      await pumpScreen(tester, builtIn: builtIn);
-
-      expect(find.text(inUse), findsNothing);
-    });
-
-    testWidgets('ne prikazuje se bez ugrađenih ključeva', (tester) async {
-      adapter = FakeAdapter([]);
-      await pumpScreen(tester);
-
-      expect(find.text(inUse), findsNothing);
+      expect(find.text('Još nema dodatih ključeva.'), findsOneWidget);
+      expect(find.textContaining('ugrađen'), findsNothing);
+      expect(find.textContaining('b-key'), findsNothing);
+      expect(find.textContaining('••••'), findsNothing);
     });
 
     testWidgets('probni recept sa ugrađenim ključem nosi oznaku Tavli AI', (

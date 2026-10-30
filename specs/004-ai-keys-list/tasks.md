@@ -12,7 +12,7 @@
 
 ## Phase 2: User Stories 1–2 (P1)
 
-- [x] T006 [US1][US2] Widget tests: generic field label, detect + add, unknown prefix asks for service, rejected key not saved, unchecked key saved, duplicate refused, list with masked keys, delete with confirm, built-in note, in `test/features/ai_keys_screen_test.dart`
+- [x] T006 [US1][US2] Widget tests: generic field label, detect + add, unknown prefix asks for service, rejected key not saved, unchecked key saved, duplicate refused, list with masked keys, delete with confirm, no built-in keys shown, in `test/features/ai_keys_screen_test.dart`
 - [x] T007 [US1][US2] Rewrite `lib/features/settings/ai_keys_screen.dart`
 
 ## Phase 3: Polish
@@ -31,6 +31,6 @@
 | FR-006 never shown/logged | T002 (`toString` without value), T006 (only last 4 on screen) |
 | FR-007 per-key fallback order | T003, T004, T005 |
 | FR-008 legacy migration | T001, T002 |
-| FR-009 built-in note + chain test | T006, T007 |
+| FR-009 built-in keys hidden, chain test kept | T006, T007 |
 
 No constitution conflicts; no schema change (text column reused); terminology: "service" in UI = `AIProvider`.
