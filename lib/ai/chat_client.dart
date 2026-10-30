@@ -20,13 +20,7 @@ class OpenAICompatibleClient implements ChatClient {
     Dio? dio,
     this.transientRetryDelay = const Duration(seconds: 1),
   }) : _dio =
-           dio ??
-           Dio(
-             BaseOptions(
-               connectTimeout: const Duration(seconds: 15),
-               receiveTimeout: const Duration(seconds: 90),
-             ),
-           );
+           dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
 
   final Dio _dio;
   final Duration transientRetryDelay;
@@ -39,7 +33,9 @@ class OpenAICompatibleClient implements ChatClient {
   }) async {
     try {
       return await _send(model, request, apiKey);
-    } on TransientError {
+    } on TransientError catch (e) {
+      // Spor model bi opet čekao ceo timeout: odmah ide sledeći model.
+      if (e.isTimeout) rethrow;
       // Jedan brz ponovni pokušaj na istom modelu, pa odluka ide routeru.
       await Future<void>.delayed(transientRetryDelay);
       return _send(model, request, apiKey);
@@ -50,7 +46,10 @@ class OpenAICompatibleClient implements ChatClient {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         '${provider.baseUrl}models',
-        options: Options(headers: _headers(provider, apiKey)),
+        options: Options(
+          headers: _headers(provider, apiKey),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
       );
       return [
         for (final m in (res.data?['data'] as List? ?? const []))
@@ -71,7 +70,11 @@ class OpenAICompatibleClient implements ChatClient {
       res = await _dio.post<Map<String, dynamic>>(
         '${model.provider.baseUrl}chat/completions',
         data: buildBody(model, request),
-        options: Options(headers: _headers(model.provider, apiKey)),
+        // Ceo odgovor stiže odjednom, pa je ovo vreme do odgovora modela.
+        options: Options(
+          headers: _headers(model.provider, apiKey),
+          receiveTimeout: model.timeout,
+        ),
       );
     } on DioException catch (e) {
       throw mapDioException(e);
@@ -116,9 +119,10 @@ class OpenAICompatibleClient implements ChatClient {
 
 AIError mapDioException(DioException e) {
   switch (e.type) {
-    case DioExceptionType.connectionTimeout:
-    case DioExceptionType.sendTimeout:
     case DioExceptionType.receiveTimeout:
+    case DioExceptionType.sendTimeout:
+      return TransientError(e.message ?? e.type.name, isTimeout: true);
+    case DioExceptionType.connectionTimeout:
     case DioExceptionType.connectionError:
       return TransientError(e.message ?? e.type.name);
     default:

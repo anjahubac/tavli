@@ -10,7 +10,7 @@ flowchart TD
   D["Domain — lib/domain (Recipe, Ingredient, categories)<br/>pure Dart"]
   R["AIRouter — chains, cooldowns, retries"]
   C["ChatClient — OpenAICompatibleClient (dio)"]
-  K["KeySource — LayeredKeySource<br/>own key (Keychain / Keystore) → built-in (secrets.json)"]
+  K["KeySource — LayeredKeySource<br/>own keys (Keychain / Keystore) → built-in (secrets.json)"]
   S["ModelStatusStore — DriftModelStatusStore"]
   DB[("drift / SQLite — lib/data/database.dart")]
 
@@ -32,6 +32,13 @@ flowchart TD
   pantry, shopping lists/items, meal plans/entries, ratings, user profile,
   app settings and model status. Lists inside rows (ingredients, steps, meal
   types) are stored as JSON text.
+- **Recipes** (spec 003): `RecipeRepository` (`lib/data/recipe_repository.dart`)
+  owns recipe rows and versions. Every change (AI, manual, restore) stores the
+  *previous* state in `RecipeVersions` with `changeKind`/`instruction`/`changedBy`
+  (max 30 per recipe); undo applies and deletes the newest version, restore keeps
+  the current state as a new version. Photos are downscaled to JPEG (≤ 1600 px)
+  in an isolate and stored as files under `<documents>/recipe_photos/`; the DB
+  keeps the relative path (`RecipePhotoStore`).
 
 ## Navigation
 
@@ -40,12 +47,17 @@ Kupovina, Profil. `HomeShell` shows a bottom `NavigationBar` below 720 px and a
 `NavigationRail` at ≥720 px (extended at ≥1000 px). `/profile/ai-keys` is the
 AI keys screen.
 
+Recipe routes: `/recipes` (list), `/recipes/new/{name,photo,manual}`,
+`/recipes/:id` (detail), `/recipes/:id/edit`, `/recipes/:id/chat`. When the
+content area is ≥ 840 px wide, `/recipes/:id` shows the list and the recipe side
+by side (`RecipeRoute`), otherwise the detail is a full screen.
+
 ## AI router and fallback chains
 
 ```mermaid
 flowchart LR
   REQ["AIRequest<br/>(system, prompt, images?)"] --> KIND{images?}
-  KIND -- yes --> VC["Vision chain<br/>Gemini Pro → Groq Llama 4 Maverick →<br/>Gemini Flash → Gemini Flash-Lite →<br/>OpenRouter Gemma 3 (free)"]
+  KIND -- yes --> VC["Vision chain<br/>Gemini Flash → Groq Llama 4 Maverick →<br/>Gemini Pro → Gemini Flash-Lite →<br/>OpenRouter Gemma 3 (free)"]
   KIND -- no --> TC["Text chain<br/>Gemini Pro → Groq GPT-OSS 120B →<br/>Gemini Flash → Groq Llama 3.3 70B →<br/>Gemini Flash-Lite → OpenRouter Gemma 3 (free)"]
   VC --> LOOP
   TC --> LOOP
@@ -58,6 +70,7 @@ flowchart LR
     PARSE -- FormatException --> RETRY["ask same model once more"] --> PARSE2{ok?}
     PARSE2 -- no --> NEXT
     PARSE2 -- yes --> DONE
+    CALL -- "timeout (30 s, Pro 60 s), no retry" --> NEXT
     CALL -- "429" --> COOL["persist cooldown:<br/>Retry-After / 60 s / daily reset (08:00 UTC Gemini) / 1 h"] --> NEXT
     CALL -- "401/403/bad key" --> INV["mark provider invalid"] --> NEXT
     CALL -- "404" --> MISS["mark model unavailable"] --> NEXT
@@ -83,9 +96,15 @@ Key points:
 
 ## Secrets
 
-Keys are entered by the user on the AI keys screen and stored with
-`flutter_secure_storage` under `api_key_<provider>`. Nothing secret is in the
-repo.
+Keys are entered by the user on the AI keys screen (spec 004): one generic
+field, the service is detected from the key prefix (`AIza` Gemini, `gsk_` Groq,
+`sk-or-` OpenRouter) or picked by the user, and the key is checked with the
+free model-list request before saving. Any number of keys per service is
+stored as one JSON list under `api_keys` in `flutter_secure_storage`
+(old `api_key_<provider>` entries are migrated on first read). Own keys of a
+service are tried in add order, then the built-in key; pauses and rejections
+are tracked per key (`keyOrigin` column holds `user:<id>` / `builtIn`). The UI
+shows only the last 4 characters. Nothing secret is in the repo.
 
 Built-in keys (spec 002) come from a local, gitignored `secrets.json` passed
 with `--dart-define-from-file=secrets.json` (see `secrets.example.json`), read

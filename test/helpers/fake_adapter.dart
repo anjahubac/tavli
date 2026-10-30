@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 /// Vraća zadate HTTP odgovore redom i pamti poslate zahteve.
@@ -7,6 +9,9 @@ class FakeAdapter implements HttpClientAdapter {
   final List<(int, String, Map<String, List<String>>)> responses;
   final requests = <RequestOptions>[];
 
+  /// Kad je zadat, odgovor čeka da se ovo završi (spor model).
+  Completer<void>? gate;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -14,6 +19,7 @@ class FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    await gate?.future;
     final (status, body, headers) = responses.removeAt(0);
     return ResponseBody.fromString(
       body,

@@ -32,7 +32,10 @@ class ModelNotFoundError extends AIError {
 
 /// Mreža, timeout ili 5xx.
 class TransientError extends AIError {
-  const TransientError(super.message);
+  const TransientError(super.message, {this.isTimeout = false});
+
+  /// Model nije odgovorio na vreme; ponovni pokušaj bi opet čekao isto.
+  final bool isTimeout;
 }
 
 /// Odgovor ne odgovara očekivanoj JSON šemi.

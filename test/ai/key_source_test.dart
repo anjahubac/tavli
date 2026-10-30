@@ -15,6 +15,23 @@ void main() {
     expect(creds.map((c) => c.value), ['own', 'built']);
   });
 
+  test('više sopstvenih ključeva redom dodavanja, pa ugrađeni', () async {
+    final own = InMemoryKeyStore({AIProvider.gemini: 'own1'});
+    await own.add(AIProvider.gemini, 'own2');
+    await own.add(AIProvider.groq, 'groq');
+    final source = LayeredKeySource(
+      own,
+      const BuiltInKeys({AIProvider.gemini: 'built'}),
+    );
+
+    final creds = await source.credentialsFor(AIProvider.gemini);
+
+    expect(creds.map((c) => c.value), ['own1', 'own2', 'built']);
+    expect(creds.first.keyId, 'gemini');
+    expect(creds.last.keyId, isNull);
+    expect(creds.map((c) => c.slot).toSet(), hasLength(3));
+  });
+
   test('prazne vrednosti se ignorišu', () async {
     final source = LayeredKeySource(
       InMemoryKeyStore({AIProvider.groq: '  '}),

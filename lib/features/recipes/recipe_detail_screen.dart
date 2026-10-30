@@ -1,0 +1,131 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../domain/recipe.dart';
+import 'recipe_providers.dart';
+import 'recipe_view.dart';
+import 'versions_sheet.dart';
+
+enum _MenuAction { undo, versions, delete }
+
+/// Detalji recepta. [embedded] je desni deo podeljenog prikaza (bez "nazad").
+class RecipeDetailScreen extends ConsumerWidget {
+  const RecipeDetailScreen({
+    super.key,
+    required this.id,
+    this.embedded = false,
+  });
+
+  final String id;
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref
+        .watch(recipeProvider(id))
+        .when(
+          loading: () => Scaffold(
+            appBar: AppBar(automaticallyImplyLeading: !embedded),
+            body: const Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, _) => Scaffold(
+            appBar: AppBar(automaticallyImplyLeading: !embedded),
+            body: const Center(child: Text('Recept nije učitan.')),
+          ),
+          data: (recipe) => recipe == null
+              ? Scaffold(
+                  appBar: AppBar(automaticallyImplyLeading: !embedded),
+                  body: Center(
+                    child: Text(
+                      embedded ? 'Izaberi recept' : 'Recept više ne postoji.',
+                    ),
+                  ),
+                )
+              : _Detail(recipe: recipe, embedded: embedded),
+        );
+  }
+}
+
+class _Detail extends ConsumerWidget {
+  const _Detail({required this.recipe, required this.embedded});
+
+  final Recipe recipe;
+  final bool embedded;
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final repo = ref.read(recipeRepositoryProvider);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Obrisati „${recipe.title}“?'),
+        content: const Text('Brišu se i prethodne verzije i slika.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Otkaži'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Obriši'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    context.go('/recipes');
+    await repo.delete(recipe.id);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Recept je obrisan.')));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasVersions =
+        ref.watch(recipeVersionsProvider(recipe.id)).value?.isNotEmpty ?? false;
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: !embedded,
+        title: Text(recipe.title),
+        actions: [
+          IconButton(
+            tooltip: 'Izmeni sa AI',
+            icon: const Icon(Icons.auto_awesome_outlined),
+            onPressed: () => context.go('/recipes/${recipe.id}/chat'),
+          ),
+          IconButton(
+            tooltip: 'Izmeni',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => context.go('/recipes/${recipe.id}/edit'),
+          ),
+          PopupMenuButton<_MenuAction>(
+            tooltip: 'Još opcija',
+            onSelected: (action) => switch (action) {
+              _MenuAction.undo => undoLastChange(context, ref, recipe.id),
+              _MenuAction.versions => showVersionsSheet(context, recipe.id),
+              _MenuAction.delete => _delete(context, ref),
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: _MenuAction.undo,
+                enabled: hasVersions,
+                child: const Text('Poništi poslednju izmenu'),
+              ),
+              const PopupMenuItem(
+                value: _MenuAction.versions,
+                child: Text('Prethodne verzije'),
+              ),
+              const PopupMenuItem(
+                value: _MenuAction.delete,
+                child: Text('Obriši recept'),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: ReadableScroll(children: [RecipeView(recipe)]),
+    );
+  }
+}
