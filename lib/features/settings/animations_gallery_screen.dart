@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/animations/egg_timer.dart';
@@ -11,6 +12,10 @@ import '../../app/animations/plate_drop.dart';
 import '../../app/animations/shopping_bag.dart';
 import '../../app/animations/simmering_pot.dart';
 import '../../app/animations/spoon_refresh.dart';
+import '../../data/database.dart';
+import '../../data/shopping_repository.dart';
+import '../../domain/recipe.dart';
+import '../../domain/recipe_format.dart';
 import '../../domain/theme_choice.dart';
 
 /// Nazivi animacija u galeriji, redom.
@@ -152,8 +157,10 @@ class _PhotoScanDemoState extends State<_PhotoScanDemo> {
   }
 }
 
-/// Štikliraju se sastojci koje imamo; samo neštiklirani (oni koji
-/// nedostaju) odlaze u Kupovinu dugmetom, a bedž poskoči.
+/// Štikliraju se sastojci koje imamo. "Dodaj u kupovinu" šalje samo
+/// razliku (neštiklirane kojih još nema u kupovini), a "imam" za stavku koju
+/// je recept već dodao je tiho skida. Demo radi nad bazom u memoriji, da ne
+/// dira pravu listu.
 class _CheckDemo extends StatefulWidget {
   const _CheckDemo();
 
@@ -162,39 +169,85 @@ class _CheckDemo extends StatefulWidget {
 }
 
 class _CheckDemoState extends State<_CheckDemo> {
+  static const _recipeId = 'demo-musaka';
   static const _items = [
-    ('Krompir', '1 kg'),
-    ('Mleveno meso', '500 g'),
-    ('Crni luk', '2 kom'),
+    Ingredient(name: 'Krompir', quantity: 1, unit: 'kg'),
+    Ingredient(name: 'Mleveno meso', quantity: 500, unit: 'g'),
+    Ingredient(name: 'Crni luk', quantity: 2, unit: 'kom'),
   ];
+  final _db = AppDatabase(NativeDatabase.memory());
+  late final _repo = ShoppingRepository(_db);
   final _keys = [for (final _ in _items) GlobalKey()];
   final _to = GlobalKey();
   final _have = <int>{1};
-  int _count = 0;
+  int _inCart = 0;
+  int _toAdd = 2;
 
-  List<int> get _missing => [
-    for (var i = 0; i < _items.length; i++)
-      if (!_have.contains(i)) i,
+  List<Ingredient> get _missing => [
+    for (final (i, item) in _items.indexed)
+      if (!_have.contains(i)) item,
+  ];
+  List<Ingredient> get _haveItems => [
+    for (final (i, item) in _items.indexed)
+      if (_have.contains(i)) item,
   ];
 
+  @override
+  void dispose() {
+    unawaited(_db.close());
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    final plan = await _repo.plan(
+      _recipeId,
+      missing: _missing,
+      have: _haveItems,
+    );
+    final count = await _repo.openCount();
+    if (!mounted) return;
+    setState(() {
+      _toAdd = plan.toAdd.length;
+      _inCart = count;
+    });
+  }
+
+  Future<void> _toggle(int i) async {
+    final nowHave = !_have.contains(i);
+    setState(() => nowHave ? _have.add(i) : _have.remove(i));
+    // Tiho: stavka izlazi iz kupovine, bedž se smanji bez skoka.
+    if (nowHave) await _repo.markHave(_recipeId, _items[i]);
+    await _refresh();
+  }
+
   Future<void> _send() async {
-    final missing = _missing;
+    final plan = await _repo.plan(
+      _recipeId,
+      missing: _missing,
+      have: _haveItems,
+    );
+    if (!mounted) return;
     await Future.wait([
-      for (final i in missing)
+      for (final item in plan.toAdd)
         flyChipToTarget(
           context: context,
-          from: _keys[i],
+          from: _keys[_items.indexOf(item)],
           to: _to,
-          label: _items[i].$1,
+          label: item.name,
         ),
     ]);
-    if (mounted) setState(() => _count += missing.length);
+    await _repo.addMissing(_recipeId, missing: _missing, have: _haveItems);
+    await _refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final missing = _missing.length;
+    final label = _missing.isEmpty
+        ? 'Imaš sve sastojke'
+        : _toAdd == 0
+        ? 'Sve je u kupovini'
+        : 'Dodaj u kupovinu ($_toAdd)';
     return Column(
       children: [
         Text(
@@ -202,11 +255,9 @@ class _CheckDemoState extends State<_CheckDemo> {
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: colors.onSurfaceVariant),
         ),
-        for (final (i, (name, qty)) in _items.indexed)
+        for (final (i, item) in _items.indexed)
           ListTile(
-            onTap: () => setState(
-              () => _have.contains(i) ? _have.remove(i) : _have.add(i),
-            ),
+            onTap: () => _toggle(i),
             leading: AnimatedCheckmark(
               key: _keys[i],
               checked: _have.contains(i),
@@ -219,7 +270,7 @@ class _CheckDemoState extends State<_CheckDemo> {
                     ? colors.onSurfaceVariant
                     : colors.onSurface,
               ),
-              child: Text(name),
+              child: Text(item.name),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -228,22 +279,27 @@ class _CheckDemoState extends State<_CheckDemo> {
                   const _HaveTag(),
                   const SizedBox(width: 8),
                 ],
-                Text(qty),
+                Text(
+                  [
+                    if (item.quantity case final q?) formatQuantity(q),
+                    ?item.unit,
+                  ].join(' '),
+                ),
               ],
             ),
           ),
         const SizedBox(height: 8),
         FilledButton.icon(
-          onPressed: missing == 0 ? null : _send,
+          onPressed: _toAdd == 0 || _missing.isEmpty ? null : _send,
           icon: const Icon(Icons.shopping_basket_outlined),
-          label: Text('Dodaj u kupovinu ($missing)'),
+          label: Text(label),
         ),
         const SizedBox(height: 16),
         Column(
           children: [
             BumpBadge(
               key: _to,
-              count: _count,
+              count: _inCart,
               child: Icon(
                 Icons.shopping_basket,
                 color: colors.onSurfaceVariant,

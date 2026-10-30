@@ -18,6 +18,14 @@
 - Q (owner): What does ticking an ingredient mean? → A: the ingredient is at
   home, so it is NOT added to shopping; only unticked (missing) ingredients go
   to "Kupovina" (chips fly there when they are sent).
+- Q (owner): What if I send, then untick something I had ticked and send again?
+  → A: "Dodaj u kupovinu" is idempotent per recipe: it adds only the difference
+  (unticked ingredients this recipe has not yet put in the list); nothing is
+  duplicated. N on the button = that difference; with 0 the button is disabled
+  and reads "Sve je u kupovini" ("Imaš sve sastojke" when everything is
+  ticked). Ticking "imam" on an ingredient this recipe already put in the list
+  and that is not bought removes it quietly (badge goes down, no bump). Same
+  ingredient from two recipes is one item that remembers both recipes.
 
 The owner approved the requirements (palettes, styles and the nine animations)
 in the project conversation; these remaining details were decided by Claude:
@@ -170,11 +178,13 @@ nabavku", "Lista je prazna", "Sastojci koji ti nedostaju za recept pojaviće se 
 "Sve je kupljeno!", "Kupovina", "Ponedeljak"…"Nedelja" (gallery), "Kuvam jaje",
 "Ponovi". Animation names in the gallery: "Uvod — Bosiljak", "Uvod — Šafran",
 "Uvod — Borovnica", "Skeniranje fotografije", "Lonac koji krčka", "Sastojci:
-imam / u kupovinu", "Označi sastojke koje već imaš", "imam", "Dodaj u kupovinu ({N})", "Sve kupljeno", "Prazna ostava", "Varjača (osvežavanje)", "Tanjir u
+imam / u kupovinu", "Označi sastojke koje već imaš", "imam", "Sve je u kupovini", "Imaš sve sastojke", "Dodaj u kupovinu ({N})", "Sve kupljeno", "Prazna ostava", "Varjača (osvežavanje)", "Tanjir u
 planu", "Tajmer sa jajetom". Semantic labels: "Grančica bosiljka", "Cvet
 šafrana", "Borovnice padaju u činiju", "Skeniranje fotografije", "Lonac koji
 krčka", "Prazan frižider", "Puna kesa za kupovinu", "Varjača u loncu", "Recept
 na tanjiru", "Jaje se kuva".
+
+- **FR-015**: "Dodaj u kupovinu" MUST add only unticked ingredients not yet in the shopping list from that recipe (no duplicates on repeated presses); ticking "imam" on such an unbought item MUST remove that recipe's entry.
 
 ### Key Entities
 

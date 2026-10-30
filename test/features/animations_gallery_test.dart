@@ -36,9 +36,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('sastojci: štikliran = imam (ne ide u kupovinu), '
-      'neštiklirani idu dugmetom', (tester) async {
-    tester.view.physicalSize = phone;
+  testWidgets('sastojci: štikliran = imam; ponovno "Dodaj u kupovinu" '
+      'dodaje samo razliku; "imam" skida stavku', (tester) async {
+    tester.view.physicalSize = const Size(400, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
@@ -52,37 +52,49 @@ void main() {
         ),
       ),
     );
-    final scrollable = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(
-      find.text('Označi sastojke koje već imaš'),
-      300,
-      scrollable: scrollable,
-    );
     await tester.scrollUntilVisible(
       find.text('Kupovina'),
-      200,
-      scrollable: scrollable,
+      300,
+      scrollable: find.byType(Scrollable).first,
     );
-    // Mleveno meso je već štiklirano: "imam", dva sastojka nedostaju.
-    expect(find.text('imam'), findsOneWidget);
-    expect(find.text('Dodaj u kupovinu (2)'), findsOneWidget);
+    await tester.pumpAndSettle();
 
-    // Štikliranje (imam) ne menja Kupovinu.
-    await tester.ensureVisible(find.text('Krompir'));
-    await tester.pump();
-    await tester.tap(find.text('Krompir'));
-    await tester.pump();
+    Future<void> tap(String text) async {
+      await tester.ensureVisible(find.text(text));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(text));
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pumpAndSettle();
+    }
+
+    int badge() => find.text('1').evaluate().isNotEmpty
+        ? 1
+        : find.text('2').evaluate().isNotEmpty
+        ? 2
+        : 0;
+
+    // 3 stvari, imam 2 (meso je već štiklirano, štikliram i luk).
+    expect(find.text('Dodaj u kupovinu (2)'), findsOneWidget);
+    await tap('Crni luk');
     expect(find.text('imam'), findsNWidgets(2));
     expect(find.text('Dodaj u kupovinu (1)'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(badge(), 0); // štikliranje ne dira kupovinu
 
-    // Dugme šalje samo neštiklirane: bedž pokazuje 1.
-    await tester.ensureVisible(find.text('Dodaj u kupovinu (1)'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Dodaj u kupovinu (1)'));
-    await tester.pump();
-    await tester.pump();
-    expect(find.text('1'), findsOneWidget);
+    await tap('Dodaj u kupovinu (1)');
+    expect(badge(), 1);
+    expect(find.text('Sve je u kupovini'), findsOneWidget);
+
+    // Ipak nemam luk: dodaje se samo on, krompir se ne duplira.
+    await tap('Crni luk');
+    expect(find.text('Dodaj u kupovinu (1)'), findsOneWidget);
+    await tap('Dodaj u kupovinu (1)');
+    expect(badge(), 2);
+    expect(find.text('Sve je u kupovini'), findsOneWidget);
+
+    // Ipak imam luk: tiho izlazi iz kupovine.
+    await tap('Crni luk');
+    expect(badge(), 1);
+    expect(find.text('Sve je u kupovini'), findsOneWidget);
   });
 
   testTavli('Ostava i Kupovina imaju animirana prazna stanja', (tester) async {

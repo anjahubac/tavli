@@ -45,6 +45,8 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 - [x] T017a [US5] Owner correction: ticked ingredient = "imam" (row softens, no flight, no badge); "Dodaj u kupovinu (N)" flies only unticked ingredients and bumps the badge by N; Kupovina empty copy "Sastojci koji ti nedostaju za recept pojaviće se ovde."; gallery test covers it
 
+- [x] T017b [US5] Owner correction: "Dodaj u kupovinu" adds only the difference — `planRecipeShopping` (`lib/domain/shopping_sync.dart`) + `ShoppingRepository` (`lib/data/shopping_repository.dart`, existing tables, no schema change) + `shoppingRepositoryProvider`; "imam" removes this recipe's unbought item; tests: `test/domain/shopping_sync_test.dart`, `test/data/shopping_repository_test.dart`, gallery scenario test
+
 ## Phase 8: Polish
 
 - [x] T018 Update `docs/architecture.md` (theme + animations), `docs/roadmap.md`, `AGENTS.md` structure

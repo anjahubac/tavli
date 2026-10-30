@@ -7,6 +7,7 @@ import 'ai/key_store.dart';
 import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
+import 'data/shopping_repository.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -56,4 +57,9 @@ final aiRouterProvider = Provider<AIRouter>(
 
 final recipeAIProvider = Provider<RecipeAI>(
   (ref) => RecipeAI(ref.watch(aiRouterProvider)),
+);
+
+/// Lista za kupovinu; "Dodaj u kupovinu" dodaje samo razliku.
+final shoppingRepositoryProvider = Provider<ShoppingRepository>(
+  (ref) => ShoppingRepository(ref.watch(databaseProvider)),
 );
