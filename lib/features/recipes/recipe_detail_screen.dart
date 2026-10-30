@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/recipe.dart';
+import 'keep_screen_on.dart';
 import 'recipe_providers.dart';
 import 'recipe_view.dart';
 import 'versions_sheet.dart';
@@ -90,6 +91,7 @@ class _Detail extends ConsumerWidget {
         automaticallyImplyLeading: !embedded,
         title: Text(recipe.title),
         actions: [
+          const KeepScreenOnButton(),
           IconButton(
             tooltip: 'Izmeni sa AI',
             icon: const Icon(Icons.auto_awesome_outlined),
@@ -125,7 +127,9 @@ class _Detail extends ConsumerWidget {
           ),
         ],
       ),
-      body: ReadableScroll(children: [RecipeView(recipe)]),
+      body: KeepScreenOnScope(
+        child: ReadableScroll(children: [RecipeView(recipe)]),
+      ),
     );
   }
 }

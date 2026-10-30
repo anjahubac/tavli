@@ -2,10 +2,10 @@
 
 Tests first (constitution V).
 
-- [ ] T001 Add `wakelock_plus` (justified in plan.md)
-- [ ] T002 Tests: setting default off, persisted; toggle shows messages; wake lock on while recipe open with setting on, off after leaving; remembered for next recipe; wide split; platform failure ignored — `test/features/recipes/keep_screen_on_test.dart`
-- [ ] T003 Implement `keep_screen_on.dart`, wire into `recipe_detail_screen.dart`, fake in `test/helpers/test_app.dart`
-- [ ] T004 `scripts/check.sh`, `flutter build macos --debug`, docs, spec status → Implemented
+- [x] T001 Add `wakelock_plus` (justified in plan.md)
+- [x] T002 Tests: setting default off, persisted; toggle shows messages; wake lock on while recipe open with setting on, off after leaving; remembered for next recipe; wide split; platform failure ignored — `test/features/recipes/keep_screen_on_test.dart`
+- [x] T003 Implement `keep_screen_on.dart`, wire into `recipe_detail_screen.dart`, fake in `test/helpers/test_app.dart`
+- [x] T004 `scripts/check.sh`, `flutter build macos --debug`, docs, spec status → Implemented
 
 ## Analysis (/speckit-analyze, 2026-10-30)
 

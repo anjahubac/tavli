@@ -22,6 +22,8 @@ Each phase below becomes one or more Spec Kit features (`specs/NNN-name/`).
 - **AI keys list** (`specs/004-ai-keys-list`): one generic "API ključ" field
   (service detected from the key), any number of keys per service, list of
   added keys with check/delete; keys used in order with per-key cooldowns.
+- **Keep screen on while cooking** (`specs/007-keep-screen-on`): "Ne gasi ekran"
+  toggle on the recipe screen, remembered in `AppSettings`.
 
 ## Next
 

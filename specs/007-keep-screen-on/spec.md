@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description (Serbian, translated): "Add an option so the screen doesn't turn off while you cook."
 
