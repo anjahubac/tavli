@@ -60,7 +60,7 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
   Future<void> _load() async {
     final List<StoredKey> keys;
     try {
-      keys = await ref.read(keyStoreProvider).list();
+      keys = await _ownKeys();
     } on SecretStorageException catch (e) {
       if (!mounted) return;
       setState(() => _loadError = 'kod ${e.code}');
@@ -81,6 +81,22 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     });
   }
 
+  /// Samo ključevi koje je korisnik dodao. Ključ koji je isti kao ugrađeni
+  /// (npr. sačuvan ranije ručno) briše se iz liste: on je ugrađeni i radi
+  /// u pozadini.
+  Future<List<StoredKey>> _ownKeys() async {
+    final store = ref.read(keyStoreProvider);
+    final builtIn = ref.read(builtInKeysProvider);
+    final all = await store.list();
+    for (final k in all.where((k) => builtIn.contains(k.value))) {
+      await store.remove(k.id);
+    }
+    return [
+      for (final k in all)
+        if (!builtIn.contains(k.value)) k,
+    ];
+  }
+
   void _show(String message, {bool error = false}) => setState(() {
     _message = message;
     _messageIsError = error;
@@ -93,7 +109,8 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     final provider = _provider;
     if (value.isEmpty || provider == null) return;
     final store = ref.read(keyStoreProvider);
-    if ((await store.list()).any((k) => k.value == value)) {
+    if (ref.read(builtInKeysProvider).contains(value) ||
+        (await store.list()).any((k) => k.value == value)) {
       return _show('Ovaj ključ je već dodat.', error: true);
     }
     setState(() {

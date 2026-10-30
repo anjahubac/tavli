@@ -216,6 +216,39 @@ void main() {
   group('ugrađeni Tavli AI', () {
     const builtIn = BuiltInKeys({AIProvider.gemini: 'b-key'});
 
+    testWidgets('sačuvan ugrađeni ključ se uklanja iz liste i skladišta', (
+      tester,
+    ) async {
+      adapter = FakeAdapter([]);
+      await keys.add(AIProvider.gemini, 'b-key');
+      await keys.add(AIProvider.groq, 'gsk_mine-4321');
+      await pumpScreen(tester, builtIn: builtIn);
+
+      expect(find.text('••••4321'), findsOneWidget);
+      expect(find.text('••••-key'), findsNothing);
+      expect((await keys.list()).map((k) => k.value), ['gsk_mine-4321']);
+    });
+
+    testWidgets('ugrađeni ključ se ne može dodati kao korisnički', (
+      tester,
+    ) async {
+      adapter = FakeAdapter([]);
+      await pumpScreen(tester, builtIn: builtIn);
+
+      await tester.enterText(keyField(), 'b-key');
+      await tester.pump();
+      await tester.tap(find.text('Izaberi servis'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gemini').last);
+      await tester.pumpAndSettle();
+      await tester.tap(button('Dodaj ključ'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ovaj ključ je već dodat.'), findsOneWidget);
+      expect(await keys.list(), isEmpty);
+      expect(adapter.requests, isEmpty);
+    });
+
     testWidgets('ugrađeni ključevi se ne prikazuju na stranici', (
       tester,
     ) async {

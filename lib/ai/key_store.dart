@@ -300,9 +300,16 @@ class BuiltInKeys {
   }
 
   bool has(AIProvider provider) => this[provider] != null;
+
+  /// Da li je vrednost neki od ugrađenih ključeva (tada nije korisnička).
+  bool contains(String value) {
+    final v = value.trim();
+    return v.isNotEmpty && AIProvider.values.any((p) => this[p] == v);
+  }
 }
 
-/// Prvo korisnikovi ključevi (redom dodavanja), pa ugrađeni.
+/// Prvo korisnikovi ključevi (redom dodavanja), pa ugrađeni. Sačuvan ključ
+/// koji je isti kao ugrađeni (npr. unet ranije ručno) računa se kao ugrađeni.
 class LayeredKeySource implements KeySource {
   LayeredKeySource(this._own, this._builtIn);
 
@@ -314,7 +321,9 @@ class LayeredKeySource implements KeySource {
     final builtIn = _builtIn[provider];
     return [
       for (final k in await _own.list())
-        if (k.provider == provider && k.value.trim().isNotEmpty)
+        if (k.provider == provider &&
+            k.value.trim().isNotEmpty &&
+            !_builtIn.contains(k.value))
           ApiCredential(provider, k.value.trim(), KeyOrigin.user, keyId: k.id),
       if (builtIn != null) ApiCredential(provider, builtIn, KeyOrigin.builtIn),
     ];
