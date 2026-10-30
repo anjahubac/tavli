@@ -147,13 +147,37 @@ void main() {
     expect(third.model, geminiPro);
   });
 
+  test('limit na prvom sopstvenom ključu -> isti model sa drugim', () async {
+    await keys.add(AIProvider.gemini, 'g-key-2');
+    client.script(geminiPro, [const RateLimitError('limit'), okJson, okJson]);
+
+    final r = await router.run(textRequest, parseValue);
+    expect(r.model, geminiPro);
+    expect(client.keysUsed, ['g-key', 'g-key-2']);
+
+    // Prvi ključ je pauziran, drugi se koristi direktno.
+    await router.run(textRequest, parseValue);
+    expect(client.keysUsed, ['g-key', 'g-key-2', 'g-key-2']);
+  });
+
+  test('odbijen jedan sopstveni ključ ne gasi ostale', () async {
+    final second = await keys.add(AIProvider.gemini, 'g-key-2');
+    client.script(geminiPro, [const AuthError('bad'), okJson]);
+
+    final r = await router.run(textRequest, parseValue);
+
+    expect(r.model, geminiPro);
+    expect(router.invalidKeyIds, {'gemini'});
+    expect(router.invalidKeyIds, isNot(contains(second.id)));
+  });
+
   test('dnevni limit pauzira Gemini do resetovanja u 08:00 UTC', () async {
     client.script(geminiPro, [const RateLimitError('day', isDaily: true)]);
     client.script(groqText, [okJson]);
 
     await router.run(textRequest, parseValue);
 
-    final until = await status.blockedUntil(geminiPro);
+    final until = await status.blockedUntil(geminiPro, keyId: 'gemini');
     expect(until!.toUtc(), DateTime.utc(2026, 10, 30, 8));
   });
 
@@ -164,7 +188,7 @@ void main() {
     await router.run(textRequest, parseValue);
 
     expect(
-      await status.blockedUntil(geminiPro),
+      await status.blockedUntil(geminiPro, keyId: 'gemini'),
       now.add(const Duration(seconds: 60)),
     );
   });
@@ -179,15 +203,15 @@ void main() {
     );
     // Gemini Flash se ne zove jer je Gemini ključ odbijen.
     expect(client.calls, ['gemini/pro', 'groq/text']);
-    expect(router.invalidProviders, {AIProvider.gemini});
+    expect(router.invalidKeyIds, {'gemini'});
 
-    router.resetProvider(AIProvider.gemini);
+    router.resetKey('gemini');
     client.script(geminiPro, [okJson]);
     expect((await router.run(textRequest, parseValue)).model, geminiPro);
   });
 
   test('provajder bez ključa se tiho preskače', () async {
-    await keys.delete(AIProvider.gemini);
+    await keys.remove('gemini');
     client.script(groqText, [okJson]);
 
     final r = await router.run(textRequest, parseValue);
@@ -271,7 +295,7 @@ void main() {
 
     await router.run(textRequest, parseValue);
 
-    expect(status.requestsOn(geminiPro, now), 2);
+    expect(status.requestsOn(geminiPro, now, keyId: 'gemini'), 2);
   });
 
   test('podrazumevani lanac za slike sadrži samo modele koji vide slike', () {
@@ -314,8 +338,8 @@ void main() {
     const builtIn = BuiltInKeys({AIProvider.gemini: 'b-key'});
 
     test('radi bez sopstvenih ključeva', () async {
-      await keys.delete(AIProvider.gemini);
-      await keys.delete(AIProvider.groq);
+      await keys.remove('gemini');
+      await keys.remove('groq');
       router = makeRouter(builtIn: builtIn);
       client.script(geminiPro, [okJson]);
 
@@ -349,7 +373,7 @@ void main() {
       // Sopstveni ključ je pauziran, ugrađeni nije.
       await router.run(textRequest, parseValue);
       expect(client.keysUsed, ['g-key', 'b-key', 'b-key']);
-      expect(await status.blockedUntil(geminiPro), isNotNull);
+      expect(await status.blockedUntil(geminiPro, keyId: 'gemini'), isNotNull);
       expect(
         await status.blockedUntil(geminiPro, origin: KeyOrigin.builtIn),
         isNull,
@@ -379,7 +403,7 @@ void main() {
 
         final r = await router.run(textRequest, parseValue);
         expect(r.origin, KeyOrigin.builtIn);
-        expect(router.invalidProviders, {AIProvider.gemini});
+        expect(router.invalidKeyIds, {'gemini'});
 
         await router.run(textRequest, parseValue);
         expect(client.keysUsed, ['g-key', 'b-key', 'b-key']);
@@ -387,7 +411,7 @@ void main() {
     );
 
     test('odbijen ugrađeni ključ se tiho preskače', () async {
-      await keys.delete(AIProvider.gemini);
+      await keys.remove('gemini');
       router = makeRouter(builtIn: builtIn);
       client.script(geminiPro, [const AuthError('bad')]);
       client.script(groqText, [okJson]);
@@ -395,16 +419,16 @@ void main() {
       final r = await router.run(textRequest, parseValue);
 
       expect(r.model, groqText);
-      expect(router.invalidProviders, isEmpty);
+      expect(router.invalidKeyIds, isEmpty);
     });
 
-    test('resetProvider briše samo stanje sopstvenog ključa', () async {
+    test('resetKey briše samo stanje tog sopstvenog ključa', () async {
       router = makeRouter(builtIn: builtIn);
       client.script(geminiPro, [const AuthError('own'), const AuthError('b')]);
       client.script(groqText, [okJson, okJson]);
       await router.run(textRequest, parseValue);
 
-      router.resetProvider(AIProvider.gemini);
+      router.resetKey('gemini');
       client.script(geminiPro, [const RateLimitError('limit')]);
       client.calls.clear();
       await router.run(textRequest, parseValue);
@@ -414,7 +438,7 @@ void main() {
     });
 
     test('nextAvailableAt gleda pauze oba ključa', () async {
-      await keys.delete(AIProvider.groq);
+      await keys.remove('groq');
       router = makeRouter(builtIn: builtIn);
       client.script(geminiPro, [
         const RateLimitError('l', retryAfter: Duration(minutes: 5)),

@@ -10,7 +10,7 @@ flowchart TD
   D["Domain — lib/domain (Recipe, Ingredient, categories)<br/>pure Dart"]
   R["AIRouter — chains, cooldowns, retries"]
   C["ChatClient — OpenAICompatibleClient (dio)"]
-  K["KeySource — LayeredKeySource<br/>own key (Keychain / Keystore) → built-in (secrets.json)"]
+  K["KeySource — LayeredKeySource<br/>own keys (Keychain / Keystore) → built-in (secrets.json)"]
   S["ModelStatusStore — DriftModelStatusStore"]
   DB[("drift / SQLite — lib/data/database.dart")]
 
@@ -96,9 +96,15 @@ Key points:
 
 ## Secrets
 
-Keys are entered by the user on the AI keys screen and stored with
-`flutter_secure_storage` under `api_key_<provider>`. Nothing secret is in the
-repo.
+Keys are entered by the user on the AI keys screen (spec 004): one generic
+field, the service is detected from the key prefix (`AIza` Gemini, `gsk_` Groq,
+`sk-or-` OpenRouter) or picked by the user, and the key is checked with the
+free model-list request before saving. Any number of keys per service is
+stored as one JSON list under `api_keys` in `flutter_secure_storage`
+(old `api_key_<provider>` entries are migrated on first read). Own keys of a
+service are tried in add order, then the built-in key; pauses and rejections
+are tracked per key (`keyOrigin` column holds `user:<id>` / `builtIn`). The UI
+shows only the last 4 characters. Nothing secret is in the repo.
 
 Built-in keys (spec 002) come from a local, gitignored `secrets.json` passed
 with `--dart-define-from-file=secrets.json` (see `secrets.example.json`), read

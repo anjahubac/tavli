@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description (Serbian, translated): "I want the API keys page changed: one field for adding an API key (any key, so don't put 'Gemini API ključ' or similar in the field label) and the ability to add more than one; below it an overview of the API keys the user has already added (if any)."
 

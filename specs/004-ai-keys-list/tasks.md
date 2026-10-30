@@ -4,20 +4,20 @@
 
 ## Phase 1: Foundational
 
-- [ ] T001 Test: `detectProvider` prefixes; `InMemoryKeyStore` add/list/remove/duplicate; `SecureKeyStore` legacy migration logic (via a fake storage) in `test/ai/key_store_test.dart`
-- [ ] T002 Implement `StoredKey`, `KeyStore`, `SecureKeyStore`, `InMemoryKeyStore`, `detectProvider` in `lib/ai/key_store.dart`
-- [ ] T003 Test: key source returns own keys in add order then built-in, with key ids, in `test/ai/key_source_test.dart`
-- [ ] T004 Test: router tries second own key on 429 of the first; rejected key skipped alone; `invalidKeyIds` in `test/ai/ai_router_test.dart`
-- [ ] T005 Implement per-key slots in `ai_router.dart`, `model_status_store.dart`, `drift_model_status_store.dart`
+- [x] T001 Test: `detectProvider` prefixes; `InMemoryKeyStore` add/list/remove/duplicate; `SecureKeyStore` legacy migration logic (via a fake storage) in `test/ai/key_store_test.dart`
+- [x] T002 Implement `StoredKey`, `KeyStore`, `SecureKeyStore`, `InMemoryKeyStore`, `detectProvider` in `lib/ai/key_store.dart`
+- [x] T003 Test: key source returns own keys in add order then built-in, with key ids, in `test/ai/key_source_test.dart`
+- [x] T004 Test: router tries second own key on 429 of the first; rejected key skipped alone; `invalidKeyIds` in `test/ai/ai_router_test.dart`
+- [x] T005 Implement per-key slots in `ai_router.dart`, `model_status_store.dart`, `drift_model_status_store.dart`
 
 ## Phase 2: User Stories 1–2 (P1)
 
-- [ ] T006 [US1][US2] Widget tests: generic field label, detect + add, unknown prefix asks for service, rejected key not saved, unchecked key saved, duplicate refused, list with masked keys, delete with confirm, built-in note, in `test/features/ai_keys_screen_test.dart`
-- [ ] T007 [US1][US2] Rewrite `lib/features/settings/ai_keys_screen.dart`
+- [x] T006 [US1][US2] Widget tests: generic field label, detect + add, unknown prefix asks for service, rejected key not saved, unchecked key saved, duplicate refused, list with masked keys, delete with confirm, built-in note, in `test/features/ai_keys_screen_test.dart`
+- [x] T007 [US1][US2] Rewrite `lib/features/settings/ai_keys_screen.dart`
 
 ## Phase 3: Polish
 
-- [ ] T008 Update `docs/architecture.md`; `scripts/check.sh`; `flutter build macos --debug`; spec status → Implemented
+- [x] T008 Update `docs/architecture.md`; `scripts/check.sh`; `flutter build macos --debug`; spec status → Implemented
 
 ## Analysis (/speckit-analyze, 2026-10-30)
 

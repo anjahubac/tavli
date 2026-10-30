@@ -51,22 +51,20 @@ class AIRouter {
   final _invalidKeys = <String>{};
   final _unavailableModels = <String>{};
 
-  static String _keySlot(AIProvider p, KeyOrigin o) => '${p.name}#${o.name}';
-  static String _modelSlot(ModelSpec m, KeyOrigin o) => '${m.key}#${o.name}';
+  static String _keySlot(ApiCredential c) => '${c.provider.name}#${c.slot}';
+  static String _modelSlot(ModelSpec m, ApiCredential c) =>
+      '${m.key}#${c.slot}';
 
-  /// Provajderi čiji je *sopstveni* ključ odbijen; UI traži novi ključ.
+  /// Id-jevi *sopstvenih* ključeva koje je servis odbio; UI ih označava.
   /// Odbijen ugrađeni ključ se tiho preskače.
-  Set<AIProvider> get invalidProviders => {
-    for (final p in AIProvider.values)
-      if (_invalidKeys.contains(_keySlot(p, KeyOrigin.user))) p,
-  };
+  Set<String> get invalidKeyIds => Set.unmodifiable(_invalidOwnKeyIds);
+  final _invalidOwnKeyIds = <String>{};
 
-  /// Pozvati kad korisnik sačuva novi ključ.
-  void resetProvider(AIProvider provider) {
-    _invalidKeys.remove(_keySlot(provider, KeyOrigin.user));
-    _unavailableModels.removeWhere(
-      (k) => k.startsWith('${provider.name}/') && k.endsWith('#user'),
-    );
+  /// Pozvati kad provera pokaže da ključ opet radi.
+  void resetKey(String keyId) {
+    _invalidOwnKeyIds.remove(keyId);
+    _invalidKeys.removeWhere((k) => k.endsWith('#user:$keyId'));
+    _unavailableModels.removeWhere((k) => k.endsWith('#user:$keyId'));
   }
 
   /// [parse] baca [FormatException] kada JSON ne odgovara šemi; tada se
@@ -89,15 +87,19 @@ class AIRouter {
         void log(String outcome) =>
             attempts.add(AttemptLog(m, outcome, origin: c.origin));
 
-        if (_invalidKeys.contains(_keySlot(m.provider, c.origin))) {
+        if (_invalidKeys.contains(_keySlot(c))) {
           log('preskočen: ključ ne radi');
           continue;
         }
-        if (_unavailableModels.contains(_modelSlot(m, c.origin))) {
+        if (_unavailableModels.contains(_modelSlot(m, c))) {
           log('preskočen: model nije dostupan');
           continue;
         }
-        final blockedUntil = await status.blockedUntil(m, origin: c.origin);
+        final blockedUntil = await status.blockedUntil(
+          m,
+          origin: c.origin,
+          keyId: c.keyId,
+        );
         if (blockedUntil != null && blockedUntil.isAfter(_clock())) {
           log('preskočen: pauziran do $blockedUntil');
           continue;
@@ -109,13 +111,22 @@ class AIRouter {
           return AIResult(value, m, attempts, origin: c.origin);
         } on RateLimitError catch (e) {
           final until = _cooldownUntil(m, e);
-          await status.block(m, until, e.message, origin: c.origin);
+          await status.block(
+            m,
+            until,
+            e.message,
+            origin: c.origin,
+            keyId: c.keyId,
+          );
           log('limit, pauza do $until');
         } on AuthError catch (e) {
-          _invalidKeys.add(_keySlot(m.provider, c.origin));
+          _invalidKeys.add(_keySlot(c));
+          if (c.origin == KeyOrigin.user && c.keyId != null) {
+            _invalidOwnKeyIds.add(c.keyId!);
+          }
           log('ključ odbijen: ${e.message}');
         } on ModelNotFoundError catch (e) {
-          _unavailableModels.add(_modelSlot(m, c.origin));
+          _unavailableModels.add(_modelSlot(m, c));
           log('model ne postoji: ${e.message}');
         } on AIError catch (e) {
           // Mreža ili loš odgovor ne zavise od ključa: odmah sledeći model.
@@ -138,7 +149,12 @@ class AIRouter {
     T Function(Map<String, dynamic>) parse,
   ) async {
     for (var i = 0; ; i++) {
-      await status.recordRequest(m, _clock(), origin: credential.origin);
+      await status.recordRequest(
+        m,
+        _clock(),
+        origin: credential.origin,
+        keyId: credential.keyId,
+      );
       final raw = await client.complete(m, request, apiKey: credential.value);
       try {
         return parse(decodeJsonObject(raw));
@@ -169,9 +185,13 @@ class AIRouter {
     DateTime? earliest;
     for (final m in chain) {
       for (final c in await keys.credentialsFor(m.provider)) {
-        if (_invalidKeys.contains(_keySlot(m.provider, c.origin))) continue;
-        if (_unavailableModels.contains(_modelSlot(m, c.origin))) continue;
-        final until = await status.blockedUntil(m, origin: c.origin);
+        if (_invalidKeys.contains(_keySlot(c))) continue;
+        if (_unavailableModels.contains(_modelSlot(m, c))) continue;
+        final until = await status.blockedUntil(
+          m,
+          origin: c.origin,
+          keyId: c.keyId,
+        );
         if (until != null && until.isAfter(now)) {
           if (earliest == null || until.isBefore(earliest)) earliest = until;
         }
