@@ -11,7 +11,8 @@ Each phase below becomes one or more Spec Kit features (`specs/NNN-name/`).
   `RecipeAI` (photo, dish name, refine), recipe domain model.
 - **AI keys screen**: enter/check/delete Gemini, Groq, OpenRouter keys
   (Keychain/Keystore), compare chain models with the provider's model list,
-  chain test that generates a sample recipe and shows the attempt log.
+  chain test that generates a sample recipe and shows the attempt log
+  (the "Probaj AI" test was removed from the keys page on 2026-10-30).
 - **Built-in Tavli AI keys** (`specs/002-builtin-ai-keys`): local gitignored
   `secrets.json` via `--dart-define-from-file`; own key first, built-in second
   per model; cooldowns per key. Cloudflare proxy remains the final phase.

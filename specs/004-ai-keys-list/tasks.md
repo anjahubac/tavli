@@ -31,6 +31,6 @@
 | FR-006 never shown/logged | T002 (`toString` without value), T006 (only last 4 on screen) |
 | FR-007 per-key fallback order | T003, T004, T005 |
 | FR-008 legacy migration | T001, T002 |
-| FR-009 built-in keys hidden, chain test kept | T006, T007 |
+| FR-009 built-in keys hidden, no "Probaj AI" section | T006, T007 |
 
 No constitution conflicts; no schema change (text column reused); terminology: "service" in UI = `AIProvider`.
