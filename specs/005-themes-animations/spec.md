@@ -15,6 +15,10 @@
 
 ### Session 2026-10-30
 
+- Q (owner): What does ticking an ingredient mean? → A: the ingredient is at
+  home, so it is NOT added to shopping; only unticked (missing) ingredients go
+  to "Kupovina" (chips fly there when they are sent).
+
 The owner approved the requirements (palettes, styles and the nine animations)
 in the project conversation; these remaining details were decided by Claude:
 
@@ -95,7 +99,7 @@ blueberries dropping into a bowl (Borovnica), with "Tavli" and "Recepti, plan
 obroka i kupovina na jednom mestu". The empty "Ostava" tab shows a fridge whose
 door opens, its light flickers, and it is empty: "Ostava je prazna" / "Vreme je
 za nabavku". The empty "Kupovina" tab shows the theme motif with "Lista je
-prazna" / "Označi sastojke u receptu i pojaviće se ovde." Pulling the recipes
+prazna" / "Sastojci koji ti nedostaju za recept pojaviće se ovde." Pulling the recipes
 list down shows a wooden spoon stirring in a pot instead of the plain spinner.
 
 **Acceptance Scenarios**:
@@ -112,8 +116,12 @@ list down shows a wooden spoon stirring in a pot instead of the plain spinner.
 For screens that are not built yet, the animations exist as reusable pieces and
 can be seen in a debug-only "Animacije" gallery in "Profil":
 
-- checking an ingredient: the checkmark draws in, a small chip flies to the
-  "Kupovina" tab icon and its badge bumps (plugs into the ingredient checklist → shopping list spec);
+- ingredients at home: the person ticks the ingredients they already have —
+  the checkmark draws in, the row softens (muted name, small "imam" tag) and
+  nothing flies and no badge changes. With "Dodaj u
+  kupovinu ({N})" only the unticked (missing) ingredients fly as small chips to
+  the "Kupovina" tab icon and its badge bumps by N (plugs into the ingredient
+  checklist → shopping list spec);
 - shopping list all bought: a shopping bag fills and a loaf of bread peeks out,
   "Sve je kupljeno!" (plugs into the shopping list);
 - meal plan: a recipe dropped on a day lands on a plate in the calendar (plugs into the meal plan);
@@ -158,11 +166,11 @@ can be seen in a debug-only "Animacije" gallery in "Profil":
 "Pregled animacija (samo za razvoj)", "Tavli", "Recepti, plan obroka i
 kupovina na jednom mestu", "Tražim sastojke…", "Seckam luk…", "Dodajem
 začine…", "Mešam…", "Probam da li je slano…", "Ostava je prazna", "Vreme je za
-nabavku", "Lista je prazna", "Označi sastojke u receptu i pojaviće se ovde.",
+nabavku", "Lista je prazna", "Sastojci koji ti nedostaju za recept pojaviće se ovde.",
 "Sve je kupljeno!", "Kupovina", "Ponedeljak"…"Nedelja" (gallery), "Kuvam jaje",
 "Ponovi". Animation names in the gallery: "Uvod — Bosiljak", "Uvod — Šafran",
-"Uvod — Borovnica", "Skeniranje fotografije", "Lonac koji krčka", "Štikliranje
-sastojka", "Sve kupljeno", "Prazna ostava", "Varjača (osvežavanje)", "Tanjir u
+"Uvod — Borovnica", "Skeniranje fotografije", "Lonac koji krčka", "Sastojci:
+imam / u kupovinu", "Označi sastojke koje već imaš", "imam", "Dodaj u kupovinu ({N})", "Sve kupljeno", "Prazna ostava", "Varjača (osvežavanje)", "Tanjir u
 planu", "Tajmer sa jajetom". Semantic labels: "Grančica bosiljka", "Cvet
 šafrana", "Borovnice padaju u činiju", "Skeniranje fotografije", "Lonac koji
 krčka", "Prazan frižider", "Puna kesa za kupovinu", "Varjača u loncu", "Recept
@@ -186,8 +194,9 @@ na tanjiru", "Jaje se kuva".
 
 - Ingredient checklist, shopping list, meal plan and cooking timer screens are
   built in later specs; their animations are delivered as widgets and plug in
-  there: `AnimatedCheckmark` + `flyChipToTarget` + `BumpBadge` into the recipe
-  ingredient checklist and the "Kupovina" tab icon; `ShoppingBagFull` into the
+  there: `AnimatedCheckmark` for ingredients the person has, `flyChipToTarget`
+  for the unticked ones when they are sent to shopping, `BumpBadge` on the
+  "Kupovina" tab icon; `ShoppingBagFull` into the
   shopping list when all items are bought; `PlatePlanDrop` into the meal-plan
   calendar; `EggTimer` into a cooking mode.
 - The recipes list has no remote data; pull-to-refresh re-reads the local list.

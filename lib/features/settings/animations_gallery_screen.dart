@@ -20,7 +20,7 @@ const animationNames = [
   'Uvod — Borovnica',
   'Skeniranje fotografije',
   'Lonac koji krčka',
-  'Štikliranje sastojka',
+  'Sastojci: imam / u kupovinu',
   'Sve kupljeno',
   'Prazna ostava',
   'Varjača (osvežavanje)',
@@ -152,6 +152,8 @@ class _PhotoScanDemoState extends State<_PhotoScanDemo> {
   }
 }
 
+/// Štikliraju se sastojci koje imamo; samo neštiklirani (oni koji
+/// nedostaju) odlaze u Kupovinu dugmetom, a bedž poskoči.
 class _CheckDemo extends StatefulWidget {
   const _CheckDemo();
 
@@ -160,36 +162,81 @@ class _CheckDemo extends StatefulWidget {
 }
 
 class _CheckDemoState extends State<_CheckDemo> {
-  final _from = GlobalKey();
+  static const _items = [
+    ('Krompir', '1 kg'),
+    ('Mleveno meso', '500 g'),
+    ('Crni luk', '2 kom'),
+  ];
+  final _keys = [for (final _ in _items) GlobalKey()];
   final _to = GlobalKey();
-  bool _checked = false;
-  int _count = 2;
+  final _have = <int>{1};
+  int _count = 0;
 
-  Future<void> _toggle() async {
-    setState(() => _checked = !_checked);
-    if (!_checked) {
-      setState(() => _count--);
-      return;
-    }
-    await flyChipToTarget(
-      context: context,
-      from: _from,
-      to: _to,
-      label: 'Mleveno meso',
-    );
-    if (mounted) setState(() => _count++);
+  List<int> get _missing => [
+    for (var i = 0; i < _items.length; i++)
+      if (!_have.contains(i)) i,
+  ];
+
+  Future<void> _send() async {
+    final missing = _missing;
+    await Future.wait([
+      for (final i in missing)
+        flyChipToTarget(
+          context: context,
+          from: _keys[i],
+          to: _to,
+          label: _items[i].$1,
+        ),
+    ]);
+    if (mounted) setState(() => _count += missing.length);
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final missing = _missing.length;
     return Column(
       children: [
-        ListTile(
-          onTap: _toggle,
-          leading: AnimatedCheckmark(key: _from, checked: _checked),
-          title: const Text('Mleveno meso'),
-          trailing: const Text('500 g'),
+        Text(
+          'Označi sastojke koje već imaš',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: colors.onSurfaceVariant),
+        ),
+        for (final (i, (name, qty)) in _items.indexed)
+          ListTile(
+            onTap: () => setState(
+              () => _have.contains(i) ? _have.remove(i) : _have.add(i),
+            ),
+            leading: AnimatedCheckmark(
+              key: _keys[i],
+              checked: _have.contains(i),
+            ),
+            // Ono što imamo je utišano i ne ide u kupovinu.
+            title: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 250),
+              style: DefaultTextStyle.of(context).style.copyWith(
+                color: _have.contains(i)
+                    ? colors.onSurfaceVariant
+                    : colors.onSurface,
+              ),
+              child: Text(name),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_have.contains(i)) ...[
+                  const _HaveTag(),
+                  const SizedBox(width: 8),
+                ],
+                Text(qty),
+              ],
+            ),
+          ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: missing == 0 ? null : _send,
+          icon: const Icon(Icons.shopping_basket_outlined),
+          label: Text('Dodaj u kupovinu ($missing)'),
         ),
         const SizedBox(height: 16),
         Column(
@@ -207,6 +254,30 @@ class _CheckDemoState extends State<_CheckDemo> {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Mala oznaka "imam" uz sastojak koji je kod kuće.
+class _HaveTag extends StatelessWidget {
+  const _HaveTag();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: colors.primaryContainer,
+        shape: const StadiumBorder(),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Text(
+          'imam',
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: colors.onPrimaryContainer),
+        ),
+      ),
     );
   }
 }

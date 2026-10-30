@@ -98,7 +98,7 @@ GoRouter createRouter({String initialLocation = '/recipes'}) => GoRouter(
                 appBarTitle: 'Kupovina',
                 art: IntroMotif(size: 200),
                 title: 'Lista je prazna',
-                body: 'Označi sastojke u receptu i pojaviće se ovde.',
+                body: 'Sastojci koji ti nedostaju za recept pojaviće se ovde.',
               ),
             ),
           ],

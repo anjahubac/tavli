@@ -27,7 +27,8 @@ Each phase below becomes one or more Spec Kit features (`specs/NNN-name/`).
   bundled Plus Jakarta Sans; reduced-motion aware ingredient animations (intro,
   photo scan, simmering pot, spoon refresh, empty Ostava/Kupovina) and a debug
   "Animacije" gallery. Ready for later screens: `AnimatedCheckmark` +
-  `flyChipToTarget` + `BumpBadge` (ingredient checklist → Kupovina tab badge),
+  `flyChipToTarget` + `BumpBadge` (tick what is at home; unticked ingredients
+  fly to the Kupovina tab badge),
   `ShoppingBagFull` (all bought), `PlatePlanDrop` (meal plan), `EggTimer`
   (cooking timer).
 

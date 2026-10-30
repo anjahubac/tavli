@@ -43,6 +43,8 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 - [x] T016 [US5] Test: `AnimatedCheckmark` draws in, `BumpBadge` bumps on change, `ShoppingBagFull`, `PlatePlanDrop`, `EggTimer` run and are static with reduced motion; gallery lists all nine names; Profil shows "Animacije" in debug in `test/app/animations_test.dart`, `test/features/animations_gallery_test.dart`
 - [x] T017 [US5] `ingredient_check.dart`, `shopping_bag.dart`, `plate_drop.dart`, `egg_timer.dart`, `animations_gallery_screen.dart`, route `/profile/animations`
 
+- [x] T017a [US5] Owner correction: ticked ingredient = "imam" (row softens, no flight, no badge); "Dodaj u kupovinu (N)" flies only unticked ingredients and bumps the badge by N; Kupovina empty copy "Sastojci koji ti nedostaju za recept pojaviće se ovde."; gallery test covers it
+
 ## Phase 8: Polish
 
 - [x] T018 Update `docs/architecture.md` (theme + animations), `docs/roadmap.md`, `AGENTS.md` structure
