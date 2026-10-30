@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Account and sign-in (006a)
+# Specification Quality Checklist: Account, sign-in and server storage (006a)
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-30
@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -32,7 +32,15 @@
 ## Notes
 
 - Supabase, Keychain/Keystore and the secrets-file pattern are named only because
-  the owner decided them as constraints; they appear in Input, FR-007/FR-015 and
+  the owner decided them as constraints; they appear in Input, FR-007/FR-021 and
   Dependencies, not as design choices.
-- 2 [NEEDS CLARIFICATION] markers (FR-012 data location in 006a, FR-018 AI keys on
-  sign-out) are passed to `/speckit-clarify` for the owner to answer.
+- 2026-10-30 clarification session (5 answers, see spec "Clarifications"): all
+  user data is stored on the server under the account (local DB = offline cache,
+  waiting-changes queue, download on sign-in); sign-out keeps data; AI keys kept
+  on sign-out, deleted on account deletion; name step mandatory; account
+  mandatory (constitution 2.0.0); simple delete dialog with a red button.
+- Both earlier [NEEDS CLARIFICATION] markers (FR-012 data location, FR-018 AI
+  keys) are resolved (now FR-012–FR-019 and FR-025). Scope moved: server storage
+  of all the user's data is now in 006a; 009 keeps realtime sharing between
+  household members and conflict handling for simultaneous edits.
+- Ready for `/speckit-plan`.

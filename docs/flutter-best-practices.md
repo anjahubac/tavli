@@ -94,6 +94,24 @@ Binding for humans and AI agents. The constitution
   and add a test that opens the DB and exercises the changed table.
 - Never edit `*.g.dart` by hand. Commit generated files with the source change.
 - Lists in rows are JSON text only when always read with the parent row.
+- drift is the offline cache of server data (constitution II): user-data rows
+  carry a client-generated UUID, owner (`householdId` or `userId`), `updatedAt`
+  and a soft-delete flag; each write also inserts an outbox entry in the same
+  transaction. Cached rows are scoped to the signed-in account.
+
+## 10a. Backend (Supabase)
+
+- Schema, RLS policies, grants and storage policies only via SQL migrations in
+  `supabase/migrations/` (`supabase migration new <name>`); never change the
+  hosted schema by hand and never edit an applied migration.
+- Every table: `enable row level security`, policies per operation, and explicit
+  `grant ... to authenticated`; `anon` gets nothing (`auto_expose_new_tables = false`).
+- Membership checks go through a `security definer` helper (e.g.
+  `is_household_member(household_id)`) to avoid recursive policies.
+- Server-side work that needs elevated rights (account deletion) runs in the
+  database or an Edge Function, never with a service-role key in the app.
+- Develop and test against the local stack (`supabase start`, ports 5532x);
+  `supabase test db` covers every policy with at least two accounts.
 
 ## 11. Networking and AI
 
@@ -106,8 +124,10 @@ Binding for humans and AI agents. The constitution
 ## 12. Security
 
 - No secrets in code, tests, fixtures, logs, screenshots, commit messages.
-- Own keys: Keychain/Keystore via `KeyStore`. Built-in keys: gitignored
-  `secrets.json` via `--dart-define-from-file`; `secrets.example.json` holds empty values only.
+- Own keys and the auth session: Keychain/Keystore. Built-in AI keys and the
+  Supabase URL/anon key: gitignored `secrets.json` via `--dart-define-from-file`;
+  `secrets.example.json` holds empty values only. The service-role key never
+  enters the app or the repo.
 - Never log request headers, full request bodies, keys, or personal data
   (recipes and pantry are personal data — log ids, not content).
 - Don't display keys after saving (obscured fields, no "show saved key").
@@ -118,7 +138,10 @@ Binding for humans and AI agents. The constitution
   (key flows per screen), few **golden** tests (only for stable visual components),
   and **integration** tests (`integration_test/`) for end-to-end happy paths when screens exist.
 - Fakes over mocks: hand-written fakes (`FakeClient`, `FakeAdapter`, in-memory stores)
-  — no network, no real keys, no real Keychain in tests.
+  — no network, no real keys, no real Keychain, no real backend in Flutter tests
+  (fake the Supabase-facing repository/remote interface).
+- Server access rules are tested with `supabase test db` (pgTAP) against the
+  local stack, outside `scripts/check.sh`.
 - Test names in Serbian describing behaviour (existing convention).
 - Coverage target: ≥ 80 % for `lib/ai/` and `lib/domain/`; check with `flutter test --coverage`.
 - Never skip or delete a failing test to get green; fix the code or the test's wrong assumption.

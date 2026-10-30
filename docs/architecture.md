@@ -1,5 +1,11 @@
 # Tavli architecture
 
+Tavli requires an account. All user data is stored on Supabase (EU region)
+under the account; the local drift database is the offline cache the UI reads
+from. Specs: `specs/006-account-login/` (account, server storage, outbox).
+Sections marked *(006, planned)* describe the target design; details are fixed
+in the 006 `plan.md`.
+
 ## Layers
 
 ```mermaid
@@ -12,7 +18,10 @@ flowchart TD
   C["ChatClient — OpenAICompatibleClient (dio)"]
   K["KeySource — LayeredKeySource<br/>own keys (Keychain / Keystore) → built-in (secrets.json)"]
   S["ModelStatusStore — DriftModelStatusStore"]
-  DB[("drift / SQLite — lib/data/database.dart")]
+  DB[("drift / SQLite — lib/data/database.dart<br/>offline cache + outbox")]
+  SY["Sync — outbox upload, download on sign-in (006)"]
+  AU["Auth — session in Keychain / Keystore (006)"]
+  SB[("Supabase (EU)<br/>Auth · Postgres + RLS · Storage")]
 
   UI --> P
   P --> F
@@ -24,6 +33,10 @@ flowchart TD
   R --> S
   S --> DB
   UI --> D
+  P --> AU
+  SY --> DB
+  SY --> SB
+  AU --> SB
 ```
 
 - **UI** reads state through Riverpod and never calls `ChatClient` or providers directly.
@@ -31,7 +44,9 @@ flowchart TD
 - **Data**: one drift database (`tavli`) with tables for recipes, recipe versions,
   pantry, shopping lists/items, meal plans/entries, ratings, user profile,
   app settings and model status. Lists inside rows (ingredients, steps, meal
-  types) are stored as JSON text.
+  types) are stored as JSON text. User-data tables are a cache of the server
+  (see "Account and server storage"); app settings (theme) and model status stay
+  device-only.
 - **Recipes** (spec 003): `RecipeRepository` (`lib/data/recipe_repository.dart`)
   owns recipe rows and versions. Every change (AI, manual, restore) stores the
   *previous* state in `RecipeVersions` with `changeKind`/`instruction`/`changedBy`
@@ -40,12 +55,71 @@ flowchart TD
   in an isolate and stored as files under `<documents>/recipe_photos/`; the DB
   keeps the relative path (`RecipePhotoStore`).
 
+## Account and server storage *(006, planned)*
+
+```mermaid
+flowchart LR
+  subgraph Device
+    UI2[UI] -->|reads| CACHE[("drift cache<br/>(per account)")]
+    UI2 -->|writes| REPO[Repositories]
+    REPO -->|"row + outbox entry<br/>(one transaction)"| CACHE
+    UP[Uploader] -->|"reads outbox in order"| CACHE
+    DOWN[Downloader] -->|"upserts by id, cursor"| CACHE
+  end
+  UP -->|"upsert / soft delete<br/>(idempotent by UUID)"| PG[("Supabase Postgres<br/>RLS per household / person")]
+  UP -->|photos| ST[("Supabase Storage<br/>private bucket")]
+  PG -->|"changes since cursor<br/>(sign-in, app start)"| DOWN
+  ST --> DOWN
+```
+
+- **Sign-in**: passwordless email with a 6-digit code (006a); Apple and Google
+  (006b). The session lives only in Keychain / Keystore and is renewed
+  automatically. Without a session only the intro and sign-in are reachable.
+- **Ownership**: at sign-up the server creates a profile, a personal household
+  ("Moje domaćinstvo") and an owner membership. Household data (recipes,
+  versions, photos, shopping lists, pantry, meal plans) belongs to a household;
+  personal data (profile, ratings, preferences) belongs to the person.
+- **Writes**: repositories write the drift row and an outbox entry in one
+  transaction; ids are client-generated UUIDs so retries never duplicate. The
+  uploader sends the outbox in order when online; a permanently rejected entry
+  is parked and reported, it does not block the rest.
+- **Reads**: the UI only reads drift. On sign-in the account's data is
+  downloaded; on app start (and foreground after ≥ 15 min) changes since the
+  last cursor are fetched. Until 009 the last write to reach the server wins per
+  record; deletes are soft deletes and win over edits.
+- **Per-account cache**: cached rows are scoped to the account; sign-out removes
+  only the session (data stays on the server and in the cache, hidden), another
+  account sees only its own data. Data that predates accounts is moved once into
+  the first account that signs in on the device.
+- **Delete account**: server-side deletion of the profile, membership,
+  household data, photos and auth identity (no service-role key in the app),
+  then the device cache, outbox, photos and own AI keys. Theme and model
+  cooldowns stay on the device.
+- **Security**: RLS on every table (person or household membership), explicit
+  `GRANT`s to `authenticated`, nothing for `anon`, new tables not auto-exposed;
+  private Storage bucket with the same rule. Policies are tested with
+  `supabase test db` against the local stack.
+- **Later**: 008 adds invites and roles; 009 adds realtime updates between
+  household members and conflict handling for simultaneous edits.
+
+## Local development backend
+
+`supabase start` in the repo root runs the local stack from
+`supabase/config.toml` on ports 5532x (API 55321, DB 55322, Studio 55323, mail
+catcher 55324) so it does not clash with other local Supabase projects.
+`supabase status` prints the local URL and anon key for your own gitignored
+`secrets.json`. Migrations live in `supabase/migrations/`, the Serbian sign-in
+email in `supabase/templates/`.
+
 ## Navigation
 
 `StatefulShellRoute.indexedStack` with five tabs: Recepti, Plan, Ostava,
 Kupovina, Profil. `HomeShell` shows a bottom `NavigationBar` below 720 px and a
 `NavigationRail` at ≥720 px (extended at ≥1000 px). `/profile/ai-keys` is the
 AI keys screen.
+*(006, planned)* A `go_router` redirect sends every route to the sign-in flow
+(`/sign-in`, then the mandatory name step) while there is no session or no saved
+name; after sign-in the originally requested route opens.
 
 Recipe routes: `/recipes` (list), `/recipes/new/{name,photo,manual}`,
 `/recipes/:id` (detail), `/recipes/:id/edit`, `/recipes/:id/chat`. When the
@@ -95,6 +169,10 @@ Key points:
 - `aiErrorText` maps every error to a Serbian message.
 
 ## Secrets
+
+Supabase URL and anon key come from the gitignored `secrets.json` (empty
+placeholders in `secrets.example.json`); the anon key is public by design and
+safe only because of RLS. The service-role key is never in the app or repo.
 
 Keys are entered by the user on the AI keys screen (spec 004): one generic
 field, the service is detected from the key prefix (`AIza` Gemini, `gsk_` Groq,
