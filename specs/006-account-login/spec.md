@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Clarified (ready for `/speckit-plan`)
+**Status**: Planned (plan, tasks, analyze done; ready for `/speckit-implement`)
 
 **Input**: User description: "Account is required from first launch, because all data is saved to the account. Backend: Supabase (EU region), decided. Scope 006a: sign-in screen right after the intro; passwordless email sign-in with a 6-digit one-time code (resend after 30 s); session stored in Keychain/Keystore and refreshed automatically; at sign-up a personal household is created automatically and the user is its owner (Vlasnik); existing local recipes, shopping list and other local data are moved into that household once, on first sign-in, without duplicates on later sign-ins; profile with name and initials avatar; sign out; delete account in the app. Out of scope: Sign in with Apple and Google (006b, after the Apple Developer account), invites and roles (008), data export, AI proxy. Supabase keys must never be committed; use the existing secrets.json / --dart-define-from-file pattern for the Supabase URL and anon key. Row Level Security on every table."
 
@@ -20,6 +20,7 @@
 - Q: Is the name step "Kako da te zovemo?" mandatory? → A: Yes, once, right after the first sign-in; the app cannot be used before a name is saved.
 - Q: Is an account mandatory to use the app at all (constitution principle II said "no backend account")? → A: Yes. The constitution is amended on this branch (2.0.0): offline-first with a mandatory account and the server as the durable store; no secrets in the repo; Row Level Security on every table; tables are not exposed automatically, access is granted explicitly.
 - Q: How is account deletion confirmed? → A: A simple confirmation dialog with a red "Obriši nalog" button; no typing of a confirmation word.
+- Q: Are the assumptions added during clarification confirmed? → A: Yes, the user confirmed all five: (1) other devices' changes are fetched on app start and on return to the foreground after at least 15 minutes (FR-015, US4-3); (2) sign-out warns about unsent changes and keeps them on the device for the same account (FR-023, US6-4); (3) the save state is shown in "Profil" (FR-018); (4) account deletion deletes the person's solo household with all its data and photos (FR-024, US7-2); (5) the last write to reach the server wins per record and a deletion wins over an edit (FR-017).
 
 ## User Scenarios & Testing *(mandatory)*
 

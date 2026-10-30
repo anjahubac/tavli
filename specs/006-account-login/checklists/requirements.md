@@ -43,4 +43,6 @@
   keys) are resolved (now FR-012–FR-019 and FR-025). Scope moved: server storage
   of all the user's data is now in 006a; 009 keeps realtime sharing between
   household members and conflict handling for simultaneous edits.
-- Ready for `/speckit-plan`.
+- 2026-10-30: the five assumptions added during clarification were confirmed by
+  the user; plan, research, data model, contracts, quickstart and tasks written;
+  `/speckit-analyze` findings fixed (see tasks.md "Analysis").
