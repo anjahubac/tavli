@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Phase 2 — recipe screens. Recepti tab: list of saved recipes (search by title, newest first, empty state), recipe detail (title, servings, prep time, ingredients grouped by store category, steps, source photo, which model made it). Add a recipe three ways: from a photo (camera or gallery), from a dish name (servings + optional wishes), or manually (title, servings, prep minutes, ingredients, steps). AI-produced recipe is shown as a preview first and saved only when the user confirms. Edit via chat with the AI: each accepted change stores the previous version so the user can undo/restore older versions; chat history of instructions shown. Manual edit of an existing recipe and delete (with confirmation). All data local (offline-first); AI errors show Serbian messages. Works on phone and wide layout (list–detail on wide). Why: this is the first user-facing feature; the AI layer exists but there is no way to create, keep and edit recipes yet."
 

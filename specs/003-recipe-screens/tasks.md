@@ -7,48 +7,48 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `image` dependency (justified in plan.md) to `pubspec.yaml`
+- [x] T001 Add `image` dependency (justified in plan.md) to `pubspec.yaml`
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T002 [P] Test: quantity formatting with decimal comma, grouping by store category in store order, diacritics-insensitive search, date/time format in `test/domain/recipe_format_test.dart`
-- [ ] T003 [P] Implement `lib/domain/recipe_format.dart`
-- [ ] T004 [P] Test: `Recipe.toJson`/`fromJson` round trip, `copyWith`, `newRecipeId` uniqueness in `test/domain/recipe_test.dart`
-- [ ] T005 Implement `copyWith`, `toJson`/`fromJson`, `newRecipeId` in `lib/domain/recipe.dart`; `RecipeVersion` + `ChangeKind` in `lib/domain/recipe_version.dart`; `RecipeAI` uses `newRecipeId`
-- [ ] T006 Test: migration v2 → v3 keeps version rows and adds columns in `test/data/migration_test.dart`
-- [ ] T007 Add `changeKind`, `changedBy` to `RecipeVersions`, `schemaVersion` 3 + migration in `lib/data/database.dart`; regenerate `database.g.dart`
-- [ ] T008 [P] Test: downscale to ≤ 1600 px JPEG, small images keep size, garbage → `FormatException` in `test/data/photo_resize_test.dart`
-- [ ] T009 [P] Implement `lib/data/photo_resize.dart` and `lib/data/recipe_photo_store.dart` (+ test of save/file/delete with a temp dir)
-- [ ] T010 Test: create/watchAll order, update keeps previous version with kind/instruction/model, prune to 30, undoLast, restore keeps current, delete removes versions/photo in `test/data/recipe_repository_test.dart`
-- [ ] T011 Implement `lib/data/recipe_repository.dart`
-- [ ] T012 Providers (repository, recipe streams, versions, photo store, photo picker) in `lib/features/recipes/recipe_providers.dart`; `PhotoPicker` in `lib/features/recipes/photo_picker.dart`; test helper `test/helpers/test_app.dart`
+- [x] T002 [P] Test: quantity formatting with decimal comma, grouping by store category in store order, diacritics-insensitive search, date/time format in `test/domain/recipe_format_test.dart`
+- [x] T003 [P] Implement `lib/domain/recipe_format.dart`
+- [x] T004 [P] Test: `Recipe.toJson`/`fromJson` round trip, `copyWith`, `newRecipeId` uniqueness in `test/domain/recipe_test.dart`
+- [x] T005 Implement `copyWith`, `toJson`/`fromJson`, `newRecipeId` in `lib/domain/recipe.dart`; `RecipeVersion` + `ChangeKind` in `lib/domain/recipe_version.dart`; `RecipeAI` uses `newRecipeId`
+- [x] T006 Test: migration v2 → v3 keeps version rows and adds columns in `test/data/migration_test.dart`
+- [x] T007 Add `changeKind`, `changedBy` to `RecipeVersions`, `schemaVersion` 3 + migration in `lib/data/database.dart`; regenerate `database.g.dart`
+- [x] T008 [P] Test: downscale to ≤ 1600 px JPEG, small images keep size, garbage → `FormatException` in `test/data/photo_resize_test.dart`
+- [x] T009 [P] Implement `lib/data/photo_resize.dart` and `lib/data/recipe_photo_store.dart` (+ test of save/file/delete with a temp dir)
+- [x] T010 Test: create/watchAll order, update keeps previous version with kind/instruction/model, prune to 30, undoLast, restore keeps current, delete removes versions/photo in `test/data/recipe_repository_test.dart`
+- [x] T011 Implement `lib/data/recipe_repository.dart`
+- [x] T012 Providers (repository, recipe streams, versions, photo store, photo picker) in `lib/features/recipes/recipe_providers.dart`; `PhotoPicker` in `lib/features/recipes/photo_picker.dart`; test helper `test/helpers/test_app.dart`
 
 ## Phase 3: User Story 1 — browse and read (P1)
 
-- [ ] T013 [US1] Widget tests: empty state, newest first, search incl. "šar"/no match, detail grouping and footer, phone vs wide split in `test/features/recipes/recipes_screen_test.dart`
-- [ ] T014 [US1] `recipe_view.dart`, `recipe_photo.dart`, `recipes_screen.dart`, `recipe_detail_screen.dart`; routes in `lib/app/router.dart`; update `test/app/home_shell_test.dart` to use an in-memory DB
+- [x] T013 [US1] Widget tests: empty state, newest first, search incl. "šar"/no match, detail grouping and footer, phone vs wide split in `test/features/recipes/recipes_screen_test.dart`
+- [x] T014 [US1] `recipe_view.dart`, `recipe_photo.dart`, `recipes_screen.dart`, `recipe_detail_screen.dart`; routes in `lib/app/router.dart`; update `test/app/home_shell_test.dart` to use an in-memory DB
 
 ## Phase 4: User Story 2 + 3 — add with AI (P1)
 
-- [ ] T015 [US2] Widget tests: from name → preview → Sačuvaj stores and opens; Odbaci stores nothing; AI error shows Serbian text and keeps input; empty name disables button in `test/features/recipes/from_name_screen_test.dart`
-- [ ] T016 [US2] `add_recipe_sheet.dart`, `ai_preview.dart`, `from_name_screen.dart`
-- [ ] T017 [US3] Widget tests: picked photo → preview → Sačuvaj stores recipe with photo; not-a-recipe message; cancel does nothing; no camera → only gallery in `test/features/recipes/from_photo_screen_test.dart`
-- [ ] T018 [US3] `from_photo_screen.dart`; iOS/macOS photo permissions checked
+- [x] T015 [US2] Widget tests: from name → preview → Sačuvaj stores and opens; Odbaci stores nothing; AI error shows Serbian text and keeps input; empty name disables button in `test/features/recipes/from_name_screen_test.dart`
+- [x] T016 [US2] `add_recipe_sheet.dart`, `ai_preview.dart`, `from_name_screen.dart`
+- [x] T017 [US3] Widget tests: picked photo → preview → Sačuvaj stores recipe with photo; not-a-recipe message; cancel does nothing; no camera → only gallery in `test/features/recipes/from_photo_screen_test.dart`
+- [x] T018 [US3] `from_photo_screen.dart`; iOS/macOS photo permissions checked
 
 ## Phase 5: User Story 4 — chat edits with undo (P2)
 
-- [ ] T019 [US4] Widget tests: request → proposal → Prihvati updates recipe and history; Odbaci leaves it; undo restores; restore from versions sheet; AI error keeps text in `test/features/recipes/recipe_chat_screen_test.dart`
-- [ ] T020 [US4] `recipe_chat_screen.dart`, `versions_sheet.dart`; undo/versions in detail menu
+- [x] T019 [US4] Widget tests: request → proposal → Prihvati updates recipe and history; Odbaci leaves it; undo restores; restore from versions sheet; AI error keeps text in `test/features/recipes/recipe_chat_screen_test.dart`
+- [x] T020 [US4] `recipe_chat_screen.dart`, `versions_sheet.dart`; undo/versions in detail menu
 
 ## Phase 6: User Story 5 — manual add/edit, delete (P2)
 
-- [ ] T021 [US5] Widget tests: validation messages; manual create; edit keeps "Ručna izmena" version; leaving with unsaved changes asks "Odbaciti izmene?"; delete with confirmation in `test/features/recipes/recipe_form_screen_test.dart`
-- [ ] T022 [US5] `recipe_form_screen.dart` (ingredient dialog, unsaved-changes prompt); delete action in detail
+- [x] T021 [US5] Widget tests: validation messages; manual create; edit keeps "Ručna izmena" version; leaving with unsaved changes asks "Odbaciti izmene?"; delete with confirmation in `test/features/recipes/recipe_form_screen_test.dart`
+- [x] T022 [US5] `recipe_form_screen.dart` (ingredient dialog, unsaved-changes prompt); delete action in detail
 
 ## Phase 7: Polish
 
-- [ ] T023 [P] Update `docs/architecture.md`, `docs/roadmap.md`, `AGENTS.md` structure
-- [ ] T024 `scripts/check.sh` passes; `flutter build macos --debug` succeeds; spec status → Implemented
+- [x] T023 [P] Update `docs/architecture.md`, `docs/roadmap.md`, `AGENTS.md` structure
+- [x] T024 `scripts/check.sh` passes; `flutter build macos --debug` succeeds; spec status → Implemented
 
 ## Dependencies
 

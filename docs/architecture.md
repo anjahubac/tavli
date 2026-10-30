@@ -32,6 +32,13 @@ flowchart TD
   pantry, shopping lists/items, meal plans/entries, ratings, user profile,
   app settings and model status. Lists inside rows (ingredients, steps, meal
   types) are stored as JSON text.
+- **Recipes** (spec 003): `RecipeRepository` (`lib/data/recipe_repository.dart`)
+  owns recipe rows and versions. Every change (AI, manual, restore) stores the
+  *previous* state in `RecipeVersions` with `changeKind`/`instruction`/`changedBy`
+  (max 30 per recipe); undo applies and deletes the newest version, restore keeps
+  the current state as a new version. Photos are downscaled to JPEG (≤ 1600 px)
+  in an isolate and stored as files under `<documents>/recipe_photos/`; the DB
+  keeps the relative path (`RecipePhotoStore`).
 
 ## Navigation
 
@@ -39,6 +46,11 @@ flowchart TD
 Kupovina, Profil. `HomeShell` shows a bottom `NavigationBar` below 720 px and a
 `NavigationRail` at ≥720 px (extended at ≥1000 px). `/profile/ai-keys` is the
 AI keys screen.
+
+Recipe routes: `/recipes` (list), `/recipes/new/{name,photo,manual}`,
+`/recipes/:id` (detail), `/recipes/:id/edit`, `/recipes/:id/chat`. When the
+content area is ≥ 840 px wide, `/recipes/:id` shows the list and the recipe side
+by side (`RecipeRoute`), otherwise the detail is a full screen.
 
 ## AI router and fallback chains
 

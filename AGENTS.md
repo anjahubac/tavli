@@ -32,10 +32,12 @@ lib/
     model_check.dart        compare chain models with provider /models list
     prompts.dart            system prompt + recipe JSON schema + task prompts
     recipe_ai.dart          RecipeAI: fromImage, fromDishName, refine
-  data/                   drift database (all tables) + DriftModelStatusStore
+  data/                   drift database (all tables), DriftModelStatusStore,
+                          RecipeRepository, RecipePhotoStore, photo downscaling
   domain/                 pure Dart models (Recipe, Ingredient, categories)
-  features/<feature>/     screens and widgets per feature (settings/ so far)
-test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio
+  features/<feature>/     screens and widgets per feature (recipes/, settings/)
+test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio,
+                          helpers/test_app.dart pumps the whole app (testTavli/pumpTavli)
 specs/NNN-name/           Spec Kit specs (spec.md, plan.md, tasks.md)
 docs/                     architecture.md, roadmap.md
 .specify/                 Spec Kit memory (constitution), templates, scripts
