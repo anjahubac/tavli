@@ -25,8 +25,8 @@ in the project conversation; these remaining details were decided by Claude:
 - Q: Does the intro show on every start? → A: Yes, briefly (≈1,8 s) while the
   app loads, then it fades; a tap skips it. With reduced motion the static end
   frame is shown for the same short time.
-- Q: Branch base? → A: `003-recipe-screens` (recipe screens are not on `main`
-  yet and must be themed too); retarget after #1 merges.
+- Q: Branch base? → A: latest `main` (owner's rule), which already contains the
+  recipe screens (#1) and the AI keys list (#2), so all of them are themed here.
 
 ## User Scenarios & Testing *(mandatory)*
 

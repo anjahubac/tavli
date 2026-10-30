@@ -40,10 +40,8 @@
 
 ## Branch base
 
-- **Decision**: branch from `003-recipe-screens` (PR #1, open) instead of
-  `main`: `main` lacks the recipe screens that must be themed. `004-ai-keys-list`
-  is being edited in parallel, so it is not used as base; the AI keys screen
-  only needs theme tokens, so a later merge is small.
+- **Decision**: branch from the latest `origin/main` (git rules in `AGENTS.md`);
+  it includes the recipe screens and the AI keys list.
 
 ## Tests and endless animations
 

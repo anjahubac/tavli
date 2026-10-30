@@ -53,7 +53,7 @@ Ostava/Kupovina empty tabs; the rest are shown in a debug-only gallery.
 | V. Test-first | ✅ `ThemeChoice` parsing and `SettingsRepository` tests first; widget tests for persistence, all 6 `ThemeData`, each animation incl. reduced motion |
 | VI. Responsive | ✅ appearance screen and gallery constrained to 720 px; tested at phone and wide |
 | VII. Small commits | ✅ spec, theme, screens restyle, animations, wiring, docs |
-| VIII. One spec branch | ✅ `005-themes-animations` (based on `003-recipe-screens`, see research) |
+| VIII. One spec branch | ✅ `005-themes-animations` from latest `main` |
 | IX. Best practices & guardrails | ✅ theme colours only, controllers disposed, no new dependency |
 
 ## Project Structure
