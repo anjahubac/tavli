@@ -7,7 +7,11 @@ import '../features/recipes/recipe_chat_screen.dart';
 import '../features/recipes/recipe_form_screen.dart';
 import '../features/recipes/recipes_screen.dart';
 import '../features/settings/ai_keys_screen.dart';
+import '../features/settings/animations_gallery_screen.dart';
+import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
+import 'animations/empty_fridge.dart';
+import 'animations/intro_motif.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
@@ -64,18 +68,41 @@ GoRouter createRouter({String initialLocation = '/recipes'}) => GoRouter(
             ),
           ],
         ),
-        for (final tab in tabs.where(
-          (t) => t.path != '/recipes' && t.path != '/profile',
-        ))
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: tab.path,
-                builder: (context, state) =>
-                    PlaceholderScreen(title: tab.label, icon: tab.icon),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/plan',
+              builder: (context, state) =>
+                  PlaceholderScreen(title: tabs[1].label, icon: tabs[1].icon),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/pantry',
+              builder: (context, state) => const EmptyStateScreen(
+                appBarTitle: 'Ostava',
+                art: EmptyFridge(),
+                title: 'Ostava je prazna',
+                body: 'Vreme je za nabavku',
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/shopping',
+              builder: (context, state) => const EmptyStateScreen(
+                appBarTitle: 'Kupovina',
+                art: IntroMotif(size: 200),
+                title: 'Lista je prazna',
+                body: 'Označi sastojke u receptu i pojaviće se ovde.',
+              ),
+            ),
+          ],
+        ),
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -85,6 +112,14 @@ GoRouter createRouter({String initialLocation = '/recipes'}) => GoRouter(
                 GoRoute(
                   path: 'ai-keys',
                   builder: (context, state) => const AiKeysScreen(),
+                ),
+                GoRoute(
+                  path: 'appearance',
+                  builder: (context, state) => const AppearanceScreen(),
+                ),
+                GoRoute(
+                  path: 'animations',
+                  builder: (context, state) => const AnimationsGalleryScreen(),
                 ),
               ],
             ),

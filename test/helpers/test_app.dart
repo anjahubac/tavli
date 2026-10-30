@@ -14,6 +14,7 @@ import 'package:tavli/app/app.dart';
 import 'package:tavli/app/router.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/recipe_repository.dart';
+import 'package:tavli/data/settings_repository.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/photo_picker.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
@@ -123,6 +124,7 @@ Future<TestApp> pumpTavli(
   Size size = phone,
   String location = '/recipes',
   List<Recipe> recipes = const [],
+  Map<String, String> settings = const {},
   List<(int, String, Map<String, List<String>>)> ai = const [],
   bool canUseCamera = true,
 }) async {
@@ -139,6 +141,9 @@ Future<TestApp> pumpTavli(
   );
   for (final r in recipes) {
     await app.repo.create(r);
+  }
+  for (final MapEntry(:key, :value) in settings.entries) {
+    await SettingsRepository(db).set(key, value);
   }
 
   await tester.pumpWidget(
@@ -159,7 +164,10 @@ Future<TestApp> pumpTavli(
         photoPickerProvider.overrideWithValue(app.picker),
         photoResizerProvider.overrideWithValue((bytes) async => bytes),
       ],
-      child: TavliApp(router: createRouter(initialLocation: location)),
+      child: TavliApp(
+        router: createRouter(initialLocation: location),
+        intro: false,
+      ),
     ),
   );
   await tester.pumpAndSettle();
