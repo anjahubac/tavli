@@ -11,6 +11,8 @@
   `/speckit-analyze`, `/speckit-implement`, `/speckit-checklist`,
   `/speckit-constitution`). Templates and scripts are in `.specify/`.
 - Follow `docs/flutter-best-practices.md` and the guardrails in `AGENTS.md`.
+- New branches always start from the latest `main` (never stacked on another
+  branch); changes reach `main` only through a PR (git rules: best practices §17).
 - Run `scripts/check.sh` (format, analyze, test) before every commit; run
   `dart run build_runner build --delete-conflicting-outputs` after changing drift tables.
 - Never read, print or modify API keys (Keychain entries `api_key_*`, `secrets.json`).
