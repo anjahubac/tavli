@@ -73,4 +73,14 @@ void main() {
   test('datum i vreme', () {
     expect(formatDateTime(DateTime(2026, 3, 7, 9, 5)), '07.03.2026. 09:05');
   });
+
+  test('broj porcija sa pravim padežom', () {
+    expect(servingsLabel(1), '1 porcija');
+    expect(servingsLabel(2), '2 porcije');
+    expect(servingsLabel(4), '4 porcije');
+    expect(servingsLabel(5), '5 porcija');
+    expect(servingsLabel(12), '12 porcija');
+    expect(servingsLabel(21), '21 porcija');
+    expect(servingsLabel(22), '22 porcije');
+  });
 }

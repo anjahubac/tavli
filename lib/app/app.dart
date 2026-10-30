@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'router.dart';
 
@@ -6,7 +7,10 @@ import 'router.dart';
 const _seed = Color(0xFFD2643C);
 
 class TavliApp extends StatelessWidget {
-  const TavliApp({super.key});
+  const TavliApp({super.key, this.router});
+
+  /// Za testove; inače [appRouter].
+  final GoRouter? router;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +28,7 @@ class TavliApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      routerConfig: appRouter,
+      routerConfig: router ?? appRouter,
     );
   }
 }

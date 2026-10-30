@@ -50,6 +50,17 @@ List<Recipe> filterRecipes(List<Recipe> recipes, String query) {
   ];
 }
 
+/// "1 porcija", "2 porcije", "5 porcija" (11–14 su "porcija").
+String servingsLabel(int n) {
+  final lastTwo = n % 100;
+  final last = n % 10;
+  if (last == 1 && lastTwo != 11) return '$n porcija';
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return '$n porcije';
+  }
+  return '$n porcija';
+}
+
 /// "07.03.2026. 09:05"
 String formatDateTime(DateTime t) =>
     '${_two(t.day)}.${_two(t.month)}.${t.year}. ${_two(t.hour)}:${_two(t.minute)}';
