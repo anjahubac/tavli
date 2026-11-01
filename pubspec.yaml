@@ -43,6 +43,8 @@ dependencies:
   path_provider: ^2.1.6
   image_picker: ^1.2.4
   image: ^4.12.0
+  supabase: ^2.16.5
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

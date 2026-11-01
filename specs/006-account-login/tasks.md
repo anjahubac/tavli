@@ -7,10 +7,10 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `supabase` ^2.16.5 and `http` ^1.6.0 (justified in plan.md) to `pubspec.yaml`; `flutter pub get`
-- [ ] T002 [P] In `supabase/config.toml`: `[auth.email] max_frequency = "30s"` (keep `otp_length = 6`, `otp_expiry = 600`), add `[functions.delete-account] verify_jwt = true`; local-only `[auth.rate_limit] email_sent = 30` so manual testing is not blocked (hosted limits are set in the dashboard); confirm `auto_expose_new_tables = false`
-- [ ] T003 [P] Test: `SupabaseConfig.fromEnvironment` with empty values → `isConfigured == false`; `toString` never contains the key, in `test/account/supabase_config_test.dart`
-- [ ] T004 Implement `lib/account/supabase_config.dart` (`SUPABASE_URL`, `SUPABASE_ANON_KEY` via `String.fromEnvironment`)
+- [x] T001 Add `supabase` ^2.16.5 and `http` ^1.6.0 (justified in plan.md) to `pubspec.yaml`; `flutter pub get`
+- [x] T002 [P] In `supabase/config.toml`: `[auth.email] max_frequency = "30s"` (keep `otp_length = 6`, `otp_expiry = 600`), add `[functions.delete-account] verify_jwt = true`; local-only `[auth.rate_limit] email_sent = 30` so manual testing is not blocked (hosted limits are set in the dashboard); confirm `auto_expose_new_tables = false`
+- [x] T003 [P] Test: `SupabaseConfig.fromEnvironment` with empty values → `isConfigured == false`; `toString` never contains the key, in `test/account/supabase_config_test.dart`
+- [x] T004 Implement `lib/account/supabase_config.dart` (`SUPABASE_URL`, `SUPABASE_ANON_KEY` via `String.fromEnvironment`)
 
 ## Phase 2: Foundational (blocks all stories)
 
