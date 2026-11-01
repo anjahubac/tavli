@@ -16,20 +16,20 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ### Server schema and access rules
 
-- [ ] T005 pgTAP helpers `tests.create_user(email)`, `tests.authenticate_as(uuid)`, `tests.clear_auth()` in `supabase/tests/00_helpers.sql`
-- [ ] T006 [P] Test: every `public` table has RLS; `anon` has no privilege on any `public` table; `authenticated` privileges equal the grants table in contracts/server-schema.md; no `public` function executable by `anon`, `authenticated` executes only `private.is_member`; bucket `recipe-photos` is private, in `supabase/tests/01_catalog_test.sql`
-- [ ] T007 [P] Test: a new auth user gets exactly 1 profile (`display_name` null, lower-case email), 1 household "Moje domaćinstvo", 1 owner membership; empty and 41-char names rejected, in `supabase/tests/02_provisioning_test.sql`
-- [ ] T008 [P] Test: users A and B — for each of `profiles`, `households`, `household_members`, the 7 household tables, `ratings`, `taste_profiles`, `deletions`: B cannot select/insert/update/delete A's rows; A can do every granted operation on its own; A cannot move a row to B's household or rate a recipe of B's household; A cannot update its own `email`, in `supabase/tests/03_isolation_test.sql`
-- [ ] T009 [P] Test: A can insert/select/update/delete objects under `{A household}/` in `recipe-photos`; B and anon cannot read, write or delete them, in `supabase/tests/04_storage_test.sql`
-- [ ] T010 [P] Test: delete inserts a tombstone visible only to members/owner; re-insert of a deleted id and insert of a child of a deleted parent are skipped silently; cascades (recipe → versions, ratings; recipe → `meal_plan_entries.recipe_id` null) create tombstones / bump `updated_at`; `updated_at` increases on update; two updates of one row → the later one is stored (FR-017), in `supabase/tests/05_deletions_test.sql`
-- [ ] T011 Migration `supabase/migrations/20261030120000_private_helpers.sql` (schema `private` + `usage` for `authenticated`, `touch_updated_at`, default table privileges and function `execute` revoked)
-- [ ] T012 Migration `supabase/migrations/20261030120100_accounts.sql` (`profiles`, `households`, `household_members`, `private.is_member` with `execute` for `authenticated`, `private.handle_new_user` + trigger)
-- [ ] T013 Migration `supabase/migrations/20261030120200_household_data.sql` (7 tables per data-model.md, FKs, `(household_id, updated_at, id)` indexes)
-- [ ] T014 Migration `supabase/migrations/20261030120300_personal_data.sql` (`ratings`, `taste_profiles`)
-- [ ] T015 Migration `supabase/migrations/20261030120400_deletions.sql` (`deletions`, `record_deletion`, `skip_if_deleted` triggers on all data tables)
-- [ ] T016 Migration `supabase/migrations/20261030120500_rls_and_grants.sql` (RLS + policies + grants per contracts/server-schema.md)
-- [ ] T017 Migration `supabase/migrations/20261030120600_storage.sql` (bucket `recipe-photos` private, 5 MB, `image/jpeg`; 4 policies)
-- [ ] T018 `supabase start`, `supabase db reset`, `supabase test db` → T006–T010 green
+- [x] T005 pgTAP helpers `tests.create_user(email)`, `tests.authenticate_as(uuid)`, `tests.clear_auth()` in `supabase/tests/00_helpers.sql`
+- [x] T006 [P] Test: every `public` table has RLS; `anon` has no privilege on any `public` table; `authenticated` privileges equal the grants table in contracts/server-schema.md; no `public` function executable by `anon`, `authenticated` executes only `private.is_member`; bucket `recipe-photos` is private, in `supabase/tests/01_catalog_test.sql`
+- [x] T007 [P] Test: a new auth user gets exactly 1 profile (`display_name` null, lower-case email), 1 household "Moje domaćinstvo", 1 owner membership; empty and 41-char names rejected, in `supabase/tests/02_provisioning_test.sql`
+- [x] T008 [P] Test: users A and B — for each of `profiles`, `households`, `household_members`, the 7 household tables, `ratings`, `taste_profiles`, `deletions`: B cannot select/insert/update/delete A's rows; A can do every granted operation on its own; A cannot move a row to B's household or rate a recipe of B's household; A cannot update its own `email`, in `supabase/tests/03_isolation_test.sql`
+- [x] T009 [P] Test: A can insert/select/update/delete objects under `{A household}/` in `recipe-photos`; B and anon cannot read, write or delete them, in `supabase/tests/04_storage_test.sql`
+- [x] T010 [P] Test: delete inserts a tombstone visible only to members/owner; re-insert of a deleted id and insert of a child of a deleted parent are skipped silently; cascades (recipe → versions, ratings; recipe → `meal_plan_entries.recipe_id` null) create tombstones / bump `updated_at`; `updated_at` increases on update; two updates of one row → the later one is stored (FR-017), in `supabase/tests/05_deletions_test.sql`
+- [x] T011 Migration `supabase/migrations/20261030120000_private_helpers.sql` (schema `private` + `usage` for `authenticated`, `touch_updated_at`, default table privileges and function `execute` revoked)
+- [x] T012 Migration `supabase/migrations/20261030120100_accounts.sql` (`profiles`, `households`, `household_members`, `private.is_member` with `execute` for `authenticated`, `private.handle_new_user` + trigger)
+- [x] T013 Migration `supabase/migrations/20261030120200_household_data.sql` (7 tables per data-model.md, FKs, `(household_id, updated_at, id)` indexes)
+- [x] T014 Migration `supabase/migrations/20261030120300_personal_data.sql` (`ratings`, `taste_profiles`)
+- [x] T015 Migration `supabase/migrations/20261030120400_deletions.sql` (`deletions`, `record_deletion`, `skip_if_deleted` triggers on all data tables)
+- [x] T016 Migration `supabase/migrations/20261030120500_rls_and_grants.sql` (RLS + policies + grants per contracts/server-schema.md)
+- [x] T017 Migration `supabase/migrations/20261030120600_storage.sql` (bucket `recipe-photos` private, 5 MB, `image/jpeg`; 4 policies)
+- [x] T018 `supabase start`, `supabase db reset`, `supabase test db` → T006–T010 green
 
 ### Domain and local cache
 
