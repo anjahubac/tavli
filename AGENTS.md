@@ -22,6 +22,16 @@ deletes data. See constitution principle II and `specs/006-account-login/`.
 **All UI text is Serbian, Latin script.** Code identifiers are English;
 existing comments are mostly Serbian — match the surrounding file.
 
+## Product direction
+
+Read [docs/product-design.md](docs/product-design.md) before new UI planning.
+Target: weekly/monthly meal plans and linked shopping and standalone recipe shopping; Plan, Nabavka, Recepti,
+Ostava, profile/settings behind an avatar, "Danas" inside Plan.
+[010](specs/010-plan-and-shopping/spec.md) records the direction and future
+tasks. Existing five-tab code and historical completed specs remain current
+until implementation. Do not present planned features as shipped or rewrite
+old acceptance history to pretend the target was already delivered.
+
 ## Structure
 
 ```

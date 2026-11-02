@@ -21,9 +21,12 @@
   table) and drift is the offline cache with an outbox (constitution II). Local
   backend: `supabase start` in this repo (ports 5532x).
 - Architecture and roadmap: `docs/architecture.md`, `docs/roadmap.md`.
+- Product direction: `docs/product-design.md`; weekly/monthly Plan and linked
+  Nabavka are central. 010 is specified, not implemented. Preserve old feature
+  history and treat UX usability gates as release requirements.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/006-account-login/plan.md`
+`specs/010-plan-and-shopping/plan.md`
 <!-- SPECKIT END -->

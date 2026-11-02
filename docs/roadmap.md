@@ -3,7 +3,19 @@
 Each phase below becomes one or more Spec Kit features (`specs/NNN-name/`).
 Spec numbers are assigned when a feature is specified, in the order it is started.
 
-Last updated: 2026-10-30.
+Last updated: 2026-11-02.
+
+## Product direction (2026-11-02)
+
+Tavli centers on **weekly/monthly meal plans and their shopping**. Target
+navigation is **Plan, Nabavka, Recepti, Ostava**, with profile/settings behind
+the avatar. "Danas" is inside Plan. See [product design](product-design.md)
+and [010](../specs/010-plan-and-shopping/spec.md).
+
+Standalone recipe → ingredient review → shopping is also a first-class path,
+with no plan required. Generate → review/replace/lock → save → confirm pantry → shop by week → cook
+→ rate. This is the target, not a claim that the screens are implemented.
+Historical specs retain their delivered acceptance criteria.
 
 ## Done (on `main`)
 
@@ -33,74 +45,69 @@ Last updated: 2026-10-30.
   `docs/flutter-best-practices.md`, strict lints, `scripts/check.sh`, git rules
   (branch from latest `main`, squash-merge, delete branch after merge).
 
-## In progress
+## In review / specified
 
-- **005 Themes & animations** (`005-themes-animations`, implemented locally,
-  awaiting review): three themes — Bosiljak (default), Šafran, Borovnica — each
-  light and dark, switchable in Profil (Svetla / Tamna / Kao sistem); recipe
-  screens restyled; eight animations (photo scan chips, simmering pot, check →
-  cart, full bag, empty fridge, pull-to-refresh spoon, meal plan plate, egg
-  timer) plus a themed intro; respects reduced motion.
-- **006a Account & login + server storage** (`006-account-login`, implemented
-  locally, awaiting review): email-code sign-in, personal household, mandatory
-  name, all user data saved to Supabase with an offline outbox, download on
-  any device, one-time move of local data, sign-out, delete account, session
-  renewal. 006b (Apple and Google) follows; see below.
-- **007 Keep screen on** (`007-keep-screen-on`, PR #6, awaiting review): "Ne gasi
-  ekran" toggle on a recipe keeps the display awake while cooking.
+- **005 Themes & animations**: implemented and pushed on 005-themes-animations,
+  awaiting merge/review. Light/dark palettes, appearance, animations and the
+  add-only-the-difference demo; startup fixes preserve already-upgraded caches.
+  The recipe-name-only demo is not a complete plan quantity ledger.
+- **010 Plan & shopping**: specification, plan and tasks prepared; **not
+  implemented**. Documentation starts from latest main; app implementation
+  waits for 005 to land through main, without stacking feature branches.
+- **006a account/server storage** and **007 keep screen on** are already on
+  main. Preserve them as dependencies rather than listing them as unfinished.
 
-## Next
+## Next — implementation order
 
-An account is required to use the app, so the account comes first: every
-feature, including the shopping list, is available only after sign-in, and all
-of the user's data is always saved to the server under the account (constitution
-2.0.0, principle II). drift stays the local offline cache.
+1. **010 Plan & shopping**: next product priority on the existing personal
+   household. Deliver tested slices:
+   - Plan-first shell/prototype, four tabs, profile avatar, phone/wide layouts.
+   - Weekly and calendar-month AI plans; breakfast/lunch/dinner selection,
+     editable servings, personal preferences and optional confirmed pantry.
+     Preview before saving; progress and resumable in-session partial drafts.
+   - Calendar review, replacement, locked/cooked flags, protection of past meals,
+     approved recipe snapshots and today's cooking inside Plan.
+   - Shopping per entry and per calendar week, including six-week months;
+     whole-month views aggregate the same underlying weekly rows. Compatible
+     units sum, repeated recipes count per occurrence, only the difference is
+     reconciled, bought/manual rows remain.
+   - Standalone saved/searched/imported/generated recipe shopping without a
+     plan or forced library save; stable preparation identity distinguishes
+     repeated adds from an explicit later preparation.
+   - Pantry CRUD/expiry/search, supply allocated once, idempotent purchase-to-
+     pantry transfer, personal preferences and optional ratings.
+   - Add a saved recipe to Plan; readable cooking steps and existing wake lock.
+     Saved planning/shopping/pantry remain offline-capable and account-synced.
+   See [spec](../specs/010-plan-and-shopping/spec.md),
+   [plan](../specs/010-plan-and-shopping/plan.md),
+   [tasks](../specs/010-plan-and-shopping/tasks.md). Monthly planning and weekly
+   shopping are release requirements, not an unspecified follow-up.
+2. **008 Household invites & roles** (number retained): invite by link, code
+   or QR (7-day expiry/revocation), join confirmation, Vlasnik/Član,
+   leave/remove/transfer ownership. Share plans, recipes, shopping and pantry;
+   keep taste profiles, ratings, AI keys and themes personal. Solo planning
+   does not wait for invitations.
+3. **009 Realtime sharing** (number retained): household change notifications
+   and simultaneous-edit conflict handling. Until then retain 006a record-level
+   last-write-wins/delete-wins behavior; do not claim realtime or conflict-free
+   multi-user stock allocation.
+4. **Recipe media refinement**: distinct original recipe documents and actual
+   dish photos, classification of old photos, storage/sync/version cleanup.
+   010 must not present an unclassified scan as a confirmed dish photograph.
+5. **Planning refinements**: household-level servings default (not in today's
+   Account schema), richer taste/favorite feedback and pantry suggestions.
+   Basic plan servings, preferences, ratings and expiry are already in 010.
+6. **006b Apple/Google sign-in** after the Apple Developer account; email code
+   sign-in remains available during planning development.
+7. **AI models screen**: persisted ordering/enabling of fallback-chain models.
+8. **Cloudflare key proxy**: account-verified requests, provider keys in Worker,
+   per-user limits; remove build-time provider keys from the app.
+9. **Store release**: privacy/terms/domain, declarations/manifests, deletion
+   page, review account, export, crash reporting and optional notifications.
 
-1. **006 Account & login + server storage of all the user's data**
-   - **006a — email code** (`specs/006-account-login`): sign-in right after the
-     intro with a 6-digit email code; session in Keychain/Keystore; personal
-     household ("Moje domaćinstvo", role Vlasnik) created at sign-up; mandatory
-     name step "Kako da te zovemo?"; profile with initials avatar. All user data
-     (recipes with versions and photos, shopping lists, pantry, meal plans,
-     ratings, preferences) stored on Supabase (EU, RLS on every table, explicit
-     grants): local write + outbox, upload when online, download on sign-in on
-     any device. Data from before accounts moves into the account once. Sign-out
-     keeps all data (server and per-account device cache); AI keys stay on the
-     device. Delete account in the app (simple dialog with a red "Obriši nalog")
-     deletes server and device data and the user's AI keys.
-   - **006b — Apple and Google**: Sign in with Apple and Google (after the Apple
-     Developer account).
-2. **007 Keep screen on** (PR #6): see In progress.
-3. **008 Household invites & roles**: invite by link, 6-character code or QR
-   (expires in 7 days, revocable); join with a confirmation screen; roles
-   Vlasnik / Član; leave, remove a member, transfer ownership. Shared: shopping
-   list, pantry, meal plan, recipes. Not shared: AI keys, theme, personal
-   preferences.
-4. **009 Realtime sharing between members**: realtime "something changed" per
-   household so members see each other's changes without restarting; conflict
-   handling for simultaneous edits by several people or devices (last write
-   wins per field instead of per record, soft deletes, UUID v7 ordering).
-5. **Ingredient checklist → shopping list**: tick ingredients on a recipe and
-   send the missing ones to a shopping list grouped by store category. Built
-   shared per household and stored on the server from the start.
-6. **Pantry-based suggestions**: pantry (Ostava) management and AI suggestions
-   for dishes from what is at home. Shared per household.
-7. **Meal plan**: weekly or monthly plan with breakfast/lunch/dinner toggles,
-   calendar view, lock/cooked flags, and shopping lists per plan (and per week
-   for monthly plans). Shared per household.
-8. **Preferences**: taste profile (diet, dislikes, allergies, household size)
-   used in prompts. Personal, with household size taken from the household.
-9. **Ratings & comfort food**: rate cooked dishes, mark comfort food, feed
-   ratings back into suggestions and plans.
-10. **AI models screen**: reorder/enable models in the chains, persisted in
-    `AppSettings`.
-11. **Cloudflare key proxy**: Worker that holds provider keys and forwards
-    OpenAI-compatible requests; it verifies the user's account token and limits
-    calls per user; the app drops built-in keys from `secrets.json`.
-12. **Store release**: privacy policy and terms on the app domain, App Store
-    privacy labels and privacy manifest, Google Play data safety form and web
-    page for deletion requests, demo account for review, data export, crash
-    reporting, optional push notifications ("Ana added milk").
+Unspecified future features receive numbers when work starts. 008/009 retain
+their existing roadmap reservations; 010 preserves those references. Every
+new feature branch starts from current main.
 
 ## Decisions (account & household)
 
@@ -125,3 +132,15 @@ Still open:
 
 Prerequisites: Supabase account and EU project (006a), app domain and a custom
 email sender (before release), Apple Developer account (006b).
+
+## Planning decisions (2026-11-02)
+
+- Plan and shopping are the primary value; today's cooking is inside the plan.
+- Repeated recipes count per occurrence and servings. Approved snapshots keep
+  later library edits from silently changing plan quantities.
+- Monday–Sunday periods are clipped to a calendar month; six are supported.
+- Bought stock and its pantry receipt are the same supply. Never credit them
+  twice or independently reuse one pantry quantity in every week.
+- Planning uses the creator's private profile and explicit plan requirements,
+  without reading or sharing other members' private taste data.
+- This documentation revision implements no UI, AI calls or schema changes.
