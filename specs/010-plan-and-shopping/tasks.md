@@ -41,8 +41,8 @@ update existing shopping atomically; do not defer this core until purchase UI.
 
 - [x] T015 [US1] Write failing strict-JSON, missing/duplicate slots, invalid ids/servings, batching/cancel/limits and resume tests in `test/ai/meal_plan_ai_test.dart`.
 - [x] T016 [US1] Implement `lib/ai/meal_plan_ai.dart` and `lib/ai/meal_plan_prompts.dart` through AIRouter text, week outlines and bounded recipe-summary batches; keep drafts in-session.
-- [ ] T017 [US1] Write approval/discard/explicit-partial/stale-fingerprint/atomic-outbox tests in `test/data/meal_plan_repository_test.dart` with fake backend failure injection.
-- [ ] T018 [US1] Implement approval/read providers in `lib/data/meal_plan_repository.dart`, `lib/features/planning/planning_providers.dart` and `lib/providers.dart`, persisting approved data atomically and rejecting known stale drafts.
+- [x] T017 [US1] Write approval/discard/explicit-partial/stale-fingerprint/atomic-outbox tests in `test/data/meal_plan_repository_test.dart` with fake backend failure injection.
+- [x] T018 [US1] Implement approval/read providers in `lib/data/meal_plan_repository.dart`, `lib/features/planning/planning_providers.dart` and `lib/providers.dart`, persisting approved data atomically and rejecting known stale drafts.
 - [ ] T019 [US1] Write first-plan/no-pantry, three-stage setup, retained-input/error/progress and review-before-save tests in `test/features/planning/plan_generation_test.dart` for phone and wide.
 - [ ] T020 [US1] Implement essentials setup and draft preview in `lib/features/planning/plan_setup_screen.dart` and `lib/features/planning/plan_preview_screen.dart`, with optional detail, cancel/retry and explicit partial save.
 

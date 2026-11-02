@@ -14,6 +14,7 @@ import 'ai/ai_router.dart';
 import 'ai/chain_config.dart';
 import 'ai/chat_client.dart';
 import 'ai/key_store.dart';
+import 'ai/meal_plan_ai.dart';
 import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
@@ -216,6 +217,10 @@ final aiRouterProvider = Provider<AIRouter>(
 
 final recipeAIProvider = Provider<RecipeAI>(
   (ref) => RecipeAI(ref.watch(aiRouterProvider)),
+);
+
+final mealPlanAIProvider = Provider<MealPlanAI>(
+  (ref) => MealPlanAI(ref.watch(aiRouterProvider)),
 );
 
 /// Lista prijavljenog domaćinstva; demo koristi zasebnu bazu u memoriji.

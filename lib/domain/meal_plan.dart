@@ -109,6 +109,15 @@ class SlotProposal {
 String draftRecipeKey(String title) =>
     title.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
+/// Sačuvan plan kakav je bio kad je nacrt počeo. Ako se u međuvremenu
+/// promenio, nacrt je zastareo i ne čuva se.
+class PlanBase {
+  const PlanBase({required this.planId, required this.fingerprint});
+
+  final String planId;
+  final String fingerprint;
+}
+
 /// Nacrt plana u sesiji. Zna šta je gotovo i šta još nedostaje, pa
 /// ponovni pokušaj traži samo to.
 class PlanDraft {
@@ -117,12 +126,16 @@ class PlanDraft {
     Map<MealSlot, SlotProposal> proposals = const {},
     Map<String, RecipeSnapshot> newRecipes = const {},
     Map<String, RecipeSnapshot> libraryRecipes = const {},
+    this.base,
   }) : proposals = Map.unmodifiable(proposals),
        newRecipes = Map.unmodifiable(newRecipes),
        libraryRecipes = Map.unmodifiable(libraryRecipes);
 
   final PlanRequest request;
   final Map<MealSlot, SlotProposal> proposals;
+
+  /// Plan koji nacrt menja (zamena ili ponovno generisanje), null za nov.
+  final PlanBase? base;
 
   /// Novi recepti po [draftRecipeKey] (sažetak, bez koraka).
   final Map<String, RecipeSnapshot> newRecipes;
@@ -171,5 +184,58 @@ class PlanDraft {
     proposals: proposals ?? this.proposals,
     newRecipes: newRecipes ?? this.newRecipes,
     libraryRecipes: libraryRecipes ?? this.libraryRecipes,
+    base: base,
   );
+}
+
+/// Sačuvan plan, kako ga je osoba odobrila.
+class MealPlan {
+  const MealPlan({
+    required this.id,
+    required this.range,
+    required this.mealTypes,
+    required this.defaultServings,
+    required this.usePantry,
+    required this.createdAt,
+  });
+
+  final String id;
+  final DateRange range;
+  final Set<MealType> mealTypes;
+  final int defaultServings;
+  final bool usePantry;
+  final DateTime createdAt;
+
+  List<MealSlot> get slots => [
+    for (final d in range.days)
+      for (final t in MealType.values)
+        if (mealTypes.contains(t)) MealSlot(d, t),
+  ];
+}
+
+/// Obrok u sačuvanom planu, sa receptom odobrenim u trenutku planiranja.
+class PlannedMeal {
+  const PlannedMeal({
+    required this.id,
+    required this.planId,
+    required this.slot,
+    required this.servings,
+    this.snapshot,
+    this.recipeId,
+    this.isLocked = false,
+    this.isCooked = false,
+  });
+
+  final String id;
+  final String planId;
+  final MealSlot slot;
+  final int servings;
+
+  /// null samo za stari unos bez snimka.
+  final RecipeSnapshot? snapshot;
+
+  /// Recept iz biblioteke, ako ga ima (posle brisanja recepta je null).
+  final String? recipeId;
+  final bool isLocked;
+  final bool isCooked;
 }
