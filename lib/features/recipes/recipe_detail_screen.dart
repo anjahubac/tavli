@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/recipe.dart';
+import '../../domain/shopping_source.dart';
+import 'ingredient_review_sheet.dart';
 import 'keep_screen_on.dart';
 import 'recipe_providers.dart';
 import 'recipe_view.dart';
@@ -128,7 +130,25 @@ class _Detail extends ConsumerWidget {
         ],
       ),
       body: KeepScreenOnScope(
-        child: ReadableScroll(children: [RecipeView(recipe)]),
+        child: ReadableScroll(
+          children: [
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FilledButton.tonalIcon(
+                onPressed: () => showIngredientReview(
+                  context,
+                  snapshot: RecipeSnapshot.fromRecipe(recipe),
+                  originKey: 'recipe:${recipe.id}',
+                  recipeId: recipe.id,
+                ),
+                icon: const Icon(Icons.checklist),
+                label: const Text('Proveri sastojke'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            RecipeView(recipe),
+          ],
+        ),
       ),
     );
   }

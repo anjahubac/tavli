@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/data/pantry_repository.dart';
 import 'package:tavli/data/recipe_photo_store.dart';
 import 'package:tavli/data/shopping_repository.dart';
 import 'package:tavli/domain/plan_calendar.dart';
@@ -589,6 +590,227 @@ void main() {
         ),
         throwsArgumentError,
       );
+    });
+
+    Future<ShoppingItemRow> item(String listId, String name) async =>
+        (await shop.listItems(listId)).firstWhere((i) => i.name == name);
+
+    test(
+      'kupljeno pokriva baš tu nedelju; poništavanje vraća istu stavku',
+      () async {
+        final end = mon.addDays(13);
+        await plan('p1', mon, end);
+        await entry('e1', mon, ingredients: const [kupus]);
+        await entry('e2', mon.addDays(8), ingredients: const [kupus]);
+        await shop.reconcilePlan('p1');
+        final weeks = weekPeriods(DateRange(mon, end));
+        final w1 = await shop.weekList('p1', weeks[0]);
+        final w2 = await shop.weekList('p1', weeks[1]);
+        final second = await item(w2, 'Kupus');
+
+        expect(await shop.setBought([second.id], bought: true), 1);
+        // Ponovljen klik ne menja ništa.
+        expect(await shop.setBought([second.id], bought: true), 0);
+        expect(await open(w1), ['Kupus 300.0 g']);
+        expect(await open(w2), isEmpty);
+        final bought = await item(w2, 'Kupus');
+        expect(bought.isBought, isTrue);
+        final sources = await shop.itemSources(bought.id);
+        expect(sources.single.title, 'Sarma');
+        expect(sources.single.date, mon.addDays(8));
+        expect(sources.single.mealType, 'lunch');
+
+        expect(await shop.setBought([second.id], bought: false), 1);
+        expect(await open(w2), ['Kupus 300.0 g']);
+        final back = await item(w2, 'Kupus');
+        expect(back.id, second.id);
+        expect(back.purchaseProvenanceJson, isNull);
+        expect(
+          await db.select(db.supplyAllocations).get(),
+          isEmpty,
+          reason: 'poništena kupovina više nije zaliha',
+        );
+        expect(await shop.listItems(w2), hasLength(1));
+      },
+    );
+
+    test('nepoznata količina: kupljeno je pokriva, poništeno vraća', () async {
+      await plan('p1', mon, mon.addDays(6));
+      await entry('e1', mon, ingredients: const [Ingredient(name: 'So')]);
+      await shop.reconcilePlan('p1');
+      final list = (await db.select(db.shoppingLists).get()).single.id;
+      final so = await item(list, 'So');
+      await shop.setBought([so.id], bought: true);
+      expect(await open(list), isEmpty);
+      await shop.reconcilePlan('p1');
+      expect(await open(list), isEmpty);
+      await shop.setBought([so.id], bought: false);
+      expect(await open(list), ['So null null']);
+      expect((await item(list, 'So')).id, so.id);
+    });
+
+    test('ručna stavka: brzo dodavanje, kupljeno/poništeno, brisanje; '
+        'obroci je ne menjaju', () async {
+      await plan('p1', mon, mon.addDays(6));
+      final list = await shop.weekList(
+        'p1',
+        weekPeriods(DateRange(mon, mon.addDays(6))).first,
+      );
+      final id = await shop.addManual(list, '  Deterdžent ');
+      expect(() => shop.addManual(list, ' '), throwsArgumentError);
+      await entry('e1', mon, ingredients: const [kupus]);
+      await shop.reconcilePlan('p1');
+      expect(
+        await open(list),
+        unorderedEquals(['Deterdžent null null', 'Kupus 300.0 g']),
+      );
+      expect(await shop.itemSources(id), isEmpty);
+
+      await shop.setBought([id], bought: true);
+      await shop.setBought([id], bought: false);
+      expect((await item(list, 'Deterdžent')).isManual, isTrue);
+      expect(await shop.deleteManual(id), isTrue);
+      final kupusId = (await item(list, 'Kupus')).id;
+      expect(await shop.deleteManual(kupusId), isFalse);
+      expect(await open(list), ['Kupus 300.0 g']);
+    });
+
+    test(
+      '300 g potrebe, 100 g u ostavi, kupljeno 200 g i primljeno; potreba '
+      '400 g → kupuje se još 100 g, ponovljen prijem ne menja ništa',
+      () async {
+        final pantryRepo = PantryRepository(
+          db,
+          scope: home,
+          writer: writer,
+          clock: () => now,
+        );
+        await plan('p1', mon, mon.addDays(6));
+        await entry('e1', mon, ingredients: const [kupus]);
+        await pantry('o1', 'Kupus', 100, 'g');
+        await shop.reconcilePlan('p1');
+        final list = (await db.select(db.shoppingLists).get()).single.id;
+        expect(await open(list), ['Kupus 200.0 g']);
+        final bought = await item(list, 'Kupus');
+        await shop.setBought([bought.id], bought: true);
+        expect(await pantryRepo.receivePurchases([bought.id]), 1);
+        expect(await pantryRepo.receivePurchases([bought.id]), 0);
+        await shop.reconcilePlan('p1');
+        expect(await open(list), isEmpty);
+
+        await entry(
+          'e1',
+          mon,
+          ingredients: const [
+            Ingredient(name: 'Kupus', quantity: 400, unit: 'g'),
+          ],
+        );
+        await shop.reconcilePlan('p1');
+        await shop.reconcilePlan('p1');
+        expect(await open(list), ['Kupus 100.0 g']);
+        expect(
+          (await db.select(db.pantryItems).get()).map((p) => p.id),
+          hasLength(2),
+        );
+        // Primljena kupovina se više ne poništava.
+        expect(await shop.setBought([bought.id], bought: false), 0);
+        expect((await item(list, 'Kupus')).isBought, isTrue);
+      },
+    );
+
+    test('zamenjen ili uklonjen obrok ne vraća kupljeno u nabavku', () async {
+      await plan('p1', mon, mon.addDays(6));
+      await entry('e1', mon, ingredients: const [kupus]);
+      await shop.reconcilePlan('p1');
+      final list = (await db.select(db.shoppingLists).get()).single.id;
+      final id = (await item(list, 'Kupus')).id;
+      await shop.setBought([id], bought: true);
+      await (db.delete(
+        db.mealPlanEntries,
+      )..where((t) => t.id.equals('e1'))).go();
+      await shop.reconcilePlan('p1');
+      final kept = await item(list, 'Kupus');
+      expect(kept.isBought, isTrue);
+      expect(kept.quantity, 300);
+      expect(
+        (await shop.itemSources(id)).single.title,
+        'Sarma',
+        reason: 'poreklo kupovine je zamrznuto',
+      );
+    });
+
+    test('recept bez plana: "imam" pa poništen "imam" dodaje samo razliku; '
+        'kupljeno ostaje; spisak tekućih priprema', () async {
+      const luk = Ingredient(name: 'Luk', quantity: 1, unit: 'kom');
+      final first = await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+      );
+      final list = await shop.recipeList();
+      final kupusId = (await item(list, 'Kupus')).id;
+      await shop.setBought([kupusId], bought: true);
+
+      // Ipak nemam luk: ista priprema, dodaje se samo luk.
+      final again = await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus, luk]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+      );
+      expect(again, first);
+      expect(await open(list), ['Luk 1.0 kom']);
+      expect((await item(list, 'Kupus')).isBought, isTrue);
+
+      final current = await shop.currentPreparation('recipe:sarma');
+      expect(current!.id, first);
+      expect(current.servings, 2);
+      expect(current.snapshot.ingredients.map((i) => i.name), ['Kupus', 'Luk']);
+      expect(await shop.currentPreparation('recipe:musaka'), isNull);
+      expect((await shop.watchPreparations().first).single.id, first);
+
+      final repeat = await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+        repeat: true,
+      );
+      expect((await shop.watchPreparations().first).single.id, repeat);
+      await shop.removeSource(repeat);
+      expect(await shop.watchPreparations().first, isEmpty);
+      expect(await shop.currentPreparation('recipe:sarma'), isNull);
+      expect(await db.select(db.mealPlans).get(), isEmpty);
+    });
+
+    test('ista potvrđena zaliha se ne koristi i za plan i za recept', () async {
+      await plan('p1', mon, mon.addDays(6));
+      await entry('e1', mon, ingredients: const [kupus], recipeId: 'sarma');
+      await pantry('o1', 'Kupus', 300, 'g');
+      await shop.reconcilePlan('p1');
+      await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+      );
+      final week = await shop.weekList(
+        'p1',
+        weekPeriods(DateRange(mon, mon.addDays(6))).first,
+      );
+      expect(await open(week), isEmpty);
+      expect(await open(await shop.recipeList()), ['Kupus 300.0 g']);
+      expect(await shop.isPlanned('sarma'), isTrue);
+      expect(await shop.isPlanned('musaka'), isFalse);
+      await entry(
+        'e1',
+        mon,
+        ingredients: const [kupus],
+        recipeId: 'sarma',
+        cooked: true,
+      );
+      expect(await shop.isPlanned('sarma'), isFalse);
     });
 
     test('mesec se samo sabira iz nedelja; ne pravi novu listu', () async {
