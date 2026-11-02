@@ -67,6 +67,17 @@ class RecipeSnapshot {
   final int? prepMinutes;
   final String? imagePath;
 
+  /// Isti recept sa drugim sastojcima (npr. samo onima koji fale).
+  RecipeSnapshot withIngredients(List<Ingredient> ingredients) =>
+      RecipeSnapshot(
+        title: title,
+        baseServings: baseServings,
+        ingredients: ingredients,
+        steps: steps,
+        prepMinutes: prepMinutes,
+        imagePath: imagePath,
+      );
+
   /// Isti ključevi kao recept u bazi (`Recipe.toAiJson`) i kao zapis koji
   /// migracija v5 pravi od postojećih obroka.
   Map<String, dynamic> toJson() => {

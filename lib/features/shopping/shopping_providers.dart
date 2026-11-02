@@ -31,6 +31,12 @@ final recipeShoppingProvider =
       (ref) => ref.watch(shoppingRepositoryProvider).watchRecipeItems(),
     );
 
+/// Tekuće pripreme recepata bez plana.
+final preparationsProvider =
+    StreamProvider.autoDispose<List<RecipePreparation>>(
+      (ref) => ref.watch(shoppingRepositoryProvider).watchPreparations(),
+    );
+
 /// Kupljene stavke koje su već u ostavi.
 final receivedItemsProvider = StreamProvider.autoDispose<Set<String>>(
   (ref) => ref.watch(pantryRepositoryProvider).watchReceivedItemIds(),

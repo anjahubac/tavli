@@ -67,12 +67,13 @@ update existing shopping atomically; do not defer this core until purchase UI.
 
 **Independent test:** no plan, saved/generated recipe, repeat add, one changed home-stock choice and explicit later preparation.
 
-- [ ] T029 [US4] Write source identity, zero-plan, unsaved preview/read-only, explicit shopping approval, repeat/delta and planned-context tests in `test/domain/shopping_source_test.dart` and `test/data/shopping_repository_test.dart`.
-- [ ] T030 [US4] Extend `lib/domain/shopping_source.dart` and implement standalone snapshot/servings/preparation operations in `lib/data/shopping_repository.dart`, sharing supply accounting without hidden library/plan creation.
-- [ ] T031 [US4] Write saved/search/import/generated ingredient-review, portions/home-stock and Plan/Recipe source-mode tests in `test/features/recipes/recipe_shopping_test.dart` and `test/features/shopping/shopping_screen_test.dart`.
-- [ ] T032 [US4] Implement `lib/features/recipes/ingredient_review_sheet.dart` and explicit shopping actions in `lib/features/recipes/recipe_detail_screen.dart` and `lib/features/recipes/ai_preview.dart`; inspection stays read-only, separate shopping approval persists its source.
-- [ ] T033 [US4] Implement source-mode/recipe-preparation selection in `lib/features/shopping/shopping_screen.dart` and providers, including planned-context versus separate-preparation choice and deliberate repeat.
+- [x] T029 [US4] Write source identity, zero-plan, unsaved preview/read-only, explicit shopping approval, repeat/delta and planned-context tests in `test/domain/shopping_source_test.dart` and `test/data/shopping_repository_test.dart`.
+- [x] T030 [US4] Extend `lib/domain/shopping_source.dart` and implement standalone snapshot/servings/preparation operations in `lib/data/shopping_repository.dart`, sharing supply accounting without hidden library/plan creation.
+- [x] T031 [US4] Write saved/search/import/generated ingredient-review, portions/home-stock and Plan/Recipe source-mode tests in `test/features/recipes/recipe_shopping_test.dart` and `test/features/shopping/shopping_screen_test.dart`.
+- [x] T032 [US4] Implement `lib/features/recipes/ingredient_review_sheet.dart` and explicit shopping actions in `lib/features/recipes/recipe_detail_screen.dart` and `lib/features/recipes/ai_preview.dart`; inspection stays read-only, separate shopping approval persists its source.
+- [x] T033 [US4] Implement source-mode/recipe-preparation selection in `lib/features/shopping/shopping_screen.dart` and providers, including planned-context versus separate-preparation choice and deliberate repeat.
 - [ ] T034 [US4] Validate combined plan/recipe allocations, receipts, bought-source history, offline retry and no-plan navigation in `test/features/planning/planning_journey_test.dart` and `test/features/recipes/recipe_shopping_test.dart`; include the standalone path in `docs/prototypes/010-plan-shopping.html`.
+  Combined plan/recipe supply, repeat and no-plan paths are covered in `test/data/shopping_repository_test.dart`, `test/features/recipes/recipe_shopping_test.dart` and `test/features/shopping/shopping_screen_test.dart`; the planning journey test and the prototype (T002) are still open.
 
 ## Phase 7 — US5: pantry and personal inputs (P2)
 

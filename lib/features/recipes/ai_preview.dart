@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../app/animations/photo_scan.dart';
 import '../../app/animations/simmering_pot.dart';
 import '../../domain/recipe.dart';
+import '../../domain/shopping_source.dart';
+import 'ingredient_review_sheet.dart';
 import 'recipe_view.dart';
 
 /// Recept koji je AI napravio, pre čuvanja.
@@ -64,6 +66,17 @@ class AiRecipePreview extends StatelessWidget {
                 TextButton(
                   onPressed: saving ? null : onDiscard,
                   child: const Text('Odbaci'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: saving
+                      ? null
+                      : () => showIngredientReview(
+                          context,
+                          snapshot: RecipeSnapshot.fromRecipe(recipe),
+                          originKey: 'recipe:${recipe.id}',
+                        ),
+                  icon: const Icon(Icons.checklist),
+                  label: const Text('Proveri sastojke'),
                 ),
                 OutlinedButton.icon(
                   onPressed: saving ? null : onRetry,

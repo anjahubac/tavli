@@ -739,6 +739,80 @@ void main() {
       );
     });
 
+    test('recept bez plana: "imam" pa poništen "imam" dodaje samo razliku; '
+        'kupljeno ostaje; spisak tekućih priprema', () async {
+      const luk = Ingredient(name: 'Luk', quantity: 1, unit: 'kom');
+      final first = await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+      );
+      final list = await shop.recipeList();
+      final kupusId = (await item(list, 'Kupus')).id;
+      await shop.setBought([kupusId], bought: true);
+
+      // Ipak nemam luk: ista priprema, dodaje se samo luk.
+      final again = await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus, luk]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+      );
+      expect(again, first);
+      expect(await open(list), ['Luk 1.0 kom']);
+      expect((await item(list, 'Kupus')).isBought, isTrue);
+
+      final current = await shop.currentPreparation('recipe:sarma');
+      expect(current!.id, first);
+      expect(current.servings, 2);
+      expect(current.snapshot.ingredients.map((i) => i.name), ['Kupus', 'Luk']);
+      expect(await shop.currentPreparation('recipe:musaka'), isNull);
+      expect((await shop.watchPreparations().first).single.id, first);
+
+      final repeat = await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+        repeat: true,
+      );
+      expect((await shop.watchPreparations().first).single.id, repeat);
+      await shop.removeSource(repeat);
+      expect(await shop.watchPreparations().first, isEmpty);
+      expect(await shop.currentPreparation('recipe:sarma'), isNull);
+      expect(await db.select(db.mealPlans).get(), isEmpty);
+    });
+
+    test('ista potvrđena zaliha se ne koristi i za plan i za recept', () async {
+      await plan('p1', mon, mon.addDays(6));
+      await entry('e1', mon, ingredients: const [kupus], recipeId: 'sarma');
+      await pantry('o1', 'Kupus', 300, 'g');
+      await shop.reconcilePlan('p1');
+      await shop.addRecipePreparation(
+        snapshot: snapshot(const [kupus]),
+        servings: 2,
+        originKey: 'recipe:sarma',
+        recipeId: 'sarma',
+      );
+      final week = await shop.weekList(
+        'p1',
+        weekPeriods(DateRange(mon, mon.addDays(6))).first,
+      );
+      expect(await open(week), isEmpty);
+      expect(await open(await shop.recipeList()), ['Kupus 300.0 g']);
+      expect(await shop.isPlanned('sarma'), isTrue);
+      expect(await shop.isPlanned('musaka'), isFalse);
+      await entry(
+        'e1',
+        mon,
+        ingredients: const [kupus],
+        recipeId: 'sarma',
+        cooked: true,
+      );
+      expect(await shop.isPlanned('sarma'), isFalse);
+    });
+
     test('mesec se samo sabira iz nedelja; ne pravi novu listu', () async {
       final end = mon.addDays(13);
       await plan('p1', mon, end);

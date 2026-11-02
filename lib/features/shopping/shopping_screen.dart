@@ -11,6 +11,7 @@ import '../../data/database.dart';
 import '../../data/shopping_repository.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/plan_calendar.dart';
+import '../../domain/recipe_format.dart';
 import '../../domain/shopping_demand.dart';
 import '../../providers.dart';
 import '../planning/plan_format.dart';
@@ -375,7 +376,18 @@ class _RecipeShopping extends ConsumerWidget {
     if (items.isLoading && !items.hasValue) {
       return const Center(child: CircularProgressIndicator());
     }
+    final preparations = ref.watch(preparationsProvider).value ?? const [];
     return ShoppingItemsList(
+      header: [
+        if (preparations.isNotEmpty) ...[
+          Text(
+            'Recepti u nabavci',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          for (final p in preparations) _PreparationTile(p),
+          const SizedBox(height: 12),
+        ],
+      ],
       items: items.value ?? const [],
       listId: () => ref.read(shoppingRepositoryProvider).recipeList(),
       emptyText:
@@ -383,4 +395,52 @@ class _RecipeShopping extends ConsumerWidget {
           'nemaš.',
     );
   }
+}
+
+class _PreparationTile extends ConsumerWidget {
+  const _PreparationTile(this.preparation);
+
+  final RecipePreparation preparation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = preparation;
+    final n = p.snapshot.ingredients.length;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.menu_book_outlined),
+      title: Text(p.snapshot.title),
+      subtitle: Text(
+        '${servingsLabel(p.servings)} · ${ingredientsCount(n)} za kupovinu',
+      ),
+      trailing: IconButton(
+        tooltip: 'Ukloni iz nabavke',
+        icon: const Icon(Icons.remove_shopping_cart_outlined),
+        onPressed: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          await ref.read(shoppingRepositoryProvider).removeSource(p.id);
+          messenger
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Uklonjeno iz nabavke: ${p.snapshot.title}. Kupljeno ostaje.',
+                ),
+              ),
+            );
+        },
+      ),
+    );
+  }
+}
+
+/// "1 sastojak", "2 sastojka", "5 sastojaka" (11–14 su "sastojaka").
+String ingredientsCount(int n) {
+  final lastTwo = n % 100;
+  final last = n % 10;
+  if (last == 1 && lastTwo != 11) return '$n sastojak';
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return '$n sastojka';
+  }
+  return '$n sastojaka';
 }

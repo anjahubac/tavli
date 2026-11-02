@@ -202,6 +202,53 @@ void main() {
     expect(find.text('Napravi plan'), findsOneWidget);
   });
 
+  testTavli('po receptu bez plana: pripreme i njihove stavke; uklanjanje '
+      'pripreme čuva kupljeno', (tester) async {
+    await pumpShopping(
+      tester,
+      setup: (db) async {
+        final scope = await scopeOf(db);
+        final shop = ShoppingRepository(
+          db,
+          scope: scope,
+          writer: SyncedWriter(db, accountId: scope.userId),
+        );
+        await shop.addRecipePreparation(
+          snapshot: const RecipeSnapshot(
+            title: 'Musaka',
+            baseServings: 4,
+            ingredients: [
+              Ingredient(
+                name: 'patlidžan',
+                quantity: 2,
+                unit: 'kom',
+                category: 'voće i povrće',
+              ),
+              Ingredient(name: 'mleko', quantity: 0.5, unit: 'l'),
+            ],
+          ),
+          servings: 4,
+          originKey: 'recipe:musaka',
+        );
+      },
+    );
+    expect(find.text('Još nemaš plan'), findsOneWidget);
+    await tapIn(tester, find.widgetWithText(OutlinedButton, 'Po receptu'));
+    expect(find.text('Recepti u nabavci'), findsOneWidget);
+    expect(find.text('4 porcije · 2 sastojka za kupovinu'), findsOneWidget);
+    await tapIn(tester, tileOf('patlidžan'));
+    await tapIn(tester, find.byTooltip('Za koje obroke').first);
+    expect(find.text('Recept · 4 porcije'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    await tapIn(tester, find.byTooltip('Ukloni iz nabavke'));
+    expect(find.text('Recepti u nabavci'), findsNothing);
+    expect(find.text('mleko'), findsNothing);
+    expect(find.text('patlidžan'), findsOneWidget);
+    expect(find.text('Kupljeno · 1'), findsOneWidget);
+  });
+
   for (final size in [const Size(320, 700), wide]) {
     testTavli('${size.width} px, tekst 2×: bez preliva', (tester) async {
       tester.platformDispatcher.textScaleFactorTestValue = 2;

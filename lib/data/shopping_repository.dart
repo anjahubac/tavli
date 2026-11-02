@@ -53,6 +53,22 @@ class PlanShoppingItem {
   final ShoppingItemRow item;
 }
 
+/// Samostalna priprema recepta u nabavci: zamrznut recept sa sastojcima
+/// koje osoba nema (ostale je označila sa "imam") i porcije.
+class RecipePreparation {
+  const RecipePreparation({
+    required this.id,
+    required this.snapshot,
+    required this.servings,
+    this.recipeId,
+  });
+
+  final String id;
+  final RecipeSnapshot snapshot;
+  final int servings;
+  final String? recipeId;
+}
+
 /// Kupovina domaćinstva; svaka izmena ima outbox u istoj transakciji.
 class ShoppingRepository {
   ShoppingRepository(
@@ -446,6 +462,64 @@ class ShoppingRepository {
     await _reconcile();
     return id;
   });
+
+  /// Tekuća (nezamenjena, otvorena) priprema istog porekla, ili null.
+  Future<RecipePreparation?> currentPreparation(String originKey) async {
+    final row =
+        await (_db.select(_db.shoppingSources)
+              ..where(
+                (t) => _activePreparation(t) & t.originKey.equals(originKey),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+              ..limit(1))
+            .getSingleOrNull();
+    return row == null ? null : _preparation(row);
+  }
+
+  /// Tekuće samostalne pripreme, novije prve, uživo.
+  Stream<List<RecipePreparation>> watchPreparations() =>
+      (_db.select(_db.shoppingSources)
+            ..where(_activePreparation)
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+          .watch()
+          .map((rows) => [for (final r in rows) ?_preparation(r)]);
+
+  Expression<bool> _activePreparation($ShoppingSourcesTable t) =>
+      t.householdId.equals(_scope.householdId) &
+      t.kind.equals(ShoppingSourceKind.recipePreparation.name) &
+      t.supersededAt.isNull() &
+      t.closedAt.isNull();
+
+  static RecipePreparation? _preparation(ShoppingSourceRow row) {
+    final json = row.recipeSnapshotJson;
+    if (json == null) return null;
+    try {
+      final snapshot = RecipeSnapshot.fromJson(
+        jsonDecode(json) as Map<String, dynamic>,
+      );
+      return RecipePreparation(
+        id: row.id,
+        snapshot: snapshot,
+        servings: row.servings ?? snapshot.baseServings,
+        recipeId: row.recipeId,
+      );
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// Recept je u nekom planu kao obrok koji još nije skuvan.
+  Future<bool> isPlanned(String recipeId) async =>
+      await (_db.select(_db.mealPlanEntries)
+            ..where(
+              (t) =>
+                  t.householdId.equals(_scope.householdId) &
+                  t.recipeId.equals(recipeId) &
+                  t.isCooked.equals(false),
+            )
+            ..limit(1))
+          .getSingleOrNull() !=
+      null;
 
   /// Uklanja izvor (npr. samostalnu pripremu): oslobađa njegovu zalihu i
   /// otvorenu potrebu; kupljeno ostaje.
