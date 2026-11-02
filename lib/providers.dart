@@ -72,6 +72,8 @@ final accountServiceProvider = Provider<AccountService>(
   (ref) => AccountService(
     ref.watch(databaseProvider),
     ref.watch(accountApiProvider),
+    photos: ref.watch(recipePhotoStoreProvider),
+    keys: ref.watch(keyStoreProvider),
     onChange: () => ref.read(syncEngineProvider)?.kick(),
   ),
 );

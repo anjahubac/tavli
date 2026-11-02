@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -10,10 +12,13 @@ import 'package:tavli/account/account_service.dart';
 import 'package:tavli/account/auth_gateway.dart';
 import 'package:tavli/account/supabase_client.dart';
 import 'package:tavli/account/supabase_config.dart';
+import 'package:tavli/ai/ai_models.dart';
+import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/domain/account.dart';
 
 import '../helpers/fake_backend.dart';
+import '../helpers/fake_photo_store.dart';
 import '../helpers/fake_supabase.dart';
 
 void main() {
@@ -160,5 +165,160 @@ void main() {
       expect(a.hasName, isTrue);
       expect(a.displayName, 'Ana');
     });
+  });
+
+  group('brisanje naloga', () {
+    late AppDatabase db;
+    late FakeBackend backend;
+    late FakePhotoStore photos;
+    late InMemoryKeyStore keys;
+    late AccountService service;
+    late Account a;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      backend = FakeBackend();
+      photos = FakePhotoStore();
+      keys = InMemoryKeyStore({AIProvider.groq: 'gsk_fake'});
+      service = AccountService(
+        db,
+        backend.accounts,
+        photos: photos,
+        keys: keys,
+      );
+      a = await service.loadOrFetch(
+        await backend.auth.verifyCode('ana@mail.com', FakeServer.code),
+      );
+      final t = DateTime.utc(2026);
+      Future<void> recipe(String id, String home, String? image) => db
+          .into(db.recipes)
+          .insert(
+            RecipesCompanion.insert(
+              id: id,
+              title: id,
+              servings: 1,
+              source: 'manual',
+              ingredientsJson: '[]',
+              stepsJson: '[]',
+              createdAt: t,
+              updatedAt: t,
+              imagePath: Value(image),
+              householdId: Value(home),
+            ),
+          );
+      photos.saved['recipe_photos/moja.jpg'] = Uint8List(1);
+      photos.saved['recipe_photos/stara.jpg'] = Uint8List(1);
+      photos.saved['recipe_photos/tudja.jpg'] = Uint8List(1);
+      await recipe('moj', a.householdId, 'recipe_photos/moja.jpg');
+      await recipe('tudji', 'drugi-dom', 'recipe_photos/tudja.jpg');
+      await db
+          .into(db.recipeVersions)
+          .insert(
+            RecipeVersionsCompanion.insert(
+              id: 'v1',
+              recipeId: 'moj',
+              recipeJson: '{"imagePath":"recipe_photos/stara.jpg"}',
+              createdAt: t,
+              householdId: Value(a.householdId),
+            ),
+          );
+      await db
+          .into(db.ratings)
+          .insert(
+            RatingsCompanion.insert(
+              id: 'g1',
+              recipeId: 'moj',
+              stars: 5,
+              cookedAt: t,
+              userId: Value(a.userId),
+            ),
+          );
+      await db
+          .into(db.syncOutbox)
+          .insert(
+            SyncOutboxCompanion.insert(
+              accountId: a.userId,
+              entity: 'recipe',
+              recordId: 'moj',
+              op: 'upsert',
+              createdAt: t,
+            ),
+          );
+      await db
+          .into(db.syncOutbox)
+          .insert(
+            SyncOutboxCompanion.insert(
+              accountId: 'drugi',
+              entity: 'recipe',
+              recordId: 'tudji',
+              op: 'upsert',
+              createdAt: t,
+            ),
+          );
+      await db
+          .into(db.syncCursors)
+          .insert(
+            SyncCursorsCompanion.insert(
+              accountId: a.userId,
+              entity: 'recipe',
+              updatedAt: t,
+              lastId: 'moj',
+            ),
+          );
+      await db
+          .into(db.appSettings)
+          .insert(AppSettingsCompanion.insert(key: 'theme', value: 'dark'));
+      await db
+          .into(db.modelStatuses)
+          .insert(
+            ModelStatusesCompanion.insert(provider: 'gemini', model: 'm'),
+          );
+    });
+    tearDown(() => db.close());
+
+    test('posle uspeha na serveru briše sve od naloga na uređaju', () async {
+      await service.deleteAccount(a);
+
+      expect(backend.server.profiles.containsKey(a.userId), isFalse);
+      expect(
+        [for (final r in await db.select(db.recipes).get()) r.id],
+        ['tudji'],
+      );
+      expect(await db.select(db.recipeVersions).get(), isEmpty);
+      expect(await db.select(db.ratings).get(), isEmpty);
+      expect(
+        [for (final e in await db.select(db.syncOutbox).get()) e.accountId],
+        ['drugi'],
+      );
+      expect(await db.select(db.syncCursors).get(), isEmpty);
+      expect(await db.select(db.accounts).get(), isEmpty);
+      expect(photos.saved.keys, ['recipe_photos/tudja.jpg']);
+      expect(await keys.list(), isEmpty);
+      // Tema i pauze modela ostaju.
+      expect(await db.select(db.appSettings).get(), hasLength(1));
+      expect(await db.select(db.modelStatuses).get(), hasLength(1));
+    });
+
+    for (final (failure, name) in [
+      (const DeleteOffline(), 'bez mreže'),
+      (const DeleteServerError(), 'greška servera'),
+    ]) {
+      test('$name: ništa se ne briše', () async {
+        if (failure is DeleteOffline) {
+          backend.server.offline = true;
+        } else {
+          backend.accounts.deleteFails = failure;
+        }
+        await expectLater(
+          service.deleteAccount(a),
+          throwsA(isA<DeleteFailure>()),
+        );
+        expect(await db.select(db.recipes).get(), hasLength(2));
+        expect(await db.select(db.accounts).get(), hasLength(1));
+        expect(await db.select(db.syncOutbox).get(), hasLength(2));
+        expect(photos.saved, hasLength(3));
+        expect(await keys.list(), hasLength(1));
+      });
+    }
   });
 }

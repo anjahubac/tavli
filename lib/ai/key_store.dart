@@ -71,6 +71,9 @@ abstract interface class KeyStore {
   /// Baca [DuplicateKeyException] ako je isti ključ već dodat.
   Future<StoredKey> add(AIProvider provider, String value);
   Future<void> remove(String id);
+
+  /// Briše sve sopstvene ključeve (brisanje naloga, FR-025).
+  Future<void> clear();
 }
 
 /// Greška sistemskog skladišta (Keychain/Keystore). [code] je sistemski kod
@@ -215,6 +218,14 @@ class SecureKeyStore implements KeyStore {
     ]);
   }
 
+  @override
+  Future<void> clear() async {
+    await _storage.delete(_listKey);
+    for (final p in AIProvider.values) {
+      await _storage.delete(_legacyKey(p));
+    }
+  }
+
   Future<void> _save(List<StoredKey> keys) =>
       _storage.write(_listKey, jsonEncode([for (final k in keys) k.toJson()]));
 }
@@ -254,6 +265,9 @@ class InMemoryKeyStore implements KeyStore {
 
   @override
   Future<void> remove(String id) async => _keys.removeWhere((k) => k.id == id);
+
+  @override
+  Future<void> clear() async => _keys.clear();
 }
 
 /// Odakle je ključ: korisnikov (Keychain/Keystore) ili ugrađen u Tavli.

@@ -97,3 +97,35 @@ Future<bool> confirmSignOut(
       ),
     ) ??
     false;
+
+/// "Obrisati nalog?" — crveno dugme, bez kucanja potvrde. true = potvrdio.
+Future<bool> confirmDeleteAccount(BuildContext context) async {
+  final scheme = Theme.of(context).colorScheme;
+  return await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Obrisati nalog?'),
+          content: const Text(
+            'Trajno se brišu tvoj profil, domaćinstvo i svi podaci u njemu '
+            '(recepti, liste, ostava, planovi, ocene, fotografije), na '
+            'serveru i na ovom uređaju, kao i tvoji AI ključevi na ovom '
+            'uređaju. Ovo ne može da se poništi.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Odustani'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.error,
+                foregroundColor: scheme.onError,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Obriši nalog'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+}

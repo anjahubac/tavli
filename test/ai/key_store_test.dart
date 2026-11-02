@@ -115,6 +115,15 @@ void main() {
       expect(storage.reads, ['api_keys']);
     });
 
+    test('clear briše sve sopstvene ključeve, a sesiju ostavlja', () async {
+      await store.add(AIProvider.gemini, 'AIza-one');
+      storage.data['api_key_groq'] = 'gsk_stari';
+      storage.data['auth_session'] = '{"fake":true}';
+      await store.clear();
+      expect(storage.data.keys, ['auth_session']);
+      expect(await store.list(), isEmpty);
+    });
+
     test('pokvaren zapis liste daje praznu listu, ne grešku', () async {
       storage.data['api_keys'] = 'nije json';
       expect(await store.list(), isEmpty);
@@ -128,5 +137,7 @@ void main() {
     expect((await store.list()).map((k) => k.value), ['g', 'g2']);
     await store.remove('gemini');
     expect((await store.list()).single.value, 'g2');
+    await store.clear();
+    expect(await store.list(), isEmpty);
   });
 }

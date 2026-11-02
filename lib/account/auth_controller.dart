@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../ai/key_store.dart';
 import '../domain/account.dart';
 import '../providers.dart';
+import 'account_api.dart';
 import 'account_service.dart';
 import 'auth_gateway.dart';
 import 'session_store.dart';
@@ -210,6 +211,32 @@ class AuthController extends Notifier<AuthState> {
     await store.clear();
     await gateway.signOutLocal();
     _set(const SignedOut());
+  }
+
+  /// "Obriši nalog" (samo uz mrežu). Baca [DeleteFailure]; tada se na
+  /// uređaju ništa ne briše i osoba ostaje prijavljena. Istekao token se
+  /// jednom obnavlja.
+  Future<void> deleteAccount() async {
+    final account = switch (state) {
+      SignedIn(:final account) || NeedsName(:final account) => account,
+      _ => null,
+    };
+    if (account == null) return;
+    final store = _store, gateway = _gateway, service = _service;
+    try {
+      await service.deleteAccount(account);
+    } on DeleteUnauthorized {
+      try {
+        await store.write((await gateway.refresh()).json);
+      } on AuthFailure {
+        await sessionExpired();
+        throw const DeleteUnauthorized();
+      }
+      await service.deleteAccount(account);
+    }
+    await store.clear();
+    await gateway.signOutLocal();
+    _set(const SignedOut(SignOutReason.accountDeleted));
   }
 
   /// Sesija ne može da se obnovi: nazad na prijavu, keš i izmene ostaju.

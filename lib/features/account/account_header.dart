@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../account/account_api.dart';
 import '../../account/auth_controller.dart';
 import '../../domain/account.dart';
 import '../../providers.dart';
 import '../../sync/sync_engine.dart';
 import 'account_dialogs.dart';
+import 'auth_error_text.dart';
 
 /// Tekst stanja čuvanja u nalogu (FR-018).
 String syncStatusText(SyncStatus s) => switch (s) {
@@ -68,6 +70,17 @@ Future<void> _signOut(BuildContext context, WidgetRef ref) async {
   await ref.read(authControllerProvider.notifier).signOut();
 }
 
+Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+  if (!await confirmDeleteAccount(context)) return;
+  if (!context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref.read(authControllerProvider.notifier).deleteAccount();
+  } on DeleteFailure catch (f) {
+    messenger.showSnackBar(SnackBar(content: Text(deleteErrorText(f))));
+  }
+}
+
 /// Vrh "Profila": nalog, domaćinstvo i radnje (FR-026).
 class AccountHeader extends ConsumerWidget {
   const AccountHeader({super.key});
@@ -78,6 +91,7 @@ class AccountHeader extends ConsumerWidget {
     if (auth is! SignedIn) return const SizedBox.shrink();
     final a = auth.account;
     final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
     final name = a.displayName ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -122,6 +136,11 @@ class AccountHeader extends ConsumerWidget {
           leading: const Icon(Icons.logout),
           title: const Text('Odjavi se'),
           onTap: () => _signOut(context, ref),
+        ),
+        ListTile(
+          leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
+          title: Text('Obriši nalog', style: TextStyle(color: scheme.error)),
+          onTap: () => _deleteAccount(context, ref),
         ),
       ],
     );

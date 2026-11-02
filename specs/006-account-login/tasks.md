@@ -119,12 +119,12 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 **Goal**: everything of the account is deleted on the server and the device.
 **Independent test**: account with recipe + photo → delete → nothing left on server/device, same email → new empty account.
 
-- [ ] T060 [P] [US7] Test: `public.delete_account_data(A)` as `service_role` removes A's solo household with all data, memberships, ratings, taste profile, tombstones and profile; B untouched; second call no-op; `anon`/`authenticated` cannot execute it, in `supabase/tests/06_delete_account_test.sql`
-- [ ] T061 [US7] Migration `supabase/migrations/20261030120700_delete_account.sql`; `supabase test db` green
-- [ ] T062 [US7] Edge Function `supabase/functions/delete-account/index.ts` per contracts/delete-account-function.md (JWT check, remove photos via Storage API, RPC, `auth.admin.deleteUser`; idempotent; no logging of tokens/emails)
-- [ ] T063 [P] [US7] Test: `AccountService.deleteAccount` — 200 → deletes the account's rows, outbox, cursors, `Accounts` row, its photo files and own AI keys (`KeyStore.clear`), keeps theme, model cooldowns and another account's cache; offline → `DeleteFailure.offline`, nothing deleted; 5xx → `DeleteFailure.server`, nothing deleted, in `test/account/account_service_test.dart`; `KeyStore.clear` test in `test/ai/key_store_test.dart`
-- [ ] T064 [US7] Implement `SupabaseAccountApi.deleteAccount` (`functions.invoke('delete-account')`), local wipe in `lib/account/account_service.dart`, `KeyStore.clear()` in `lib/ai/key_store.dart`, `deleteAccount` in `lib/account/auth_controller.dart`
-- [ ] T065 [US7] Widget test + implementation: "Obriši nalog" → dialog "Obrisati nalog?" with the spec text, red "Obriši nalog" and "Odustani"; success → "Prijava" with "Nalog je obrisan."; offline/server failure messages keep the person signed in, in `test/features/account/delete_account_test.dart` and `lib/features/account/account_dialogs.dart`
+- [x] T060 [P] [US7] Test: `public.delete_account_data(A)` as `service_role` removes A's solo household with all data, memberships, ratings, taste profile, tombstones and profile; B untouched; second call no-op; `anon`/`authenticated` cannot execute it, in `supabase/tests/06_delete_account_test.sql`
+- [x] T061 [US7] Migration `supabase/migrations/20261030120700_delete_account.sql`; `supabase test db` green
+- [x] T062 [US7] Edge Function `supabase/functions/delete-account/index.ts` per contracts/delete-account-function.md (JWT check, remove photos via Storage API, RPC, `auth.admin.deleteUser`; idempotent; no logging of tokens/emails)
+- [x] T063 [P] [US7] Test: `AccountService.deleteAccount` — 200 → deletes the account's rows, outbox, cursors, `Accounts` row, its photo files and own AI keys (`KeyStore.clear`), keeps theme, model cooldowns and another account's cache; offline → `DeleteFailure.offline`, nothing deleted; 5xx → `DeleteFailure.server`, nothing deleted, in `test/account/account_service_test.dart`; `KeyStore.clear` test in `test/ai/key_store_test.dart`
+- [x] T064 [US7] Implement `SupabaseAccountApi.deleteAccount` (`functions.invoke('delete-account')`), local wipe in `lib/account/account_service.dart`, `KeyStore.clear()` in `lib/ai/key_store.dart`, `deleteAccount` in `lib/account/auth_controller.dart`
+- [x] T065 [US7] Widget test + implementation: "Obriši nalog" → dialog "Obrisati nalog?" with the spec text, red "Obriši nalog" and "Odustani"; success → "Prijava" with "Nalog je obrisan."; offline/server failure messages keep the person signed in, in `test/features/account/delete_account_test.dart` and `lib/features/account/account_dialogs.dart`
 
 ## Phase 10: User Story 8 — session stays valid and is protected (P2)
 

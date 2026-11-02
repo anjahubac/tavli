@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
+import '../ai/key_store.dart';
 import '../data/database.dart';
+import '../data/recipe_photo_store.dart';
 import '../domain/account.dart';
 import '../sync/entities.dart';
 import '../sync/synced_writer.dart';
@@ -13,12 +17,16 @@ class AccountService {
   AccountService(
     this._db,
     this._api, {
+    this._photos,
+    this._keys,
     DateTime Function()? clock,
     this._onChange,
   }) : _clock = clock ?? DateTime.now;
 
   final AppDatabase _db;
   final AccountApi _api;
+  final RecipePhotoStore? _photos;
+  final KeyStore? _keys;
   final DateTime Function() _clock;
   final void Function()? _onChange;
 
@@ -69,6 +77,90 @@ class AccountService {
       ).upsert(profileEntity, account.userId);
     });
     return account.copyWith(displayName: n);
+  }
+
+  /// "Obriši nalog": prvo server (Edge Function), pa tek posle uspeha sve
+  /// na uređaju: keš naloga, izmene koje čekaju, slike i sopstveni AI
+  /// ključevi. Tema i pauze modela ostaju. Baca [DeleteFailure]; tada se na
+  /// uređaju ne briše ništa (FR-024).
+  Future<void> deleteAccount(Account account) async {
+    await _api.deleteAccount();
+    await wipeLocal(account.userId);
+    await _keys?.clear();
+  }
+
+  /// Briše sa uređaja sve što pripada nalogu (i kad je nalog obrisan na
+  /// drugom uređaju). Podaci drugih naloga ostaju.
+  Future<void> wipeLocal(String userId) async {
+    final account = await (_db.select(
+      _db.accounts,
+    )..where((t) => t.userId.equals(userId))).getSingleOrNull();
+    final hid = account?.householdId;
+    final photos = <String>{};
+    await _db.transaction(() async {
+      if (hid != null) {
+        for (final r in await (_db.select(
+          _db.recipes,
+        )..where((t) => t.householdId.equals(hid))).get()) {
+          if (r.imagePath case final p?) photos.add(p);
+        }
+        for (final v in await (_db.select(
+          _db.recipeVersions,
+        )..where((t) => t.householdId.equals(hid))).get()) {
+          if (_imagePath(v.recipeJson) case final p?) photos.add(p);
+        }
+        await (_db.delete(
+          _db.recipeVersions,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.recipes,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.shoppingItems,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.shoppingLists,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.pantryItems,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.mealPlanEntries,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.mealPlans,
+        )..where((t) => t.householdId.equals(hid))).go();
+      }
+      await (_db.delete(
+        _db.ratings,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
+        _db.userProfiles,
+      )..where((t) => t.id.equals(userId))).go();
+      await (_db.delete(
+        _db.syncOutbox,
+      )..where((t) => t.accountId.equals(userId))).go();
+      await (_db.delete(
+        _db.syncCursors,
+      )..where((t) => t.accountId.equals(userId))).go();
+      await (_db.delete(
+        _db.accounts,
+      )..where((t) => t.userId.equals(userId))).go();
+    });
+    for (final p in photos) {
+      await _photos?.delete(p);
+    }
+  }
+
+  static String? _imagePath(String recipeJson) {
+    try {
+      final json = jsonDecode(recipeJson);
+      return json is Map && json['imagePath'] is String
+          ? json['imagePath'] as String
+          : null;
+    } on FormatException {
+      return null;
+    }
   }
 
   static Account _fromRow(AccountRow r) => Account(
