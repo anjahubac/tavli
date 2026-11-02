@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'plan_calendar.dart';
 import 'recipe.dart';
 import 'shopping_demand.dart';
 
@@ -83,3 +86,64 @@ int mealOrder(String mealType) => switch (mealType) {
   'dinner' => 2,
   _ => 3,
 };
+
+/// Obrok ili priprema za koju je stavka nabavke: prikazuje se uz stavku, a
+/// pri kupovini se zamrzava u poreklu kupovine.
+class ItemSource {
+  const ItemSource({
+    required this.title,
+    this.kind,
+    this.servings,
+    this.date,
+    this.mealType,
+  });
+
+  /// Čita oblik iz [toJson]; raniji zapis je samo naziv.
+  factory ItemSource.fromJson(Object? json) {
+    if (json is String) return ItemSource(title: json);
+    if (json is! Map<String, dynamic>) {
+      throw const FormatException('Pokvareno poreklo kupovine');
+    }
+    final date = json['date'];
+    return ItemSource(
+      title: (json['title'] as String?) ?? '',
+      kind: ShoppingSourceKind.values.asNameMap()[json['kind']],
+      servings: json['servings'] as int?,
+      date: date is String ? CivilDate.parse(date) : null,
+      mealType: json['mealType'] as String?,
+    );
+  }
+
+  final String title;
+  final ShoppingSourceKind? kind;
+  final int? servings;
+
+  /// Samo planirani obrok: dan i vrsta obroka (`MealType.name`).
+  final CivilDate? date;
+  final String? mealType;
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'kind': kind?.name,
+    'servings': servings,
+    'date': date?.toString(),
+    'mealType': mealType,
+  };
+}
+
+/// Poreklo kupovine (`purchaseProvenanceJson`): izvori u trenutku kupovine.
+List<ItemSource> provenanceSources(String? json) {
+  if (json == null) return const [];
+  try {
+    final decoded = jsonDecode(json);
+    final sources = decoded is Map<String, dynamic> ? decoded['sources'] : null;
+    if (sources is! List) return const [];
+    return [for (final s in sources) ItemSource.fromJson(s)];
+  } on FormatException {
+    return const [];
+  }
+}
+
+String provenanceJson(List<ItemSource> sources) => jsonEncode({
+  'sources': [for (final s in sources) s.toJson()],
+});
