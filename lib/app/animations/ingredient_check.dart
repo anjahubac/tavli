@@ -5,6 +5,7 @@ import 'dart:ui' show PathMetric;
 import 'package:flutter/material.dart';
 
 import '../theme/tavli_colors.dart';
+import '../theme/tavli_status_colors.dart';
 import 'motion.dart';
 
 /// Polje za štikliranje sastojka: kvačica se iscrtava.
@@ -16,21 +17,19 @@ class AnimatedCheckmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final boxLine = TavliColors.of(context).boxLine;
     return TweenAnimationBuilder<double>(
+      key: ValueKey(reduceMotion(context)),
       tween: Tween(end: checked ? 1 : 0),
-      duration: reduceMotion(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 320),
+      duration: TavliMotion.duration(context, TavliMotion.feedback),
       curve: Curves.easeOut,
       builder: (context, t, _) => SizedBox.square(
         dimension: size,
         child: CustomPaint(
           painter: CheckPainter(
             t,
-            fill: colors.primary,
-            mark: colors.onPrimary,
+            fill: TavliStatusColors.of(context).success.foreground,
+            mark: TavliStatusColors.of(context).success.background,
             border: boxLine,
           ),
         ),
@@ -92,7 +91,11 @@ class CheckPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CheckPainter old) => old.t != t || old.fill != fill;
+  bool shouldRepaint(CheckPainter old) =>
+      old.t != t ||
+      old.fill != fill ||
+      old.mark != mark ||
+      old.border != border;
 }
 
 /// Bedž sa brojem koji "poskoči" kad se broj poveća.
@@ -110,8 +113,17 @@ class _BumpBadgeState extends State<BumpBadge>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 420),
+    duration: TavliMotion.transition,
   );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotion(context)) {
+      _c.stop();
+      _c.value = 0;
+    }
+  }
 
   @override
   void didUpdateWidget(BumpBadge old) {
@@ -133,11 +145,11 @@ class _BumpBadgeState extends State<BumpBadge>
     builder: (context, child) => Badge(
       isLabelVisible: widget.count > 0,
       label: Transform.scale(
-        scale: 1 + 0.45 * math.sin(math.pi * _c.value),
+        scale: 1 + 0.08 * math.sin(math.pi * _c.value),
         child: Text('${widget.count}'),
       ),
       child: Transform.scale(
-        scale: 1 + 0.12 * math.sin(math.pi * _c.value),
+        scale: 1 + 0.05 * math.sin(math.pi * _c.value),
         child: child,
       ),
     ),
@@ -204,13 +216,30 @@ class _FlyingChipState extends State<_FlyingChip>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 700),
+    duration: TavliMotion.transition,
   );
+
+  bool _finished = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_c.forward().whenComplete(widget.onDone));
+    unawaited(_c.forward().whenComplete(_finish));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotion(context)) {
+      _c.stop();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _finish());
+    }
+  }
+
+  void _finish() {
+    if (!mounted || _finished) return;
+    _finished = true;
+    widget.onDone();
   }
 
   @override

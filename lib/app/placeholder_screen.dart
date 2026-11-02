@@ -30,6 +30,7 @@ class EmptyStateScreen extends StatelessWidget {
   final Widget art;
   final String title;
   final String? body;
+  final Widget? action;
 
   /// Glavna sledeća akcija (npr. "Napravi plan").
   final Widget? action;

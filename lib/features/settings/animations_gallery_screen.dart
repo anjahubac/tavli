@@ -8,11 +8,13 @@ import '../../app/animations/egg_timer.dart';
 import '../../app/animations/empty_fridge.dart';
 import '../../app/animations/ingredient_check.dart';
 import '../../app/animations/intro_motif.dart';
+import '../../app/animations/motion.dart';
 import '../../app/animations/photo_scan.dart';
 import '../../app/animations/plate_drop.dart';
 import '../../app/animations/shopping_bag.dart';
 import '../../app/animations/simmering_pot.dart';
 import '../../app/animations/spoon_refresh.dart';
+import '../../app/theme/tavli_status_colors.dart';
 import '../../data/database.dart';
 import '../../data/shopping_repository.dart';
 import '../../domain/recipe.dart';
@@ -90,20 +92,34 @@ class _DemoCardState extends State<_DemoCard> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                TextButton.icon(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final title = Text(
+                  widget.title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                );
+                final replay = TextButton.icon(
                   onPressed: () => setState(() => _run++),
                   icon: const Icon(Icons.replay),
                   label: const Text('Ponovi'),
-                ),
-              ],
+                );
+                if (constraints.maxWidth < 360 &&
+                    MediaQuery.textScalerOf(context).scale(16) > 20) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      title,
+                      Align(alignment: Alignment.centerRight, child: replay),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: title),
+                    replay,
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 12),
             KeyedSubtree(key: ValueKey(_run), child: widget.child),
@@ -183,11 +199,12 @@ class _CheckDemoState extends State<_CheckDemo> {
     scope: const AccountScope(userId: 'demo', householdId: 'demo'),
     writer: SyncedWriter(_db, accountId: 'demo'),
   );
-  final _keys = [for (final _ in _items) GlobalKey()];
-  final _to = GlobalKey();
   final _have = <int>{1};
   int _inCart = 0;
   int _toAdd = 2;
+  bool _saving = false;
+  String? _feedback;
+  bool _failed = false;
 
   List<Ingredient> get _missing => [
     for (final (i, item) in _items.indexed)
@@ -210,6 +227,7 @@ class _CheckDemoState extends State<_CheckDemo> {
       missing: _missing,
       have: _haveItems,
     );
+    if (!mounted) return;
     final count = await _repo.openCount();
     if (!mounted) return;
     setState(() {
@@ -219,31 +237,66 @@ class _CheckDemoState extends State<_CheckDemo> {
   }
 
   Future<void> _toggle(int i) async {
+    if (_saving) return;
     final nowHave = !_have.contains(i);
-    setState(() => nowHave ? _have.add(i) : _have.remove(i));
-    // Tiho: stavka izlazi iz kupovine, bedž se smanji bez skoka.
-    if (nowHave) await _repo.markHave(_recipeId, _items[i]);
-    await _refresh();
+    setState(() {
+      _saving = true;
+      _feedback = null;
+      _failed = false;
+      if (nowHave) {
+        _have.add(i);
+      } else {
+        _have.remove(i);
+      }
+    });
+    try {
+      if (nowHave) await _repo.markHave(_recipeId, _items[i]);
+      if (!mounted) return;
+      await _refresh();
+    } on Exception {
+      if (!mounted) return;
+      setState(() {
+        if (nowHave) {
+          _have.remove(i);
+        } else {
+          _have.add(i);
+        }
+        _failed = true;
+        _feedback = 'Izmena nije uspela. Pokušaj ponovo.';
+      });
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _send() async {
-    final plan = await _repo.plan(
-      _recipeId,
-      missing: _missing,
-      have: _haveItems,
-    );
-    if (!mounted) return;
-    await Future.wait([
-      for (final item in plan.toAdd)
-        flyChipToTarget(
-          context: context,
-          from: _keys[_items.indexOf(item)],
-          to: _to,
-          label: item.name,
-        ),
-    ]);
-    await _repo.addMissing(_recipeId, missing: _missing, have: _haveItems);
-    await _refresh();
+    if (_saving || _toAdd == 0) return;
+    setState(() {
+      _saving = true;
+      _feedback = null;
+      _failed = false;
+    });
+    try {
+      final plan = await _repo.plan(
+        _recipeId,
+        missing: _missing,
+        have: _haveItems,
+      );
+      if (!mounted) return;
+      await _repo.addMissing(_recipeId, missing: _missing, have: _haveItems);
+      if (!mounted) return;
+      await _refresh();
+      if (!mounted) return;
+      setState(() => _feedback = 'Dodato u nabavku: ${plan.toAdd.length}');
+    } on Exception {
+      if (!mounted) return;
+      setState(() {
+        _failed = true;
+        _feedback = 'Dodavanje nije uspelo. Pokušaj ponovo.';
+      });
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -262,49 +315,68 @@ class _CheckDemoState extends State<_CheckDemo> {
               ?.copyWith(color: colors.onSurfaceVariant),
         ),
         for (final (i, item) in _items.indexed)
-          ListTile(
-            onTap: () => _toggle(i),
-            leading: AnimatedCheckmark(
-              key: _keys[i],
-              checked: _have.contains(i),
-            ),
-            // Ono što imamo je utišano i ne ide u kupovinu.
-            title: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 250),
-              style: DefaultTextStyle.of(context).style.copyWith(
-                color: _have.contains(i)
-                    ? colors.onSurfaceVariant
-                    : colors.onSurface,
-              ),
-              child: Text(item.name),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_have.contains(i)) ...[
-                  const _HaveTag(),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  [
-                    if (item.quantity case final q?) formatQuantity(q),
-                    ?item.unit,
-                  ].join(' '),
+          Semantics(
+            checked: _have.contains(i),
+            child: ListTile(
+              enabled: !_saving,
+              onTap: _saving ? null : () => _toggle(i),
+              leading: AnimatedCheckmark(checked: _have.contains(i)),
+              // Ono što imamo je utišano i ne ide u kupovinu.
+              title: AnimatedDefaultTextStyle(
+                key: ValueKey(reduceMotion(context)),
+                duration: TavliMotion.duration(context, TavliMotion.feedback),
+                style: DefaultTextStyle.of(context).style.copyWith(
+                  color: _have.contains(i)
+                      ? colors.onSurfaceVariant
+                      : colors.onSurface,
                 ),
-              ],
+                child: Text(item.name),
+              ),
+              subtitle: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (_have.contains(i)) const _HaveTag(),
+                  Text(
+                    [
+                      if (item.quantity case final q?) formatQuantity(q),
+                      ?item.unit,
+                    ].join(' '),
+                  ),
+                ],
+              ),
             ),
           ),
         const SizedBox(height: 8),
         FilledButton.icon(
-          onPressed: _toAdd == 0 || _missing.isEmpty ? null : _send,
+          onPressed: _saving || _toAdd == 0 || _missing.isEmpty ? null : _send,
           icon: const Icon(Icons.shopping_basket_outlined),
-          label: Text(label),
+          label: Text(_saving ? 'Čuvanje…' : label),
         ),
+        if (_feedback case final feedback?) ...[
+          const SizedBox(height: 12),
+          Semantics(
+            liveRegion: true,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _failed ? Icons.error_outline : Icons.check_circle_outline,
+                  color: _failed
+                      ? colors.error
+                      : TavliStatusColors.of(context).success.foreground,
+                ),
+                const SizedBox(width: 8),
+                Flexible(child: Text(feedback)),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         Column(
           children: [
             BumpBadge(
-              key: _to,
               count: _inCart,
               child: Icon(
                 Icons.shopping_basket,
@@ -326,10 +398,10 @@ class _HaveTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final success = TavliStatusColors.of(context).success;
     return DecoratedBox(
       decoration: ShapeDecoration(
-        color: colors.primaryContainer,
+        color: success.background,
         shape: const StadiumBorder(),
       ),
       child: Padding(
@@ -337,7 +409,7 @@ class _HaveTag extends StatelessWidget {
         child: Text(
           'imam',
           style: Theme.of(context).textTheme.labelSmall
-              ?.copyWith(color: colors.onPrimaryContainer),
+              ?.copyWith(color: success.foreground),
         ),
       ),
     );

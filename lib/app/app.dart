@@ -20,7 +20,7 @@ class TavliApp extends ConsumerStatefulWidget {
     this.intro = true,
   });
 
-  /// Testovi isključuju uvodni ekran.
+  /// Testovi mogu isključiti motiv tokom stvarnog učitavanja sesije.
   final bool intro;
 
   /// Prva adresa (testovi, duboki link).
@@ -94,20 +94,22 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     if (starting) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
+        themeAnimationStyle: AnimationStyle.noAnimation,
         theme: theme,
         darkTheme: darkTheme,
         themeMode: mode,
-        home: const Scaffold(body: SizedBox.expand()),
+        home: Scaffold(
+          body: widget.intro ? const IntroScreen() : const SizedBox.expand(),
+        ),
       );
     }
     return MaterialApp.router(
       title: 'Tavli',
+      themeAnimationStyle: AnimationStyle.noAnimation,
       debugShowCheckedModeBanner: false,
       theme: theme,
       darkTheme: darkTheme,
       themeMode: mode,
-      builder: (context, child) =>
-          IntroOverlay(enabled: widget.intro, child: child ?? const SizedBox()),
       routerConfig: _router,
       scaffoldMessengerKey: _messenger,
     );

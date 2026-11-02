@@ -7,6 +7,16 @@ import 'package:flutter/material.dart';
 bool reduceMotion(BuildContext context) =>
     MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
+/// Kratke potvrde i prelazi; sadržaj nikad ne čeka dekorativnu animaciju.
+abstract final class TavliMotion {
+  static const feedback = Duration(milliseconds: 180);
+  static const transition = Duration(milliseconds: 240);
+  static const reveal = Duration(milliseconds: 360);
+
+  static Duration duration(BuildContext context, Duration value) =>
+      reduceMotion(context) ? Duration.zero : value;
+}
+
 /// Pokreće [builder] sa `t` od 0 do 1: u petlji ([repeat]) ili jednom.
 /// Kad se traži smanjeno kretanje, kontroler ne radi i crta se samo
 /// [restValue] — mirna, završna slika animacije.
@@ -109,9 +119,11 @@ class MotionCanvas extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     label: label,
     image: true,
-    child: SizedBox.square(
-      dimension: size,
-      child: CustomPaint(painter: _Scaled(painter, size / design)),
+    child: RepaintBoundary(
+      child: SizedBox.square(
+        dimension: size,
+        child: CustomPaint(painter: _Scaled(painter, size / design)),
+      ),
     ),
   );
 }

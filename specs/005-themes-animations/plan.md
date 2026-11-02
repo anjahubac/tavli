@@ -121,3 +121,29 @@ Integrate current main without replacing auth lifecycle or sync. Refine the exis
 ### Native startup regression
 
 A local cache with the v4 structure but user_version 3 can result from opening it with an older app. Reopening must preserve UUIDs, ownership, profile ids and pending outbox references; reapplying the upgrade must not recreate an existing index. Detect already-migrated columns and wrap the upgrade in a transaction. No schema change, no dependency, no user data reset. Cover with a real temporary SQLite file and rerun all checks/build.
+
+
+## UX refinement — 2026-11-02
+
+Reuse the current branch and dependency set. Centralise short motion durations;
+show IntroScreen only during real auth startup; remove refresh delay. Commit
+shopping demo changes immediately, serialize interactions, then show an accessible
+batch confirmation. Add a separate semantic status ThemeExtension and apply it
+to ingredient/success feedback. Simplify nested preview borders, clarify empty
+states and screen-on icon. Preserve data/schema/auth/sync contracts. Reduced
+motion must stop active feedback; TickerMode pauses message timers. Add targeted
+widget regressions, six-theme status contrast checks, phone/wide/2× visual QA,
+then scripts/check.sh and macOS debug build. No new dependencies.
+
+Constitution I–IX: Serbian copy above; no new user-data writes or schema changes;
+AI routing untouched; no secrets; key flows covered by widgets; responsive checks;
+scoped change on existing 005 branch; existing lints and checks retained.
+
+
+### PR follow-up after #12
+
+The original 005 PR was squash-merged. Publish the UX-only follow-up on
+`fix/005-ux-refinements`, created from current `origin/main` (`16cd918`), with
+only the UX patch reapplied. Preserve the original branch and avoid rewriting
+history. Revalidated against the integrated spec 010 data layer: clean analysis,
+471 passing tests and a successful macOS debug build; no schema changes.

@@ -203,6 +203,8 @@ Future<TestApp> pumpTavli(
   List<(int, String, Map<String, List<String>>)> ai = const [],
   bool canUseCamera = true,
   bool signedIn = true,
+  bool intro = false,
+  bool settle = true,
   String? name = 'Ana Petrović',
   FakeBackend? backend,
   List<Override> overrides = const [],
@@ -258,10 +260,10 @@ Future<TestApp> pumpTavli(
         ...overrides,
         screenWakeLockProvider.overrideWithValue(app.wakeLock),
       ],
-      child: TavliApp(initialLocation: location, intro: false),
+      child: TavliApp(initialLocation: location, intro: intro),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) await tester.pumpAndSettle();
   _current = app;
   return app;
 }
