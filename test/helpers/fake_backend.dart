@@ -1,0 +1,451 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:tavli/account/account_api.dart';
+import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli/sync/sync_remote.dart';
+
+/// Server u memoriji: nalozi sa domaćinstvom, tabele sa upsert-om po id-ju,
+/// tragovi brisanja (brisanje pobeđuje), redosled po (updated_at, id),
+/// slike i ubačene greške. Bez RLS-a: vidi se samo ono što pripada
+/// trenutno prijavljenom nalogu ([FakeAuth.current]).
+class FakeServer {
+  /// Kod koji "stiže" e-poštom.
+  static const code = '123456';
+
+  final users = <String, String>{}; // email → userId
+  final profiles = <String, Map<String, Object?>>{}; // userId → profil
+  final households = <String, String>{}; // userId → householdId
+  final tables = <String, Map<String, Map<String, Object?>>>{};
+  final photos = <String, Uint8List>{};
+  final revoked = <String>{}; // userId-jevi kojima je sesija opozvana
+
+  bool offline = false;
+
+  /// Sledeći poziv(i) baca(ju) ovu grešku.
+  final failures = <SyncError>[];
+
+  /// Posle toliko upisanih redova sledeći upsert pukne (prekinuto slanje).
+  int? interruptAfterRows;
+
+  /// Odbija upsert reda sa ovim id-jem (trajna greška, npr. 23514).
+  final rejectIds = <String>{};
+
+  /// Slanje slika baca grešku.
+  bool photoUploadFails = false;
+
+  /// Broj poziva po vrsti, za proveru grupisanja.
+  final calls = <String>[];
+
+  var _tick = 0;
+  var _n = 0;
+
+  /// Vreme na serveru raste sa svakim upisom (mikrosekunde).
+  String _now() => DateTime.utc(
+    2026,
+    11,
+  ).add(Duration(microseconds: ++_tick)).toIso8601String();
+
+  Map<String, Map<String, Object?>> table(String name) =>
+      tables.putIfAbsent(name, () => {});
+
+  /// Redovi tabele sa servera (bez meta kolona) — za provere u testovima.
+  List<Map<String, Object?>> rows(String name) => [...table(name).values];
+
+  String userFor(String email) => users.putIfAbsent(email, () {
+    final uid = 'user-${++_n}';
+    final hid = 'home-$_n';
+    households[uid] = hid;
+    profiles[uid] = {
+      'id': uid,
+      'email': email,
+      'display_name': null,
+      'updated_at': _now(),
+    };
+    return uid;
+  });
+
+  void _check() {
+    if (offline) throw const TransientSyncError('offline');
+    if (failures.isNotEmpty) throw failures.removeAt(0);
+  }
+
+  static const _entityOf = {
+    'recipes': 'recipe',
+    'recipe_versions': 'recipe_version',
+    'shopping_lists': 'shopping_list',
+    'shopping_items': 'shopping_item',
+    'pantry_items': 'pantry_item',
+    'meal_plans': 'meal_plan',
+    'meal_plan_entries': 'meal_plan_entry',
+    'ratings': 'rating',
+    'taste_profiles': 'taste_profile',
+  };
+
+  static const _parentOf = {
+    'recipe_versions': ('recipe', 'recipe_id'),
+    'shopping_items': ('shopping_list', 'list_id'),
+    'meal_plan_entries': ('meal_plan', 'plan_id'),
+    'ratings': ('recipe', 'recipe_id'),
+  };
+
+  bool _deleted(String entity, Object? id) =>
+      id != null && table('deletions').containsKey('$entity/$id');
+
+  void upsert(String name, List<Map<String, Object?>> rows, String key) {
+    _check();
+    calls.add('upsert:$name:${rows.length}');
+    for (final r in rows) {
+      if (interruptAfterRows case final n?) {
+        if (n <= 0) {
+          interruptAfterRows = null;
+          throw const TransientSyncError('interrupted');
+        }
+        interruptAfterRows = n - 1;
+      }
+      final id = r[key]! as String;
+      if (rejectIds.contains(id)) throw const PermanentSyncError('23514');
+      final entity = _entityOf[name]!;
+      if (_deleted(entity, id)) continue;
+      if (_parentOf[name] case (final pe, final pc)) {
+        if (_deleted(pe, r[pc])) continue;
+      }
+      table(name)[id] = {...?table(name)[id], ...r, 'updated_at': _now()};
+    }
+  }
+
+  void delete(String name, List<String> ids, String key) {
+    _check();
+    calls.add('delete:$name:${ids.length}');
+    for (final id in ids) {
+      _deleteRow(name, id, key);
+    }
+  }
+
+  void _deleteRow(String name, String id, String key) {
+    final row = table(name).remove(id);
+    if (row == null) return;
+    final entity = _entityOf[name]!;
+    table('deletions')['$entity/$id'] = {
+      'id': '$entity/$id',
+      'entity': entity,
+      'record_id': id,
+      'household_id': row['household_id'],
+      'user_id': row.containsKey('household_id') ? null : row['user_id'],
+      'deleted_at': _now(),
+    };
+    // Kaskade kao na serveru.
+    void cascade(String child, String column) {
+      for (final c in [...table(child).values]) {
+        if (c[column] == id) _deleteRow(child, c['id']! as String, 'id');
+      }
+    }
+
+    void setNull(String child, String column) {
+      for (final c in table(child).values) {
+        if (c[column] == id) {
+          c[column] = null;
+          c['updated_at'] = _now();
+        }
+      }
+    }
+
+    switch (name) {
+      case 'recipes':
+        cascade('recipe_versions', 'recipe_id');
+        cascade('ratings', 'recipe_id');
+        setNull('meal_plan_entries', 'recipe_id');
+      case 'shopping_lists':
+        cascade('shopping_items', 'list_id');
+      case 'meal_plans':
+        cascade('meal_plan_entries', 'plan_id');
+        setNull('shopping_lists', 'meal_plan_id');
+    }
+  }
+
+  bool _visible(Map<String, Object?> row, String userId) {
+    if (row['household_id'] case final h?) return households[userId] == h;
+    if (row['user_id'] case final u?) return u == userId;
+    return row['id'] == userId; // profiles
+  }
+
+  List<Map<String, Object?>> fetchSince(
+    String name,
+    String userId, {
+    required int limit,
+    String? since,
+    String? afterId,
+    required String timeColumn,
+    required String idColumn,
+  }) {
+    _check();
+    calls.add('fetch:$name');
+    final source = name == 'profiles' ? profiles.values : table(name).values;
+    final sorted =
+        [
+          for (final r in source)
+            if (_visible(r, userId)) Map<String, Object?>.of(r),
+        ]..sort((a, b) {
+          final t = (a[timeColumn]! as String).compareTo(
+            b[timeColumn]! as String,
+          );
+          return t != 0
+              ? t
+              : (a[idColumn]! as String).compareTo(b[idColumn]! as String);
+        });
+    final out = <Map<String, Object?>>[];
+    for (final r in sorted) {
+      if (since != null) {
+        final t = r[timeColumn]! as String;
+        final c = t.compareTo(since);
+        if (c < 0) continue;
+        if (c == 0 && (r[idColumn]! as String).compareTo(afterId ?? '') <= 0) {
+          continue;
+        }
+      }
+      out.add(r);
+      if (out.length == limit) break;
+    }
+    // Kao JSON preko mreže.
+    return [
+      for (final r in out) jsonDecode(jsonEncode(r)) as Map<String, Object?>,
+    ];
+  }
+
+  /// Briše sve što pripada nalogu (kao Edge Function delete-account).
+  void deleteAccount(String userId) {
+    final hid = households.remove(userId);
+    for (final t in tables.values) {
+      t.removeWhere(
+        (_, r) =>
+            (hid != null && r['household_id'] == hid) || r['user_id'] == userId,
+      );
+    }
+    photos.removeWhere((k, _) => hid != null && k.startsWith('$hid/'));
+    profiles.remove(userId);
+    users.removeWhere((_, u) => u == userId);
+  }
+}
+
+/// Lažni Supabase Auth nad [FakeServer].
+class FakeAuth implements AuthGateway {
+  FakeAuth(this.server);
+
+  final FakeServer server;
+  final _changes = StreamController<AuthSession?>.broadcast();
+
+  AuthSession? current;
+  final sentCodes = <String>[];
+
+  /// Sledeći poziv baca ovu grešku.
+  AuthFailure? failNext;
+
+  /// Koliko puta je sesija obnovljena.
+  int refreshes = 0;
+
+  AuthSession sessionFor(String email) {
+    final uid = server.userFor(email);
+    return AuthSession(
+      userId: uid,
+      email: email,
+      json: jsonEncode({
+        'user': {'id': uid, 'email': email},
+        'refresh_token': 'fake-refresh-${server._n}',
+      }),
+    );
+  }
+
+  void _check() {
+    if (failNext case final f?) {
+      failNext = null;
+      throw f;
+    }
+    if (server.offline) throw const Offline();
+  }
+
+  @override
+  Future<void> sendCode(String email) async {
+    _check();
+    sentCodes.add(email);
+  }
+
+  @override
+  Future<AuthSession> verifyCode(String email, String code) async {
+    _check();
+    if (code != FakeServer.code) throw const WrongCode();
+    return current = sessionFor(email);
+  }
+
+  AuthSession _restoreFrom(String json) {
+    final user =
+        (jsonDecode(json) as Map<String, Object?>)['user']!
+            as Map<String, Object?>;
+    final uid = user['id']! as String;
+    if (!server.profiles.containsKey(uid)) throw const AccountGone();
+    if (server.revoked.contains(uid)) throw const SessionRevoked();
+    return current = AuthSession(
+      userId: uid,
+      email: user['email']! as String,
+      json: json,
+    );
+  }
+
+  @override
+  Future<AuthSession> restore(String sessionJson) async {
+    _check();
+    return _restoreFrom(sessionJson);
+  }
+
+  @override
+  Future<AuthSession> refresh() async {
+    _check();
+    final c = current;
+    if (c == null) throw const SessionRevoked();
+    refreshes++;
+    final s = _restoreFrom(c.json);
+    _changes.add(s);
+    return s;
+  }
+
+  @override
+  Stream<AuthSession?> get sessionChanges => _changes.stream;
+
+  @override
+  Future<void> signOutLocal() async => current = null;
+
+  Future<void> close() => _changes.close();
+}
+
+class FakeAccountApi implements AccountApi {
+  FakeAccountApi(this.server, this.auth);
+
+  final FakeServer server;
+  final FakeAuth auth;
+
+  /// Brisanje naloga baca ovu grešku.
+  DeleteFailure? deleteFails;
+
+  @override
+  Future<RemoteAccount> fetch() async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    final p = server.profiles[uid]!;
+    return RemoteAccount(
+      userId: uid,
+      email: p['email']! as String,
+      displayName: p['display_name'] as String?,
+      householdId: server.households[uid]!,
+      householdName: 'Moje domaćinstvo',
+      role: 'owner',
+    );
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    if (server.offline) throw const DeleteOffline();
+    if (deleteFails case final f?) throw f;
+    server.deleteAccount(auth.current!.userId);
+  }
+}
+
+class FakeSyncRemote implements SyncRemote {
+  FakeSyncRemote(this.server, this.auth);
+
+  final FakeServer server;
+  final FakeAuth auth;
+
+  String get _uid => auth.current?.userId ?? '';
+
+  @override
+  Future<void> upsert(
+    String table,
+    List<Map<String, Object?>> rows, {
+    String onConflict = 'id',
+  }) async => server.upsert(table, [
+    for (final r in rows) jsonDecode(jsonEncode(r)) as Map<String, Object?>,
+  ], onConflict);
+
+  @override
+  Future<void> delete(
+    String table,
+    List<String> ids, {
+    String idColumn = 'id',
+  }) async => server.delete(table, ids, idColumn);
+
+  @override
+  Future<void> updateProfileName(String userId, String name) async {
+    server._check();
+    server.calls.add('profile');
+    server.profiles[userId]!
+      ..['display_name'] = name
+      ..['updated_at'] = server._now();
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> fetchSince(
+    String table, {
+    required int limit,
+    String? since,
+    String? afterId,
+    String timeColumn = 'updated_at',
+    String idColumn = 'id',
+  }) async => server.fetchSince(
+    table,
+    _uid,
+    limit: limit,
+    since: since,
+    afterId: afterId,
+    timeColumn: timeColumn,
+    idColumn: idColumn,
+  );
+}
+
+class FakePhotoRemote implements PhotoRemote {
+  FakePhotoRemote(this.server);
+
+  final FakeServer server;
+
+  /// Objekti koji (još) ne mogu da se preuzmu.
+  final missing = <String>{};
+
+  @override
+  Future<void> upload(String objectKey, Uint8List jpeg) async {
+    server._check();
+    if (server.photoUploadFails) throw const TransientSyncError('503');
+    server.calls.add('photo:upload');
+    server.photos[objectKey] = jpeg;
+  }
+
+  @override
+  Future<Uint8List> download(String objectKey) async {
+    server._check();
+    final p = server.photos[objectKey];
+    if (p == null || missing.contains(objectKey)) {
+      throw const PermanentSyncError('404');
+    }
+    return p;
+  }
+
+  @override
+  Future<void> remove(List<String> objectKeys) async {
+    server._check();
+    objectKeys.forEach(server.photos.remove);
+  }
+}
+
+/// Sve lažne granice nad jednim serverom.
+class FakeBackend {
+  FakeBackend() {
+    auth = FakeAuth(server);
+    accounts = FakeAccountApi(server, auth);
+    sync = FakeSyncRemote(server, auth);
+    photos = FakePhotoRemote(server);
+  }
+
+  final server = FakeServer();
+  late final FakeAuth auth;
+  late final FakeAccountApi accounts;
+  late final FakeSyncRemote sync;
+  late final FakePhotoRemote photos;
+}

@@ -46,10 +46,10 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ### Backend boundary and app shell
 
-- [ ] T029 [P] Interfaces `SyncRemote`, `PhotoRemote`, `SyncError` in `lib/sync/sync_remote.dart`; `AuthGateway`, `AuthSession`, `AuthFailure` in `lib/account/auth_gateway.dart`; `AccountApi`, `RemoteAccount` in `lib/account/account_api.dart` (interfaces only)
-- [ ] T030 [P] In-memory `FakeBackend` (auth codes, accounts + provisioning, upsert by id, tombstones + delete wins, cursors ordering, photo objects, injectable offline / 5xx / permanent 4xx / interrupt-after-N failures) in `test/helpers/fake_backend.dart`
-- [ ] T031 [P] Test: `SessionStore` write/read/clear under key `auth_session` with a fake `SecretStorage`; never touches `api_key_*`, in `test/account/session_store_test.dart`; implement `lib/account/session_store.dart`
-- [ ] T032 `AuthController` skeleton (`AuthState` sealed, `start()` from stored session + cached `Accounts`), router `redirect` + `refreshListenable`, routes `/sign-in` and `/sign-in/name` (placeholder screens), in `lib/account/auth_controller.dart` and `lib/app/router.dart`; `test/helpers/test_app.dart` signs in a fake account by default; all existing tests green
+- [x] T029 [P] Interfaces `SyncRemote`, `PhotoRemote`, `SyncError` in `lib/sync/sync_remote.dart`; `AuthGateway`, `AuthSession`, `AuthFailure` in `lib/account/auth_gateway.dart`; `AccountApi`, `RemoteAccount` in `lib/account/account_api.dart` (interfaces only)
+- [x] T030 [P] In-memory `FakeBackend` (auth codes, accounts + provisioning, upsert by id, tombstones + delete wins, cursors ordering, photo objects, injectable offline / 5xx / permanent 4xx / interrupt-after-N failures) in `test/helpers/fake_backend.dart`
+- [x] T031 [P] Test: `SessionStore` write/read/clear under key `auth_session` with a fake `SecretStorage`; never touches `api_key_*`, in `test/account/session_store_test.dart`; implement `lib/account/session_store.dart`
+- [x] T032 `AuthController` skeleton (`AuthState` sealed, `start()` from stored session + cached `Accounts`), router `redirect` + `refreshListenable`, routes `/sign-in` and `/sign-in/name` (placeholder screens), in `lib/account/auth_controller.dart` and `lib/app/router.dart`; `test/helpers/test_app.dart` signs in a fake account by default; all existing tests green
 
 ## Phase 3: User Story 1 — sign in with an email code (P1) 🎯 MVP
 

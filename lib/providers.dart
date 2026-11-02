@@ -1,6 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'account/account_api.dart';
+import 'account/account_service.dart';
 import 'account/auth_controller.dart';
+import 'account/auth_gateway.dart';
+import 'account/session_store.dart';
 import 'ai/ai_router.dart';
 import 'ai/chain_config.dart';
 import 'ai/chat_client.dart';
@@ -15,6 +19,26 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   ref.onDispose(db.close);
   return db;
 });
+
+final sessionStoreProvider = Provider<SessionStore>(
+  (ref) => const SessionStore(KeychainSecretStorage()),
+);
+
+final authGatewayProvider = Provider<AuthGateway>(
+  (ref) => const UnconfiguredAuthGateway(),
+);
+
+final accountApiProvider = Provider<AccountApi>(
+  (ref) => throw UnimplementedError('accountApiProvider'),
+);
+
+/// Nalog na uređaju: keš profila i domaćinstva, ime, brisanje.
+final accountServiceProvider = Provider<AccountService>(
+  (ref) => AccountService(
+    ref.watch(databaseProvider),
+    ref.watch(accountApiProvider),
+  ),
+);
 
 /// Upisuje izmene prijavljenog naloga u red za slanje.
 final syncedWriterProvider = Provider<SyncedWriter>(

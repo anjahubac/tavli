@@ -91,8 +91,9 @@ abstract interface class SecretStorage {
   Future<void> delete(String key);
 }
 
-class _FlutterSecretStorage implements SecretStorage {
-  const _FlutterSecretStorage();
+/// Keychain (iOS, macOS) i Keystore (Android).
+class KeychainSecretStorage implements SecretStorage {
+  const KeychainSecretStorage();
 
   static const _storage = FlutterSecureStorage(
     // Klasičan keychain ne traži posebna prava (entitlements)
@@ -126,7 +127,7 @@ class SecureKeyStore implements KeyStore {
     SecretStorage? storage,
     DateTime Function()? clock,
     String Function()? newId,
-  }) : _storage = storage ?? const _FlutterSecretStorage(),
+  }) : _storage = storage ?? const KeychainSecretStorage(),
        _clock = clock ?? DateTime.now,
        _newId = newId ?? _randomId;
 

@@ -2,17 +2,19 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:tavli/account/auth_controller.dart';
+import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli/account/session_store.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/app/app.dart';
-import 'package:tavli/app/router.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
@@ -22,10 +24,12 @@ import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
 import 'fake_adapter.dart';
+import 'fake_backend.dart';
 import 'fake_photo_store.dart';
+import 'fake_secret_storage.dart';
 
-/// Nalog pod kojim testovi rade (prijavljen po difoltu).
-const testScope = AccountScope(userId: 'test-user', householdId: 'test-home');
+/// E-pošta naloga pod kojim testovi rade (prijavljen po difoltu).
+const testEmail = 'ana@tavli.test';
 
 const phone = Size(400, 800);
 const wide = Size(1200, 800);
@@ -105,19 +109,49 @@ Recipe sampleRecipe(
 );
 
 class TestApp {
-  TestApp(this.db, this.photos, this.picker, this.adapter);
+  TestApp(this.db, this.photos, this.picker, this.adapter, this.backend)
+    : session = backend.auth.sessionFor(testEmail);
 
   final AppDatabase db;
   final FakePhotoStore photos;
   final FakePhotoPicker picker;
   final FakeAdapter adapter;
+  final FakeBackend backend;
+  final secrets = MapSecretStorage();
+  final keys = InMemoryKeyStore();
+
+  /// Sesija test naloga (na serveru postoji od početka).
+  final AuthSession session;
+
+  AccountScope get scope => AccountScope(
+    userId: session.userId,
+    householdId: backend.server.households[session.userId]!,
+  );
 
   RecipeRepository get repo => RecipeRepository(
     db,
     photos,
-    writer: SyncedWriter(db, accountId: testScope.userId),
-    scope: testScope,
+    writer: SyncedWriter(db, accountId: scope.userId),
+    scope: scope,
   );
+
+  /// Nalog kao da je već bio prijavljen na uređaju (sesija + keš).
+  Future<void> signIn({String? name = 'Ana Petrović'}) async {
+    secrets.values[SessionStore.key] = session.json;
+    await db
+        .into(db.accounts)
+        .insertOnConflictUpdate(
+          AccountsCompanion.insert(
+            userId: scope.userId,
+            email: testEmail,
+            displayName: Value(name),
+            householdId: scope.householdId,
+            householdName: 'Moje domaćinstvo',
+            role: 'owner',
+            createdAt: DateTime.utc(2026),
+          ),
+        );
+  }
 
   /// Naslovi sačuvanih recepata. Bez drift tokova: njihovi tajmeri ne
   /// rade dok se test ne pumpa.
@@ -135,6 +169,9 @@ Future<TestApp> pumpTavli(
   List<Recipe> recipes = const [],
   List<(int, String, Map<String, List<String>>)> ai = const [],
   bool canUseCamera = true,
+  bool signedIn = true,
+  String? name = 'Ana Petrović',
+  FakeBackend? backend,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -146,7 +183,9 @@ Future<TestApp> pumpTavli(
     FakePhotoStore(),
     FakePhotoPicker(canUseCamera: canUseCamera),
     FakeAdapter([...ai]),
+    backend ?? FakeBackend(),
   );
+  if (signedIn) await app.signIn(name: name);
   for (final r in recipes) {
     await app.repo.create(r);
   }
@@ -155,8 +194,10 @@ Future<TestApp> pumpTavli(
     ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
-        accountScopeProvider.overrideWithValue(testScope),
-        keyStoreProvider.overrideWithValue(InMemoryKeyStore()),
+        sessionStoreProvider.overrideWithValue(SessionStore(app.secrets)),
+        authGatewayProvider.overrideWithValue(app.backend.auth),
+        accountApiProvider.overrideWithValue(app.backend.accounts),
+        keyStoreProvider.overrideWithValue(app.keys),
         builtInKeysProvider.overrideWithValue(
           const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),
         ),
@@ -170,7 +211,7 @@ Future<TestApp> pumpTavli(
         photoPickerProvider.overrideWithValue(app.picker),
         photoResizerProvider.overrideWithValue((bytes) async => bytes),
       ],
-      child: TavliApp(router: createRouter(initialLocation: location)),
+      child: TavliApp(initialLocation: location),
     ),
   );
   await tester.pumpAndSettle();
