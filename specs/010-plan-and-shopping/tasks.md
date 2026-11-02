@@ -27,8 +27,7 @@ test before its implementation. Use fake AI/backend, never hosted production.
 - [x] T010 Implement parent-first mappings and reverse cleanup in `lib/sync/entities.dart`, `lib/sync/legacy_mover.dart`, `lib/account/account_service.dart` and `test/helpers/fake_backend.dart`; preserve old ids/manual/bought lists and personal scope.
 
 - [ ] T011 Write failing per-entry demand, capacity, duplicate-credit, manual/bought preservation and fixed-precision tests in `test/domain/shopping_demand_test.dart` and `test/domain/supply_allocation_test.dart`.
-- [ ] T012 Write account-scoped canonical-week/month, delta/outbox, source and immutable purchase-provenance tests in `test/data/shopping_repository_test.dart` and `test/data/pantry_repository_test.dart`.
-  Done for `test/data/shopping_repository_test.dart`; the pantry-receipt half waits for `lib/data/pantry_repository.dart` (T026).
+- [x] T012 Write account-scoped canonical-week/month, delta/outbox, source and immutable purchase-provenance tests in `test/data/shopping_repository_test.dart` and `test/data/pantry_repository_test.dart`.
 - [ ] T013 Implement per-entry reconciliation and deterministic supply allocation in `lib/domain/shopping_demand.dart` and `lib/domain/supply_allocation.dart` without semantic ingredient guesses.
 - [x] T014 Implement canonical-period read/write and source/contribution/allocation transactions in `lib/data/shopping_repository.dart`; keep bought/manual records stable and whole-month reads aggregate-only.
 
@@ -59,10 +58,10 @@ update existing shopping atomically; do not defer this core until purchase UI.
 
 **Independent test:** repeated occurrences, six weeks and 300/100/200/400 fixture remain exact after retries.
 
-- [ ] T025 [US3] Write purchase/undo, repeated receipt, linked-receipt review and no-double-credit tests in `test/data/shopping_repository_test.dart` and `test/data/pantry_repository_test.dart`.
-- [ ] T026 [US3] Implement whole-row purchase/undo and one-time receipt in `lib/data/shopping_repository.dart` and `lib/data/pantry_repository.dart`, preserving the shared physical supply identity.
-- [ ] T027 [US3] Write grouped list, two-tap access, quantity-review, source-meal detail, manual-add, bought/undo and offline feedback tests in `test/features/shopping/shopping_screen_test.dart`.
-- [ ] T028 [US3] Implement `lib/features/shopping/shopping_screen.dart`, period/source/stock-review widgets and providers in `lib/features/shopping/`, with immediate reversible checkmarks and one-handed targets.
+- [x] T025 [US3] Write purchase/undo, repeated receipt, linked-receipt review and no-double-credit tests in `test/data/shopping_repository_test.dart` and `test/data/pantry_repository_test.dart`.
+- [x] T026 [US3] Implement whole-row purchase/undo and one-time receipt in `lib/data/shopping_repository.dart` and `lib/data/pantry_repository.dart`, preserving the shared physical supply identity.
+- [x] T027 [US3] Write grouped list, two-tap access, quantity-review, source-meal detail, manual-add, bought/undo and offline feedback tests in `test/features/shopping/shopping_screen_test.dart`.
+- [x] T028 [US3] Implement `lib/features/shopping/shopping_screen.dart`, period/source/stock-review widgets and providers in `lib/features/shopping/`, with immediate reversible checkmarks and one-handed targets.
 
 ## Phase 6 — US4: standalone recipe shopping (P1)
 

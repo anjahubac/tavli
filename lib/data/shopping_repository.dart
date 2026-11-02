@@ -493,6 +493,25 @@ class ShoppingRepository {
     );
   }
 
+  /// Stavke liste bez plana (recepti i ručne stavke), uživo. Ne pravi listu.
+  Stream<List<ShoppingItemRow>> watchRecipeItems() {
+    final q =
+        _db.select(_db.shoppingItems).join([
+            innerJoin(
+              _db.shoppingLists,
+              _db.shoppingLists.id.equalsExp(_db.shoppingItems.listId),
+            ),
+          ])
+          ..where(
+            _db.shoppingLists.mealPlanId.isNull() &
+                _db.shoppingItems.householdId.equals(_scope.householdId),
+          )
+          ..orderBy([OrderingTerm.asc(_db.shoppingItems.name)]);
+    return q.watch().map(
+      (rows) => [for (final r in rows) r.readTable(_db.shoppingItems)],
+    );
+  }
+
   /// Brza ručna stavka u listi; usklađivanje je nikad ne menja.
   Future<String> addManual(
     String listId,
