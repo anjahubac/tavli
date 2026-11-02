@@ -23,6 +23,12 @@ abstract class SyncEntity<T extends Table, R> {
   /// Roditelj (zbog redosleda i brisanja), npr. recipe za recipe_version.
   String? get parent => null;
 
+  /// Ostali roditelji po stranim ključevima (npr. obrok za izvor nabavke).
+  List<String> get extraParents => const [];
+
+  /// Svi roditelji: registar ih drži pre ovog entiteta.
+  List<String> get parents => [?parent, ...extraParents];
+
   TableInfo<T, R> table(AppDatabase db);
   Expression<String> idColumn(T t);
 
@@ -46,7 +52,10 @@ abstract class SyncEntity<T extends Table, R> {
 String _ts(DateTime d) => d.toUtc().toIso8601String();
 DateTime _date(Object? v) => DateTime.parse(v! as String).toLocal();
 DateTime? _dateOrNull(Object? v) => v == null ? null : _date(v);
+String? _tsOrNull(DateTime? d) => d == null ? null : _ts(d);
 String _json(Object? v) => jsonEncode(v);
+String? _jsonOrNull(Object? v) => v == null ? null : jsonEncode(v);
+Object? _decodeOrNull(String? s) => s == null ? null : jsonDecode(s);
 double? _double(Object? v) => (v as num?)?.toDouble();
 
 /// Lokalna relativna putanja slike → ime fajla na serveru i nazad.
@@ -170,6 +179,8 @@ class ShoppingListEntity
     'name': r.name,
     'meal_plan_id': r.mealPlanId,
     'week': r.week,
+    'period_start': _tsOrNull(r.periodStart),
+    'period_end': _tsOrNull(r.periodEnd),
     'created_at': _ts(r.createdAt),
   };
 
@@ -181,6 +192,8 @@ class ShoppingListEntity
         name: Value(j['name']! as String),
         mealPlanId: Value(j['meal_plan_id'] as String?),
         week: Value(j['week'] as int?),
+        periodStart: Value(_dateOrNull(j['period_start'])),
+        periodEnd: Value(_dateOrNull(j['period_end'])),
         createdAt: Value(_date(j['created_at'])),
       );
 }
@@ -215,6 +228,7 @@ class ShoppingItemEntity
     'is_bought': r.isBought,
     'is_manual': r.isManual,
     'from_recipe_ids': jsonDecode(r.fromRecipeIdsJson),
+    'purchase_provenance': _decodeOrNull(r.purchaseProvenanceJson),
   };
 
   @override
@@ -230,6 +244,7 @@ class ShoppingItemEntity
         isBought: Value(j['is_bought'] as bool? ?? false),
         isManual: Value(j['is_manual'] as bool? ?? false),
         fromRecipeIdsJson: Value(_json(j['from_recipe_ids'] ?? const [])),
+        purchaseProvenanceJson: Value(_jsonOrNull(j['purchase_provenance'])),
       );
 }
 
@@ -241,6 +256,10 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
   String get remoteTable => 'pantry_items';
   @override
   EntityScope get scope => EntityScope.household;
+
+  /// Prijem kupljene stavke ide posle te kupovine.
+  @override
+  List<String> get extraParents => const ['shopping_item'];
   @override
   $PantryItemsTable table(AppDatabase db) => db.pantryItems;
   @override
@@ -258,6 +277,8 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
     'category': r.category,
     'added_at': _ts(r.addedAt),
     'expires_at': r.expiresAt == null ? null : _ts(r.expiresAt!),
+    'confirmed_at': _tsOrNull(r.confirmedAt),
+    'source_shopping_item_id': r.sourceShoppingItemId,
   };
 
   @override
@@ -271,6 +292,8 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
         category: Value(j['category']! as String),
         addedAt: Value(_date(j['added_at'])),
         expiresAt: Value(_dateOrNull(j['expires_at'])),
+        confirmedAt: Value(_dateOrNull(j['confirmed_at'])),
+        sourceShoppingItemId: Value(j['source_shopping_item_id'] as String?),
       );
 }
 
@@ -297,6 +320,7 @@ class MealPlanEntity extends SyncEntity<$MealPlansTable, MealPlanRow> {
     'end_date': _ts(r.endDate),
     'meal_types': jsonDecode(r.mealTypesJson),
     'use_pantry': r.usePantry,
+    'default_servings': r.defaultServings,
     'created_at': _ts(r.createdAt),
   };
 
@@ -308,6 +332,7 @@ class MealPlanEntity extends SyncEntity<$MealPlansTable, MealPlanRow> {
     endDate: Value(_date(j['end_date'])),
     mealTypesJson: Value(_json(j['meal_types'])),
     usePantry: Value(j['use_pantry'] as bool? ?? true),
+    defaultServings: Value(j['default_servings'] as int? ?? 2),
     createdAt: Value(_date(j['created_at'])),
   );
 }
@@ -340,6 +365,8 @@ class MealPlanEntryEntity
     'recipe_id': r.recipeId,
     'is_locked': r.isLocked,
     'is_cooked': r.isCooked,
+    'servings': r.servings,
+    'recipe_snapshot': _decodeOrNull(r.recipeSnapshotJson),
   };
 
   @override
@@ -353,6 +380,8 @@ class MealPlanEntryEntity
         recipeId: Value(j['recipe_id'] as String?),
         isLocked: Value(j['is_locked'] as bool? ?? false),
         isCooked: Value(j['is_cooked'] as bool? ?? false),
+        servings: Value(j['servings'] as int?),
+        recipeSnapshotJson: Value(_jsonOrNull(j['recipe_snapshot'])),
       );
 }
 
@@ -396,6 +425,166 @@ class RatingEntity extends SyncEntity<$RatingsTable, RatingRow> {
   );
 }
 
+/// Izvor potražnje u listi: planirani obrok ili samostalna priprema.
+class ShoppingSourceEntity
+    extends SyncEntity<$ShoppingSourcesTable, ShoppingSourceRow> {
+  const ShoppingSourceEntity();
+  @override
+  String get name => 'shopping_source';
+  @override
+  String get remoteTable => 'shopping_sources';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  String get parent => 'shopping_list';
+  @override
+  List<String> get extraParents => const ['meal_plan_entry', 'recipe'];
+  @override
+  $ShoppingSourcesTable table(AppDatabase db) => db.shoppingSources;
+  @override
+  Expression<String> idColumn($ShoppingSourcesTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($ShoppingSourcesTable t) => t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(ShoppingSourceRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'list_id': r.listId,
+    'kind': r.kind,
+    'plan_entry_id': r.planEntryId,
+    'recipe_snapshot': _decodeOrNull(r.recipeSnapshotJson),
+    'servings': r.servings,
+    'recipe_id': r.recipeId,
+    'origin_key': r.originKey,
+    'superseded_at': _tsOrNull(r.supersededAt),
+    'closed_at': _tsOrNull(r.closedAt),
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  ShoppingSourcesCompanion fromRemote(Map<String, Object?> j) =>
+      ShoppingSourcesCompanion(
+        id: Value(j['id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        listId: Value(j['list_id']! as String),
+        kind: Value(j['kind']! as String),
+        planEntryId: Value(j['plan_entry_id'] as String?),
+        recipeSnapshotJson: Value(_jsonOrNull(j['recipe_snapshot'])),
+        servings: Value(j['servings'] as int?),
+        recipeId: Value(j['recipe_id'] as String?),
+        originKey: Value(j['origin_key'] as String?),
+        supersededAt: Value(_dateOrNull(j['superseded_at'])),
+        closedAt: Value(_dateOrNull(j['closed_at'])),
+        createdAt: Value(_date(j['created_at'])),
+      );
+}
+
+/// Doprinos izvora stavci; količina u milionitim delovima osnovne jedinice.
+class ShoppingContributionEntity
+    extends SyncEntity<$ShoppingContributionsTable, ShoppingContributionRow> {
+  const ShoppingContributionEntity();
+  @override
+  String get name => 'shopping_contribution';
+  @override
+  String get remoteTable => 'shopping_contributions';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  String get parent => 'shopping_source';
+  @override
+  List<String> get extraParents => const ['shopping_item'];
+  @override
+  $ShoppingContributionsTable table(AppDatabase db) => db.shoppingContributions;
+  @override
+  Expression<String> idColumn($ShoppingContributionsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($ShoppingContributionsTable t) =>
+      t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(ShoppingContributionRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'shopping_item_id': r.shoppingItemId,
+    'source_id': r.sourceId,
+    'ingredient_key': r.ingredientKey,
+    'unit_group': r.unitGroup,
+    'base_unit': r.baseUnit,
+    'micros': r.micros,
+    'name': r.name,
+    'category': r.category,
+    'notes': jsonDecode(r.notesJson),
+  };
+
+  @override
+  ShoppingContributionsCompanion fromRemote(Map<String, Object?> j) =>
+      ShoppingContributionsCompanion(
+        id: Value(j['id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        shoppingItemId: Value(j['shopping_item_id'] as String?),
+        sourceId: Value(j['source_id']! as String),
+        ingredientKey: Value(j['ingredient_key']! as String),
+        unitGroup: Value(j['unit_group']! as String),
+        baseUnit: Value(j['base_unit']! as String),
+        micros: Value(j['micros'] as int?),
+        name: Value(j['name']! as String),
+        category: Value(j['category']! as String),
+        notesJson: Value(_json(j['notes'] ?? const [])),
+      );
+}
+
+/// Potvrđena zaliha dodeljena doprinosu. `supply_id` računa baza (i ovde i
+/// na serveru), pa se ne šalje.
+class SupplyAllocationEntity
+    extends SyncEntity<$SupplyAllocationsTable, SupplyAllocationRow> {
+  const SupplyAllocationEntity();
+  @override
+  String get name => 'supply_allocation';
+  @override
+  String get remoteTable => 'supply_allocations';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  String get parent => 'shopping_contribution';
+  @override
+  List<String> get extraParents => const ['pantry_item', 'shopping_item'];
+  @override
+  $SupplyAllocationsTable table(AppDatabase db) => db.supplyAllocations;
+  @override
+  Expression<String> idColumn($SupplyAllocationsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($SupplyAllocationsTable t) =>
+      t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(SupplyAllocationRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'contribution_id': r.contributionId,
+    'pantry_item_id': r.pantryItemId,
+    'purchased_shopping_item_id': r.purchasedShoppingItemId,
+    'micros': r.micros,
+    'covers_whole_unknown': r.coversWholeUnknown,
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  SupplyAllocationsCompanion fromRemote(Map<String, Object?> j) =>
+      SupplyAllocationsCompanion(
+        id: Value(j['id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        contributionId: Value(j['contribution_id']! as String),
+        pantryItemId: Value(j['pantry_item_id'] as String?),
+        purchasedShoppingItemId: Value(
+          j['purchased_shopping_item_id'] as String?,
+        ),
+        micros: Value(j['micros'] as int?),
+        coversWholeUnknown: Value(j['covers_whole_unknown'] as bool? ?? false),
+        createdAt: Value(_date(j['created_at'])),
+      );
+}
+
 /// Profil ukusa: lokalni id je userId osobe.
 class TasteProfileEntity
     extends SyncEntity<$UserProfilesTable, UserProfileRow> {
@@ -433,14 +622,20 @@ class TasteProfileEntity
 const profileEntity = 'profile';
 
 /// Svi entiteti sa podacima, redom roditelj pre deteta (slanje i preuzimanje).
+/// Entitet može imati više roditelja ([SyncEntity.parents]); redosled je
+/// topološki: obroci pre izvora, kupovina pre prijema u ostavu, raspodela
+/// poslednja.
 const List<SyncEntity<Table, Object?>> syncEntities = [
   RecipeEntity(),
   RecipeVersionEntity(),
   MealPlanEntity(),
+  MealPlanEntryEntity(),
   ShoppingListEntity(),
   ShoppingItemEntity(),
   PantryItemEntity(),
-  MealPlanEntryEntity(),
+  ShoppingSourceEntity(),
+  ShoppingContributionEntity(),
+  SupplyAllocationEntity(),
   RatingEntity(),
   TasteProfileEntity(),
 ];

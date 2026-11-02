@@ -136,6 +136,50 @@ void main() {
         'is_cooked': false,
       },
     ], 'id');
+    s.upsert('shopping_sources', [
+      {
+        'id': 's1',
+        'household_id': hid,
+        'list_id': 'l1',
+        'kind': 'planEntry',
+        'plan_entry_id': 'e1',
+        'recipe_snapshot': null,
+        'servings': null,
+        'recipe_id': null,
+        'origin_key': null,
+        'superseded_at': null,
+        'closed_at': null,
+        'created_at': '2026-10-30T10:00:00.000Z',
+      },
+    ], 'id');
+    s.upsert('shopping_contributions', [
+      {
+        'id': 'c1',
+        'household_id': hid,
+        'shopping_item_id': 'i-mleko',
+        'source_id': 's1',
+        'ingredient_key': 'mleko',
+        'unit_group': 'volume',
+        'base_unit': 'ml',
+        'micros': 500000000,
+        'name': 'mleko',
+        'category': 'ostalo',
+        'notes': <Object>[],
+      },
+    ], 'id');
+    s.upsert('supply_allocations', [
+      {
+        'id': 'a1',
+        'household_id': hid,
+        'contribution_id': 'c1',
+        'pantry_item_id': 'o1',
+        'purchased_shopping_item_id': null,
+        'supply_id': 'o1',
+        'micros': 200000000,
+        'covers_whole_unknown': false,
+        'created_at': '2026-10-30T10:00:00.000Z',
+      },
+    ], 'id');
     s.upsert('ratings', [
       {
         'id': 'g1',
@@ -166,10 +210,13 @@ void main() {
       'fetch:recipes',
       'fetch:recipe_versions',
       'fetch:meal_plans',
+      'fetch:meal_plan_entries',
       'fetch:shopping_lists',
       'fetch:shopping_items',
       'fetch:pantry_items',
-      'fetch:meal_plan_entries',
+      'fetch:shopping_sources',
+      'fetch:shopping_contributions',
+      'fetch:supply_allocations',
       'fetch:ratings',
       'fetch:taste_profiles',
       'fetch:deletions',
@@ -182,6 +229,17 @@ void main() {
     expect((await db.select(db.shoppingLists).get()).single.mealPlanId, 'p1');
     expect((await db.select(db.pantryItems).get()).single.quantity, 1.0);
     expect((await db.select(db.mealPlanEntries).get()).single.recipeId, 'r1');
+    expect(
+      (await db.select(db.shoppingSources).get()).single.planEntryId,
+      'e1',
+    );
+    final contribution =
+        (await db.select(db.shoppingContributions).get()).single;
+    expect(contribution.micros, 500000000);
+    expect(contribution.householdId, hid);
+    final allocation = (await db.select(db.supplyAllocations).get()).single;
+    expect(allocation.supplyId, 'o1');
+    expect(allocation.micros, 200000000);
     expect((await db.select(db.ratings).get()).single.userId, scope.userId);
     expect((await db.select(db.userProfiles).get()).single.id, scope.userId);
     expect(
