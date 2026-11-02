@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../app/animations/photo_scan.dart';
+import '../../app/animations/simmering_pot.dart';
 import '../../domain/recipe.dart';
 import 'recipe_view.dart';
 
@@ -31,7 +33,21 @@ class AiRecipePreview extends StatelessWidget {
         Expanded(
           child: ReadableScroll(
             children: [
-              RecipeView(recipe, photoBytes: photoBytes, showTitle: true),
+              // Slika sa prepoznatim sastojcima koji iskaču jedan po jedan.
+              if (photoBytes case final bytes?) ...[
+                PhotoScan(
+                  scanning: false,
+                  height: 220,
+                  ingredients: [for (final i in recipe.ingredients) i.name],
+                  photo: Image.memory(
+                    bytes,
+                    fit: BoxFit.cover,
+                    semanticLabel: 'Slika recepta',
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              RecipeView(recipe, showTitle: true),
             ],
           ),
         ),
@@ -68,21 +84,35 @@ class AiRecipePreview extends StatelessWidget {
   }
 }
 
-/// Indikator dok AI radi, uz "Prekini" kad lanac modela traje predugo.
+/// Indikator dok AI radi (lonac koji krčka sa porukama), uz "Prekini" kad
+/// lanac modela traje predugo. [pot] = false kad animaciju već daje ekran
+/// (npr. skeniranje slike).
 class AiBusy extends StatelessWidget {
-  const AiBusy(this.text, {super.key, this.onCancel});
+  const AiBusy(this.text, {super.key, this.onCancel, this.pot = true});
 
   final String text;
   final VoidCallback? onCancel;
+  final bool pot;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const LinearProgressIndicator(),
+        if (pot) ...[
+          const Center(child: SimmeringPot()),
+          const SizedBox(height: 4),
+        ] else
+          const LinearProgressIndicator(),
         const SizedBox(height: 8),
-        Text(text, textAlign: TextAlign.center),
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
         if (onCancel != null)
           Center(
             child: TextButton(

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/animations/spoon_refresh.dart';
+import '../../app/tab_app_bar.dart';
+import '../../app/theme/tavli_colors.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import 'add_recipe_sheet.dart';
@@ -25,10 +28,7 @@ class RecipesScreen extends StatelessWidget {
         final wide = constraints.maxWidth >= splitViewMinWidth;
         final selected = selectedId;
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Recepti'),
-            automaticallyImplyLeading: false,
-          ),
+          appBar: const TabAppBar(),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => showAddRecipeSheet(context),
             icon: const Icon(Icons.add),
@@ -111,6 +111,15 @@ class _RecipeListState extends ConsumerState<_RecipeList> {
     super.dispose();
   }
 
+  /// Ponovo čita listu iz baze; varjača se vidi bar kratko.
+  Future<void> _refresh() async {
+    ref.invalidate(recipesProvider);
+    await Future.wait([
+      ref.read(recipesProvider.future),
+      Future<void>.delayed(const Duration(milliseconds: 700)),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final query = ref.watch(recipeSearchProvider);
@@ -159,12 +168,17 @@ class _RecipeListState extends ConsumerState<_RecipeList> {
                           icon: Icons.search_off,
                           title: 'Nema recepata za „${query.trim()}“.',
                         )
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 88),
-                          itemCount: recipes.length,
-                          itemBuilder: (context, i) => _RecipeTile(
-                            recipes[i],
-                            selected: recipes[i].id == widget.selectedId,
+                      : SpoonRefresh(
+                          onRefresh: _refresh,
+                          child: ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                            itemCount: recipes.length,
+                            itemBuilder: (context, i) => _RecipeTile(
+                              recipes[i],
+                              index: i,
+                              selected: recipes[i].id == widget.selectedId,
+                            ),
                           ),
                         ),
                 ),
@@ -175,34 +189,55 @@ class _RecipeListState extends ConsumerState<_RecipeList> {
   }
 }
 
+/// Kartica recepta: sličica (ili boja teme) i naziv sa porcijama i vremenom.
 class _RecipeTile extends StatelessWidget {
-  const _RecipeTile(this.recipe, {required this.selected});
+  const _RecipeTile(this.recipe, {required this.index, required this.selected});
 
   final Recipe recipe;
+  final int index;
   final bool selected;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final path = recipe.imagePath;
-    return ListTile(
-      selected: selected,
-      leading: SizedBox.square(
-        dimension: 56,
-        child: path == null
-            ? Icon(
-                Icons.restaurant_menu,
-                color: Theme.of(context).colorScheme.outline,
-              )
-            : RecipePhoto(path, size: 56),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          selected: selected,
+          shape: const RoundedRectangleBorder(),
+          contentPadding: const EdgeInsets.fromLTRB(10, 6, 16, 6),
+          minTileHeight: 84,
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox.square(
+              dimension: 64,
+              child: path == null
+                  ? ColoredBox(
+                      color: TavliColors.of(context).tint(index),
+                      child: Icon(
+                        Icons.soup_kitchen_outlined,
+                        size: 30,
+                        color: colors.onPrimaryContainer,
+                      ),
+                    )
+                  : RecipePhoto(path, size: 64),
+            ),
+          ),
+          titleTextStyle: Theme.of(context).textTheme.titleMedium,
+          title: Text(recipe.title),
+          subtitle: Text(
+            [
+              servingsLabel(recipe.servings),
+              if (recipe.prepMinutes != null) '${recipe.prepMinutes} min',
+            ].join(' · '),
+          ),
+          onTap: () => context.go('/recipes/${recipe.id}'),
+        ),
       ),
-      title: Text(recipe.title),
-      subtitle: Text(
-        [
-          servingsLabel(recipe.servings),
-          if (recipe.prepMinutes != null) '${recipe.prepMinutes} min',
-        ].join(' · '),
-      ),
-      onTap: () => context.go('/recipes/${recipe.id}'),
     );
   }
 }

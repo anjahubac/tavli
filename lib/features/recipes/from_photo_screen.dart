@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../ai/ai_models.dart';
 import '../../ai/recipe_ai.dart';
+import '../../app/animations/photo_scan.dart';
 import '../../domain/recipe.dart';
 import '../../providers.dart';
 import '../settings/ai_error_text.dart';
@@ -137,11 +138,11 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
           : ReadableScroll(
               children: [
                 if (photo != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.memory(
+                  PhotoScan(
+                    scanning: _busy,
+                    height: 280,
+                    photo: Image.memory(
                       photo,
-                      height: 280,
                       fit: BoxFit.contain,
                       semanticLabel: 'Izabrana slika recepta',
                     ),
@@ -172,6 +173,7 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
                   AiBusy(
                     'Čitam recept sa slike…',
                     onCancel: _photo == null ? null : _cancel,
+                    pot: _photo == null,
                   ),
                 if (_error case final error?)
                   AiErrorBox(

@@ -44,7 +44,7 @@ void main() {
     await tester.pump();
     await tester.tap(button('Nastavi'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Recepti'), findsOneWidget);
+    expect(currentTab(tester), 'Recepti');
     final row = (await app.db.select(app.db.accounts).get()).single;
     expect(row.displayName, 'Ana Petrović');
     // Ime stiže na server posle kratke pauze za slanje.

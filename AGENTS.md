@@ -39,6 +39,8 @@ lib/
   main.dart               ProviderScope + TavliApp
   providers.dart          Riverpod wiring (db, key store, chain config, router, RecipeAI)
   app/                    MaterialApp, go_router config, responsive HomeShell, placeholders
+    theme/                  palettes, TavliColors extension, buildTavliTheme, ThemeController
+    animations/             reduced-motion aware CustomPainter animations (MotionBuilder)
   ai/                     AI layer
     ai_models.dart          AIProvider, ModelSpec, AIRequest, AIImage, TaskKind
     ai_errors.dart          sealed AIError hierarchy, AttemptLog, AllModelsExhausted

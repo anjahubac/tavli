@@ -175,7 +175,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(field('Kod iz poruke'), FakeServer.code);
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Plan'), findsOneWidget);
+    expect(currentTab(tester), 'Plan');
     expect(app.secrets.values, isNotEmpty);
   });
 

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/account/auth_gateway.dart';
@@ -16,6 +17,7 @@ import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/app/app.dart';
+import 'package:tavli/app/router.dart' show tabs;
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
@@ -29,6 +31,15 @@ import 'fake_adapter.dart';
 import 'fake_backend.dart';
 import 'fake_photo_store.dart';
 import 'fake_secret_storage.dart';
+
+/// Naziv izabranog taba (gornja traka pokazuje samo naziv aplikacije).
+String currentTab(WidgetTester tester) =>
+    tabs[tester
+            .widget<StatefulNavigationShell>(
+              find.byType(StatefulNavigationShell),
+            )
+            .currentIndex]
+        .label;
 
 /// E-pošta naloga pod kojim testovi rade (prijavljen po difoltu).
 const testEmail = 'ana@tavli.test';
@@ -247,7 +258,7 @@ Future<TestApp> pumpTavli(
         ...overrides,
         screenWakeLockProvider.overrideWithValue(app.wakeLock),
       ],
-      child: TavliApp(initialLocation: location),
+      child: TavliApp(initialLocation: location, intro: false),
     ),
   );
   await tester.pumpAndSettle();

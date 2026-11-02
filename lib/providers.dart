@@ -17,6 +17,7 @@ import 'ai/key_store.dart';
 import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
+import 'data/shopping_repository.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
 import 'sync/legacy_mover.dart';
@@ -215,4 +216,14 @@ final aiRouterProvider = Provider<AIRouter>(
 
 final recipeAIProvider = Provider<RecipeAI>(
   (ref) => RecipeAI(ref.watch(aiRouterProvider)),
+);
+
+/// Lista prijavljenog domaćinstva; demo koristi zasebnu bazu u memoriji.
+final shoppingRepositoryProvider = Provider<ShoppingRepository>(
+  (ref) => ShoppingRepository(
+    ref.watch(databaseProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    writer: ref.watch(syncedWriterProvider),
+    clock: ref.watch(clockProvider),
+  ),
 );
