@@ -83,7 +83,10 @@ flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
 flutter run -d macos --dart-define-from-file=secrets.json   # Supabase URL/anon key + built-in AI keys (see secrets.example.json)
-scripts/check.sh                                            # format check + analyze + test (run before every commit)
+scripts/check.sh                                            # format check + analyze (fast, no tests)
+scripts/test-changed.sh                                     # tests affected by staged changes
+scripts/test-changed.sh origin/main                         # tests affected by the whole branch
+git config core.hooksPath .githooks                         # once per clone: pre-commit runs both scripts above
 
 supabase start          # local Supabase in Docker (API :55321, DB :55322, Studio :55323, mail :55324)
 supabase status         # local URL and anon key to copy into your own secrets.json
@@ -149,8 +152,12 @@ never from another feature branch; full git rules are in
   changes only as new files in `supabase/migrations/` (never edit an applied one).
 - Never put the Supabase service-role key in the app, tests or repo; never call
   the hosted (production) project from tests or scripts.
-- Before each commit: `dart format lib test`, then `scripts/check.sh`
-  (format check, `flutter analyze`, `flutter test`) must pass.
+- Before each commit: `dart format lib test`; the pre-commit hook
+  (`.githooks/pre-commit`) then runs `scripts/check.sh` (format check,
+  `flutter analyze`) and `scripts/test-changed.sh` (tests affected by the staged
+  files, following imports). Never bypass it with `--no-verify`.
+- The full `flutter test` suite runs in CI on every PR; run it locally
+  (`flutter test`) before opening a PR that touches shared code.
 - Keep changes scoped to the active spec/branch; note unrelated issues instead of fixing them in passing.
 - Branch only from the latest `main`; never stack a branch on another unmerged branch.
   Never commit directly to `main` — open a PR from the branch.
@@ -162,7 +169,8 @@ never from another feature branch; full git rules are in
 - All tasks in `tasks.md` checked; acceptance scenarios in `spec.md` satisfied.
 - New UI text is Serbian (Latin) and listed in the spec.
 - Works on phone width and wide (rail) layout.
-- `scripts/check.sh` passes; `flutter build macos --debug` succeeds.
+- `scripts/check.sh` and the full `flutter test` pass (CI green);
+  `flutter build macos --debug` succeeds.
 - AI calls go through `AIRouter`; failures show a Serbian message.
 - User-data changes reach the server via the outbox and work offline; new server
   tables have RLS, grants and `supabase test db` tests.

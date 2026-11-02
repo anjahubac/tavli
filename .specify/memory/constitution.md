@@ -1,6 +1,13 @@
 <!--
 Sync Impact Report
-- Version change: 1.2.0 → 2.0.0 (MAJOR: principle II redefined — an account is
+- Version change: 2.0.0 → 2.0.1 (PATCH: test gate split — affected tests run
+  in the pre-commit hook, the full `flutter test` suite runs in CI before merge;
+  `scripts/check.sh` is format + analyze only)
+- Dependent docs updated: AGENTS.md, CLAUDE.md, README.md,
+  docs/flutter-best-practices.md (§13, §17), .github/workflows/check.yml
+- Templates requiring updates: none
+
+Previous: 1.2.0 → 2.0.0 (MAJOR: principle II redefined — an account is
   mandatory and the server is the durable store; backend security rules added)
 - Modified principles:
   - II. "Offline-First Local Data" → "II. Offline-First, Account-Backed Data"
@@ -108,8 +115,10 @@ the `fake_adapter` Dio adapter) and the backend is faked in Flutter tests —
 tests MUST NOT hit the network. Server access rules (RLS policies, grants,
 storage policies) MUST have database tests run against the local Supabase stack
 (`supabase test db`) with at least two test accounts. Widgets get widget tests
-for key flows. `flutter analyze` MUST be clean and `flutter test`
-MUST be green before every commit.
+for key flows. `flutter analyze` MUST be clean and the tests affected by the
+change (`scripts/test-changed.sh`, run by the pre-commit hook) MUST be green
+before every commit; the full `flutter test` suite MUST be green in CI before
+a pull request is merged.
 
 **Rationale**: AI output is messy; parsers and fallback logic are where bugs hide.
 
@@ -172,7 +181,9 @@ operations.
 2. `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks`
    → `/speckit-analyze` → `/speckit-implement`.
 3. Before each commit: `dart run build_runner build` (if drift tables changed),
-   `dart format lib test`, then `scripts/check.sh` (format check, analyze, test).
+   `dart format lib test`, then the pre-commit hook (`.githooks/pre-commit`:
+   `scripts/check.sh` format check + analyze, `scripts/test-changed.sh`
+   affected tests). CI runs the full test suite on every pull request.
 4. A feature is done when its tasks are checked off, acceptance scenarios pass,
    UI text is Serbian, and it runs on macOS debug (`flutter build macos --debug`).
 
@@ -186,4 +197,4 @@ wording), and updating dependent templates and docs in the same commit. Every
 `plan.md` Constitution Check MUST evaluate principles I–IX; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-10-30
+**Version**: 2.0.1 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-02

@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Pre-commit check: formatting, static analysis, tests.
+# Brza provera: formatiranje i statička analiza (bez testova).
+# Testovi idu kroz pre-commit hook (scripts/test-changed.sh), a ceo skup
+# pokreće CI; lokalno ceo skup: `flutter test`.
 # Usage: scripts/check.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 echo "==> dart format (check)"
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test scripts
 
 echo "==> flutter analyze"
 flutter analyze
-
-echo "==> flutter test"
-flutter test
 
 echo "OK"

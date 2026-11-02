@@ -142,6 +142,11 @@ Binding for humans and AI agents. The constitution
   (fake the Supabase-facing repository/remote interface).
 - Server access rules are tested with `supabase test db` (pgTAP) against the
   local stack, outside `scripts/check.sh`.
+- Test runs: the pre-commit hook runs only the tests affected by the staged
+  files (`scripts/test-changed.sh`, which follows imports; a `pubspec` change
+  runs everything). The full suite runs in CI on every PR. A test that waits on
+  real time (retries, debounce, animations) uses the fake clock of `testWidgets`
+  (`tester.pump(duration)`) instead of real delays.
 - Test names in Serbian describing behaviour (existing convention).
 - Coverage target: ≥ 80 % for `lib/ai/` and `lib/domain/`; check with `flutter test --coverage`.
 - Never skip or delete a failing test to get green; fix the code or the test's wrong assumption.
@@ -177,11 +182,13 @@ Binding for humans and AI agents. The constitution
 - Never commit directly to `main`; everything lands through a pull request.
 - Before opening or updating a PR, bring the branch up to date with `main`
   (`git fetch origin && git rebase origin/main` on your own unshared branch,
-  otherwise `git merge origin/main`) and run `scripts/check.sh`.
+  otherwise `git merge origin/main`), run `scripts/check.sh` and
+  `scripts/test-changed.sh origin/main` (or the full `flutter test`).
 
 **Commits**
 
-- Small commits that each build and pass `scripts/check.sh`; one logical change per commit.
+- Small commits that each build and pass the pre-commit hook (`scripts/check.sh`
+  + affected tests); one logical change per commit.
 - Subject in imperative mood, ≤ 72 chars, with a type and optional scope:
   `feat(003): …`, `fix(ai): …`, `spec(004): …`, `docs: …`, `chore: …`, `test: …`, `refactor: …`.
 - The body explains *why*, not what the diff already shows.
@@ -191,7 +198,7 @@ Binding for humans and AI agents. The constitution
 **Pull requests and history**
 
 - PR title follows the commit convention; the body says what changed, why, and how it was tested.
-- Merge only with green `scripts/check.sh`; resolve conflicts on the branch, not on `main`.
+- Merge only with green CI (`scripts/check.sh` + full `flutter test`); resolve conflicts on the branch, not on `main`.
 - No force-push to `main`. On your own feature branch use `--force-with-lease`, and only after asking.
 - No history rewrite of shared branches, no branch deletion, no `reset --hard` without asking.
 - Delete a branch after its PR is merged (ask first if someone else might use it).
