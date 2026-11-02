@@ -36,6 +36,16 @@ void main() {
     expect(kicks, 3);
   });
 
+  test('upsertLast premešta izmenu koja čeka na kraj reda', () async {
+    await w.upsert('shopping_contribution', 'c1');
+    await w.upsert('shopping_item', 'i1');
+    await w.upsertLast('shopping_contribution', 'c1');
+    expect(await outbox(), [
+      'shopping_item:i1:upsert',
+      'shopping_contribution:c1:upsert',
+    ]);
+  });
+
   test('brisanje uklanja upsert-e koji čekaju i dodaje brisanje', () async {
     await w.upsert('recipe', 'r1');
     await w.upsert('recipe', 'r2');
