@@ -107,49 +107,79 @@ class AuthController extends Notifier<AuthState> {
   /// Otvara aplikaciju iz sačuvane sesije i keširanog naloga, bez mreže.
   /// Sesija se obnavlja u pozadini kad ima mreže.
   Future<void> start() async {
+    final store = _store, gateway = _gateway, service = _service;
     final String? json;
     try {
-      json = await _store.read();
+      json = await store.read();
     } on SecretStorageException {
-      state = const SignedOut();
+      _set(const SignedOut());
       return;
     }
     final uid = json == null ? null : userIdFromSessionJson(json);
     if (json == null || uid == null) {
-      state = const SignedOut();
+      _set(const SignedOut());
       return;
     }
-    final account = await _service.cached(uid);
+    final account = await service.cached(uid);
     if (account != null) {
-      state = _signedIn(account);
+      _set(_signedIn(account));
       unawaited(restoreSession());
       return;
     }
     // Sesija postoji, ali nalog nije keširan (prekinuta prva prijava).
     try {
-      final session = await _gateway.restore(json);
-      await _store.write(session.json);
-      state = _signedIn(await _service.loadOrFetch(session));
+      final session = await gateway.restore(json);
+      await store.write(session.json);
+      _set(_signedIn(await service.loadOrFetch(session)));
     } on AuthFailure {
-      state = const SignedOut();
+      _set(const SignedOut());
     }
   }
 
   /// Obnavlja sačuvanu sesiju (start, povratak u aplikaciju). Bez mreže
   /// ostaje prijavljen; odbijena obnova vraća na prijavu.
   Future<void> restoreSession() async {
-    final json = await _store.read();
+    if (!ref.mounted) return;
+    final store = _store, gateway = _gateway;
+    final json = await store.read();
     if (json == null) return;
     try {
-      final session = await _gateway.restore(json);
-      await _store.write(session.json);
+      final session = await gateway.restore(json);
+      if (ref.mounted) await store.write(session.json);
     } on Offline {
       // Pokušava se ponovo pri povratku u aplikaciju.
     } on Unavailable {
       // Isto.
     } on AuthFailure catch (f) {
-      await sessionExpired(accountGone: f is AccountGone);
+      if (ref.mounted) await sessionExpired(accountGone: f is AccountGone);
     }
+  }
+
+  /// Šalje kod (i ponovo, posle 30 s). Baca [AuthFailure]; stanje ostaje.
+  Future<void> sendCode(String email) async {
+    final e = normalizeEmail(email);
+    final clock = ref.read(authClockProvider);
+    await _gateway.sendCode(e);
+    _set(CodeSent(e, clock()));
+  }
+
+  /// Proverava kod; ispravan kod čuva sesiju i otvara aplikaciju (ili
+  /// korak sa imenom). Baca [AuthFailure]; stanje ostaje.
+  Future<void> verify(String code) async {
+    final s = state;
+    if (s is! CodeSent) return;
+    final store = _store, service = _service;
+    final session = await _gateway.verifyCode(s.email, normalizeCode(code));
+    await store.write(session.json);
+    _set(_signedIn(await service.loadOrFetch(session)));
+  }
+
+  /// "Promeni e-poštu": nazad na prvi korak.
+  void changeEmail() => state = const SignedOut();
+
+  /// Posle čekanja kontroler je možda već uklonjen (test, odjava).
+  void _set(AuthState s) {
+    if (ref.mounted) state = s;
   }
 
   AuthState _signedIn(Account a) => a.hasName ? SignedIn(a) : NeedsName(a);
@@ -163,9 +193,10 @@ class AuthController extends Notifier<AuthState> {
 
   /// Sesija ne može da se obnovi: nazad na prijavu, keš i izmene ostaju.
   Future<void> sessionExpired({bool accountGone = false}) async {
-    await _store.clear();
-    await _gateway.signOutLocal();
-    state = const SignedOut(SignOutReason.sessionExpired);
+    final store = _store, gateway = _gateway;
+    await store.clear();
+    await gateway.signOutLocal();
+    _set(const SignedOut(SignOutReason.sessionExpired));
   }
 }
 

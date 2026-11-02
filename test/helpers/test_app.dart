@@ -120,6 +120,9 @@ class TestApp {
   final secrets = MapSecretStorage();
   final keys = InMemoryKeyStore();
 
+  /// Sat za prijavu (odbrojavanje "Pošalji ponovo"); test ga pomera.
+  DateTime now = DateTime(2026, 10, 30, 12);
+
   /// Sesija test naloga (na serveru postoji od početka).
   final AuthSession session;
 
@@ -197,6 +200,7 @@ Future<TestApp> pumpTavli(
         sessionStoreProvider.overrideWithValue(SessionStore(app.secrets)),
         authGatewayProvider.overrideWithValue(app.backend.auth),
         accountApiProvider.overrideWithValue(app.backend.accounts),
+        authClockProvider.overrideWithValue(() => app.now),
         keyStoreProvider.overrideWithValue(app.keys),
         builtInKeysProvider.overrideWithValue(
           const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),

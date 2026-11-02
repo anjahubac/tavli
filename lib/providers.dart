@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase/supabase.dart';
 
 import 'account/account_api.dart';
 import 'account/account_service.dart';
 import 'account/auth_controller.dart';
 import 'account/auth_gateway.dart';
 import 'account/session_store.dart';
+import 'account/supabase_client.dart';
+import 'account/supabase_config.dart';
 import 'ai/ai_router.dart';
 import 'ai/chain_config.dart';
 import 'ai/chat_client.dart';
@@ -24,9 +27,29 @@ final sessionStoreProvider = Provider<SessionStore>(
   (ref) => const SessionStore(KeychainSecretStorage()),
 );
 
-final authGatewayProvider = Provider<AuthGateway>(
-  (ref) => const UnconfiguredAuthGateway(),
+/// Adresa i anon ključ iz `--dart-define-from-file=secrets.json`.
+final supabaseConfigProvider = Provider<SupabaseConfig>(
+  (ref) => SupabaseConfig.fromEnvironment(),
 );
+
+/// null kad build nema Supabase podešavanja (prijava tada nije dostupna).
+final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
+  final config = ref.watch(supabaseConfigProvider);
+  if (!config.isConfigured) return null;
+  final client = createSupabaseClient(config);
+  ref.onDispose(client.dispose);
+  return client;
+});
+
+final authGatewayProvider = Provider<AuthGateway>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? const UnconfiguredAuthGateway()
+      : SupabaseAuthGateway(client);
+});
+
+/// Vreme za prijavu (kada je poslat kod); menja se u testovima.
+final authClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final accountApiProvider = Provider<AccountApi>(
   (ref) => throw UnimplementedError('accountApiProvider'),

@@ -1,3 +1,12 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:supabase/supabase.dart' as sb;
+
+import '../domain/account.dart';
+import 'supabase_client.dart';
+
 /// Prijavljena sesija. [json] je ceo zapis sesije (tokeni) koji se čuva
 /// samo u Keychain-u/Keystore-u (`SessionStore`); nikad u bazi ili logu.
 class AuthSession {
@@ -101,4 +110,164 @@ class UnconfiguredAuthGateway implements AuthGateway {
 
   @override
   Future<void> signOutLocal() async {}
+}
+
+/// Prijava preko Supabase Auth (GoTrue), e-poštom i 6-cifrenim kodom.
+class SupabaseAuthGateway implements AuthGateway {
+  SupabaseAuthGateway(this._client, {DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
+
+  final sb.SupabaseClient _client;
+  final DateTime Function() _clock;
+
+  /// Kada je poslat poslednji kod, po adresi: GoTrue vraća istu grešku za
+  /// pogrešan i istekao kod, pa se razlikuju po vremenu.
+  final _sentAt = <String, DateTime>{};
+
+  /// Koliko kod važi (`otp_expiry` u supabase/config.toml).
+  static const codeLifetime = Duration(seconds: 600);
+
+  sb.GoTrueClient get _auth => _client.auth;
+
+  @override
+  Future<void> sendCode(String email) async {
+    final e = normalizeEmail(email);
+    await _guard(() => _auth.signInWithOtp(email: e, shouldCreateUser: true));
+    _sentAt[e] = _clock();
+  }
+
+  @override
+  Future<AuthSession> verifyCode(String email, String code) async {
+    final e = normalizeEmail(email);
+    try {
+      final res = await _guard(
+        () => _auth.verifyOTP(
+          type: sb.OtpType.email,
+          email: e,
+          token: normalizeCode(code),
+        ),
+        onCodeError: () {
+          final sent = _sentAt[e];
+          final expired =
+              sent != null && _clock().difference(sent) > codeLifetime;
+          return expired ? const CodeExpired() : const WrongCode();
+        },
+      );
+      final session = res.session;
+      if (session == null) throw const Unavailable();
+      return _toSession(session);
+    } on FormatException {
+      throw const Unavailable();
+    }
+  }
+
+  @override
+  Future<AuthSession> restore(String sessionJson) async {
+    try {
+      final res = await _guard(
+        () => _auth.recoverSession(sessionJson),
+        refreshing: true,
+      );
+      final session = res.session;
+      if (session == null) throw const SessionRevoked();
+      return _toSession(session);
+    } on FormatException {
+      throw const SessionRevoked();
+    }
+  }
+
+  @override
+  Future<AuthSession> refresh() async {
+    final res = await _guard(_auth.refreshSession, refreshing: true);
+    final session = res.session;
+    if (session == null) throw const SessionRevoked();
+    return _toSession(session);
+  }
+
+  @override
+  Stream<AuthSession?> get sessionChanges => _auth.onAuthStateChange
+      .where(
+        (s) =>
+            s.event == sb.AuthChangeEvent.tokenRefreshed ||
+            s.event == sb.AuthChangeEvent.signedOut,
+      )
+      .map((s) => s.session == null ? null : _toSession(s.session!))
+      .handleError((Object _) {}, test: (e) => e is sb.AuthException);
+
+  @override
+  Future<void> signOutLocal() async {
+    try {
+      await _auth.signOut();
+    } on sb.AuthException {
+      // Lokalna sesija je svakako obrisana.
+    }
+  }
+
+  static AuthSession _toSession(sb.Session s) => AuthSession(
+    userId: s.user.id,
+    email: normalizeEmail(s.user.email ?? ''),
+    json: jsonEncodeSession(s),
+  );
+
+  /// Pretvara greške klijenta u [AuthFailure]; nikad ne prenosi poruku
+  /// servera (može da sadrži token).
+  static Future<T> _guard<T>(
+    Future<T> Function() action, {
+    bool refreshing = false,
+    AuthFailure Function()? onCodeError,
+  }) async {
+    try {
+      return await action();
+    } on sb.AuthRetryableFetchException catch (e) {
+      throw e.statusCode == null ? const Offline() : const Unavailable();
+    } on sb.AuthApiException catch (e) {
+      throw _apiFailure(e, refreshing, onCodeError);
+    } on sb.AuthException catch (e) {
+      // recoverSession bez osveživača ili sa pokvarenim zapisom.
+      if (refreshing &&
+          (e.code == 'session_expired' || e.code == 'session_missing')) {
+        throw const SessionRevoked();
+      }
+      throw const Unavailable();
+    } on SocketException {
+      throw const Offline();
+    } on TimeoutException {
+      throw const Offline();
+    } on http.ClientException {
+      throw const Offline();
+    }
+  }
+
+  static const _revoked = {
+    'refresh_token_not_found',
+    'refresh_token_already_used',
+    'session_not_found',
+    'session_expired',
+    'bad_jwt',
+  };
+
+  static AuthFailure _apiFailure(
+    sb.AuthApiException e,
+    bool refreshing,
+    AuthFailure Function()? onCodeError,
+  ) {
+    final code = e.code;
+    if (e.statusCode == '429' ||
+        code == 'over_email_send_rate_limit' ||
+        code == 'over_request_rate_limit') {
+      return const RateLimited();
+    }
+    if (code == 'user_not_found') return const AccountGone();
+    if (onCodeError != null &&
+        (code == 'otp_expired' ||
+            e.message.contains('expired or is invalid'))) {
+      return onCodeError();
+    }
+    if (_revoked.contains(code)) return const SessionRevoked();
+    final status = int.tryParse(e.statusCode ?? '');
+    if (refreshing && status != null && status >= 400 && status < 500) {
+      return const SessionRevoked();
+    }
+    return const Unavailable();
+  }
 }
