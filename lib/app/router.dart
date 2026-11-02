@@ -86,7 +86,7 @@ GoRouter createRouter({
             GoRoute(
               path: '/plan',
               builder: (context, state) =>
-                  PlaceholderScreen(title: tabs[0].label, icon: tabs[0].icon),
+                  PlaceholderScreen(icon: tabs[0].icon),
             ),
           ],
         ),
@@ -95,7 +95,6 @@ GoRouter createRouter({
             GoRoute(
               path: '/shopping',
               builder: (context, state) => const EmptyStateScreen(
-                appBarTitle: 'Nabavka',
                 art: IntroMotif(size: 200),
                 title: 'Lista je prazna',
                 body: 'Sastojci koji ti nedostaju za recept pojaviće se ovde.',
@@ -152,7 +151,6 @@ GoRouter createRouter({
             GoRoute(
               path: '/pantry',
               builder: (context, state) => const EmptyStateScreen(
-                appBarTitle: 'Ostava',
                 art: EmptyFridge(),
                 title: 'Ostava je prazna',
                 body: 'Vreme je za nabavku',

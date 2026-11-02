@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/animations/spoon_refresh.dart';
+import '../../app/tab_app_bar.dart';
 import '../../app/theme/tavli_colors.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
-import '../account/account_header.dart';
 import 'add_recipe_sheet.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
@@ -28,11 +28,7 @@ class RecipesScreen extends StatelessWidget {
         final wide = constraints.maxWidth >= splitViewMinWidth;
         final selected = selectedId;
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Recepti'),
-            automaticallyImplyLeading: false,
-            actions: const [ProfileButton()],
-          ),
+          appBar: const TabAppBar(),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => showAddRecipeSheet(context),
             icon: const Icon(Icons.add),

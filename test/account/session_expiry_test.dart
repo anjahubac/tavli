@@ -22,7 +22,7 @@ void main() {
     await app.backend.auth.refresh();
     await tester.pumpAndSettle();
     expect(app.secrets.values[SessionStore.key], before);
-    expect(find.widgetWithText(AppBar, 'Recepti'), findsOneWidget);
+    expect(currentTab(tester), 'Recepti');
     expect(app.backend.auth.refreshes, 1);
   });
 
@@ -71,7 +71,7 @@ void main() {
   ) async {
     final backend = FakeBackend()..server.offline = true;
     final app = await pumpTavli(tester, backend: backend);
-    expect(find.widgetWithText(AppBar, 'Recepti'), findsOneWidget);
+    expect(currentTab(tester), 'Recepti');
     expect(app.secrets.values[SessionStore.key], isNotNull);
 
     // Mreža se vrati, ali je sesija u međuvremenu opozvana.

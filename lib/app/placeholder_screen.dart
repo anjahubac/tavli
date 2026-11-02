@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../features/account/account_header.dart';
+import 'tab_app_bar.dart';
 
 class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({super.key, required this.title, required this.icon});
+  const PlaceholderScreen({super.key, required this.icon});
 
-  final String title;
   final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return EmptyStateScreen(
-      appBarTitle: title,
       art: Icon(icon, size: 56, color: colors.primary),
       title: 'Uskoro',
     );
@@ -23,13 +21,11 @@ class PlaceholderScreen extends StatelessWidget {
 class EmptyStateScreen extends StatelessWidget {
   const EmptyStateScreen({
     super.key,
-    required this.appBarTitle,
     required this.art,
     required this.title,
     this.body,
   });
 
-  final String appBarTitle;
   final Widget art;
   final String title;
   final String? body;
@@ -38,10 +34,7 @@ class EmptyStateScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(appBarTitle),
-        actions: const [ProfileButton()],
-      ),
+      appBar: const TabAppBar(),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

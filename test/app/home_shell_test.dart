@@ -18,11 +18,11 @@ void main() {
     await pumpTavli(tester, size: const Size(390, 844));
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Recepti'), findsOneWidget);
+    expect(currentTab(tester), 'Recepti');
 
     await tester.tap(find.text('Ostava'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Ostava'), findsOneWidget);
+    expect(currentTab(tester), 'Ostava');
   });
 
   testTavli('širok ekran (macOS): bočni meni', (tester) async {
@@ -38,11 +38,14 @@ void main() {
     await pumpTavli(tester, size: const Size(390, 844), location: '/plan');
 
     expect(labels(tester), ['Plan', 'Nabavka', 'Recepti', 'Ostava']);
-    expect(find.widgetWithText(AppBar, 'Plan'), findsOneWidget);
+    expect(currentTab(tester), 'Plan');
+    // Gore je naziv aplikacije, ne naziv taba.
+    expect(find.widgetWithText(AppBar, 'Tavli'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Plan'), findsNothing);
     await tester.tap(find.text('Nabavka'));
     // Prazna Nabavka ima animaciju u petlji, pa bez pumpAndSettle.
     await tester.pump(const Duration(seconds: 1));
-    expect(find.widgetWithText(AppBar, 'Nabavka'), findsOneWidget);
+    expect(currentTab(tester), 'Nabavka');
   });
 
   for (final size in [const Size(390, 844), wide]) {
@@ -58,7 +61,7 @@ void main() {
 
         await tester.tap(find.byType(BackButton));
         await tester.pumpAndSettle();
-        expect(find.widgetWithText(AppBar, 'Ostava'), findsOneWidget);
+        expect(currentTab(tester), 'Ostava');
       },
     );
   }
@@ -67,7 +70,7 @@ void main() {
     await pumpTavli(tester, location: '/profile');
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Plan'), findsOneWidget);
+    expect(currentTab(tester), 'Plan');
   });
 
   test('posle prijave bez tražene adrese otvara se Plan', () {
