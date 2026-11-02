@@ -2,9 +2,8 @@
 
 Tavli requires an account. All user data is stored on Supabase (EU region)
 under the account; the local drift database is the offline cache the UI reads
-from. Specs: `specs/006-account-login/` (account, server storage, outbox).
-Sections marked *(006, planned)* describe the target design; details are fixed
-in the 006 `plan.md`.
+from. Spec, plan and decisions: `specs/006-account-login/` (account, server
+storage, outbox; research R1–R15).
 
 ## Layers
 
@@ -19,8 +18,8 @@ flowchart TD
   K["KeySource — LayeredKeySource<br/>own keys (Keychain / Keystore) → built-in (secrets.json)"]
   S["ModelStatusStore — DriftModelStatusStore"]
   DB[("drift / SQLite — lib/data/database.dart<br/>offline cache + outbox")]
-  SY["Sync — outbox upload, download on sign-in (006)"]
-  AU["Auth — session in Keychain / Keystore (006)"]
+  SY["Sync — lib/sync<br/>SyncedWriter · Uploader · Downloader · PhotoSync · LegacyMover · SyncEngine"]
+  AU["Account — lib/account<br/>AuthGateway · AuthController · SessionStore (Keychain / Keystore) · AccountService"]
   SB[("Supabase (EU)<br/>Auth · Postgres + RLS · Storage")]
 
   UI --> P
@@ -55,7 +54,7 @@ flowchart TD
   in an isolate and stored as files under `<documents>/recipe_photos/`; the DB
   keeps the relative path (`RecipePhotoStore`).
 
-## Account and server storage *(006, planned)*
+## Account and server storage (006a)
 
 ```mermaid
 flowchart LR
@@ -66,39 +65,60 @@ flowchart LR
     UP[Uploader] -->|"reads outbox in order"| CACHE
     DOWN[Downloader] -->|"upserts by id, cursor"| CACHE
   end
-  UP -->|"upsert / soft delete<br/>(idempotent by UUID)"| PG[("Supabase Postgres<br/>RLS per household / person")]
+  UP -->|"upsert / delete<br/>(idempotent by client id)"| PG[("Supabase Postgres<br/>RLS per household / person")]
   UP -->|photos| ST[("Supabase Storage<br/>private bucket")]
   PG -->|"changes since cursor<br/>(sign-in, app start)"| DOWN
   ST --> DOWN
 ```
 
 - **Sign-in**: passwordless email with a 6-digit code (006a); Apple and Google
-  (006b). The session lives only in Keychain / Keystore and is renewed
-  automatically. Without a session only the intro and sign-in are reachable.
-- **Ownership**: at sign-up the server creates a profile, a personal household
-  ("Moje domaćinstvo") and an owner membership. Household data (recipes,
+  (006b). `SupabaseAuthGateway` (pure-Dart `supabase` client, injectable
+  `http.Client`) maps every failure to a Serbian message (`authErrorText`).
+  The session JSON lives only in Keychain / Keystore (`SessionStore`, key
+  `auth_session`) and is renewed automatically; the app starts offline from the
+  stored session and the cached `Accounts` row. `AuthController` states:
+  `Starting`, `SignedOut(reason)`, `CodeSent`, `NeedsName`, `SignedIn`.
+- **Ownership**: at sign-up the `auth.users` trigger creates a profile, a
+  personal household ("Moje domaćinstvo") and an owner membership. Household data (recipes,
   versions, photos, shopping lists, pantry, meal plans) belongs to a household;
   personal data (profile, ratings, preferences) belongs to the person.
 - **Writes**: repositories write the drift row and an outbox entry in one
-  transaction; ids are client-generated UUIDs so retries never duplicate. The
-  uploader sends the outbox in order when online; a permanently rejected entry
-  is parked and reported, it does not block the rest.
+  transaction (`SyncedWriter`); ids are client-generated (`newId()`, UUID v4)
+  so retries never duplicate. The outbox holds identities, not snapshots; the
+  payload is read at send time. `Uploader` sends in order, batching up to 100
+  consecutive entries of one entity and kind, row by row when a batch is
+  rejected; a permanently rejected entry is parked and reported, it does not
+  block the rest. Photos go after data and never hold it up. `SyncEngine`
+  pushes on sign-in, start, resume and 1 s after each local change, retrying
+  offline after 5 s, 10 s, then every 30 s; Profil shows the save state.
 - **Reads**: the UI only reads drift. On sign-in the account's data is
-  downloaded; on app start (and foreground after ≥ 15 min) changes since the
-  last cursor are fetched. Until 009 the last write to reach the server wins per
-  record; deletes are soft deletes and win over edits.
-- **Per-account cache**: cached rows are scoped to the account; sign-out removes
-  only the session (data stays on the server and in the cache, hidden), another
-  account sees only its own data. Data that predates accounts is moved once into
-  the first account that signs in on the device.
-- **Delete account**: server-side deletion of the profile, membership,
-  household data, photos and auth identity (no service-role key in the app),
-  then the device cache, outbox, photos and own AI keys. Theme and model
-  cooldowns stay on the device.
-- **Security**: RLS on every table (person or household membership), explicit
-  `GRANT`s to `authenticated`, nothing for `anon`, new tables not auto-exposed;
-  private Storage bucket with the same rule. Policies are tested with
-  `supabase test db` against the local stack.
+  downloaded (`Downloader`: pages of 500 by `(updated_at, id)`, cursor per
+  entity saved per page, 60 s overlap); on app start (and foreground after
+  ≥ 15 min) only changes since the cursor are fetched. Rows with a local change
+  not yet on the server are not overwritten. Missing photos follow
+  (`PhotoSync`, 4 at a time). Until 009 the last write to reach the server wins
+  per record; deletes are real `DELETE`s that leave a tombstone in `deletions`,
+  and a tombstone makes later inserts of that id (or its children) a no-op, so
+  deletion wins over edits.
+- **Per-account cache**: cached rows carry `householdId` / `userId` and every
+  repository query filters by the active `AccountScope`; sign-out removes only
+  the session (data stays on the server and in the cache, hidden), another
+  account sees only its own data. Data that predates accounts (scope `null`) is
+  moved once, in one SQLite transaction, into the first account that signs in
+  on the device (`LegacyMover`, record `AppSettings['legacy_move']`).
+- **Delete account**: Edge Function `delete-account` (service role only in the
+  function environment) removes the household's photos through the Storage
+  API, calls `public.delete_account_data(uid)` and deletes the auth user; only
+  after HTTP 200 does the app wipe the account's cache, outbox, cursors, photos
+  and own AI keys. Theme and model cooldowns stay on the device.
+- **Security**: RLS on every table (person or household membership through
+  `private.is_member`), explicit `GRANT`s to `authenticated`, nothing for
+  `anon`, new tables not auto-exposed; private bucket `recipe-photos`
+  (`{household_id}/{file}.jpg`) with the same rule. Migrations are in
+  `supabase/migrations/`; pgTAP tests in `supabase/tests/` (catalog, two-account
+  isolation for every table and storage, deletions, account deletion) run with
+  `supabase test db`. Flutter tests use an in-memory fake backend
+  (`test/helpers/fake_backend.dart`) and `MockClient` for the Supabase adapters.
 - **Later**: 008 adds invites and roles; 009 adds realtime updates between
   household members and conflict handling for simultaneous edits.
 
@@ -108,8 +128,10 @@ flowchart LR
 `supabase/config.toml` on ports 5532x (API 55321, DB 55322, Studio 55323, mail
 catcher 55324) so it does not clash with other local Supabase projects.
 `supabase status` prints the local URL and anon key for your own gitignored
-`secrets.json`. Migrations live in `supabase/migrations/`, the Serbian sign-in
-email in `supabase/templates/`.
+`secrets.json`. Migrations live in `supabase/migrations/`, pgTAP tests in
+`supabase/tests/`, the Edge Function in `supabase/functions/delete-account/`,
+the Serbian sign-in email in `supabase/templates/`. Sign-in codes arrive in the
+mail catcher (Mailpit) at http://127.0.0.1:55324.
 
 ## Navigation
 
@@ -117,9 +139,12 @@ email in `supabase/templates/`.
 Kupovina, Profil. `HomeShell` shows a bottom `NavigationBar` below 720 px and a
 `NavigationRail` at ≥720 px (extended at ≥1000 px). `/profile/ai-keys` is the
 AI keys screen.
-*(006, planned)* A `go_router` redirect sends every route to the sign-in flow
-(`/sign-in`, then the mandatory name step) while there is no session or no saved
-name; after sign-in the originally requested route opens.
+A `go_router` redirect (`authRedirect`, refreshed on every auth state change)
+sends every route to the sign-in flow (`/sign-in`, then the mandatory name step
+`/sign-in/name`) while there is no session or no saved name; the requested
+route is kept in `?from=` and opens after sign-in. A banner above the tabs
+shows "Čuvam tvoje podatke…" / "Preuzimam tvoje podatke…" during the one-time
+move and the first download.
 
 Recipe routes: `/recipes` (list), `/recipes/new/{name,photo,manual}`,
 `/recipes/:id` (detail), `/recipes/:id/edit`, `/recipes/:id/chat`. When the

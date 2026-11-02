@@ -136,8 +136,10 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ## Phase 11: Polish & cross-cutting
 
-- [ ] T068 [P] Update `docs/architecture.md` (drop "planned", final module names), `docs/roadmap.md`, `AGENTS.md` structure (`lib/account/`, `lib/sync/`, `supabase/migrations`, `supabase/tests`, `supabase/functions`), `README.md` local backend steps
-- [ ] T069 Run [quickstart.md](quickstart.md): `supabase db reset && supabase test db`, secret grep, `scripts/check.sh`, `flutter build macos --debug`, manual table on the local stack at phone and wide widths; time a 200-recipe account download on a second device (SC-004 ≤ 2 min) and an offline backlog flush (SC-003 ≤ 1 min); spec status → Implemented
+- [x] T068 [P] Update `docs/architecture.md` (drop "planned", final module names), `docs/roadmap.md`, `AGENTS.md` structure (`lib/account/`, `lib/sync/`, `supabase/migrations`, `supabase/tests`, `supabase/functions`), `README.md` local backend steps
+- [x] T069 Run [quickstart.md](quickstart.md): `supabase db reset && supabase test db`, secret grep, `scripts/check.sh`, `flutter build macos --debug`, manual table on the local stack at phone and wide widths; time a 200-recipe account download on a second device (SC-004 ≤ 2 min) and an offline backlog flush (SC-003 ≤ 1 min); spec status → Implemented
+  - Done 2026-11-02: db reset + 161 pgTAP tests green; secret grep clean; check.sh green (294 tests); macOS debug build with a gitignored `secrets.local.json` (local URL + anon key only). Live run of the real adapters against the local stack (one-off script, not committed): email code via Mailpit → account + household; 200 recipes (20 photos) + 1 edit uploaded in 0.2 s (221 outbox entries, 0 rejected); a fresh "second device" database downloaded 200 recipes, the version and 20 photos in 0.15 s (pages of 50); a delete on device A reached device B and a late upsert did not bring the recipe back; `delete-account` (curl and Dart client) removed auth user, household, data and photos. Timings are on localhost, not a home connection.
+  - Left for the owner: the manual UI table in quickstart §3 (steps 1–15) in the running app.
 
 ## Dependencies
 

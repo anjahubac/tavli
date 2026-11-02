@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Planned (plan, tasks, analyze done; ready for `/speckit-implement`)
+**Status**: Implemented (all tasks done; awaiting review and the owner's manual run of quickstart §3)
 
 **Input**: User description: "Account is required from first launch, because all data is saved to the account. Backend: Supabase (EU region), decided. Scope 006a: sign-in screen right after the intro; passwordless email sign-in with a 6-digit one-time code (resend after 30 s); session stored in Keychain/Keystore and refreshed automatically; at sign-up a personal household is created automatically and the user is its owner (Vlasnik); existing local recipes, shopping list and other local data are moved into that household once, on first sign-in, without duplicates on later sign-ins; profile with name and initials avatar; sign out; delete account in the app. Out of scope: Sign in with Apple and Google (006b, after the Apple Developer account), invites and roles (008), data export, AI proxy. Supabase keys must never be committed; use the existing secrets.json / --dart-define-from-file pattern for the Supabase URL and anon key. Row Level Security on every table."
 

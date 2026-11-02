@@ -40,12 +40,19 @@ lib/
     model_check.dart        compare chain models with provider /models list
     prompts.dart            system prompt + recipe JSON schema + task prompts
     recipe_ai.dart          RecipeAI: fromImage, fromDishName, refine
-  data/                   drift database (all tables), DriftModelStatusStore,
-                          RecipeRepository, RecipePhotoStore, photo downscaling
-  domain/                 pure Dart models (Recipe, Ingredient, categories)
-  features/<feature>/     screens and widgets per feature (recipes/, settings/)
+  account/                Supabase config/client, AuthGateway (email code), SessionStore
+                          (Keychain), AccountApi, AccountService, AuthController + AccountScope
+  sync/                   entity registry, SyncedWriter (outbox), Supabase SyncRemote/PhotoRemote,
+                          Uploader, Downloader, PhotoSync, LegacyMover, SyncEngine
+  data/                   drift database (all tables, per-account cache + outbox),
+                          DriftModelStatusStore, RecipeRepository, RecipePhotoStore, photo downscaling
+  domain/                 pure Dart models (Recipe, Ingredient, Account, ids)
+  features/<feature>/     screens and widgets per feature (recipes/, settings/, account/)
+supabase/                 config.toml, migrations/ (schema, RLS, grants, storage),
+                          tests/ (pgTAP: `supabase test db`), functions/delete-account/, templates/
 test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio,
-                          helpers/test_app.dart pumps the whole app (testTavli/pumpTavli)
+                          helpers/fake_backend.dart fakes Supabase (auth, tables, storage),
+                          helpers/test_app.dart pumps the whole app signed in (testTavli/pumpTavli)
 supabase/                 Supabase CLI project: config.toml (local ports 5532x),
                           migrations/ (schema, RLS, grants), tests/ (pgTAP RLS tests),
                           templates/ (Serbian emails)

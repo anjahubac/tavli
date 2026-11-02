@@ -39,8 +39,11 @@ Last updated: 2026-10-30.
   screens restyled; eight animations (photo scan chips, simmering pot, check →
   cart, full bag, empty fridge, pull-to-refresh spoon, meal plan plate, egg
   timer) plus a themed intro; respects reduced motion.
-- **006 Account & login + server storage** (`006-account-login`, spec clarified,
-  next: plan): see below.
+- **006a Account & login + server storage** (`006-account-login`, implemented
+  locally, awaiting review): email-code sign-in, personal household, mandatory
+  name, all user data saved to Supabase with an offline outbox, download on
+  any device, one-time move of local data, sign-out, delete account, session
+  renewal. 006b (Apple and Google) follows; see below.
 - **007 Keep screen on** (`007-keep-screen-on`, PR #6, awaiting review): "Ne gasi
   ekran" toggle on a recipe keeps the display awake while cooking.
 
