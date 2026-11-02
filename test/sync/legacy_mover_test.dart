@@ -162,4 +162,78 @@ void main() {
     expect(await mover.moveIfNeeded(a), 0);
     expect(await outbox(), isEmpty);
   });
+
+  test('stara lista ostaje cela: kupljeno i ručno, bez nedelja i izvora; '
+      'obrok pre liste', () async {
+    await db
+        .into(db.mealPlans)
+        .insert(
+          MealPlansCompanion.insert(
+            id: 'p1',
+            startDate: t,
+            endDate: t,
+            mealTypesJson: '["lunch"]',
+            createdAt: t,
+          ),
+        );
+    await db
+        .into(db.mealPlanEntries)
+        .insert(
+          MealPlanEntriesCompanion.insert(
+            id: 'e1',
+            planId: 'p1',
+            date: t,
+            mealType: 'lunch',
+          ),
+        );
+    await db
+        .into(db.shoppingLists)
+        .insert(
+          ShoppingListsCompanion.insert(
+            id: 'l1',
+            name: 'Stara',
+            createdAt: t,
+            mealPlanId: const Value('p1'),
+            week: const Value(5),
+          ),
+        );
+    for (final (id, bought, manual) in [
+      ('kupljeno', true, false),
+      ('rucno', false, true),
+    ]) {
+      await db
+          .into(db.shoppingItems)
+          .insert(
+            ShoppingItemsCompanion.insert(
+              id: id,
+              listId: 'l1',
+              name: id,
+              category: 'ostalo',
+              isBought: Value(bought),
+              isManual: Value(manual),
+            ),
+          );
+    }
+    expect(await mover.moveIfNeeded(a), 5);
+
+    final list = (await db.select(db.shoppingLists).get()).single;
+    expect(list.id, 'l1');
+    expect(list.week, 5);
+    expect(list.periodStart, isNull);
+    final items = {
+      for (final i in await db.select(db.shoppingItems).get()) i.id: i,
+    };
+    expect(items['kupljeno']!.isBought, isTrue);
+    expect(items['rucno']!.isManual, isTrue);
+    expect(items.values.every((i) => i.householdId == 'h1'), isTrue);
+    expect(await db.select(db.shoppingSources).get(), isEmpty);
+    expect(await db.select(db.shoppingContributions).get(), isEmpty);
+    expect(await outbox(), [
+      'meal_plan:p1:upsert',
+      'meal_plan_entry:e1:upsert',
+      'shopping_list:l1:upsert',
+      'shopping_item:kupljeno:upsert',
+      'shopping_item:rucno:upsert',
+    ]);
+  });
 }

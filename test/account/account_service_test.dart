@@ -265,6 +265,52 @@ void main() {
               lastId: 'moj',
             ),
           );
+      // Nabavka: izvor, doprinos i raspodela u oba domaćinstva.
+      for (final (suffix, home) in [
+        ('moj', a.householdId),
+        ('tudj', 'drugi-dom'),
+      ]) {
+        await db
+            .into(db.shoppingSources)
+            .insert(
+              ShoppingSourcesCompanion.insert(
+                id: 's-$suffix',
+                listId: 'l-$suffix',
+                kind: 'recipePreparation',
+                recipeSnapshotJson: const Value('{}'),
+                servings: const Value(2),
+                createdAt: t,
+                householdId: Value(home),
+              ),
+            );
+        await db
+            .into(db.shoppingContributions)
+            .insert(
+              ShoppingContributionsCompanion.insert(
+                id: 'c-$suffix',
+                sourceId: 's-$suffix',
+                ingredientKey: 'luk',
+                unitGroup: 'mass',
+                baseUnit: 'g',
+                micros: const Value(1),
+                name: 'luk',
+                category: 'ostalo',
+                householdId: Value(home),
+              ),
+            );
+        await db
+            .into(db.supplyAllocations)
+            .insert(
+              SupplyAllocationsCompanion.insert(
+                id: 'a-$suffix',
+                contributionId: 'c-$suffix',
+                pantryItemId: Value('o-$suffix'),
+                micros: const Value(1),
+                createdAt: t,
+                householdId: Value(home),
+              ),
+            );
+      }
       await db
           .into(db.appSettings)
           .insert(AppSettingsCompanion.insert(key: 'theme', value: 'dark'));
@@ -286,6 +332,19 @@ void main() {
       );
       expect(await db.select(db.recipeVersions).get(), isEmpty);
       expect(await db.select(db.ratings).get(), isEmpty);
+      // Nabavka drugog domaćinstva ostaje.
+      expect(
+        [for (final r in await db.select(db.shoppingSources).get()) r.id],
+        ['s-tudj'],
+      );
+      expect(
+        [for (final r in await db.select(db.shoppingContributions).get()) r.id],
+        ['c-tudj'],
+      );
+      expect(
+        [for (final r in await db.select(db.supplyAllocations).get()) r.id],
+        ['a-tudj'],
+      );
       expect(
         [for (final e in await db.select(db.syncOutbox).get()) e.accountId],
         ['drugi'],

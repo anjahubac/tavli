@@ -81,15 +81,32 @@ class FakeServer {
     'pantry_items': 'pantry_item',
     'meal_plans': 'meal_plan',
     'meal_plan_entries': 'meal_plan_entry',
+    'shopping_sources': 'shopping_source',
+    'shopping_contributions': 'shopping_contribution',
+    'supply_allocations': 'supply_allocation',
     'ratings': 'rating',
     'taste_profiles': 'taste_profile',
   };
 
-  static const _parentOf = {
-    'recipe_versions': ('recipe', 'recipe_id'),
-    'shopping_items': ('shopping_list', 'list_id'),
-    'meal_plan_entries': ('meal_plan', 'plan_id'),
-    'ratings': ('recipe', 'recipe_id'),
+  /// Roditelji po stranim ključevima: dete obrisanog roditelja se preskače.
+  static const _parentsOf = {
+    'recipe_versions': [('recipe', 'recipe_id')],
+    'shopping_items': [('shopping_list', 'list_id')],
+    'meal_plan_entries': [('meal_plan', 'plan_id')],
+    'ratings': [('recipe', 'recipe_id')],
+    'shopping_sources': [
+      ('shopping_list', 'list_id'),
+      ('meal_plan_entry', 'plan_entry_id'),
+    ],
+    'shopping_contributions': [
+      ('shopping_source', 'source_id'),
+      ('shopping_item', 'shopping_item_id'),
+    ],
+    'supply_allocations': [
+      ('shopping_contribution', 'contribution_id'),
+      ('pantry_item', 'pantry_item_id'),
+      ('shopping_item', 'purchased_shopping_item_id'),
+    ],
   };
 
   bool _deleted(String entity, Object? id) =>
@@ -110,10 +127,16 @@ class FakeServer {
       if (rejectIds.contains(id)) throw const PermanentSyncError('23514');
       final entity = _entityOf[name]!;
       if (_deleted(entity, id)) continue;
-      if (_parentOf[name] case (final pe, final pc)) {
-        if (_deleted(pe, r[pc])) continue;
+      if (_parentsOf[name]?.any((p) => _deleted(p.$1, r[p.$2])) ?? false) {
+        continue;
       }
-      table(name)[id] = {...?table(name)[id], ...r, 'updated_at': _now()};
+      final row = {...?table(name)[id], ...r, 'updated_at': _now()};
+      // Kao kolona koju računa baza (generated always).
+      if (name == 'supply_allocations') {
+        row['supply_id'] =
+            row['purchased_shopping_item_id'] ?? row['pantry_item_id'];
+      }
+      table(name)[id] = row;
     }
   }
 
@@ -158,11 +181,25 @@ class FakeServer {
         cascade('recipe_versions', 'recipe_id');
         cascade('ratings', 'recipe_id');
         setNull('meal_plan_entries', 'recipe_id');
+        setNull('shopping_sources', 'recipe_id');
       case 'shopping_lists':
         cascade('shopping_items', 'list_id');
+        cascade('shopping_sources', 'list_id');
       case 'meal_plans':
         cascade('meal_plan_entries', 'plan_id');
         setNull('shopping_lists', 'meal_plan_id');
+      case 'meal_plan_entries':
+        cascade('shopping_sources', 'plan_entry_id');
+      case 'shopping_items':
+        setNull('shopping_contributions', 'shopping_item_id');
+        setNull('pantry_items', 'source_shopping_item_id');
+        cascade('supply_allocations', 'purchased_shopping_item_id');
+      case 'pantry_items':
+        cascade('supply_allocations', 'pantry_item_id');
+      case 'shopping_sources':
+        cascade('shopping_contributions', 'source_id');
+      case 'shopping_contributions':
+        cascade('supply_allocations', 'contribution_id');
     }
   }
 

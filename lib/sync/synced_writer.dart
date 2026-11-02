@@ -46,6 +46,14 @@ class SyncedWriter {
     await _add(entity, id, OutboxOp.upsert);
   }
 
+  /// Kao [upsert], ali izmena ide na kraj reda: za dete koje je upravo
+  /// prevezano na novog roditelja (npr. doprinos na novu stavku), da ne bi
+  /// otišlo na server pre tog roditelja.
+  Future<void> upsertLast(String entity, String id) async {
+    await _remove(entity, id, OutboxOp.upsert);
+    await _add(entity, id, OutboxOp.upsert);
+  }
+
   /// Brisanje: izmene tog zapisa koje čekaju više nisu potrebne.
   Future<void> delete(String entity, String id) async {
     await _remove(entity, id, OutboxOp.upsert, includeRejected: true);

@@ -21,15 +21,16 @@ test before its implementation. Use fake AI/backend, never hosted production.
 
 - [ ] T005 [P] Write failing civil-date, six-week/leap/DST, portion-scaling, compatible/unknown-unit and demand-identity tests in `test/domain/plan_calendar_test.dart` and `test/domain/shopping_demand_test.dart`.
 - [ ] T006 Implement immutable plan/snapshot/calendar/quantity/source models in `lib/domain/meal_plan.dart`, `lib/domain/plan_calendar.dart`, `lib/domain/shopping_demand.dart` and `lib/domain/shopping_source.dart`, injecting clock and fixed quantity precision.
-- [ ] T007 [P] Write migration-preservation fixtures in `test/data/migration_test.dart` and two-account policy/grant/FK/tombstone tests in `supabase/tests/07_plan_shopping_test.sql` for new child tables and added fields.
-- [ ] T008 Add the next drift schema version/migration in `lib/data/database.dart`, regenerate `lib/data/database.g.dart`, and add a new `supabase/migrations/20261102120000_plan_and_shopping.sql` with columns, three child tables (sources/contributions/allocations), RLS/grants, constraints, indexes and deletion triggers; never edit applied migrations.
-- [ ] T009 Write registry/order/round-trip/retry/wipe/legacy tests in `test/sync/entities_test.dart`, `test/sync/uploader_test.dart`, `test/sync/downloader_test.dart`, `test/sync/legacy_mover_test.dart` and `test/account/account_service_test.dart`; extend synthetic fixtures only.
-- [ ] T010 Implement parent-first mappings and reverse cleanup in `lib/sync/entities.dart`, `lib/sync/legacy_mover.dart`, `lib/account/account_service.dart` and `test/helpers/fake_backend.dart`; preserve old ids/manual/bought lists and personal scope.
+- [x] T007 [P] Write migration-preservation fixtures in `test/data/migration_test.dart` and two-account policy/grant/FK/tombstone tests in `supabase/tests/07_plan_shopping_test.sql` for new child tables and added fields.
+- [x] T008 Add the next drift schema version/migration in `lib/data/database.dart`, regenerate `lib/data/database.g.dart`, and add a new `supabase/migrations/20261102120000_plan_and_shopping.sql` with columns, three child tables (sources/contributions/allocations), RLS/grants, constraints, indexes and deletion triggers; never edit applied migrations.
+- [x] T009 Write registry/order/round-trip/retry/wipe/legacy tests in `test/sync/entities_test.dart`, `test/sync/uploader_test.dart`, `test/sync/downloader_test.dart`, `test/sync/legacy_mover_test.dart` and `test/account/account_service_test.dart`; extend synthetic fixtures only.
+- [x] T010 Implement parent-first mappings and reverse cleanup in `lib/sync/entities.dart`, `lib/sync/legacy_mover.dart`, `lib/account/account_service.dart` and `test/helpers/fake_backend.dart`; preserve old ids/manual/bought lists and personal scope.
 
 - [ ] T011 Write failing per-entry demand, capacity, duplicate-credit, manual/bought preservation and fixed-precision tests in `test/domain/shopping_demand_test.dart` and `test/domain/supply_allocation_test.dart`.
 - [ ] T012 Write account-scoped canonical-week/month, delta/outbox, source and immutable purchase-provenance tests in `test/data/shopping_repository_test.dart` and `test/data/pantry_repository_test.dart`.
+  Done for `test/data/shopping_repository_test.dart`; the pantry-receipt half waits for `lib/data/pantry_repository.dart` (T026).
 - [ ] T013 Implement per-entry reconciliation and deterministic supply allocation in `lib/domain/shopping_demand.dart` and `lib/domain/supply_allocation.dart` without semantic ingredient guesses.
-- [ ] T014 Implement canonical-period read/write and source/contribution/allocation transactions in `lib/data/shopping_repository.dart`; keep bought/manual records stable and whole-month reads aggregate-only.
+- [x] T014 Implement canonical-period read/write and source/contribution/allocation transactions in `lib/data/shopping_repository.dart`; keep bought/manual records stable and whole-month reads aggregate-only.
 
 Shared reconciliation is foundational because plan approval and edits must
 update existing shopping atomically; do not defer this core until purchase UI.

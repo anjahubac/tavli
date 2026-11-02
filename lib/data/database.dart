@@ -51,6 +51,11 @@ class RecipeVersions extends Table {
 }
 
 @DataClassName('PantryItemRow')
+@TableIndex(
+  name: 'pantry_items_source_item',
+  columns: {#sourceShoppingItemId},
+  unique: true,
+)
 class PantryItems extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -61,20 +66,36 @@ class PantryItems extends Table {
   DateTimeColumn get expiresAt => dateTime().nullable()();
   TextColumn get householdId => text().nullable()();
 
+  /// Kad je osoba potvrdila količinu; samo potvrđena zaliha pokriva potrebu.
+  DateTimeColumn get confirmedAt => dateTime().nullable()();
+
+  /// Prijem kupljene stavke: ista zaliha kao ta kupovina, ne nova (v5).
+  TextColumn get sourceShoppingItemId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
 
 @DataClassName('ShoppingListRow')
+@TableIndex(
+  name: 'shopping_lists_plan_period',
+  columns: {#mealPlanId, #periodStart},
+  unique: true,
+)
 class ShoppingLists extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get mealPlanId => text().nullable()();
 
-  /// Redni broj nedelje kod mesečnog plana (1-5), null inače.
+  /// Redni broj nedeljnog dela plana (1–6), null inače.
   IntColumn get week => integer().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get householdId => text().nullable()();
+
+  /// Nedeljni deo plana (kalendarski datumi kao UTC ponoć, v5); null za
+  /// listu bez plana i za raniju listu.
+  DateTimeColumn get periodStart => dateTime().nullable()();
+  DateTimeColumn get periodEnd => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -94,6 +115,10 @@ class ShoppingItems extends Table {
       text().withDefault(const Constant('[]'))();
   TextColumn get householdId => text().nullable()();
 
+  /// Zamrznuti izvori, porcije i raspodela u trenutku kupovine (v5); kasnije
+  /// izmene plana ne menjaju istoriju kupovine.
+  TextColumn get purchaseProvenanceJson => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -107,6 +132,9 @@ class MealPlans extends Table {
   BoolColumn get usePantry => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get householdId => text().nullable()();
+
+  /// Porcije za nove obroke plana (1–20, v5).
+  IntColumn get defaultServings => integer().withDefault(const Constant(2))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -122,6 +150,112 @@ class MealPlanEntries extends Table {
   BoolColumn get isLocked => boolean().withDefault(const Constant(false))();
   BoolColumn get isCooked => boolean().withDefault(const Constant(false))();
   TextColumn get householdId => text().nullable()();
+
+  /// Porcije ovog obroka (1–20, v5); null za stari unos (porcije recepta).
+  IntColumn get servings => integer().nullable()();
+
+  /// Odobren recept u trenutku planiranja (RecipeSnapshot JSON, v5). Izmena
+  /// recepta u biblioteci ne menja plan.
+  TextColumn get recipeSnapshotJson => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Izvor potražnje u listi (v5): planirani obrok ili samostalna priprema
+/// recepta. Id samostalnog izvora je id pripreme.
+@DataClassName('ShoppingSourceRow')
+@TableIndex(
+  name: 'shopping_sources_list_entry',
+  columns: {#listId, #planEntryId},
+  unique: true,
+)
+class ShoppingSources extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get listId => text().references(ShoppingLists, #id)();
+
+  /// ShoppingSourceKind.name: planEntry | recipePreparation.
+  TextColumn get kind => text()();
+  TextColumn get planEntryId =>
+      text().nullable().references(MealPlanEntries, #id)();
+
+  /// Samo samostalna priprema: zamrznut recept, porcije, recept iz
+  /// biblioteke (ako postoji) i poreklo (recept ili nesačuvan nacrt).
+  TextColumn get recipeSnapshotJson => text().nullable()();
+  IntColumn get servings => integer().nullable()();
+  TextColumn get recipeId => text().nullable()();
+  TextColumn get originKey => text().nullable()();
+
+  /// "Ponovi nabavku" zamenjuje tekuću pripremu novom; stara ostaje istorija.
+  DateTimeColumn get supersededAt => dateTime().nullable()();
+
+  /// Skuvano ili uklonjeno: ne pravi novu kupovinu, raspodela ostaje.
+  DateTimeColumn get closedAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Doprinos jednog izvora jednoj stavci (v5): izvor + sastojak + grupa
+/// jedinica. Količina u milionitim delovima osnovne jedinice.
+@DataClassName('ShoppingContributionRow')
+@TableIndex(
+  name: 'shopping_contributions_identity',
+  columns: {#sourceId, #ingredientKey, #unitGroup},
+  unique: true,
+)
+class ShoppingContributions extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+
+  /// Otvorena stavka na kojoj se vidi preostala potreba; null kad je sve
+  /// pokriveno zalihom.
+  TextColumn get shoppingItemId =>
+      text().nullable().references(ShoppingItems, #id)();
+  TextColumn get sourceId => text().references(ShoppingSources, #id)();
+  TextColumn get ingredientKey => text()();
+  TextColumn get unitGroup => text()();
+  TextColumn get baseUnit => text()();
+
+  /// null samo kad količina nije poznata (grupa `unknown`).
+  IntColumn get micros => integer().nullable()();
+  TextColumn get name => text()();
+  TextColumn get category => text()();
+  TextColumn get notesJson => text().withDefault(const Constant('[]'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Potvrđena zaliha dodeljena doprinosu (v5): iz ostave ili kupovine,
+/// tačno jedno. Prijem kupovine se beleži kao kupovina (ista zaliha).
+@DataClassName('SupplyAllocationRow')
+@TableIndex(
+  name: 'supply_allocations_identity',
+  columns: {#contributionId, #supplyId},
+  unique: true,
+)
+class SupplyAllocations extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get contributionId =>
+      text().references(ShoppingContributions, #id)();
+  TextColumn get pantryItemId => text().nullable()();
+  TextColumn get purchasedShoppingItemId => text().nullable()();
+
+  /// Kanonski identitet zalihe (id kupovine ili stavke ostave).
+  TextColumn get supplyId => text().generatedAs(
+    coalesce([purchasedShoppingItemId, pantryItemId]),
+    stored: true,
+  )();
+  IntColumn get micros => integer().nullable()();
+
+  /// Osoba je potvrdila da ima celu stavku nepoznate količine.
+  BoolColumn get coversWholeUnknown =>
+      boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -244,6 +378,9 @@ class SyncCursors extends Table {
     ShoppingItems,
     MealPlans,
     MealPlanEntries,
+    ShoppingSources,
+    ShoppingContributions,
+    SupplyAllocations,
     Ratings,
     UserProfiles,
     AppSettings,
@@ -258,7 +395,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -274,8 +411,63 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(recipeVersions, recipeVersions.changedBy);
       }
       if (from < 4) await transaction(() => _migrateToAccounts(m));
+      if (from < 5) await transaction(() => _migrateToPlanShopping(m));
     },
   );
+
+  /// v5: porcije i odobren recept u planu, nedeljni delovi listi, poreklo
+  /// kupovine, prijem u ostavu i tri tabele za izvore, doprinose i
+  /// raspodelu zalihe. Postojeći redovi i id-jevi ostaju; stare liste se ne
+  /// dele na nedelje.
+  Future<void> _migrateToPlanShopping(Migrator m) async {
+    // Tabela napravljena iznova u v4 koraku (sa starije verzije) već ima
+    // nove kolone.
+    Future<void> add(TableInfo<Table, Object?> table, GeneratedColumn c) async {
+      final columns = await customSelect(
+        'PRAGMA table_info("${table.actualTableName}")',
+      ).get();
+      if (columns.any((r) => r.read<String>('name') == c.$name)) return;
+      await m.addColumn(table, c);
+    }
+
+    await add(mealPlans, mealPlans.defaultServings);
+    await add(mealPlanEntries, mealPlanEntries.servings);
+    await add(mealPlanEntries, mealPlanEntries.recipeSnapshotJson);
+    await add(shoppingLists, shoppingLists.periodStart);
+    await add(shoppingLists, shoppingLists.periodEnd);
+    await add(shoppingItems, shoppingItems.purchaseProvenanceJson);
+    await add(pantryItems, pantryItems.confirmedAt);
+    await add(pantryItems, pantryItems.sourceShoppingItemId);
+    await m.createTable(shoppingSources);
+    await m.createTable(shoppingContributions);
+    await m.createTable(supplyAllocations);
+    final indexes = {
+      for (final r in await customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'index'",
+      ).get())
+        r.read<String>('name'),
+    };
+    for (final index in [
+      pantryItemsSourceItem,
+      shoppingListsPlanPeriod,
+      shoppingSourcesListEntry,
+      shoppingContributionsIdentity,
+      supplyAllocationsIdentity,
+    ]) {
+      if (!indexes.contains(index.entityName)) await m.createIndex(index);
+    }
+    // Postojeći obroci dobijaju recept kakav je sada u biblioteci.
+    await customStatement('''
+      UPDATE meal_plan_entries SET recipe_snapshot_json = (
+        SELECT json_object(
+          'title', r.title, 'servings', r.servings,
+          'prepMinutes', r.prep_minutes,
+          'ingredients', json(r.ingredients_json),
+          'steps', json(r.steps_json), 'imagePath', r.image_path)
+        FROM recipes r WHERE r.id = meal_plan_entries.recipe_id)
+      WHERE recipe_id IS NOT NULL
+    ''');
+  }
 
   /// v4: tekstualni id-jevi, kolone naloga i tabele za slanje. Postojeći
   /// redovi dobijaju slučajan id i null nalog (prebacuju se pri prijavi).
@@ -303,8 +495,10 @@ class AppDatabase extends _$AppDatabase {
         for (final row in columns)
           row.read<String>('name'): row.read<String>('type').toUpperCase(),
       };
+      // Kolone kasnijih verzija (v5…) se takođe dodaju: tabela se pravi
+      // po trenutnoj šemi.
       final missing = [
-        for (final column in migration.newColumns)
+        for (final column in table.$columns)
           if (!types.containsKey(column.$name)) column,
       ];
       final transformers = {
