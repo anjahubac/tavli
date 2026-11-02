@@ -10,7 +10,11 @@ import '../features/recipes/recipe_chat_screen.dart';
 import '../features/recipes/recipe_form_screen.dart';
 import '../features/recipes/recipes_screen.dart';
 import '../features/settings/ai_keys_screen.dart';
+import '../features/settings/animations_gallery_screen.dart';
+import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
+import 'animations/empty_fridge.dart';
+import 'animations/intro_motif.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
@@ -21,7 +25,7 @@ String? authRedirect(AuthState auth, Uri uri) {
   final from = uri.queryParameters['from'];
   String withFrom(String target) {
     final back = path.startsWith('/sign-in') ? from : uri.toString();
-    return back == null || back == '/recipes'
+    return back == null || back == '/plan'
         ? target
         : Uri(path: target, queryParameters: {'from': back}).toString();
   }
@@ -31,14 +35,14 @@ String? authRedirect(AuthState auth, Uri uri) {
     SignedOut() ||
     CodeSent() => path == '/sign-in' ? null : withFrom('/sign-in'),
     NeedsName() => path == '/sign-in/name' ? null : withFrom('/sign-in/name'),
-    SignedIn() => path.startsWith('/sign-in') ? (from ?? '/recipes') : null,
+    SignedIn() => path.startsWith('/sign-in') ? (from ?? '/plan') : null,
   };
 }
 
 /// Pravi novi router (testovi prave svoj, da stanje ne prelazi iz testa u
 /// test). [auth] daje trenutno stanje prijave, [refresh] javlja promene.
 GoRouter createRouter({
-  String initialLocation = '/recipes',
+  String initialLocation = '/plan',
   AuthState Function()? auth,
   Listenable? refresh,
 }) => GoRouter(
@@ -55,9 +59,49 @@ GoRouter createRouter({
         GoRoute(path: 'name', builder: (context, state) => const NameScreen()),
       ],
     ),
+    // Profil i podešavanja su iznad tabova; otvaraju se preko avatara.
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfileScreen(),
+      routes: [
+        GoRoute(
+          path: 'ai-keys',
+          builder: (context, state) => const AiKeysScreen(),
+        ),
+        GoRoute(
+          path: 'appearance',
+          builder: (context, state) => const AppearanceScreen(),
+        ),
+        GoRoute(
+          path: 'animations',
+          builder: (context, state) => const AnimationsGalleryScreen(),
+        ),
+      ],
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => HomeShell(shell: shell),
       branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/plan',
+              builder: (context, state) =>
+                  PlaceholderScreen(icon: tabs[0].icon),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/shopping',
+              builder: (context, state) => const EmptyStateScreen(
+                art: IntroMotif(size: 200),
+                title: 'Lista je prazna',
+                body: 'Sastojci koji ti nedostaju za recept pojaviće se ovde.',
+              ),
+            ),
+          ],
+        ),
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -102,29 +146,15 @@ GoRouter createRouter({
             ),
           ],
         ),
-        for (final tab in tabs.where(
-          (t) => t.path != '/recipes' && t.path != '/profile',
-        ))
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: tab.path,
-                builder: (context, state) =>
-                    PlaceholderScreen(title: tab.label, icon: tab.icon),
-              ),
-            ],
-          ),
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfileScreen(),
-              routes: [
-                GoRoute(
-                  path: 'ai-keys',
-                  builder: (context, state) => const AiKeysScreen(),
-                ),
-              ],
+              path: '/pantry',
+              builder: (context, state) => const EmptyStateScreen(
+                art: EmptyFridge(),
+                title: 'Ostava je prazna',
+                body: 'Vreme je za nabavku',
+              ),
             ),
           ],
         ),
@@ -143,14 +173,13 @@ class TabSpec {
 }
 
 const tabs = [
-  TabSpec('/recipes', 'Recepti', Icons.menu_book_outlined, Icons.menu_book),
   TabSpec('/plan', 'Plan', Icons.calendar_month_outlined, Icons.calendar_month),
-  TabSpec('/pantry', 'Ostava', Icons.kitchen_outlined, Icons.kitchen),
   TabSpec(
     '/shopping',
-    'Kupovina',
+    'Nabavka',
     Icons.shopping_basket_outlined,
     Icons.shopping_basket,
   ),
-  TabSpec('/profile', 'Profil', Icons.person_outline, Icons.person),
+  TabSpec('/recipes', 'Recepti', Icons.menu_book_outlined, Icons.menu_book),
+  TabSpec('/pantry', 'Ostava', Icons.kitchen_outlined, Icons.kitchen),
 ];

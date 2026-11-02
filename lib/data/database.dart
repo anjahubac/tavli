@@ -273,7 +273,7 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(recipeVersions, recipeVersions.changeKind);
         await m.addColumn(recipeVersions, recipeVersions.changedBy);
       }
-      if (from < 4) await _migrateToAccounts(m);
+      if (from < 4) await transaction(() => _migrateToAccounts(m));
     },
   );
 
@@ -288,10 +288,39 @@ class AppDatabase extends _$AppDatabase {
         r.read<String>('name'),
     };
     // Tabela koje nema (stara delimična šema) se samo napravi.
-    Future<void> alter(TableMigration migration) =>
-        existing.contains(migration.affectedTable.actualTableName)
-        ? m.alterTable(migration)
-        : m.createTable(migration.affectedTable);
+    Future<void> alter(TableMigration migration) async {
+      final table = migration.affectedTable;
+      if (!existing.contains(table.actualTableName)) {
+        await m.createTable(table);
+        return;
+      }
+      // Starija aplikacija može da vrati user_version na 3 iako su tabele
+      // već v4. Već pretvoreni id-jevi i vlasništvo tada moraju da ostanu.
+      final columns = await customSelect(
+        'PRAGMA table_info("${table.actualTableName}")',
+      ).get();
+      final types = {
+        for (final row in columns)
+          row.read<String>('name'): row.read<String>('type').toUpperCase(),
+      };
+      final missing = [
+        for (final column in migration.newColumns)
+          if (!types.containsKey(column.$name)) column,
+      ];
+      final transformers = {
+        for (final entry in migration.columnTransformer.entries)
+          if (types[entry.key.$name] != 'TEXT') entry.key: entry.value,
+      };
+      if (missing.isEmpty && transformers.isEmpty) return;
+      await m.alterTable(
+        TableMigration(
+          table,
+          newColumns: missing,
+          columnTransformer: transformers,
+        ),
+      );
+    }
+
     await alter(TableMigration(recipes, newColumns: [recipes.householdId]));
     await alter(
       TableMigration(
@@ -346,7 +375,14 @@ class AppDatabase extends _$AppDatabase {
     );
     await m.createTable(accounts);
     await m.createTable(syncOutbox);
-    await m.createIndex(syncOutboxAccountStateSeq);
+    final indexes = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    ).get();
+    if (!indexes.any(
+      (row) => row.read<String>('name') == syncOutboxAccountStateSeq.entityName,
+    )) {
+      await m.createIndex(syncOutboxAccountStateSeq);
+    }
     await m.createTable(syncCursors);
   }
 }

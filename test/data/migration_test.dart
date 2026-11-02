@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/data/database.dart';
@@ -5,6 +7,71 @@ import 'package:tavli/data/database.dart';
 import '../helpers/v3_schema.dart';
 
 void main() {
+  test('postojeća v4 struktura označena kao v3 čuva id-jeve i outbox pri otvaranju', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'tavli-migration-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final before = AppDatabase(NativeDatabase(file));
+    await before.customStatement(
+      "INSERT INTO recipes (id, title, servings, source, ingredients_json, steps_json, created_at, updated_at, household_id) VALUES ('recipe-kept', 'Test recept', 2, 'manual', '[]', '[]', 1, 2, 'home-kept')",
+    );
+    await before.customStatement(
+      "INSERT INTO recipe_versions (id, recipe_id, recipe_json, created_at, household_id) VALUES ('version-kept', 'recipe-kept', '{}', 1, 'home-kept')",
+    );
+    await before.customStatement(
+      "INSERT INTO shopping_lists (id, name, created_at, household_id) VALUES ('list-kept', 'Test lista', 1, 'home-kept')",
+    );
+    await before.customStatement(
+      "INSERT INTO shopping_items (id, list_id, name, category, household_id) VALUES ('item-kept', 'list-kept', 'Test sastojak', 'ostalo', 'home-kept')",
+    );
+    await before.customStatement(
+      "INSERT INTO user_profiles (id, profile_json) VALUES ('user-kept', '{}')",
+    );
+    await before.customStatement(
+      "INSERT INTO sync_outbox (account_id, entity, record_id, op, created_at) VALUES ('user-kept', 'recipe_version', 'version-kept', 'upsert', 1), ('user-kept', 'shopping_item', 'item-kept', 'upsert', 1)",
+    );
+    await before.customStatement(
+      "INSERT INTO app_settings (key, value) VALUES ('theme', 'borovnica')",
+    );
+    await before.customStatement('PRAGMA user_version = 3');
+    await before.close();
+
+    final after = AppDatabase(NativeDatabase(file));
+    addTearDown(after.close);
+    expect(
+      (await after.select(after.appSettings).get()).single.value,
+      'borovnica',
+    );
+    expect(
+      (await after.select(after.recipeVersions).get()).single.id,
+      'version-kept',
+    );
+    expect(
+      (await after.select(after.shoppingItems).get()).single.id,
+      'item-kept',
+    );
+    expect(
+      (await after.select(after.userProfiles).get()).single.id,
+      'user-kept',
+    );
+    expect(
+      (await after.select(after.recipes).get()).single.householdId,
+      'home-kept',
+    );
+    expect(
+      (await after.select(after.syncOutbox).get()).map((row) => row.recordId),
+      ['version-kept', 'item-kept'],
+    );
+    expect(
+      (await after.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      4,
+    );
+  });
+
   test('migracija 2 → 3 dodaje vrstu izmene i model, a čuva verzije', () async {
     final executor = NativeDatabase.memory(
       setup: (raw) {

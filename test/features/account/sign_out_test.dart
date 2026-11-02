@@ -18,6 +18,17 @@ void main() {
     matching: find.text(label),
   );
 
+  // Profil je iznad tabova: nazad vodi na Plan, avatar ga ponovo otvara.
+  Future<void> leaveProfile(WidgetTester tester) async {
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openProfile(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Profil i podešavanja'));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> openSignOut(WidgetTester tester) async {
     await tester.tap(find.text('Odjavi se'));
     await tester.pumpAndSettle();
@@ -108,11 +119,11 @@ void main() {
     await tester.pumpAndSettle();
     // Posle prijave nazad na traženu stranu ("Profil").
     expect(find.text('Bojan'), findsOneWidget);
+    await leaveProfile(tester);
     await tester.tap(tab('Recepti'));
     await tester.pumpAndSettle();
     expect(find.text('Sarma'), findsNothing);
-    await tester.tap(tab('Profil'));
-    await tester.pumpAndSettle();
+    await openProfile(tester);
     expect(find.text('Ana P.'), findsNothing);
     // Izmena prvog naloga još nije poslata.
     expect(

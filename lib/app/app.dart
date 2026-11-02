@@ -5,15 +5,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../account/auth_controller.dart';
+import '../domain/theme_choice.dart';
 import '../features/account/sync_banner.dart';
 import '../providers.dart';
+import 'animations/intro_overlay.dart';
 import 'router.dart';
-
-/// Topla boja tave/terakote.
-const _seed = Color(0xFFD2643C);
+import 'theme/app_theme.dart';
+import 'theme/theme_controller.dart';
 
 class TavliApp extends ConsumerStatefulWidget {
-  const TavliApp({super.key, this.initialLocation = '/recipes'});
+  const TavliApp({
+    super.key,
+    this.initialLocation = '/plan',
+    this.intro = true,
+  });
+
+  /// Testovi isključuju uvodni ekran.
+  final bool intro;
 
   /// Prva adresa (testovi, duboki link).
   final String initialLocation;
@@ -74,23 +82,21 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     final starting = ref.watch(
       authControllerProvider.select((s) => s is Starting),
     );
-    final theme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: _seed),
-      useMaterial3: true,
-    );
-    final darkTheme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: _seed,
-        brightness: Brightness.dark,
-      ),
-      useMaterial3: true,
-    );
+    final choice = ref.watch(themeControllerProvider);
+    final theme = buildTavliTheme(choice.theme, Brightness.light);
+    final darkTheme = buildTavliTheme(choice.theme, Brightness.dark);
+    final mode = switch (choice.mode) {
+      AppThemeMode.light => ThemeMode.light,
+      AppThemeMode.dark => ThemeMode.dark,
+      AppThemeMode.system => ThemeMode.system,
+    };
     // Dok se čita sačuvana sesija (kratko), bez treptanja ekrana prijave.
     if (starting) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: theme,
         darkTheme: darkTheme,
+        themeMode: mode,
         home: const Scaffold(body: SizedBox.expand()),
       );
     }
@@ -99,6 +105,9 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       debugShowCheckedModeBanner: false,
       theme: theme,
       darkTheme: darkTheme,
+      themeMode: mode,
+      builder: (context, child) =>
+          IntroOverlay(enabled: widget.intro, child: child ?? const SizedBox()),
       routerConfig: _router,
       scaffoldMessengerKey: _messenger,
     );

@@ -214,3 +214,7 @@ with `--dart-define-from-file=secrets.json` (see `secrets.example.json`), read
 by `BuiltInKeys.fromEnvironment()`. User-entered keys take priority. The
 built-in key is never shown in the UI. Later a Cloudflare Worker proxy replaces
 `BuiltInKeys` behind the same `KeySource` seam, so the app ships without keys.
+
+## Themes and animations
+
+Three themes (Bosiljak, Šafran, Borovnica), each light and dark, use bundled Plus Jakarta Sans. Profil → Izgled selects and previews a theme; Profil → Animacije is a debug-only gallery. New installations start in light Bosiljak; saved selections and system mode are preserved. The same theme is applied during account startup and on the sign-in screens.
