@@ -19,6 +19,7 @@ import 'package:tavli/app/app.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/features/recipes/keep_screen_on.dart';
 import 'package:tavli/features/recipes/photo_picker.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
@@ -109,9 +110,26 @@ Recipe sampleRecipe(
   createdAt: createdAt ?? DateTime.utc(2026),
 );
 
+/// Pamti da li je ekran trenutno zadržan upaljen.
+class FakeWakeLock implements ScreenWakeLock {
+  bool on = false;
+  bool fail = false;
+
+  @override
+  Future<void> enable() async {
+    if (fail) throw Exception('nije podržano');
+    on = true;
+  }
+
+  @override
+  Future<void> disable() async => on = false;
+}
+
 class TestApp {
   TestApp(this.db, this.photos, this.picker, this.adapter, this.backend)
     : session = backend.auth.sessionFor(testEmail);
+
+  final wakeLock = FakeWakeLock();
 
   final AppDatabase db;
   final FakePhotoStore photos;
@@ -178,6 +196,7 @@ Future<TestApp> pumpTavli(
   FakeBackend? backend,
   List<Override> overrides = const [],
   Future<void> Function(AppDatabase db)? setup,
+  Map<String, String> settings = const {},
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -196,6 +215,11 @@ Future<TestApp> pumpTavli(
     await app.repo.create(r);
   }
   await setup?.call(db);
+  for (final MapEntry(:key, :value) in settings.entries) {
+    await db
+        .into(db.appSettings)
+        .insert(AppSettingsCompanion.insert(key: key, value: value));
+  }
 
   await tester.pumpWidget(
     ProviderScope(
@@ -221,6 +245,7 @@ Future<TestApp> pumpTavli(
         photoPickerProvider.overrideWithValue(app.picker),
         photoResizerProvider.overrideWithValue((bytes) async => bytes),
         ...overrides,
+        screenWakeLockProvider.overrideWithValue(app.wakeLock),
       ],
       child: TavliApp(initialLocation: location),
     ),

@@ -27,6 +27,8 @@ Last updated: 2026-10-30.
   added keys with check/delete; keys used in order with per-key cooldowns.
 - **Hide built-in keys** (PR #4): the keys page never shows built-in keys;
   "Probaj AI" removed from the keys page.
+- **Keep screen on while cooking** (`specs/007-keep-screen-on`): "Ne gasi ekran"
+  toggle on the recipe screen, remembered in `AppSettings`.
 - **Dev process**: Spec Kit, constitution, AGENTS.md, CLAUDE.md,
   `docs/flutter-best-practices.md`, strict lints, `scripts/check.sh`, git rules
   (branch from latest `main`, squash-merge, delete branch after merge).
