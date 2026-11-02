@@ -177,6 +177,7 @@ Future<TestApp> pumpTavli(
   String? name = 'Ana Petrović',
   FakeBackend? backend,
   List<Override> overrides = const [],
+  Future<void> Function(AppDatabase db)? setup,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -191,6 +192,7 @@ Future<TestApp> pumpTavli(
     backend ?? FakeBackend(),
   );
   if (signedIn) await app.signIn(name: name);
+  await setup?.call(db);
   for (final r in recipes) {
     await app.repo.create(r);
   }

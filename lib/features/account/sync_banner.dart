@@ -4,13 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers.dart';
 import '../../sync/sync_engine.dart';
 
+/// Kad prebačeni stari podaci stignu na server (prikazuje `TavliApp`).
+const dataMovedText = 'Tvoji recepti i liste su sačuvani u nalogu.';
+
 /// Traka dok traje prebacivanje starih podataka ili prvo preuzimanje.
 /// Aplikacija je za to vreme upotrebljiva (slike mogu da stignu kasnije).
+/// Kad prebačeni stari podaci stignu na server, kratka poruka.
 class SyncBanner extends ConsumerWidget {
   const SyncBanner({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(movedSavedProvider, (_, next) {
+      if (next.value case final n? when n > 0) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text(dataMovedText)));
+      }
+    });
     final phase = ref.watch(syncPhaseProvider).value;
     if (phase == null) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;

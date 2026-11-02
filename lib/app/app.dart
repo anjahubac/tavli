@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../account/auth_controller.dart';
+import '../features/account/sync_banner.dart';
 import '../providers.dart';
 import 'router.dart';
 
@@ -25,6 +26,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
   final _authChanges = _Refresh();
   late final GoRouter _router;
   late final AppLifecycleListener _lifecycle;
+  final _messenger = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -37,6 +39,17 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     ref.listenManual(authControllerProvider, (_, _) => _authChanges.ping());
     // Drži engine za slanje živim dok je nalog prijavljen.
     ref.listenManual(syncEngineProvider, (_, _) {}, fireImmediately: true);
+    ref.listenManual(movedSavedProvider, (_, next) {
+      if (next.value case final n? when n > 0) {
+        // Posle sledećeg okvira: aplikacija možda još prelazi sa ekrana
+        // pokretanja na router.
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _messenger.currentState?.showSnackBar(
+            const SnackBar(content: Text(dataMovedText)),
+          ),
+        );
+      }
+    });
     _lifecycle = AppLifecycleListener(onResume: _onResume);
     unawaited(
       Future.microtask(ref.read(authControllerProvider.notifier).start),
@@ -87,6 +100,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       theme: theme,
       darkTheme: darkTheme,
       routerConfig: _router,
+      scaffoldMessengerKey: _messenger,
     );
   }
 }

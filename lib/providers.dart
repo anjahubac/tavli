@@ -19,6 +19,7 @@ import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
+import 'sync/legacy_mover.dart';
 import 'sync/photo_sync.dart';
 import 'sync/sync_engine.dart';
 import 'sync/sync_remote.dart';
@@ -137,6 +138,7 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
       store: ref.watch(recipePhotoStoreProvider),
       scope: scope,
     ),
+    legacyMover: LegacyMover(db),
     refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
@@ -150,6 +152,12 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
 final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
   final engine = ref.watch(syncEngineProvider);
   return engine == null ? Stream.value(const AllSaved()) : engine.watchStatus();
+});
+
+/// Broj prebačenih starih zapisa, kad stignu na server.
+final movedSavedProvider = StreamProvider<int>((ref) {
+  final engine = ref.watch(syncEngineProvider);
+  return engine == null ? const Stream.empty() : engine.watchMovedSaved();
 });
 
 final syncPhaseProvider = StreamProvider<SyncPhase?>((ref) {

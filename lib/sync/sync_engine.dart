@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../account/auth_controller.dart';
 import '../data/database.dart';
 import 'downloader.dart';
+import 'legacy_mover.dart';
 import 'photo_sync.dart';
 import 'sync_remote.dart';
 import 'synced_writer.dart';
@@ -53,6 +54,7 @@ class SyncEngine {
     required this._uploader,
     this._downloader,
     this._photoSync,
+    this._legacyMover,
     this.onUnauthorized,
     this.refreshSession,
     TimerFactory? timer,
@@ -67,6 +69,7 @@ class SyncEngine {
   final Uploader _uploader;
   final Downloader? _downloader;
   final PhotoSync? _photoSync;
+  final LegacyMover? _legacyMover;
   final TimerFactory _timer;
   final DateTime Function() _clock;
   final Duration debounce;
@@ -86,6 +89,20 @@ class SyncEngine {
 
   final _status = StreamController<SyncStatus>.broadcast();
   final _phase = StreamController<SyncPhase?>.broadcast();
+  final _moved = StreamController<int>.broadcast();
+
+  /// Prebačeni stari podaci su stigli na server (broj zapisa): tada se
+  /// prikazuje "Tvoji recepti i liste su sačuvani u nalogu.".
+  Stream<int> get movedSaved => _moved.stream;
+
+  /// Kao [movedSaved], ali i događaj koji se desio pre pretplate.
+  Stream<int> watchMovedSaved() async* {
+    if (_movedSent case final n?) yield n;
+    yield* _moved.stream;
+  }
+
+  var _movedWaiting = 0;
+  int? _movedSent;
   SyncStatus _current = const AllSaved();
   SyncPhase? _currentPhase;
 
@@ -120,8 +137,21 @@ class SyncEngine {
               t.state.equals(OutboxState.sending),
         ))
         .write(const SyncOutboxCompanion(state: Value(OutboxState.pending)));
+    await _moveLegacy();
     await push();
     await pull();
+  }
+
+  /// Pre prvog preuzimanja: podaci od pre naloga prelaze u nalog.
+  Future<void> _moveLegacy() async {
+    final mover = _legacyMover;
+    if (mover == null || _stopped || !await mover.needsMove()) return;
+    setPhase(SyncPhase.moving);
+    try {
+      _movedWaiting = await mover.moveIfNeeded(_scope);
+    } finally {
+      setPhase(null);
+    }
   }
 
   /// Povratak u aplikaciju.
@@ -217,6 +247,11 @@ class SyncEngine {
         }
         _failures = 0;
         if (await _hasPostponedPhotos()) _scheduleRetry();
+        if (_movedWaiting > 0 && await _waitingCount() == 0) {
+          _movedSent = _movedWaiting;
+          _moved.add(_movedWaiting);
+          _movedWaiting = 0;
+        }
       } while (_again && !_stopped);
     } finally {
       _running = false;
@@ -292,5 +327,6 @@ class SyncEngine {
     _retryTimer?.cancel();
     unawaited(_status.close());
     unawaited(_phase.close());
+    unawaited(_moved.close());
   }
 }

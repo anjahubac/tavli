@@ -102,9 +102,9 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 **Goal**: pre-account data belongs to the first account, uploaded once, never duplicated.
 **Independent test**: v3 DB with 3 recipes + 2 items → sign in → 3 + 2 on device and server; sign out/in 3× → still 3 + 2.
 
-- [ ] T055 [P] [US5] Test: `LegacyMover` assigns all scope-null rows to the account's household/user, enqueues upserts parent-first plus photo uploads, records `legacy_move`; second call and a different account later move nothing; taste profile moved only if the account has none; an exception inside the transaction leaves everything unchanged and a rerun completes; no local data → returns 0, in `test/sync/legacy_mover_test.dart`
-- [ ] T056 [US5] Implement `lib/sync/legacy_mover.dart`; engine runs it before the first download; phase `moving` → banner "Čuvam tvoje podatke…"; SnackBar "Tvoji recepti i liste su sačuvani u nalogu." when moved > 0 and its entries are sent
-- [ ] T057 [US5] End-to-end test with `FakeBackend`: v3 database (3 recipes with versions and a photo, 2 shopping items) → migrate → sign in → server and device have exactly 3 + 2; account already has 2 server recipes → 5 after move (nothing overwritten); 3 sign-out/sign-in cycles → counts unchanged (SC-005), in `test/sync/legacy_move_flow_test.dart`
+- [x] T055 [P] [US5] Test: `LegacyMover` assigns all scope-null rows to the account's household/user, enqueues upserts parent-first plus photo uploads, records `legacy_move`; second call and a different account later move nothing; taste profile moved only if the account has none; an exception inside the transaction leaves everything unchanged and a rerun completes; no local data → returns 0, in `test/sync/legacy_mover_test.dart`
+- [x] T056 [US5] Implement `lib/sync/legacy_mover.dart`; engine runs it before the first download; phase `moving` → banner "Čuvam tvoje podatke…"; SnackBar "Tvoji recepti i liste su sačuvani u nalogu." when moved > 0 and its entries are sent
+- [x] T057 [US5] End-to-end test with `FakeBackend`: v3 database (3 recipes with versions and a photo, 2 shopping items) → migrate → sign in → server and device have exactly 3 + 2; account already has 2 server recipes → 5 after move (nothing overwritten); 3 sign-out/sign-in cycles → counts unchanged (SC-005), in `test/sync/legacy_move_flow_test.dart`
 
 ## Phase 8: User Story 6 — sign out keeps the data (P2)
 
