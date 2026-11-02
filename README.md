@@ -4,9 +4,9 @@
 
 ## Srpski
 
-**Od ideje za obrok do recepta po tvom ukusu.**
+**Od plana obroka do organizovane nabavke i kuvanja.**
 
-Tavli je lična zbirka recepata i pomoćnik u kuhinji. Uslikaj jelo, unesi njegov
+Tavli je pomoćnik za organizaciju obroka i lična zbirka recepata. Uslikaj jelo, unesi njegov
 naziv ili zapiši svoj recept — a zatim ga prilagodi kroz razgovor sa AI
 pomoćnikom. Zameni sastojke, promeni broj porcija ili pojednostavi pripremu,
 uz istoriju izmena koja ti omogućava da se vratiš na prethodnu verziju.
@@ -32,9 +32,16 @@ prijavu i AI funkcije.
 
 ### U planu
 
-Planiranje obroka, evidencija namirnica u ostavi i liste za kupovinu povezaće
-recepte sa svakodnevnom organizacijom kuhinje. Predlozi jela uzimaće u obzir
-dostupne namirnice, ukus i potrebe domaćinstva.
+Sledeći glavni korak su nedeljni i mesečni planovi sa predlozima recepata i
+nabavkom po nedeljama. Izbor doručka, ručka i večere, porcije, zamena i
+zaključavanje obroka povezaće se sa potrebnim količinama. Ostava, sopstvene
+preference i ocene pomagaće budućim predlozima. Ciljna navigacija je Plan,
+Nabavka, Recepti, Ostava, sa profilom iza avatara. Ove funkcije su planirane;
+još nisu implementirane. Nabavka će moći da se pripremi i samo za jedan
+sačuvan, pronađen ili generisan recept, bez pravljenja plana.
+
+Tok i izgled opisani su u [dizajnu proizvoda](docs/product-design.md), a
+scenariji, tehnički plan i zadaci u [specifikaciji 010](specs/010-plan-and-shopping/spec.md).
 
 Detaljan pregled razvoja nalazi se u [planu razvoja](docs/roadmap.md).
 
@@ -49,9 +56,9 @@ aplikacije vodi Riverpod, a navigaciju go_router.
 
 ## English
 
-**From a meal idea to a recipe that suits your taste.**
+**From meal planning to organized shopping and cooking.**
 
-Tavli is your personal recipe collection and kitchen companion. Take a photo
+Tavli is a meal-organization companion and personal recipe collection. Take a photo
 of a dish, enter its name, or write your own recipe — then make it your own
 through a conversation with an AI assistant. Swap ingredients, adjust the
 number of servings, or simplify the preparation, with version history that
@@ -77,9 +84,16 @@ features require an internet connection.
 
 ### Planned features
 
-Meal planning, pantry tracking, and shopping lists will connect your recipes
-with everyday kitchen routines. Dish suggestions will take into account the
-ingredients you have, your tastes, and your household's needs.
+The next priority is weekly/monthly meal planning with recipe suggestions and
+shopping by week: choose breakfast/lunch/dinner, adjust servings, replace or
+lock meals, and combine ingredient quantities. Pantry, the creator's personal
+preferences and ratings inform suggestions. Target navigation is Plan,
+Nabavka, Recepti, Ostava, with profile/settings behind an avatar. These
+features are specified and are not implemented yet. Standalone shopping
+for one saved, searched or generated recipe will also work without a meal plan.
+
+See [product design](docs/product-design.md) and
+[010 specification](specs/010-plan-and-shopping/spec.md) for flows and tasks.
 
 See the [roadmap](docs/roadmap.md) for a detailed development overview.
 

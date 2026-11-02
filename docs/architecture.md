@@ -133,7 +133,7 @@ catcher 55324) so it does not clash with other local Supabase projects.
 the Serbian sign-in email in `supabase/templates/`. Sign-in codes arrive in the
 mail catcher (Mailpit) at http://127.0.0.1:55324.
 
-## Navigation
+## Navigation (current implementation)
 
 `StatefulShellRoute.indexedStack` with five tabs: Recepti, Plan, Ostava,
 Kupovina, Profil. `HomeShell` shows a bottom `NavigationBar` below 720 px and a
@@ -150,6 +150,31 @@ Recipe routes: `/recipes` (list), `/recipes/new/{name,photo,manual}`,
 `/recipes/:id` (detail), `/recipes/:id/edit`, `/recipes/:id/chat`. When the
 content area is ≥ 840 px wide, `/recipes/:id` shows the list and the recipe side
 by side (`RecipeRoute`), otherwise the detail is a full screen.
+
+## Target planning experience (specified, not implemented)
+
+[Product design](product-design.md) and [010](../specs/010-plan-and-shopping/spec.md)
+define the future shell: Plan, Nabavka, Recepti, Ostava and a profile avatar.
+Plan opens after auth/name gates; "Danas" is a shortcut inside it. Keep existing
+recipe, /shopping and /profile deep links, auth lifecycle, sync banners and
+wake lock. Historical five-tab behavior remains current until implementation.
+
+Future data flow: UI → Riverpod → MealPlanAI/AIRouter for in-session previews;
+approval → account-scoped repositories → local row + outbox transaction → sync.
+The UI reads saved plans, shopping and pantry from drift, never the network.
+
+Existing tables are foundations, not a complete planning feature. 010 plans
+entry servings/snapshots, exact shopping-period boundaries, preparation source headers, per-source demand,
+confirmed supply allocations and receipt provenance. A month may touch six
+weeks; its view aggregates canonical weekly rows. A purchase and its pantry
+receipt share one supply identity. See
+[data model](../specs/010-plan-and-shopping/data-model.md).
+
+Future additions require a drift version bump/migration, generated code, new
+SQL migrations with RLS/grants, sync registry/cleanup updates and two-account
+tests. No schema or app code is changed by this documentation revision. 008
+invitations and 009 realtime are separate; solo planning can precede them. Standalone recipe shopping stores a source
+snapshot without inventing a plan or silently saving a library recipe.
 
 ## AI router and fallback chains
 
