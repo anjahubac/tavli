@@ -56,9 +56,18 @@ class PlanRequest {
     this.usePantry = true,
     this.wishes,
     this.pantryNames = const [],
-  }) : mealTypes = Set.unmodifiable(mealTypes) {
+    Set<MealSlot>? only,
+  }) : mealTypes = Set.unmodifiable(mealTypes),
+       only = only == null ? null : Set.unmodifiable(only) {
     if (mealTypes.isEmpty) {
       throw ArgumentError('Izaberi bar jedan obrok');
+    }
+    if (only != null &&
+        (only.isEmpty ||
+            only.any(
+              (s) => !range.contains(s.date) || !mealTypes.contains(s.type),
+            ))) {
+      throw ArgumentError('Mesta za predlog nisu u planu');
     }
     if (servings < minServings || servings > maxServings) {
       throw ArgumentError.value(servings, 'servings');
@@ -79,11 +88,16 @@ class PlanRequest {
   /// Nazivi potvrđene zalihe; koriste se samo kad je [usePantry].
   final List<String> pantryNames;
 
-  /// Sva mesta plana, hronološki.
+  /// Samo ova mesta (zamena jednog jela ili ponovni predlog bez zaštićenih
+  /// obroka); null = sva mesta plana.
+  final Set<MealSlot>? only;
+
+  /// Mesta za predlog, hronološki.
   List<MealSlot> get slots => [
     for (final d in range.days)
       for (final t in MealType.values)
-        if (mealTypes.contains(t)) MealSlot(d, t),
+        if (mealTypes.contains(t) && (only?.contains(MealSlot(d, t)) ?? true))
+          MealSlot(d, t),
   ];
 }
 
@@ -238,4 +252,21 @@ class PlannedMeal {
   final String? recipeId;
   final bool isLocked;
   final bool isCooked;
+}
+
+/// Mesta plana koja ponovni predlog sme da menja: bez zaključanih,
+/// skuvanih i prošlih obroka.
+Set<MealSlot> regenerableSlots(
+  MealPlan plan,
+  List<PlannedMeal> meals,
+  CivilDate today,
+) {
+  final protected = {
+    for (final m in meals)
+      if (m.isLocked || m.isCooked) m.slot,
+  };
+  return {
+    for (final s in plan.slots)
+      if (!s.date.isBefore(today) && !protected.contains(s)) s,
+  };
 }
