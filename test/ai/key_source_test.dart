@@ -32,6 +32,21 @@ void main() {
     expect(creds.map((c) => c.slot).toSet(), hasLength(3));
   });
 
+  test('sačuvan ključ isti kao ugrađeni nije korisnički', () async {
+    final source = LayeredKeySource(
+      InMemoryKeyStore({AIProvider.gemini: ' built '}),
+      const BuiltInKeys({AIProvider.gemini: 'built'}),
+    );
+
+    final creds = await source.credentialsFor(AIProvider.gemini);
+
+    expect(creds.single.origin, KeyOrigin.builtIn);
+    expect(
+      const BuiltInKeys({AIProvider.gemini: 'built'}).contains(' built'),
+      isTrue,
+    );
+  });
+
   test('prazne vrednosti se ignorišu', () async {
     final source = LayeredKeySource(
       InMemoryKeyStore({AIProvider.groq: '  '}),
