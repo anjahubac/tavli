@@ -60,3 +60,40 @@ class _EditNameDialogState extends State<_EditNameDialog> {
     );
   }
 }
+
+/// "Odjaviti se?" — true kad je potvrdio. [waiting] = izmene koje još
+/// nisu poslate (biće poslate pri sledećoj prijavi na ovom uređaju).
+Future<bool> confirmSignOut(
+  BuildContext context, {
+  required int waiting,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Odjaviti se? Tvoji podaci ostaju sačuvani u nalogu.'),
+            if (waiting > 0) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Neke izmene još nisu poslate. Poslaćemo ih kada se ponovo '
+                'prijaviš na ovom uređaju.',
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Odustani'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Odjavi se'),
+          ),
+        ],
+      ),
+    ) ??
+    false;

@@ -202,6 +202,16 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// "Odjavi se": briše se samo sesija. Keš, izmene koje čekaju, AI
+  /// ključevi, tema i pauze modela ostaju (FR-023, FR-025); slanje staje
+  /// jer nalog više nije aktivan.
+  Future<void> signOut() async {
+    final store = _store, gateway = _gateway;
+    await store.clear();
+    await gateway.signOutLocal();
+    _set(const SignedOut());
+  }
+
   /// Sesija ne može da se obnovi: nazad na prijavu, keš i izmene ostaju.
   Future<void> sessionExpired({bool accountGone = false}) async {
     final store = _store, gateway = _gateway;

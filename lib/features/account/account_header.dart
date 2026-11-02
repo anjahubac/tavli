@@ -61,6 +61,13 @@ class InitialsAvatar extends StatelessWidget {
   }
 }
 
+Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+  final waiting = await ref.read(syncedWriterProvider).unsentCount();
+  if (!context.mounted) return;
+  if (!await confirmSignOut(context, waiting: waiting)) return;
+  await ref.read(authControllerProvider.notifier).signOut();
+}
+
 /// Vrh "Profila": nalog, domaćinstvo i radnje (FR-026).
 class AccountHeader extends ConsumerWidget {
   const AccountHeader({super.key});
@@ -110,6 +117,11 @@ class AccountHeader extends ConsumerWidget {
             if (next == null) return;
             await ref.read(authControllerProvider.notifier).saveName(next);
           },
+        ),
+        ListTile(
+          leading: const Icon(Icons.logout),
+          title: const Text('Odjavi se'),
+          onTap: () => _signOut(context, ref),
         ),
       ],
     );

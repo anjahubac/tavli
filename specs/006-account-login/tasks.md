@@ -111,8 +111,8 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 **Goal**: sign-out removes only the session; other accounts see nothing of it.
 **Independent test**: A adds recipe, signs out; B sees nothing; A back → recipe at once.
 
-- [ ] T058 [P] [US6] Test: dialog "Odjaviti se? Tvoji podaci ostaju sačuvani u nalogu." with "Odustani"/"Odjavi se"; waiting changes add "Neke izmene još nisu poslate. Poslaćemo ih kada se ponovo prijaviš na ovom uređaju."; "Odustani" changes nothing; confirm → session cleared, engine stopped, "Prijava" shown, cache/outbox/own AI keys/theme/cooldowns kept; account B sees none of A's recipes, name or photos; A again → recipe visible with no download and its waiting change is sent (SC-007), in `test/features/account/sign_out_test.dart`
-- [ ] T059 [US6] Implement `signOut` in `lib/account/auth_controller.dart` (local sign-out, session clear, engine stop) and the dialog in `lib/features/account/account_dialogs.dart`
+- [x] T058 [P] [US6] Test: dialog "Odjaviti se? Tvoji podaci ostaju sačuvani u nalogu." with "Odustani"/"Odjavi se"; waiting changes add "Neke izmene još nisu poslate. Poslaćemo ih kada se ponovo prijaviš na ovom uređaju."; "Odustani" changes nothing; confirm → session cleared, engine stopped, "Prijava" shown, cache/outbox/own AI keys/theme/cooldowns kept; account B sees none of A's recipes, name or photos; A again → recipe visible with no download and its waiting change is sent (SC-007), in `test/features/account/sign_out_test.dart`
+- [x] T059 [US6] Implement `signOut` in `lib/account/auth_controller.dart` (local sign-out, session clear, engine stop) and the dialog in `lib/features/account/account_dialogs.dart`
 
 ## Phase 9: User Story 7 — delete account in the app (P2)
 

@@ -65,6 +65,16 @@ class SyncedWriter {
     await _add('photo', localPath, OutboxOp.photoDelete);
   }
 
+  /// Izmene ovog naloga koje još nisu na serveru (čekaju, šalju se ili
+  /// su odbijene).
+  Future<int> unsentCount() async {
+    final n = _db.syncOutbox.seq.count();
+    final q = _db.selectOnly(_db.syncOutbox)
+      ..addColumns([n])
+      ..where(_db.syncOutbox.accountId.equals(accountId));
+    return (await q.getSingle()).read(n) ?? 0;
+  }
+
   Future<bool> _hasPending(String entity, String id, String op) async =>
       await (_db.select(_db.syncOutbox)
             ..where(
