@@ -84,6 +84,7 @@ void main() {
       expect(find.text('Otvori nabavku'), findsOneWidget);
       expect(await app.db.select(app.db.mealPlans).get(), hasLength(1));
       expect(await app.db.select(app.db.mealPlanEntries).get(), hasLength(7));
+      expect(await app.titles(), containsAll(['Jelo 1', 'Jelo 7']));
     });
   }
 
@@ -163,6 +164,7 @@ void main() {
     expect(location(tester), '/plan');
     expect(find.text('Još nemaš plan'), findsOneWidget);
     expect(await app.db.select(app.db.mealPlans).get(), isEmpty);
+    expect(await app.titles(), isEmpty);
     expect(await app.db.select(app.db.shoppingItems).get(), isEmpty);
     expect(await app.db.select(app.db.syncOutbox).get(), isEmpty);
   });

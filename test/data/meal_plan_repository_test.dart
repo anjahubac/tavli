@@ -127,7 +127,7 @@ void main() {
     expect(meals.first.slot, MealSlot(monday, MealType.lunch));
     expect(meals.first.recipeId, 'r1');
     expect(meals.first.snapshot!.title, 'Pasulj');
-    expect(meals[1].recipeId, isNull, reason: 'nov recept nije u biblioteci');
+    expect(meals[1].recipeId, isNotNull, reason: 'nov recept ide u Recepte');
     expect(meals[1].snapshot!.ingredients.single.name, 'krompir');
     expect(meals.every((m) => m.servings == 2), isTrue);
 
@@ -147,7 +147,23 @@ void main() {
       lessThan(entities.indexOf('shopping_source')),
     );
     expect(entities.where((e) => e == 'meal_plan_entry').length, 3);
-    expect(entities, isNot(contains('recipe')));
+    expect(entities.where((e) => e == 'recipe').length, 2);
+    expect(
+      entities.lastIndexOf('recipe'),
+      lessThan(entities.indexOf('meal_plan_entry')),
+    );
+
+    // Novi recepti su u Recepti (sažetak bez koraka), povezani sa obrokom.
+    final saved = await (db.select(
+      db.recipes,
+    )..where((t) => t.id.isNotIn(['r1']))).get();
+    expect(saved.map((r) => r.id).toSet(), {
+      meals[1].recipeId,
+      meals[2].recipeId,
+    });
+    expect(saved.every((r) => r.source == 'ai'), isTrue);
+    expect(saved.every((r) => r.householdId == 'home-one'), isTrue);
+    expect(saved.every((r) => r.stepsJson == '[]'), isTrue);
   });
 
   test('nepotpun nacrt se ne čuva bez izričitog "nepotpun plan"', () async {
@@ -183,6 +199,7 @@ void main() {
     await expectLater(repo.approve(draft()), throwsStateError);
 
     expect(await db.select(db.mealPlans).get(), isEmpty);
+    expect(await db.select(db.recipes).get(), hasLength(1));
     expect(await db.select(db.mealPlanEntries).get(), isEmpty);
     expect(await db.select(db.shoppingSources).get(), isEmpty);
     expect(await db.select(db.shoppingItems).get(), isEmpty);
@@ -343,5 +360,23 @@ void main() {
     await pantry('c', 'šećer', home: 'home-two');
 
     expect(await repo.confirmedPantryNames(), ['pirinač']);
+  });
+
+  test('isti nov recept na više mesta je jedan recept u Receptima', () async {
+    final base = draft(days: 3);
+    final same = base.copyWith(
+      proposals: {
+        for (final s in base.request.slots)
+          s: const SlotProposal(title: 'Sarma', draftRecipeKey: 'sarma'),
+      },
+      newRecipes: {'sarma': snapshot('Sarma')},
+    );
+
+    final id = await repo.approve(same);
+
+    final meals = await repo.watchMeals(id).first;
+    expect(meals.map((m) => m.recipeId).toSet(), hasLength(1));
+    final titles = [for (final r in await db.select(db.recipes).get()) r.title];
+    expect(titles.where((t) => t == 'Sarma'), hasLength(1));
   });
 }

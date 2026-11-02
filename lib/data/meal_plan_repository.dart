@@ -6,6 +6,7 @@ import '../account/auth_controller.dart';
 import '../domain/ids.dart';
 import '../domain/meal_plan.dart';
 import '../domain/plan_calendar.dart';
+import '../domain/recipe.dart';
 import '../domain/shopping_source.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
@@ -23,7 +24,7 @@ class StaleDraftException implements Exception {
   const StaleDraftException();
 }
 
-/// Planovi obroka domaćinstva. Odobrenje upisuje plan, obroke i nabavku u
+/// Planovi obroka domaćinstva. Odobrenje upisuje plan, nove recepte, obroke i nabavku u
 /// jednoj transakciji, sa outbox-om; mreža se ne koristi.
 class MealPlanRepository {
   MealPlanRepository(
@@ -42,6 +43,7 @@ class MealPlanRepository {
 
   static const _plan = 'meal_plan';
   static const _entry = 'meal_plan_entry';
+  static const _recipe = 'recipe';
 
   Stream<List<MealPlan>> watchPlans() {
     final q = _db.select(_db.mealPlans)
@@ -120,11 +122,21 @@ class MealPlanRepository {
         )..where((t) => t.householdId.equals(_scope.householdId))).get())
           r.id,
       };
+      // Novi recepti iz predloga idu i u Recepte (sažetak, bez koraka);
+      // isti recept na više mesta je jedan recept.
+      final created = <String, String>{};
+      for (final slot in ready) {
+        final key = draft.proposals[slot]!.draftRecipeKey;
+        if (key == null || created.containsKey(key)) continue;
+        created[key] = await _insertRecipe(draft.newRecipes[key]!);
+      }
       final today = CivilDate.today(_clock);
       for (final slot in ready) {
         final proposal = draft.proposals[slot]!;
         final snapshot = jsonEncode(draft.snapshotFor(slot)!.toJson());
-        final recipeId = library.contains(proposal.libraryRecipeId)
+        final recipeId = proposal.isNew
+            ? created[proposal.draftRecipeKey]
+            : library.contains(proposal.libraryRecipeId)
             ? proposal.libraryRecipeId
             : null;
         final current = existing[slot];
@@ -164,6 +176,31 @@ class MealPlanRepository {
       await _shopping.reconcilePlan(planId);
       return planId;
     });
+  }
+
+  Future<String> _insertRecipe(RecipeSnapshot r) async {
+    final id = newId();
+    final now = _clock().toUtc();
+    await _db
+        .into(_db.recipes)
+        .insert(
+          RecipesCompanion.insert(
+            id: id,
+            title: r.title,
+            servings: r.baseServings,
+            prepMinutes: Value(r.prepMinutes),
+            source: RecipeSource.ai.name,
+            ingredientsJson: jsonEncode([
+              for (final i in r.ingredients) i.toJson(),
+            ]),
+            stepsJson: jsonEncode(r.steps),
+            createdAt: now,
+            updatedAt: now,
+            householdId: Value(_scope.householdId),
+          ),
+        );
+    await _writer.upsert(_recipe, id);
+    return id;
   }
 
   Future<void> _insertPlan(String id, PlanRequest request) async {
