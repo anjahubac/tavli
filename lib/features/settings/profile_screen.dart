@@ -10,7 +10,14 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
+      appBar: AppBar(
+        title: const Text('Profil'),
+        // Otvoren direktnom adresom nema kuda nazad, pa vodi na Plan.
+        leading: BackButton(
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/plan'),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         children: [

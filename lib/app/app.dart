@@ -16,7 +16,7 @@ import 'theme/theme_controller.dart';
 class TavliApp extends ConsumerStatefulWidget {
   const TavliApp({
     super.key,
-    this.initialLocation = '/recipes',
+    this.initialLocation = '/plan',
     this.intro = true,
   });
 

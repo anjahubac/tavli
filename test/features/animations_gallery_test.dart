@@ -97,7 +97,7 @@ void main() {
     expect(find.text('Sve je u kupovini'), findsOneWidget);
   });
 
-  testTavli('Ostava i Kupovina imaju animirana prazna stanja', (tester) async {
+  testTavli('Ostava i Nabavka imaju animirana prazna stanja', (tester) async {
     await pumpTavli(tester);
     await tester.tap(find.text('Ostava'));
     await tester.pumpAndSettle();
@@ -105,7 +105,7 @@ void main() {
     expect(find.text('Vreme je za nabavku'), findsOneWidget);
     expect(find.bySemanticsLabel('Prazan frižider'), findsOneWidget);
 
-    await tester.tap(find.text('Kupovina'));
+    await tester.tap(find.text('Nabavka'));
     // Motiv teme se vrti u petlji, pa bez pumpAndSettle.
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));

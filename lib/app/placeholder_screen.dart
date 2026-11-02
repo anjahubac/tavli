@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../features/account/account_header.dart';
+
 class PlaceholderScreen extends StatelessWidget {
   const PlaceholderScreen({super.key, required this.title, required this.icon});
 
@@ -36,7 +38,10 @@ class EmptyStateScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(appBarTitle)),
+      appBar: AppBar(
+        title: Text(appBarTitle),
+        actions: const [ProfileButton()],
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../account/account_api.dart';
 import '../../account/auth_controller.dart';
@@ -58,6 +59,27 @@ class InitialsAvatar extends StatelessWidget {
       child: Text(
         initials(name),
         style: TextStyle(fontSize: radius * 0.7, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Avatar gore desno na svakom tabu; otvara Profil i podešavanja.
+class ProfileButton extends ConsumerWidget {
+  const ProfileButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    final name = auth is SignedIn ? auth.account.displayName ?? '' : '';
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: IconButton(
+        tooltip: 'Profil i podešavanja',
+        onPressed: () => context.push('/profile'),
+        icon: name.trim().isEmpty
+            ? const Icon(Icons.account_circle_outlined)
+            : InitialsAvatar(name: name, radius: 16),
       ),
     );
   }

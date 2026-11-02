@@ -6,6 +6,7 @@ import '../../app/animations/spoon_refresh.dart';
 import '../../app/theme/tavli_colors.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
+import '../account/account_header.dart';
 import 'add_recipe_sheet.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
@@ -30,6 +31,7 @@ class RecipesScreen extends StatelessWidget {
           appBar: AppBar(
             title: const Text('Recepti'),
             automaticallyImplyLeading: false,
+            actions: const [ProfileButton()],
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => showAddRecipeSheet(context),
