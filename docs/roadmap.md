@@ -26,6 +26,8 @@ Last updated: 2026-10-30.
 - **AI keys list** (`specs/004-ai-keys-list`): one generic "API ključ" field
   (service detected from the key), any number of keys per service, list of
   added keys with check/delete; keys used in order with per-key cooldowns.
+- **Keep screen on while cooking** (`specs/007-keep-screen-on`): "Ne gasi ekran"
+  toggle on the recipe screen, remembered in `AppSettings`.
 - **Dev process**: Spec Kit, constitution, AGENTS.md, CLAUDE.md,
   `docs/flutter-best-practices.md`, strict lints, `scripts/check.sh`, git rules
   (branch from latest `main`, squash-merge, delete branch after merge).
