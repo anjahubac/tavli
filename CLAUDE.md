@@ -13,7 +13,9 @@
 - Follow `docs/flutter-best-practices.md` and the guardrails in `AGENTS.md`.
 - New branches always start from the latest `main` (never stacked on another
   branch); changes reach `main` only through a PR (git rules: best practices §17).
-- Run `scripts/check.sh` (format, analyze, test) before every commit; run
+- Enable the pre-commit hook once per clone (`git config core.hooksPath .githooks`):
+  it runs `scripts/check.sh` (format, analyze) and `scripts/test-changed.sh`
+  (affected tests). The full `flutter test` runs in CI before merge; run
   `dart run build_runner build --delete-conflicting-outputs` after changing drift tables.
 - Never read, print or modify API keys or backend credentials (Keychain entries
   `api_key_*`, the auth session, `secrets.json`).

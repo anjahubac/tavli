@@ -21,3 +21,4 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: scripts/check.sh
+      - run: flutter test

@@ -153,12 +153,19 @@ void main() {
       );
     });
 
-    test('obnova bez mreže ostavlja sesiju', () async {
+    // GoTrue ponavlja osvežavanje bez mreže uz pravo čekanje (~12 s);
+    // testWidgets ga vrti na lažnom satu, pa test traje trenutak.
+    testWidgets('obnova bez mreže ostavlja sesiju', (tester) async {
       final expired = jsonEncode(
         sessionBody(validFor: const Duration(hours: -2)),
       );
       handler = (_) => throw const SocketException('nema mreže');
-      await expectLater(gateway().restore(expired), throwsA(isA<Offline>()));
+      final restored = expectLater(
+        gateway().restore(expired),
+        throwsA(isA<Offline>()),
+      );
+      await tester.pump(const Duration(minutes: 1));
+      await restored;
     });
 
     test('važeća sesija se vraća bez mreže', () async {

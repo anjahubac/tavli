@@ -112,7 +112,9 @@ Requirements: Flutter (stable), Docker and the Supabase CLI.
 flutter pub get
 supabase start                      # local backend on ports 5532x
 supabase db reset && supabase test db
-scripts/check.sh                    # format, analyze, Flutter tests
+git config core.hooksPath .githooks # once: pre-commit runs check + affected tests
+scripts/check.sh                    # format, analyze
+flutter test                        # all Flutter tests (CI runs them on every PR)
 ```
 
 Create your own gitignored `secrets.json` from `secrets.example.json` and put
