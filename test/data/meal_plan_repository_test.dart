@@ -363,7 +363,7 @@ void main() {
   });
 
   test('isti nov recept na više mesta je jedan recept u Receptima', () async {
-    final base = draft(days: 3);
+    final base = draft();
     final same = base.copyWith(
       proposals: {
         for (final s in base.request.slots)
