@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/app/router.dart';
@@ -23,6 +24,30 @@ void main() {
     await tester.tap(find.text('Ostava'));
     await tester.pumpAndSettle();
     expect(currentTab(tester), 'Ostava');
+  });
+
+  testTavli('320 px, tekst 2×: naziv aktivnog taba ostaje u jednom redu', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(tester, size: const Size(320, 900), location: '/shopping');
+    final label = tester.renderObject<RenderParagraph>(
+      find.text('Nabavka').last,
+    );
+    final boxes = label.getBoxesForSelection(
+      const TextSelection(baseOffset: 0, extentOffset: 7),
+    );
+    expect(boxes, hasLength(1));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.byIcon(Icons.menu_book_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(currentTab(tester), 'Recepti');
+    expect(tester.takeException(), isNull);
   });
 
   testTavli('širok ekran (macOS): bočni meni', (tester) async {

@@ -4,7 +4,7 @@ import 'motion.dart';
 
 const _light = Color(0xFFFFF1B8);
 
-/// Prazna ostava: vrata frižidera se otvore, svetlo zatreperi, unutra
+/// Prazna ostava: vrata frižidera se otvore, svetlo se postepeno upali, unutra
 /// nema ničega. Igra jednom; završna slika su otvorena vrata i svetlo.
 class EmptyFridge extends StatelessWidget {
   const EmptyFridge({super.key, this.size = 200});
@@ -33,14 +33,9 @@ class EmptyFridge extends StatelessWidget {
   }
 }
 
-/// Jačina svetla 0..1: treperi pa ostaje upaljeno.
-double fridgeLight(double t) {
-  if (t < 0.38) return 0;
-  const flicker = [1.0, 0.1, 0.8, 0.0, 1.0, 0.4, 1.0];
-  final p = interval(t, 0.38, 0.78);
-  if (p >= 1) return 1;
-  return flicker[(p * flicker.length).floor().clamp(0, flicker.length - 1)];
-}
+/// Svetlo se mirno upali dok se vrata otvaraju.
+double fridgeLight(double t) =>
+    Curves.easeOut.transform(interval(t, 0.2, 0.65));
 
 /// Koordinate 200×200; frižider od x 56 do 144.
 class FridgePainter extends CustomPainter {

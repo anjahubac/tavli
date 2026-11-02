@@ -183,7 +183,6 @@ class _ThemeCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: p.surface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: p.line),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(12),

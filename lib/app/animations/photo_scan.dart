@@ -79,14 +79,11 @@ class _PoppingChips extends StatelessWidget {
 
   final List<String> names;
 
-  static const _step = 0.12;
-
   @override
   Widget build(BuildContext context) {
-    final total = 0.3 + _step * names.length;
     return MotionBuilder(
       repeat: false,
-      duration: Duration(milliseconds: (total * 1000).round()),
+      duration: TavliMotion.reveal,
       builder: (context, t, _) => Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -95,12 +92,14 @@ class _PoppingChips extends StatelessWidget {
           for (final (i, name) in names.indexed)
             Builder(
               builder: (context) {
-                final start = i * _step / total;
-                final local = interval(t, start, start + 0.3 / total);
+                final start = names.length <= 1
+                    ? 0.0
+                    : i / (names.length - 1) * 0.3;
+                final local = interval(t, start, start + 0.7);
                 return Opacity(
                   opacity: local.clamp(0.0, 1.0),
                   child: Transform.scale(
-                    scale: Curves.easeOutBack.transform(local),
+                    scale: Curves.easeOut.transform(local),
                     child: Chip(label: Text(name)),
                   ),
                 );

@@ -42,8 +42,9 @@ class _SpoonRefreshState extends State<SpoonRefresh> {
           right: 0,
           child: IgnorePointer(
             child: AnimatedOpacity(
+              key: ValueKey(reduceMotion(context)),
               opacity: _visible ? 1 : 0,
-              duration: const Duration(milliseconds: 150),
+              duration: TavliMotion.duration(context, TavliMotion.feedback),
               child: _visible
                   ? Center(
                       child: SpoonPot(

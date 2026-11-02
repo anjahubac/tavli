@@ -224,3 +224,38 @@ na tanjiru", "Jaje se kuva".
 - At enlarged text sizes the phone navigation keeps the active tab label visible with extra height; other tabs retain accessible names and tooltips. This prevents cramped labels at 320 px.
 
 - Native startup also handles an account-cache structure already upgraded to v4 but marked user_version 3: opening preserves existing text ids, account ownership and pending outbox references, and reuses an existing index. The migration runs in a transaction.
+
+
+## UX revision — 2026-11-02 (supersedes timed intro / flight requirements)
+
+- The branded intro is visible only while restoring the account session. Ready
+  screens are available immediately, with no minimum intro or refresh delay.
+- Frequent ingredient feedback lasts 180 ms; the badge grows by at most 8% for
+  240 ms. Long recognised-ingredient lists finish revealing within 360 ms.
+- Shopping demo commits the difference before confirming it, blocks overlapping
+  actions, and shows one accessible batch confirmation. No per-item flights.
+- Reduced motion also covers implicit transitions; offscreen timers stop. Empty
+  fridge light turns on smoothly without flicker.
+- Status colours (success, warning, information) are independent of the chosen
+  palette, with readable foreground/container pairs in light and dark modes.
+- Keep-screen-on uses a screen icon; theme light mode retains the sun.
+- Empty shopping uses a basket and explains both plan and recipe entry points.
+  Empty pantry describes missing records, never assumes the household has no food.
+  Until spec 010 supplies working plan/pantry actions, only the existing recipe
+  collection is linked; no buttons lead to unfinished flows.
+- Serbian copy: "Nabavka je prazna", "Dodaj sastojke iz plana obroka ili iz
+  pojedinačnog recepta.", "Pogledaj recepte", "Još nema unetih namirnica",
+  "Ovde ćeš pratiti namirnice koje imaš kod kuće.", "Prazna korpa za nabavku",
+  "Dodato u nabavku: {N}", "Čuvanje…", "Dodavanje nije uspelo. Pokušaj ponovo.",
+  "Izmena nije uspela. Pokušaj ponovo.".
+- Monthly-plan real progress/cancel/resume, pantry entry, and the two live
+  shopping entry actions belong to spec 010; this revision does not simulate them.
+
+Acceptance: startup never waits for artwork; refresh ends with the database read;
+20 recognised ingredients are visible within 360 ms; disabling motion mid-badge
+stops it; shopping demo repeated add still adds only the difference; updated empty
+states render at 320 px / 2× text and wide widths; all status pairs meet 4.5:1.
+
+- At large text sizes the phone navigation shows the selected tab name across
+  the bar's full width below the icons. Names never break inside a word; each
+  destination retains its accessible label and tooltip. Normal text is unchanged.

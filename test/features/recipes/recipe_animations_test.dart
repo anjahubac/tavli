@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/app/theme/tavli_colors.dart';
+import 'package:tavli/features/recipes/recipe_providers.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -66,9 +67,18 @@ void main() {
   testTavli('lista recepata: kartice sa bojama teme i varjača na povlačenje', (
     tester,
   ) async {
+    final recipes = [sampleRecipe('1', 'Sarma'), sampleRecipe('2', 'Pasulj')];
+    final refreshGate = Completer<void>();
+    var reads = 0;
     await pumpTavli(
       tester,
-      recipes: [sampleRecipe('1', 'Sarma'), sampleRecipe('2', 'Pasulj')],
+      recipes: recipes,
+      overrides: [
+        recipesProvider.overrideWith((ref) async* {
+          if (reads++ > 0) await refreshGate.future;
+          yield recipes;
+        }),
+      ],
     );
     final tints = TavliColors.of(tester.element(find.text('Sarma'))).tints
         .toSet();
@@ -87,9 +97,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.bySemanticsLabel('Varjača u loncu'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
+    // Varjača prati stvarno čitanje; nema minimalnog dekorativnog čekanja.
+    refreshGate.complete();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.bySemanticsLabel('Varjača u loncu'), findsNothing);
+    await tester.pumpAndSettle();
     expect(find.text('Sarma'), findsOneWidget);
   });
 }
