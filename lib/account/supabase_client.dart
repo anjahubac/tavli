@@ -16,6 +16,11 @@ SupabaseClient createSupabaseClient(
   config.anonKey,
   httpClient: httpClient,
   authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+  // Ponavljanje i pauze vodi red za slanje (SyncEngine), ne klijent.
+  postgrestOptions: const PostgrestClientOptions(
+    retryEnabled: false,
+    requestTimeout: Duration(seconds: 30),
+  ),
 );
 
 /// Sesija kao JSON (za `SessionStore` i `recoverSession`).

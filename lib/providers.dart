@@ -51,9 +51,12 @@ final authGatewayProvider = Provider<AuthGateway>((ref) {
 /// Vreme za prijavu (kada je poslat kod); menja se u testovima.
 final authClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
-final accountApiProvider = Provider<AccountApi>(
-  (ref) => throw UnimplementedError('accountApiProvider'),
-);
+final accountApiProvider = Provider<AccountApi>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? const UnconfiguredAccountApi()
+      : SupabaseAccountApi(client);
+});
 
 /// Nalog na uređaju: keš profila i domaćinstva, ime, brisanje.
 final accountServiceProvider = Provider<AccountService>(

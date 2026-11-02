@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 /// Lažan JWT (nije potpisan, samo `exp`); pravi se pri izvršavanju, da u
 /// repozitorijumu ne postoji ništa nalik pravom tokenu.
@@ -39,3 +41,15 @@ http.Response jsonResponse(Object? body, [int status = 200]) => http.Response(
 
 const fakeUrl = 'http://supabase.test';
 const fakeAnonKey = 'fake-anon-key';
+
+/// MockClient koji odgovoru dodaje zahtev (postgrest ga čita).
+MockClient mockHttp(FutureOr<http.Response> Function(http.Request) handler) =>
+    MockClient((r) async {
+      final res = await handler(r);
+      return http.Response.bytes(
+        res.bodyBytes,
+        res.statusCode,
+        headers: res.headers,
+        request: r,
+      );
+    });

@@ -174,6 +174,17 @@ class AuthController extends Notifier<AuthState> {
     _set(_signedIn(await service.loadOrFetch(session)));
   }
 
+  /// Čuva ime (obavezan korak ili "Izmeni ime"). Baca [ArgumentError] za
+  /// prazno ili predugo ime.
+  Future<void> saveName(String name) async {
+    final account = switch (state) {
+      NeedsName(:final account) || SignedIn(:final account) => account,
+      _ => null,
+    };
+    if (account == null) return;
+    _set(SignedIn(await _service.saveName(account, name)));
+  }
+
   /// "Promeni e-poštu": nazad na prvi korak.
   void changeEmail() => state = const SignedOut();
 
