@@ -61,3 +61,7 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 - [x] T024 Format, scripts/check.sh, macOS build and rendered phone/wide visual QA
 
 Validation: `scripts/check.sh` — clean analysis, 398 passing tests; `flutter build macos --debug` — succeeds. Six rendered previews with bundled text and icon fonts inspected: light/dark phone and wide layouts, 320 px at 2× text, and dark sign-in. Tests use only in-memory databases and fake backends.
+
+- [x] T025 Native startup: test and recover v4 cache marked v3, preserving ids and outbox; checks, build and live launch
+
+Native startup validation: regression first reproduced the duplicate-index exception; after the fix, all 399 tests and analysis pass, macOS debug build succeeds, and the live app opens the sign-in screen. Existing device cache was retained; a private local SQLite recovery snapshot was taken before reopening.

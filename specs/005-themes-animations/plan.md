@@ -117,3 +117,7 @@ None.
 ## Owner revision — 2026-11-02
 
 Integrate current main without replacing auth lifecycle or sync. Refine the existing palette and typography, add responsive recipe previews, serialize theme saves with rollback and Serbian feedback. No new dependencies or schema changes. Add regression tests for default/saved/system modes, failed and overlapping saves, 320 px at 2× text, all six palette contrasts, auth screens and account-scoped shopping/outbox after the existing v4 migration.
+
+### Native startup regression
+
+A local cache with the v4 structure but user_version 3 can result from opening it with an older app. Reopening must preserve UUIDs, ownership, profile ids and pending outbox references; reapplying the upgrade must not recreate an existing index. Detect already-migrated columns and wrap the upgrade in a transaction. No schema change, no dependency, no user data reset. Cover with a real temporary SQLite file and rerun all checks/build.

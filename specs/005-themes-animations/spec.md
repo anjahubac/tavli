@@ -222,3 +222,5 @@ na tanjiru", "Jaje se kuva".
 - Theme wiring preserves account startup, auth redirects, sync banners, wake lock and every existing feature from current main. Shopping demo remains isolated; the shared repository uses UUIDs, account scoping and the outbox when integrated with account data.
 
 - At enlarged text sizes the phone navigation keeps the active tab label visible with extra height; other tabs retain accessible names and tooltips. This prevents cramped labels at 320 px.
+
+- Native startup also handles an account-cache structure already upgraded to v4 but marked user_version 3: opening preserves existing text ids, account ownership and pending outbox references, and reuses an existing index. The migration runs in a transaction.
