@@ -10,6 +10,7 @@ import '../recipes/ai_preview.dart';
 import '../recipes/recipe_view.dart';
 import 'plan_format.dart';
 import 'plan_generation.dart';
+import 'planning_providers.dart';
 
 /// Drugi i treći korak: napredak, predlog po danima i odobrenje. Ništa se
 /// ne čuva dok osoba ne izabere "Sačuvaj plan" (ili izričito nepotpun plan).
@@ -21,8 +22,28 @@ class PlanPreviewScreen extends ConsumerWidget {
     final state = ref.watch(planGenerationProvider);
     final controller = ref.read(planGenerationProvider.notifier);
     final draft = state.draft;
+    // Ponovni predlog postojećeg plana: nema podešavanja, prikazuju se
+    // samo mesta koja se menjaju, uz jelo koje zamenjuju.
+    final isChange = draft?.base != null;
+    final current = isChange
+        ? {
+            for (final m
+                in ref.watch(plannedMealsProvider(draft!.base!.planId)).value ??
+                    const <PlannedMeal>[])
+              m.slot: m,
+          }
+        : const <MealSlot, PlannedMeal>{};
 
-    void backToSetup() => context.go('/plan/new');
+    Future<void> discard() async {
+      final router = GoRouter.of(context);
+      if (await confirmDiscardPlan(context)) {
+        controller.discard();
+        router.go('/plan');
+      }
+    }
+
+    void backToSetup() =>
+        isChange ? unawaited(discard()) : context.go('/plan/new');
 
     if (draft == null) {
       return Scaffold(
@@ -51,18 +72,14 @@ class PlanPreviewScreen extends ConsumerWidget {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              partial ? 'Nepotpun plan je sačuvan.' : 'Plan je sačuvan.',
+              isChange
+                  ? 'Izmene su sačuvane.'
+                  : partial
+                  ? 'Nepotpun plan je sačuvan.'
+                  : 'Plan je sačuvan.',
             ),
           ),
         );
-    }
-
-    Future<void> discard() async {
-      final router = GoRouter.of(context);
-      if (await confirmDiscardPlan(context)) {
-        controller.discard();
-        router.go('/plan');
-      }
     }
 
     final request = draft.request;
@@ -79,7 +96,7 @@ class PlanPreviewScreen extends ConsumerWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Predlog plana'),
+          title: Text(isChange ? 'Pregled izmena' : 'Predlog plana'),
           leading: BackButton(onPressed: backToSetup),
         ),
         body: ReadableScroll(
@@ -141,13 +158,17 @@ class PlanPreviewScreen extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 8),
-            for (final day in request.range.days) ...[
-              const SizedBox(height: 12),
-              Text(dayLabel(day), style: theme.textTheme.titleMedium),
-              for (final type in MealType.values)
-                if (request.mealTypes.contains(type))
-                  _SlotTile(draft: draft, slot: MealSlot(day, type)),
-            ],
+            for (final day in request.range.days)
+              if (request.slots.any((s) => s.date == day)) ...[
+                const SizedBox(height: 12),
+                Text(dayLabel(day), style: theme.textTheme.titleMedium),
+                for (final slot in request.slots.where((s) => s.date == day))
+                  _SlotTile(
+                    draft: draft,
+                    slot: slot,
+                    previous: current[slot]?.snapshot?.title,
+                  ),
+              ],
             const SizedBox(height: 24),
             ..._actions(
               phase: phase,
@@ -158,7 +179,8 @@ class PlanPreviewScreen extends ConsumerWidget {
               onSavePartial: () => unawaited(save(partial: true)),
               onContinue: () => unawaited(controller.generate()),
               onDiscard: () => unawaited(discard()),
-              onBack: backToSetup,
+              onBack: isChange ? null : backToSetup,
+              saveLabel: isChange ? 'Prihvati' : 'Sačuvaj plan',
             ),
           ],
         ),
@@ -175,7 +197,8 @@ class PlanPreviewScreen extends ConsumerWidget {
     required VoidCallback onSavePartial,
     required VoidCallback onContinue,
     required VoidCallback onDiscard,
-    required VoidCallback onBack,
+    required VoidCallback? onBack,
+    required String saveLabel,
   }) {
     final saving = phase == GenerationPhase.saving;
     if (phase == GenerationPhase.generating) return const [];
@@ -184,7 +207,7 @@ class PlanPreviewScreen extends ConsumerWidget {
         FilledButton.icon(
           onPressed: saving ? null : onSave,
           icon: const Icon(Icons.check),
-          label: const Text('Sačuvaj plan'),
+          label: Text(saveLabel),
         )
       else ...[
         FilledButton.icon(
@@ -210,10 +233,11 @@ class PlanPreviewScreen extends ConsumerWidget {
         alignment: WrapAlignment.center,
         spacing: 8,
         children: [
-          TextButton(
-            onPressed: saving ? null : onBack,
-            child: const Text('Promeni izbore'),
-          ),
+          if (onBack != null)
+            TextButton(
+              onPressed: saving ? null : onBack,
+              child: const Text('Promeni izbore'),
+            ),
           TextButton(
             onPressed: saving ? null : onDiscard,
             child: const Text('Odbaci'),
@@ -249,10 +273,13 @@ Future<bool> confirmDiscardPlan(BuildContext context) async =>
     false;
 
 class _SlotTile extends StatelessWidget {
-  const _SlotTile({required this.draft, required this.slot});
+  const _SlotTile({required this.draft, required this.slot, this.previous});
 
   final PlanDraft draft;
   final MealSlot slot;
+
+  /// Jelo koje predlog zamenjuje (pregled izmena).
+  final String? previous;
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +297,10 @@ class _SlotTile extends StatelessWidget {
         subtitle: Text('Nije planirano', style: muted),
       );
     }
-    final origin = proposal.isNew ? 'Nov recept' : 'Iz mojih recepata';
+    final origin = [
+      proposal.isNew ? 'Nov recept' : 'Iz mojih recepata',
+      if (previous case final p?) 'umesto: $p',
+    ].join(' · ');
     if (snapshot == null) {
       return ListTile(
         contentPadding: EdgeInsets.zero,

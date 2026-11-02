@@ -91,6 +91,13 @@ GoRouter createRouter({
               builder: (context, state) => const PlanScreen(),
               routes: [
                 GoRoute(
+                  path: ':planId/entries/:entryId',
+                  builder: (context, state) => MealEntryScreen(
+                    planId: state.pathParameters['planId']!,
+                    entryId: state.pathParameters['entryId']!,
+                  ),
+                ),
+                GoRoute(
                   path: 'new',
                   builder: (context, state) => const PlanSetupScreen(),
                   routes: [

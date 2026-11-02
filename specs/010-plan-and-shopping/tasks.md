@@ -50,10 +50,10 @@ update existing shopping atomically; do not defer this core until purchase UI.
 
 **Independent test:** seeded plan, protected slots and library edits do not change accepted data.
 
-- [ ] T021 [US2] Write week/month/today/multiple-plan and 320 px selection tests in `test/features/planning/plan_calendar_test.dart`.
+- [x] T021 [US2] Write week/month/today/multiple-plan and 320 px selection tests in `test/features/planning/plan_calendar_test.dart`.
 - [x] T022 [US2] Write protected/stale replace/regenerate, cooked-demand closure/stock review, servings, delete-source and snapshot-preservation tests in `test/data/meal_plan_repository_test.dart`.
 - [x] T023 [US2] Implement reviewed entry edits and protected-slot filtering in `lib/data/meal_plan_repository.dart` and `lib/features/planning/planning_providers.dart`.
-- [ ] T024 [US2] Implement `lib/features/planning/plan_screen.dart`, `lib/features/planning/plan_calendar.dart` and `lib/features/planning/meal_entry_card.dart`, including readable phone/month and wide list–detail layouts.
+- [x] T024 [US2] Implement `lib/features/planning/plan_screen.dart`, `lib/features/planning/plan_calendar.dart` and `lib/features/planning/meal_entry_card.dart`, including readable phone/month and wide list–detail layouts.
 
 ## Phase 5 — US3: quantity-safe shopping (P1)
 

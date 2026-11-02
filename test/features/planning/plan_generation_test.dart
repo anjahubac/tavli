@@ -145,7 +145,8 @@ void main() {
     expect(location(tester), '/plan');
     expect(find.text('Nepotpun plan je sačuvan.'), findsOneWidget);
     expect(await app.db.select(app.db.mealPlanEntries).get(), hasLength(3));
-    await tester.scrollUntilVisible(find.text('Nije planirano').first, 200);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -800));
+    await tester.pumpAndSettle();
     expect(find.text('Nije planirano'), findsWidgets);
   });
 
