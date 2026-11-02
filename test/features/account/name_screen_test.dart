@@ -47,8 +47,11 @@ void main() {
     expect(find.widgetWithText(AppBar, 'Recepti'), findsOneWidget);
     final row = (await app.db.select(app.db.accounts).get()).single;
     expect(row.displayName, 'Ana Petrović');
-    final e = (await app.db.select(app.db.syncOutbox).get()).single;
-    expect(e.entity, 'profile');
+    // Ime stiže na server posle kratke pauze za slanje.
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    final uid = app.session.userId;
+    expect(app.backend.server.profiles[uid]!['display_name'], 'Ana Petrović');
   });
 
   for (final size in [phone, wide]) {

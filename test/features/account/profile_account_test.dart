@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:tavli/features/account/account_header.dart';
+import 'package:tavli/sync/sync_engine.dart';
+import 'package:tavli/sync/sync_remote.dart';
+
 import '../../helpers/test_app.dart';
 
 void main() {
@@ -48,9 +52,11 @@ void main() {
     expect(find.text('ĐŠ'), findsOneWidget);
     final row = (await app.db.select(app.db.accounts).get()).single;
     expect(row.displayName, 'Đorđe Šćepanović');
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
     expect(
-      (await app.db.select(app.db.syncOutbox).get()).single.entity,
-      'profile',
+      app.backend.server.profiles[app.session.userId]!['display_name'],
+      'Đorđe Šćepanović',
     );
   });
 
@@ -70,4 +76,59 @@ void main() {
       expect(find.text('AP'), findsOneWidget);
     });
   }
+
+  group('stanje čuvanja', () {
+    testTavli('sve sačuvano posle pokretanja', (tester) async {
+      await pumpTavli(tester, location: '/profile');
+      expect(find.text('Sve je sačuvano u nalogu.'), findsOneWidget);
+    });
+
+    testTavli('bez mreže čeka, pa se šalje kad se mreža vrati', (tester) async {
+      final app = await pumpTavli(tester, location: '/profile');
+      app.backend.server.offline = true;
+      await tester.tap(find.text('Izmeni ime'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Ana',
+      );
+      await tester.tap(button('Sačuvaj'));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(find.text('Čeka slanje: 1'), findsOneWidget);
+
+      app.backend.server.offline = false;
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(find.text('Sve je sačuvano u nalogu.'), findsOneWidget);
+    });
+
+    testTavli('odbijena izmena', (tester) async {
+      final app = await pumpTavli(tester, location: '/profile');
+      // Grupa pa pojedinačno: server odbija oba pokušaja.
+      app.backend.server.failures.addAll(const [
+        PermanentSyncError('23514'),
+        PermanentSyncError('23514'),
+      ]);
+      await tester.tap(find.text('Izmeni ime'));
+      await tester.pumpAndSettle();
+      await tester.tap(button('Sačuvaj'));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(find.text('Neke izmene nisu sačuvane u nalogu.'), findsOneWidget);
+    });
+
+    test('tekstovi za svako stanje', () {
+      expect(syncStatusText(const AllSaved()), 'Sve je sačuvano u nalogu.');
+      expect(syncStatusText(const Sending()), 'Čuvam izmene…');
+      expect(syncStatusText(const Waiting(3)), 'Čeka slanje: 3');
+      expect(
+        syncStatusText(const Rejected(1)),
+        'Neke izmene nisu sačuvane u nalogu.',
+      );
+    });
+  });
 }

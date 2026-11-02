@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../account/auth_controller.dart';
+import '../providers.dart';
 import 'router.dart';
 
 /// Topla boja tave/terakote.
@@ -23,6 +24,7 @@ class TavliApp extends ConsumerStatefulWidget {
 class _TavliAppState extends ConsumerState<TavliApp> {
   final _authChanges = _Refresh();
   late final GoRouter _router;
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
@@ -33,13 +35,22 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       refresh: _authChanges,
     );
     ref.listenManual(authControllerProvider, (_, _) => _authChanges.ping());
+    // Drži engine za slanje živim dok je nalog prijavljen.
+    ref.listenManual(syncEngineProvider, (_, _) {}, fireImmediately: true);
+    _lifecycle = AppLifecycleListener(onResume: _onResume);
     unawaited(
       Future.microtask(ref.read(authControllerProvider.notifier).start),
     );
   }
 
+  void _onResume() {
+    unawaited(ref.read(authControllerProvider.notifier).restoreSession());
+    unawaited(ref.read(syncEngineProvider)?.onResume());
+  }
+
   @override
   void dispose() {
+    _lifecycle.dispose();
     _router.dispose();
     _authChanges.dispose();
     super.dispose();

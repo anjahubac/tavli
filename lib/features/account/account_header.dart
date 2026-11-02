@@ -3,7 +3,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../account/auth_controller.dart';
 import '../../domain/account.dart';
+import '../../providers.dart';
+import '../../sync/sync_engine.dart';
 import 'account_dialogs.dart';
+
+/// Tekst stanja čuvanja u nalogu (FR-018).
+String syncStatusText(SyncStatus s) => switch (s) {
+  AllSaved() => 'Sve je sačuvano u nalogu.',
+  Sending() => 'Čuvam izmene…',
+  Waiting(:final count) => 'Čeka slanje: $count',
+  Rejected() => 'Neke izmene nisu sačuvane u nalogu.',
+};
+
+/// Jedan red sa stanjem čuvanja.
+class SyncStatusLine extends ConsumerWidget {
+  const SyncStatusLine({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final status = ref.watch(syncStatusProvider).value ?? const AllSaved();
+    final (icon, color) = switch (status) {
+      AllSaved() => (Icons.cloud_done_outlined, scheme.primary),
+      Sending() => (Icons.cloud_upload_outlined, scheme.primary),
+      Waiting() => (Icons.cloud_off_outlined, scheme.onSurfaceVariant),
+      Rejected() => (Icons.error_outline, scheme.error),
+    };
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(child: Text(syncStatusText(status))),
+      ],
+    );
+  }
+}
 
 /// Avatar sa inicijalima na boji iz teme.
 class InitialsAvatar extends StatelessWidget {
@@ -63,6 +97,10 @@ class AccountHeader extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: SyncStatusLine(),
         ),
         ListTile(
           leading: const Icon(Icons.edit_outlined),

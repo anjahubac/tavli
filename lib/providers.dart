@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase/supabase.dart';
 
@@ -15,7 +17,11 @@ import 'ai/key_store.dart';
 import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
+import 'features/recipes/recipe_providers.dart';
+import 'sync/sync_engine.dart';
+import 'sync/sync_remote.dart';
 import 'sync/synced_writer.dart';
+import 'sync/uploader.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
@@ -63,16 +69,83 @@ final accountServiceProvider = Provider<AccountService>(
   (ref) => AccountService(
     ref.watch(databaseProvider),
     ref.watch(accountApiProvider),
+    onChange: () => ref.read(syncEngineProvider)?.kick(),
   ),
 );
 
-/// Upisuje izmene prijavljenog naloga u red za slanje.
+/// Upisuje izmene prijavljenog naloga u red za slanje i budi slanje.
 final syncedWriterProvider = Provider<SyncedWriter>(
   (ref) => SyncedWriter(
     ref.watch(databaseProvider),
     accountId: (ref.watch(accountScopeProvider) ?? noAccountScope).userId,
+    onChange: () => ref.read(syncEngineProvider)?.kick(),
   ),
 );
+
+final syncRemoteProvider = Provider<SyncRemote?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null ? null : SupabaseSyncRemote(client);
+});
+
+final photoRemoteProvider = Provider<PhotoRemote?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null ? null : SupabasePhotoRemote(client);
+});
+
+/// Obnavlja sesiju posle odgovora 401; false kad je obnova odbijena.
+Future<bool> _refreshSession(Ref ref) async {
+  final gateway = ref.read(authGatewayProvider);
+  final store = ref.read(sessionStoreProvider);
+  try {
+    final session = await gateway.refresh();
+    await store.write(session.json);
+    return true;
+  } on Offline {
+    return true; // sledeće slanje će naići na mrežu i sačekati
+  } on Unavailable {
+    return true;
+  } on AuthFailure {
+    return false;
+  }
+}
+
+/// Slanje i preuzimanje za prijavljen nalog; null bez naloga ili servera.
+/// Nov nalog → nov engine (stari se zaustavlja).
+final syncEngineProvider = Provider<SyncEngine?>((ref) {
+  final scope = ref.watch(accountScopeProvider);
+  final remote = ref.watch(syncRemoteProvider);
+  final photos = ref.watch(photoRemoteProvider);
+  if (scope == null || remote == null || photos == null) return null;
+  final db = ref.watch(databaseProvider);
+  final engine = SyncEngine(
+    db: db,
+    scope: scope,
+    uploader: Uploader(
+      db: db,
+      remote: remote,
+      photos: photos,
+      photoStore: ref.watch(recipePhotoStoreProvider),
+      scope: scope,
+      refreshSession: () => _refreshSession(ref),
+    ),
+    onUnauthorized: () =>
+        ref.read(authControllerProvider.notifier).sessionExpired(),
+  );
+  ref.onDispose(engine.stop);
+  unawaited(engine.onStart());
+  return engine;
+});
+
+/// Stanje čuvanja u nalogu za "Profil".
+final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
+  final engine = ref.watch(syncEngineProvider);
+  return engine == null ? Stream.value(const AllSaved()) : engine.watchStatus();
+});
+
+final syncPhaseProvider = StreamProvider<SyncPhase?>((ref) {
+  final engine = ref.watch(syncEngineProvider);
+  return engine == null ? Stream.value(null) : engine.watchPhase();
+});
 
 final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
 

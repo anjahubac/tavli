@@ -201,6 +201,8 @@ Future<TestApp> pumpTavli(
         authGatewayProvider.overrideWithValue(app.backend.auth),
         accountApiProvider.overrideWithValue(app.backend.accounts),
         authClockProvider.overrideWithValue(() => app.now),
+        syncRemoteProvider.overrideWithValue(app.backend.sync),
+        photoRemoteProvider.overrideWithValue(app.backend.photos),
         keyStoreProvider.overrideWithValue(app.keys),
         builtInKeysProvider.overrideWithValue(
           const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),

@@ -15,6 +15,10 @@ abstract final class OutboxOp {
 
 abstract final class OutboxState {
   static const pending = 'pending';
+
+  /// Upravo se šalje: nova izmena istog zapisa dobija novi red (ne spaja se
+  /// sa ovim), da ne bi bila izgubljena kad se ovaj obriše posle slanja.
+  static const sending = 'sending';
   static const rejected = 'rejected';
 }
 
