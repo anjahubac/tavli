@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../domain/ids.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/recipe_version.dart';
@@ -114,7 +115,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     if (original == null) {
       final now = ref.read(clockProvider)();
       recipe = Recipe(
-        id: newRecipeId(now),
+        id: newId(),
         title: title,
         servings: servings,
         prepMinutes: prep,

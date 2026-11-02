@@ -12,6 +12,12 @@ abstract class RecipePhotoStore {
   Future<File?> file(String relativePath);
 
   Future<void> delete(String relativePath);
+
+  /// Sadržaj slike (za slanje na server) ili null ako je nema.
+  Future<Uint8List?> read(String relativePath);
+
+  /// Upisuje sliku preuzetu sa servera na datu relativnu putanju.
+  Future<void> write(String relativePath, Uint8List jpeg);
 }
 
 class FileRecipePhotoStore implements RecipePhotoStore {
@@ -47,5 +53,18 @@ class FileRecipePhotoStore implements RecipePhotoStore {
   Future<void> delete(String relativePath) async {
     final f = await _resolve(relativePath);
     if (await f.exists()) await f.delete();
+  }
+
+  @override
+  Future<Uint8List?> read(String relativePath) async {
+    final f = await _resolve(relativePath);
+    return await f.exists() ? f.readAsBytes() : null;
+  }
+
+  @override
+  Future<void> write(String relativePath, Uint8List jpeg) async {
+    final file = await _resolve(relativePath);
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(jpeg, flush: true);
   }
 }

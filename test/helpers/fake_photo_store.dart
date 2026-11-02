@@ -20,4 +20,11 @@ class FakePhotoStore implements RecipePhotoStore {
 
   @override
   Future<void> delete(String relativePath) async => saved.remove(relativePath);
+
+  @override
+  Future<Uint8List?> read(String relativePath) async => saved[relativePath];
+
+  @override
+  Future<void> write(String relativePath, Uint8List jpeg) async =>
+      saved[relativePath] = jpeg;
 }

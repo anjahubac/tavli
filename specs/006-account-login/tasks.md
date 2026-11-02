@@ -33,16 +33,16 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 ### Domain and local cache
 
-- [ ] T019 [P] Test: `newId()` is UUID v4 and unique over 10 000 calls; `initials` ("Ana Petrović" → "AP", "Ana" → "A", "Đorđe Šćepanović" → "ĐŠ", extra spaces); `normalizeEmail` (" Ana@Mail.com " → "ana@mail.com", validity); `normalizeCode` ("123 456" → "123456", non-digits dropped, max 6); `normalizeName` (trim, empty → null, 40-char limit), in `test/domain/ids_test.dart` and `test/domain/account_test.dart`
-- [ ] T020 [P] Implement `lib/domain/ids.dart` and `lib/domain/account.dart` (`Account`, `initials`, `normalizeEmail`, `isValidEmail`, `normalizeCode`, `normalizeName`)
-- [ ] T021 Test: migration v3 → v4 keeps every row of every table, converts integer ids to unique text ids, keeps recipe↔version/list↔item/plan↔entry links, leaves scope columns null, creates `Accounts`, `SyncOutbox`, `SyncCursors`, in `test/data/migration_test.dart`
-- [ ] T022 Schema v4 in `lib/data/database.dart` (scope columns, text ids, `UserProfiles.id` text, new tables, `TableMigration` steps, outbox index); `dart run build_runner build --delete-conflicting-outputs`; `RecipeVersion.id` → `String` in `lib/domain/recipe_version.dart`; replace `newRecipeId` with `newId` in `lib/domain/recipe.dart` and callers
-- [ ] T023 [P] Test: `toRemote`/`fromRemote` round trip for all 10 entities (snake_case, JSON text ↔ list/map, `imagePath` `recipe_photos/x.jpg` ↔ `x.jpg`, UTC dates, scope column filled), in `test/sync/entities_test.dart`
-- [ ] T024 [P] Implement entity registry and mappers in `lib/sync/entities.dart`
-- [ ] T025 Test: `SyncedWriter` — upsert enqueues once and coalesces (earliest `seq` kept); delete drops pending upserts and appends delete; photo ops enqueued; entries carry `accountId`; a failing transaction leaves neither row nor entry, in `test/sync/synced_writer_test.dart`
-- [ ] T026 Implement `lib/sync/synced_writer.dart` and `AccountScope` in `lib/account/auth_controller.dart` (scope type + provider only)
-- [ ] T027 Test: `RecipeRepository` reads only the active household's rows; create/update (+ version, prune to 30 → version deletes)/undoLast/restore/delete (versions, ratings, meal entries → upserts, `photoDelete` for unreferenced photos, `photoUpload` for new photos) each write the expected outbox entries in the same transaction, in `test/data/recipe_repository_test.dart`
-- [ ] T028 Update `lib/data/recipe_repository.dart` (scope + `SyncedWriter`) and `lib/features/recipes/recipe_providers.dart` (scope from `accountScopeProvider`); recipe screens use `String` version ids
+- [x] T019 [P] Test: `newId()` is UUID v4 and unique over 10 000 calls; `initials` ("Ana Petrović" → "AP", "Ana" → "A", "Đorđe Šćepanović" → "ĐŠ", extra spaces); `normalizeEmail` (" Ana@Mail.com " → "ana@mail.com", validity); `normalizeCode` ("123 456" → "123456", non-digits dropped, max 6); `normalizeName` (trim, empty → null, 40-char limit), in `test/domain/ids_test.dart` and `test/domain/account_test.dart`
+- [x] T020 [P] Implement `lib/domain/ids.dart` and `lib/domain/account.dart` (`Account`, `initials`, `normalizeEmail`, `isValidEmail`, `normalizeCode`, `normalizeName`)
+- [x] T021 Test: migration v3 → v4 keeps every row of every table, converts integer ids to unique text ids, keeps recipe↔version/list↔item/plan↔entry links, leaves scope columns null, creates `Accounts`, `SyncOutbox`, `SyncCursors`, in `test/data/migration_test.dart`
+- [x] T022 Schema v4 in `lib/data/database.dart` (scope columns, text ids, `UserProfiles.id` text, new tables, `TableMigration` steps, outbox index); `dart run build_runner build --delete-conflicting-outputs`; `RecipeVersion.id` → `String` in `lib/domain/recipe_version.dart`; replace `newRecipeId` with `newId` in `lib/domain/recipe.dart` and callers
+- [x] T023 [P] Test: `toRemote`/`fromRemote` round trip for all 10 entities (snake_case, JSON text ↔ list/map, `imagePath` `recipe_photos/x.jpg` ↔ `x.jpg`, UTC dates, scope column filled), in `test/sync/entities_test.dart`
+- [x] T024 [P] Implement entity registry and mappers in `lib/sync/entities.dart`
+- [x] T025 Test: `SyncedWriter` — upsert enqueues once and coalesces (earliest `seq` kept); delete drops pending upserts and appends delete; photo ops enqueued; entries carry `accountId`; a failing transaction leaves neither row nor entry, in `test/sync/synced_writer_test.dart`
+- [x] T026 Implement `lib/sync/synced_writer.dart` and `AccountScope` in `lib/account/auth_controller.dart` (scope type + provider only)
+- [x] T027 Test: `RecipeRepository` reads only the active household's rows; create/update (+ version, prune to 30 → version deletes)/undoLast/restore/delete (versions, ratings, meal entries → upserts, `photoDelete` for unreferenced photos, `photoUpload` for new photos) each write the expected outbox entries in the same transaction, in `test/data/recipe_repository_test.dart`
+- [x] T028 Update `lib/data/recipe_repository.dart` (scope + `SyncedWriter`) and `lib/features/recipes/recipe_providers.dart` (scope from `accountScopeProvider`); recipe screens use `String` version ids
 
 ### Backend boundary and app shell
 

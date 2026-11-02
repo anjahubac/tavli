@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
@@ -18,9 +19,13 @@ import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/photo_picker.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
+import 'package:tavli/sync/synced_writer.dart';
 
 import 'fake_adapter.dart';
 import 'fake_photo_store.dart';
+
+/// Nalog pod kojim testovi rade (prijavljen po difoltu).
+const testScope = AccountScope(userId: 'test-user', householdId: 'test-home');
 
 const phone = Size(400, 800);
 const wide = Size(1200, 800);
@@ -107,7 +112,12 @@ class TestApp {
   final FakePhotoPicker picker;
   final FakeAdapter adapter;
 
-  RecipeRepository get repo => RecipeRepository(db, photos);
+  RecipeRepository get repo => RecipeRepository(
+    db,
+    photos,
+    writer: SyncedWriter(db, accountId: testScope.userId),
+    scope: testScope,
+  );
 
   /// Naslovi sačuvanih recepata. Bez drift tokova: njihovi tajmeri ne
   /// rade dok se test ne pumpa.
@@ -145,6 +155,7 @@ Future<TestApp> pumpTavli(
     ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
+        accountScopeProvider.overrideWithValue(testScope),
         keyStoreProvider.overrideWithValue(InMemoryKeyStore()),
         builtInKeysProvider.overrideWithValue(
           const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),
