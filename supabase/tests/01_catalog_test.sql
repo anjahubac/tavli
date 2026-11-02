@@ -36,8 +36,11 @@ select is(
     'ratings:delete', 'ratings:insert', 'ratings:select', 'ratings:update',
     'recipe_versions:delete', 'recipe_versions:insert', 'recipe_versions:select', 'recipe_versions:update',
     'recipes:delete', 'recipes:insert', 'recipes:select', 'recipes:update',
+    'shopping_contributions:delete', 'shopping_contributions:insert', 'shopping_contributions:select', 'shopping_contributions:update',
     'shopping_items:delete', 'shopping_items:insert', 'shopping_items:select', 'shopping_items:update',
     'shopping_lists:delete', 'shopping_lists:insert', 'shopping_lists:select', 'shopping_lists:update',
+    'shopping_sources:delete', 'shopping_sources:insert', 'shopping_sources:select', 'shopping_sources:update',
+    'supply_allocations:delete', 'supply_allocations:insert', 'supply_allocations:select', 'supply_allocations:update',
     'taste_profiles:delete', 'taste_profiles:insert', 'taste_profiles:select', 'taste_profiles:update'
   ],
   'authenticated ima tačno dogovorena prava na tabelama'
