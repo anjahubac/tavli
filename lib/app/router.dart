@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../account/auth_controller.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
+import '../features/planning/plan_preview_screen.dart';
+import '../features/planning/plan_screen.dart';
+import '../features/planning/plan_setup_screen.dart';
 import '../features/recipes/from_name_screen.dart';
 import '../features/recipes/from_photo_screen.dart';
 import '../features/recipes/recipe_chat_screen.dart';
@@ -85,8 +88,19 @@ GoRouter createRouter({
           routes: [
             GoRoute(
               path: '/plan',
-              builder: (context, state) =>
-                  PlaceholderScreen(icon: tabs[0].icon),
+              builder: (context, state) => const PlanScreen(),
+              routes: [
+                GoRoute(
+                  path: 'new',
+                  builder: (context, state) => const PlanSetupScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'preview',
+                      builder: (context, state) => const PlanPreviewScreen(),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),

@@ -64,6 +64,20 @@ class MealPlanRepository {
           .watch()
           .map((rows) => rows.map(_mealFromRow).toList()..sort(_bySlot));
 
+  /// Nazivi potvrđene zalihe domaćinstva (za predlog plana; samo čitanje).
+  Future<List<String>> confirmedPantryNames() async => [
+    for (final p
+        in await (_db.select(_db.pantryItems)
+              ..where(
+                (t) =>
+                    t.householdId.equals(_scope.householdId) &
+                    t.confirmedAt.isNotNull(),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+            .get())
+      p.name,
+  ];
+
   /// Otisak sačuvanog plana: menja se sa svakom izmenom plana ili obroka.
   Future<String> fingerprint(String planId) async {
     final plan = await _planQuery(planId).getSingleOrNull();

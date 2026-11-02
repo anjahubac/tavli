@@ -319,4 +319,29 @@ void main() {
       containsPair('title', 'Pasulj'),
     );
   });
+
+  test('predlog vidi samo potvrđenu zalihu svog domaćinstva', () async {
+    Future<void> pantry(
+      String id,
+      String name, {
+      bool confirmed = true,
+      String home = 'home-one',
+    }) => db
+        .into(db.pantryItems)
+        .insert(
+          PantryItemsCompanion.insert(
+            id: id,
+            name: name,
+            category: 'ostalo',
+            addedAt: DateTime.utc(2026),
+            householdId: Value(home),
+            confirmedAt: Value(confirmed ? DateTime.utc(2026) : null),
+          ),
+        );
+    await pantry('a', 'pirinač');
+    await pantry('b', 'brašno', confirmed: false);
+    await pantry('c', 'šećer', home: 'home-two');
+
+    expect(await repo.confirmedPantryNames(), ['pirinač']);
+  });
 }
