@@ -7,6 +7,7 @@ import '../domain/ids.dart';
 import '../domain/meal_plan.dart';
 import '../domain/plan_calendar.dart';
 import '../domain/recipe.dart';
+import '../domain/shopping_demand.dart' show maxServings, minServings;
 import '../domain/shopping_source.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
@@ -16,6 +17,16 @@ import 'shopping_repository.dart';
 /// nema nijednog spremnog obroka).
 class IncompleteDraftException implements Exception {
   const IncompleteDraftException();
+}
+
+/// Obrok je zaključan ili skuvan; prvo ga treba otključati ili vratiti.
+class ProtectedMealException implements Exception {
+  const ProtectedMealException();
+}
+
+/// Obrok ne postoji u ovom domaćinstvu.
+class MealNotFoundException implements Exception {
+  const MealNotFoundException();
 }
 
 /// Plan se promenio otkako je nacrt počeo (ili ga više nema): nacrt se ne
@@ -167,7 +178,8 @@ class MealPlanRepository {
         )..where((t) => t.id.equals(current.id))).write(
           MealPlanEntriesCompanion(
             recipeId: Value(recipeId),
-            servings: Value(draft.request.servings),
+            // Zamena jela ne menja porcije koje je osoba izabrala za obrok.
+            servings: Value(current.servings ?? draft.request.servings),
             recipeSnapshotJson: Value(snapshot),
           ),
         );
@@ -177,6 +189,74 @@ class MealPlanRepository {
       return planId;
     });
   }
+
+  /// Porcije jednog obroka (1–20); nabavka se usklađuje.
+  Future<void> changeServings(String entryId, int servings) {
+    if (servings < minServings || servings > maxServings) {
+      throw ArgumentError.value(servings, 'servings');
+    }
+    return _edit(entryId, (e) async {
+      if (e.isCooked) throw const ProtectedMealException();
+      return MealPlanEntriesCompanion(servings: Value(servings));
+    });
+  }
+
+  /// Zaključan obrok ponovni predlog ne menja.
+  Future<void> setLocked(String entryId, {required bool locked}) => _edit(
+    entryId,
+    (_) async => MealPlanEntriesCompanion(isLocked: Value(locked)),
+  );
+
+  /// Skuvan obrok više ne traži kupovinu; kupljeno i zaliha ostaju.
+  Future<void> setCooked(String entryId, {required bool cooked}) => _edit(
+    entryId,
+    (_) async => MealPlanEntriesCompanion(isCooked: Value(cooked)),
+  );
+
+  /// Uklanja obrok iz plana i oslobađa njegovu potrebu; kupljeno ostaje.
+  Future<void> removeMeal(String entryId) => _db.transaction(() async {
+    final e = await _findEntry(entryId);
+    if (e.isLocked || e.isCooked) throw const ProtectedMealException();
+    final sources =
+        await (_db.select(_db.shoppingSources)..where(
+              (t) =>
+                  t.planEntryId.equals(entryId) &
+                  t.householdId.equals(_scope.householdId),
+            ))
+            .get();
+    for (final s in sources) {
+      await _shopping.removeSource(s.id);
+    }
+    await (_db.delete(
+      _db.mealPlanEntries,
+    )..where((t) => t.id.equals(entryId))).go();
+    await _writer.delete(_entry, entryId);
+    await _shopping.reconcilePlan(e.planId);
+  });
+
+  Future<MealPlanEntryRow> _findEntry(String entryId) async {
+    final e =
+        await (_db.select(_db.mealPlanEntries)..where(
+              (t) =>
+                  t.id.equals(entryId) &
+                  t.householdId.equals(_scope.householdId),
+            ))
+            .getSingleOrNull();
+    if (e == null) throw const MealNotFoundException();
+    return e;
+  }
+
+  Future<void> _edit(
+    String entryId,
+    Future<MealPlanEntriesCompanion> Function(MealPlanEntryRow e) change,
+  ) => _db.transaction(() async {
+    final e = await _findEntry(entryId);
+    await (_db.update(
+      _db.mealPlanEntries,
+    )..where((t) => t.id.equals(entryId))).write(await change(e));
+    await _writer.upsert(_entry, entryId);
+    await _shopping.reconcilePlan(e.planId);
+  });
 
   Future<String> _insertRecipe(RecipeSnapshot r) async {
     final id = newId();

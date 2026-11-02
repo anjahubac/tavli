@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../account/auth_controller.dart';
@@ -202,6 +204,38 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
         error: aiErrorText(e.error),
       );
     }
+  }
+
+  /// Ponovni predlog sačuvanog plana: samo mesta koja nisu zaključana,
+  /// skuvana ni prošla. Vraća false kad takvih nema. Pregled pokazuje
+  /// izmene; plan se menja tek posle "Prihvati", i to samo ako se u
+  /// međuvremenu nije promenio.
+  Future<bool> regenerate(MealPlan plan, List<PlannedMeal> meals) async {
+    if (state.busy) return false;
+    final slots = regenerableSlots(plan, meals, _today);
+    if (slots.isEmpty) return false;
+    final repo = ref.read(mealPlanRepositoryProvider);
+    final base = PlanBase(
+      planId: plan.id,
+      fingerprint: await repo.fingerprint(plan.id),
+    );
+    final request = PlanRequest(
+      range: plan.range,
+      mealTypes: plan.mealTypes,
+      servings: plan.defaultServings,
+      usePantry: plan.usePantry,
+      pantryNames: plan.usePantry
+          ? await repo.confirmedPantryNames()
+          : const [],
+      only: slots,
+    );
+    _run++;
+    state = PlanGenerationState(
+      setup: state.setup,
+      draft: PlanDraft(request: request, base: base),
+    );
+    unawaited(generate());
+    return true;
   }
 
   /// Prekida generisanje; gotov deo ostaje u pregledu.

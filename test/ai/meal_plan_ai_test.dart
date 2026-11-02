@@ -447,6 +447,49 @@ void main() {
     });
   });
 
+  test('predlog samo za izabrana mesta (zamena, ponovni predlog)', () async {
+    final week = weekRequest(types: const {MealType.lunch, MealType.dinner});
+    final only = {
+      MealSlot(monday.addDays(1), MealType.dinner),
+      MealSlot(monday.addDays(4), MealType.lunch),
+    };
+    final request = PlanRequest(
+      range: week.range,
+      mealTypes: week.mealTypes,
+      only: only,
+    );
+
+    final draft = await ai.propose(request);
+
+    expect(draft.proposals.keys.toSet(), only);
+    expect(draft.isComplete, isTrue);
+    expect(
+      slotsIn(client.requests.first).map((s) => '${s['date']}/${s['meal']}'),
+      ['2026-11-03/dinner', '2026-11-06/lunch'],
+    );
+    expect(client.requests.where(isOutline).length, 1);
+  });
+
+  test('mesta van plana ili prazan izbor se odbijaju', () {
+    final week = weekRequest();
+    expect(
+      () => PlanRequest(
+        range: week.range,
+        mealTypes: week.mealTypes,
+        only: const {},
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => PlanRequest(
+        range: week.range,
+        mealTypes: week.mealTypes,
+        only: {MealSlot(monday, MealType.dinner)},
+      ),
+      throwsArgumentError,
+    );
+  });
+
   group('greška, nastavak i prekid', () {
     final twoWeeks = PlanRequest(
       range: DateRange(monday, monday.addDays(13)),
