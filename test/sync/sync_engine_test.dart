@@ -3,6 +3,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/sync/downloader.dart';
+import 'package:tavli/sync/photo_sync.dart';
 import 'package:tavli/sync/sync_engine.dart';
 import 'package:tavli/sync/sync_remote.dart';
 import 'package:tavli/sync/synced_writer.dart';
@@ -169,5 +171,112 @@ void main() {
     expect(timers.pending, isEmpty);
     await engine.push();
     expect(backend.server.table('recipes'), isEmpty);
+  });
+
+  group('preuzimanje', () {
+    late SyncEngine full;
+    late List<SyncPhase?> phases;
+    var now = DateTime.utc(2026, 11, 1, 12);
+
+    setUp(() async {
+      now = DateTime.utc(2026, 11, 1, 12);
+      await db
+          .into(db.accounts)
+          .insert(
+            AccountsCompanion.insert(
+              userId: scope.userId,
+              email: 'ana@mail.com',
+              householdId: scope.householdId,
+              householdName: 'Moje domaćinstvo',
+              role: 'owner',
+              createdAt: now,
+            ),
+          );
+      full = SyncEngine(
+        db: db,
+        scope: scope,
+        uploader: Uploader(
+          db: db,
+          remote: backend.sync,
+          photos: backend.photos,
+          photoStore: FakePhotoStore(),
+          scope: scope,
+          refreshSession: () async => true,
+        ),
+        downloader: Downloader(db: db, remote: backend.sync, scope: scope),
+        photoSync: PhotoSync(
+          db: db,
+          remote: backend.photos,
+          store: FakePhotoStore(),
+          scope: scope,
+        ),
+        timer: timers.call,
+        clock: () => now,
+      );
+      writer = SyncedWriter(db, accountId: scope.userId, onChange: full.kick);
+      phases = [];
+      full.watchPhase().listen(phases.add);
+      backend.server.upsert('pantry_items', [
+        {
+          'id': 'o1',
+          'household_id': scope.householdId,
+          'name': 'so',
+          'category': 'ostalo',
+          'added_at': '2026-10-30T10:00:00.000Z',
+        },
+      ], 'id');
+    });
+    tearDown(() => full.stop());
+
+    Future<AccountRow> account() => db.select(db.accounts).getSingle();
+
+    test('posle prijave: prvo slanje, pa celo preuzimanje', () async {
+      await addRecipe('a');
+      timers.pending.clear();
+      backend.server.calls.clear();
+      await full.onStart();
+      expect(backend.server.calls.first, 'upsert:recipes:1');
+      expect(backend.server.calls, contains('fetch:pantry_items'));
+      expect(
+        backend.server.calls.indexOf('upsert:recipes:1'),
+        lessThan(backend.server.calls.indexOf('fetch:recipes')),
+      );
+      expect(await db.select(db.pantryItems).get(), hasLength(1));
+      expect(phases, [null, SyncPhase.downloading, null]);
+      final a = await account();
+      expect(a.initialDownloadDone, isTrue);
+      expect(a.lastPullAt!.isAtSameMomentAs(now), isTrue);
+    });
+
+    test('kasnije pokretanje: bez trake "Preuzimam…"', () async {
+      await full.onStart();
+      phases.clear();
+      await full.onStart();
+      expect(phases, isEmpty);
+    });
+
+    test('povratak u aplikaciju preuzima tek posle 15 minuta', () async {
+      await full.onStart();
+      backend.server.calls.clear();
+      now = now.add(const Duration(minutes: 14));
+      await full.onResume();
+      expect(backend.server.calls.where((c) => c.startsWith('fetch')), isEmpty);
+      now = now.add(const Duration(minutes: 1));
+      await full.onResume();
+      expect(backend.server.calls, contains('fetch:recipes'));
+    });
+
+    test(
+      'bez mreže: preuzimanje ne javlja grešku, nastavlja se kasnije',
+      () async {
+        backend.server.offline = true;
+        await full.onStart();
+        expect(phases.last, isNull);
+        expect((await account()).initialDownloadDone, isFalse);
+        backend.server.offline = false;
+        await full.onStart();
+        expect((await account()).initialDownloadDone, isTrue);
+      },
+    );
   });
 }

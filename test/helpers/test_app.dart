@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:tavli/account/auth_controller.dart';
@@ -175,6 +176,7 @@ Future<TestApp> pumpTavli(
   bool signedIn = true,
   String? name = 'Ana Petrović',
   FakeBackend? backend,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -216,6 +218,7 @@ Future<TestApp> pumpTavli(
         recipePhotoStoreProvider.overrideWithValue(app.photos),
         photoPickerProvider.overrideWithValue(app.picker),
         photoResizerProvider.overrideWithValue((bytes) async => bytes),
+        ...overrides,
       ],
       child: TavliApp(initialLocation: location),
     ),

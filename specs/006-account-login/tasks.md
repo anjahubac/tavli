@@ -91,11 +91,11 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 **Goal**: the account's data appears on a new device; later starts fetch only changes.
 **Independent test**: 3 recipes (1 photo) + 2 items on device A → device B shows exactly those.
 
-- [ ] T050 [P] [US4] Test (`FakeBackend`): full download of all 10 entities parent-first; pages of 500 with cursor saved per page; interruption mid-download then rerun → complete, no duplicates; 60 s overlap re-applies idempotently; rows with pending or rejected local outbox entries are not overwritten (FR-014: kept on the device); tombstones delete local rows and drop their pending entries; second run fetches only newer rows; `initialDownloadDone` set; rows land with the account's scope, in `test/sync/downloader_test.dart`
-- [ ] T051 [US4] Implement `lib/sync/downloader.dart`
-- [ ] T052 [P] [US4] Test: `PhotoSync.fetchMissing` downloads files referenced by recipes and versions that are missing locally (≤ 4 at a time), skips present ones, leaves failures for the next run, in `test/sync/photo_sync_test.dart`; implement `lib/sync/photo_sync.dart`
-- [ ] T053 [US4] Test + implementation: engine pull after sign-in (full when `initialDownloadDone` is false), on start online, on resume only when `lastPullAt` ≥ 15 min ago; push before pull; phase `downloading` exposed, in `test/sync/sync_engine_test.dart` and `lib/sync/sync_engine.dart`
-- [ ] T054 [US4] Widget test + implementation: banner "Preuzimam tvoje podatke…" while downloading, recipes usable before photos finish, in `test/features/account/sync_banner_test.dart`, `lib/features/account/sync_banner.dart`, `lib/app/home_shell.dart`
+- [x] T050 [P] [US4] Test (`FakeBackend`): full download of all 10 entities parent-first; pages of 500 with cursor saved per page; interruption mid-download then rerun → complete, no duplicates; 60 s overlap re-applies idempotently; rows with pending or rejected local outbox entries are not overwritten (FR-014: kept on the device); tombstones delete local rows and drop their pending entries; second run fetches only newer rows; `initialDownloadDone` set; rows land with the account's scope, in `test/sync/downloader_test.dart`
+- [x] T051 [US4] Implement `lib/sync/downloader.dart`
+- [x] T052 [P] [US4] Test: `PhotoSync.fetchMissing` downloads files referenced by recipes and versions that are missing locally (≤ 4 at a time), skips present ones, leaves failures for the next run, in `test/sync/photo_sync_test.dart`; implement `lib/sync/photo_sync.dart`
+- [x] T053 [US4] Test + implementation: engine pull after sign-in (full when `initialDownloadDone` is false), on start online, on resume only when `lastPullAt` ≥ 15 min ago; push before pull; phase `downloading` exposed, in `test/sync/sync_engine_test.dart` and `lib/sync/sync_engine.dart`
+- [x] T054 [US4] Widget test + implementation: banner "Preuzimam tvoje podatke…" while downloading, recipes usable before photos finish, in `test/features/account/sync_banner_test.dart`, `lib/features/account/sync_banner.dart`, `lib/app/home_shell.dart`
 
 ## Phase 7: User Story 5 — existing local data moves into the account once (P1)
 

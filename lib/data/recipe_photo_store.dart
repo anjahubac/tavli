@@ -13,6 +13,8 @@ abstract class RecipePhotoStore {
 
   Future<void> delete(String relativePath);
 
+  Future<bool> exists(String relativePath);
+
   /// Sadržaj slike (za slanje na server) ili null ako je nema.
   Future<Uint8List?> read(String relativePath);
 
@@ -54,6 +56,10 @@ class FileRecipePhotoStore implements RecipePhotoStore {
     final f = await _resolve(relativePath);
     if (await f.exists()) await f.delete();
   }
+
+  @override
+  Future<bool> exists(String relativePath) async =>
+      (await _resolve(relativePath)).exists();
 
   @override
   Future<Uint8List?> read(String relativePath) async {

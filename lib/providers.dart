@@ -18,6 +18,8 @@ import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'features/recipes/recipe_providers.dart';
+import 'sync/downloader.dart';
+import 'sync/photo_sync.dart';
 import 'sync/sync_engine.dart';
 import 'sync/sync_remote.dart';
 import 'sync/synced_writer.dart';
@@ -128,6 +130,14 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
       scope: scope,
       refreshSession: () => _refreshSession(ref),
     ),
+    downloader: Downloader(db: db, remote: remote, scope: scope),
+    photoSync: PhotoSync(
+      db: db,
+      remote: photos,
+      store: ref.watch(recipePhotoStoreProvider),
+      scope: scope,
+    ),
+    refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
   );

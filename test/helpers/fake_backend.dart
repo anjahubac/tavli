@@ -41,11 +41,13 @@ class FakeServer {
   var _tick = 0;
   var _n = 0;
 
-  /// Vreme na serveru raste sa svakim upisom (mikrosekunde).
-  String _now() => DateTime.utc(
-    2026,
-    11,
-  ).add(Duration(microseconds: ++_tick)).toIso8601String();
+  /// Vreme na serveru raste sa svakim upisom (po sekundu, da bi pozicija
+  /// preuzimanja bila jasna i sa sekundnom tačnošću lokalne baze).
+  String _now() =>
+      DateTime.utc(2026, 11).add(Duration(seconds: ++_tick)).toIso8601String();
+
+  /// Posle toliko uspešnih preuzimanja sledeće pukne (prekinuto preuzimanje).
+  int? fetchesBeforeFailure;
 
   Map<String, Map<String, Object?>> table(String name) =>
       tables.putIfAbsent(name, () => {});
@@ -180,6 +182,10 @@ class FakeServer {
     required String idColumn,
   }) {
     _check();
+    if (fetchesBeforeFailure case final n?) {
+      fetchesBeforeFailure = n == 0 ? null : n - 1;
+      if (n == 0) throw const TransientSyncError('interrupted');
+    }
     calls.add('fetch:$name');
     final source = name == 'profiles' ? profiles.values : table(name).values;
     final sorted =
