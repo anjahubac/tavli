@@ -1,5 +1,3 @@
-import 'dart:math';
-
 enum RecipeSource { photo, ai, manual }
 
 /// `summary` = naziv i sastojci (dovoljno za plan i listu za kupovinu),
@@ -185,13 +183,6 @@ class Recipe {
     'steps': steps,
   };
 }
-
-final _random = Random();
-
-/// Kratak jedinstven id recepta (vreme + slučajan broj).
-String newRecipeId(DateTime now) =>
-    '${now.microsecondsSinceEpoch.toRadixString(36)}'
-    '${_random.nextInt(1 << 32).toRadixString(36)}';
 
 double? _parseQuantity(Object? v) {
   if (v is num) return v.toDouble();

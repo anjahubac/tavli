@@ -150,11 +150,5 @@ void main() {
       expect(c.servings, 6);
       expect(original.copyWith(clearPrepMinutes: true).prepMinutes, isNull);
     });
-
-    test('newRecipeId pravi različite id-jeve', () {
-      final now = DateTime(2026);
-      final ids = {for (var i = 0; i < 100; i++) newRecipeId(now)};
-      expect(ids, hasLength(100));
-    });
   });
 }

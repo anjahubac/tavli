@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/account/sync_banner.dart';
 import 'router.dart';
 
 /// Donji tabovi na telefonu, bočni meni na širem ekranu (macOS, tablet).
@@ -36,13 +37,25 @@ class HomeShell extends StatelessWidget {
               ],
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: shell),
+            Expanded(
+              child: Column(
+                children: [
+                  const SyncBanner(),
+                  Expanded(child: shell),
+                ],
+              ),
+            ),
           ],
         ),
       );
     }
     return Scaffold(
-      body: shell,
+      body: Column(
+        children: [
+          const SyncBanner(),
+          Expanded(child: shell),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
         onDestinationSelected: _select,

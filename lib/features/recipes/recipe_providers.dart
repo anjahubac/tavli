@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../account/auth_controller.dart';
 import '../../data/photo_resize.dart';
 import '../../data/recipe_photo_store.dart';
 import '../../data/recipe_repository.dart';
@@ -18,10 +19,14 @@ final recipePhotoStoreProvider = Provider<RecipePhotoStore>(
   (ref) => FileRecipePhotoStore(getApplicationDocumentsDirectory),
 );
 
+/// Recepti prijavljenog naloga. Bez naloga (ne bi trebalo da se desi iza
+/// prijave) repozitorijum ne vidi ništa.
 final recipeRepositoryProvider = Provider<RecipeRepository>(
   (ref) => RecipeRepository(
     ref.watch(databaseProvider),
     ref.watch(recipePhotoStoreProvider),
+    writer: ref.watch(syncedWriterProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     clock: ref.watch(clockProvider),
   ),
 );

@@ -1,3 +1,4 @@
+import '../domain/ids.dart';
 import '../domain/recipe.dart';
 import 'ai_models.dart';
 import 'ai_router.dart';
@@ -83,7 +84,7 @@ class RecipeAI {
     String? imagePath,
   }) => Recipe.fromAiJson(
     json,
-    id: newRecipeId(_clock()),
+    id: newId(),
     source: source,
     createdAt: _clock(),
     imagePath: imagePath,
