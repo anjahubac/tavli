@@ -239,12 +239,20 @@ class AuthController extends Notifier<AuthState> {
     _set(const SignedOut(SignOutReason.accountDeleted));
   }
 
-  /// Sesija ne može da se obnovi: nazad na prijavu, keš i izmene ostaju.
+  /// Sesija ne može da se obnovi (opozvana, istekla): nazad na prijavu sa
+  /// "Sesija je istekla…"; keš i izmene koje čekaju ostaju za ponovnu
+  /// prijavu (FR-008). Ako je nalog obrisan na drugom uređaju, briše se i
+  /// njegov keš na ovom.
   Future<void> sessionExpired({bool accountGone = false}) async {
-    final store = _store, gateway = _gateway;
+    final userId = switch (state) {
+      SignedIn(:final account) || NeedsName(:final account) => account.userId,
+      _ => null,
+    };
+    final store = _store, gateway = _gateway, service = _service;
     await store.clear();
     await gateway.signOutLocal();
     _set(const SignedOut(SignOutReason.sessionExpired));
+    if (accountGone && userId != null) await service.wipeLocal(userId);
   }
 }
 

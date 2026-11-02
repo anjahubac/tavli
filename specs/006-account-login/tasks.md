@@ -131,8 +131,8 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 **Goal**: silent renewal; revoked session → back to sign-in without data loss.
 **Independent test**: expired access token renewed silently; revoked refresh → "Sesija je istekla. Prijavi se ponovo.".
 
-- [ ] T066 [P] [US8] Test: refreshed session is re-stored silently; refresh refused (`refresh_token_not_found` etc.) → `SignedOut(sessionExpired)`, message on "Prijava", cache + outbox kept; `user_not_found` → the account's cache removed as well; network error during refresh → stays signed in, retried on resume; signing in again with the same email shows the cache and sends the outbox, in `test/account/session_expiry_test.dart`
-- [ ] T067 [US8] Implement session change handling in `lib/account/auth_controller.dart` and `lib/sync/sync_engine.dart` (unauthorized after refresh → controller), message on `lib/features/account/sign_in_screen.dart`
+- [x] T066 [P] [US8] Test: refreshed session is re-stored silently; refresh refused (`refresh_token_not_found` etc.) → `SignedOut(sessionExpired)`, message on "Prijava", cache + outbox kept; `user_not_found` → the account's cache removed as well; network error during refresh → stays signed in, retried on resume; signing in again with the same email shows the cache and sends the outbox, in `test/account/session_expiry_test.dart`
+- [x] T067 [US8] Implement session change handling in `lib/account/auth_controller.dart` and `lib/sync/sync_engine.dart` (unauthorized after refresh → controller), message on `lib/features/account/sign_in_screen.dart`
 
 ## Phase 11: Polish & cross-cutting
 

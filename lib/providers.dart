@@ -109,6 +109,12 @@ Future<bool> _refreshSession(Ref ref) async {
     return true; // sledeće slanje će naići na mrežu i sačekati
   } on Unavailable {
     return true;
+  } on AccountGone {
+    // Nalog obrisan na drugom uređaju: i njegov keš ovde se briše.
+    await ref
+        .read(authControllerProvider.notifier)
+        .sessionExpired(accountGone: true);
+    return false;
   } on AuthFailure {
     return false;
   }

@@ -363,24 +363,40 @@ class FakeSyncRemote implements SyncRemote {
 
   String get _uid => auth.current?.userId ?? '';
 
+  /// Opozvana ili obrisana sesija: server odgovara 401.
+  void _checkSession() {
+    final uid = auth.current?.userId;
+    if (uid != null &&
+        (server.revoked.contains(uid) || !server.profiles.containsKey(uid))) {
+      throw const UnauthorizedSyncError();
+    }
+  }
+
   @override
   Future<void> upsert(
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
-  }) async => server.upsert(table, [
-    for (final r in rows) jsonDecode(jsonEncode(r)) as Map<String, Object?>,
-  ], onConflict);
+  }) async {
+    _checkSession();
+    server.upsert(table, [
+      for (final r in rows) jsonDecode(jsonEncode(r)) as Map<String, Object?>,
+    ], onConflict);
+  }
 
   @override
   Future<void> delete(
     String table,
     List<String> ids, {
     String idColumn = 'id',
-  }) async => server.delete(table, ids, idColumn);
+  }) async {
+    _checkSession();
+    server.delete(table, ids, idColumn);
+  }
 
   @override
   Future<void> updateProfileName(String userId, String name) async {
+    _checkSession();
     server._check();
     server.calls.add('profile');
     server.profiles[userId]!
@@ -396,15 +412,18 @@ class FakeSyncRemote implements SyncRemote {
     String? afterId,
     String timeColumn = 'updated_at',
     String idColumn = 'id',
-  }) async => server.fetchSince(
-    table,
-    _uid,
-    limit: limit,
-    since: since,
-    afterId: afterId,
-    timeColumn: timeColumn,
-    idColumn: idColumn,
-  );
+  }) async {
+    _checkSession();
+    return server.fetchSince(
+      table,
+      _uid,
+      limit: limit,
+      since: since,
+      afterId: afterId,
+      timeColumn: timeColumn,
+      idColumn: idColumn,
+    );
+  }
 }
 
 class FakePhotoRemote implements PhotoRemote {

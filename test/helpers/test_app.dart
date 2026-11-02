@@ -192,10 +192,10 @@ Future<TestApp> pumpTavli(
     backend ?? FakeBackend(),
   );
   if (signedIn) await app.signIn(name: name);
-  await setup?.call(db);
   for (final r in recipes) {
     await app.repo.create(r);
   }
+  await setup?.call(db);
 
   await tester.pumpWidget(
     ProviderScope(
