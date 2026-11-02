@@ -288,7 +288,11 @@ Planning: "Napravi plan", "Otvori nabavku", "Period", "Obroci", "Doručak",
 "Nastavi generisanje", "Sačuvaj plan", "Sačuvaj nepotpun plan", "Odbaci",
 "Nije planirano", "Zameni jelo", "Predloži drugo", "Iz mojih recepata",
 "Zaključaj", "Otključaj", "Zaključano", "Skuvano", "Označi kao skuvano",
-"Ponovo predloži", "Pregled izmena", "Prihvati", "Otkaži", "Promeni porcije".
+"Ponovo predloži", "Pregled izmena", "Prihvati", "Otkaži", "Promeni porcije",
+"Novi plan", "Još nemaš plan", "Više opcija", "Predlog plana",
+"predlog još nije sačuvan", "Nov recept", "Promeni izbore", "Nazad na predlog",
+"Odbaciti predlog?", "{n} obroka ostaje prazno.", "Plan je sačuvan.",
+"Nepotpun plan je sačuvan.", "Napravi novi plan".
 
 Shopping/pantry: "Ceo plan", "Za nabavku", "Kupljeno", "Dodaj stavku",
 "Naziv", "Količina", "Jedinica", "Kategorija", "Imam", "Proveri količinu",

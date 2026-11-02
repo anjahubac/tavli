@@ -38,12 +38,17 @@ class RecipeRepository {
   /// Najviše toliko prethodnih verzija po receptu.
   static const maxVersions = 30;
 
-  Stream<List<Recipe>> watchAll() {
-    final q = _db.select(_db.recipes)
-      ..where((t) => t.householdId.equals(_scope.householdId))
-      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
-    return q.watch().map((rows) => rows.map(_fromRow).toList());
-  }
+  SimpleSelectStatement<$RecipesTable, RecipeRow> _all() =>
+      _db.select(_db.recipes)
+        ..where((t) => t.householdId.equals(_scope.householdId))
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
+
+  Stream<List<Recipe>> watchAll() =>
+      _all().watch().map((rows) => rows.map(_fromRow).toList());
+
+  /// Svi recepti domaćinstva, jednom (npr. za predlog plana).
+  Future<List<Recipe>> getAll() async =>
+      (await _all().get()).map(_fromRow).toList();
 
   SimpleSelectStatement<$RecipesTable, RecipeRow> _one(String id) => _db.select(
     _db.recipes,

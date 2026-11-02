@@ -24,11 +24,15 @@ class EmptyStateScreen extends StatelessWidget {
     required this.art,
     required this.title,
     this.body,
+    this.action,
   });
 
   final Widget art;
   final String title;
   final String? body;
+
+  /// Glavna sledeća akcija (npr. "Napravi plan").
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +63,10 @@ class EmptyStateScreen extends StatelessWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                ],
+                if (action case final action?) ...[
+                  const SizedBox(height: 24),
+                  action,
                 ],
               ],
             ),

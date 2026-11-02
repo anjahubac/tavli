@@ -1,0 +1,171 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tavli/features/recipes/recipe_providers.dart';
+
+import '../../helpers/test_app.dart';
+
+/// Ponedeljak: tekuća nedelja je ceo 2–8. novembar.
+final today = DateTime(2026, 11, 2, 9);
+
+/// Raspored nedelje ručkova: "Jelo 1" … "Jelo 7".
+final outline = aiAnswer({
+  'meals': [
+    for (var d = 2; d <= 8; d++)
+      {
+        'date': '2026-11-${d.toString().padLeft(2, '0')}',
+        'meal': 'lunch',
+        'recipeId': null,
+        'title': 'Jelo ${d - 1}',
+      },
+  ],
+});
+
+/// Sažeci recepata u grupama po tri: 1–3, 4–6, 7.
+List<(int, String, Map<String, List<String>>)> summaries(int from, int to) => [
+  aiAnswer({
+    'recipes': [for (var i = from; i <= to; i++) recipeJson('Jelo $i')],
+  }),
+];
+
+final fullWeek = [
+  outline,
+  ...summaries(1, 3),
+  ...summaries(4, 6),
+  ...summaries(7, 7),
+];
+
+String location(WidgetTester tester) =>
+    GoRouter.of(tester.element(find.byType(Scaffold).first)).state.uri
+        .toString();
+
+Future<TestApp> pumpPlan(
+  WidgetTester tester, {
+  Size size = phone,
+  List<(int, String, Map<String, List<String>>)> ai = const [],
+}) => pumpTavli(
+  tester,
+  size: size,
+  location: '/plan',
+  ai: ai,
+  overrides: [clockProvider.overrideWithValue(() => today)],
+);
+
+void main() {
+  for (final (name, size) in [('telefon', phone), ('široko', wide)]) {
+    testTavli('$name: prvi plan bez ostave — podešavanje, pregled, '
+        'pa čuvanje', (tester) async {
+      final app = await pumpPlan(tester, size: size, ai: fullWeek);
+
+      // Bez plana je glavna akcija "Napravi plan".
+      expect(find.text('Još nemaš plan'), findsOneWidget);
+      await tapButton(tester, 'Napravi plan');
+
+      // Jedan ekran: period, obroci, porcije; ostava nije obavezna.
+      expect(find.text('Novi plan'), findsOneWidget);
+      expect(find.text('2–8. novembar 2026.'), findsOneWidget);
+      expect(find.text('7 obroka · 2 porcije po obroku'), findsOneWidget);
+      expect(find.text('Koristi ostavu'), findsNothing);
+
+      await tapButton(tester, 'Predloži plan');
+
+      // Pregled pre čuvanja: ništa još nije upisano.
+      expect(find.text('Predlog plana'), findsOneWidget);
+      expect(find.textContaining('Jelo 1\n'), findsOneWidget);
+      expect(find.textContaining('Jelo 7\n'), findsOneWidget);
+      expect(await app.db.select(app.db.mealPlans).get(), isEmpty);
+      expect(app.adapter.requests, hasLength(4));
+
+      await tapButton(tester, 'Sačuvaj plan');
+
+      expect(location(tester), '/plan');
+      expect(find.text('Plan je sačuvan.'), findsOneWidget);
+      expect(find.text('Jelo 1'), findsOneWidget);
+      expect(find.text('Otvori nabavku'), findsOneWidget);
+      expect(await app.db.select(app.db.mealPlans).get(), hasLength(1));
+      expect(await app.db.select(app.db.mealPlanEntries).get(), hasLength(7));
+      expect(await app.titles(), containsAll(['Jelo 1', 'Jelo 7']));
+    });
+  }
+
+  testTavli('izbori ostaju posle greške i povratka na podešavanje', (
+    tester,
+  ) async {
+    await pumpPlan(tester);
+    await tapButton(tester, 'Napravi plan');
+
+    await tester.tap(find.text('Večera'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Više porcija'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Više opcija'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'bez svinjetine');
+    await tester.pumpAndSettle();
+    expect(find.text('14 obroka · 3 porcije po obroku'), findsOneWidget);
+
+    // AI ne odgovara: greška sa ponovnim pokušajem, bez praznog ekrana.
+    await tapButton(tester, 'Predloži plan');
+    expect(find.text('Nastavi'), findsOneWidget);
+    expect(find.text('Sačuvaj plan'), findsNothing);
+
+    await tapButton(tester, 'Promeni izbore');
+    expect(find.text('Novi plan'), findsOneWidget);
+    expect(find.text('14 obroka · 3 porcije po obroku'), findsOneWidget);
+    expect(find.text('bez svinjetine'), findsOneWidget);
+  });
+
+  testTavli('pala grupa: gotov deo ostaje, nastavak traži samo ono što '
+      'nedostaje', (tester) async {
+    final app = await pumpPlan(tester, ai: [outline, ...summaries(1, 3)]);
+    await tapButton(tester, 'Napravi plan');
+    await tapButton(tester, 'Predloži plan');
+
+    expect(find.textContaining('Gotovo je 3 od 7'), findsOneWidget);
+    expect(find.text('4 obroka ostaje prazno.'), findsOneWidget);
+    expect(find.text('Sačuvaj nepotpun plan'), findsOneWidget);
+    final before = app.adapter.requests.length;
+
+    app.adapter.responses.addAll([...summaries(4, 6), ...summaries(7, 7)]);
+    await tapButton(tester, 'Nastavi generisanje');
+
+    expect(app.adapter.requests.length - before, 2);
+    expect(find.text('Sačuvaj plan'), findsOneWidget);
+    expect(await app.db.select(app.db.mealPlans).get(), isEmpty);
+  });
+
+  testTavli('nepotpun plan se čuva samo izričito i pokazuje prazna '
+      'mesta', (tester) async {
+    final app = await pumpPlan(tester, ai: [outline, ...summaries(1, 3)]);
+    await tapButton(tester, 'Napravi plan');
+    await tapButton(tester, 'Predloži plan');
+
+    await tapButton(tester, 'Sačuvaj nepotpun plan');
+
+    expect(location(tester), '/plan');
+    expect(find.text('Nepotpun plan je sačuvan.'), findsOneWidget);
+    expect(await app.db.select(app.db.mealPlanEntries).get(), hasLength(3));
+    await tester.scrollUntilVisible(find.text('Nije planirano').first, 200);
+    expect(find.text('Nije planirano'), findsWidgets);
+  });
+
+  testTavli('odbačen predlog ne menja ništa', (tester) async {
+    final app = await pumpPlan(tester, ai: fullWeek);
+    await tapButton(tester, 'Napravi plan');
+    await tapButton(tester, 'Predloži plan');
+
+    await tapButton(tester, 'Odbaci');
+    expect(find.text('Odbaciti predlog?'), findsOneWidget);
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: button('Odbaci')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(location(tester), '/plan');
+    expect(find.text('Još nemaš plan'), findsOneWidget);
+    expect(await app.db.select(app.db.mealPlans).get(), isEmpty);
+    expect(await app.titles(), isEmpty);
+    expect(await app.db.select(app.db.shoppingItems).get(), isEmpty);
+    expect(await app.db.select(app.db.syncOutbox).get(), isEmpty);
+  });
+}
