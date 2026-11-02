@@ -2,39 +2,64 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../account/auth_controller.dart';
+import '../domain/ids.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_version.dart';
+import '../sync/synced_writer.dart';
 import 'database.dart';
 import 'recipe_photo_store.dart';
 
-/// Recepti i njihove prethodne verzije u lokalnoj bazi.
+/// Recepti i njihove prethodne verzije u lokalnoj bazi (kešu naloga).
+/// Čita samo recepte domaćinstva iz [AccountScope]; svaka izmena se u istoj
+/// transakciji upisuje i u red za slanje na server ([SyncedWriter]).
 class RecipeRepository {
-  RecipeRepository(this._db, this._photos, {DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now;
+  RecipeRepository(
+    this._db,
+    this._photos, {
+    required this._writer,
+    required this._scope,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   final AppDatabase _db;
   final RecipePhotoStore _photos;
+  final SyncedWriter _writer;
+  final AccountScope _scope;
   final DateTime Function() _clock;
+
+  static const _recipe = 'recipe';
+  static const _version = 'recipe_version';
+
+  /// Redosled umetanja: id-jevi verzija su slučajni, pa rowid razrešava
+  /// verzije sa istim vremenom.
+  static const _rowid = CustomExpression<int>('rowid');
 
   /// Najviše toliko prethodnih verzija po receptu.
   static const maxVersions = 30;
 
   Stream<List<Recipe>> watchAll() {
     final q = _db.select(_db.recipes)
+      ..where((t) => t.householdId.equals(_scope.householdId))
       ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
     return q.watch().map((rows) => rows.map(_fromRow).toList());
   }
 
-  Stream<Recipe?> watch(String id) => (_db.select(
+  SimpleSelectStatement<$RecipesTable, RecipeRow> _one(String id) => _db.select(
     _db.recipes,
-  )..where((t) => t.id.equals(id))).watchSingleOrNull().map(_fromRowOrNull);
+  )..where((t) => t.id.equals(id) & t.householdId.equals(_scope.householdId));
 
-  Future<Recipe?> get(String id) => (_db.select(
-    _db.recipes,
-  )..where((t) => t.id.equals(id))).getSingleOrNull().then(_fromRowOrNull);
+  Stream<Recipe?> watch(String id) =>
+      _one(id).watchSingleOrNull().map(_fromRowOrNull);
 
-  Future<void> create(Recipe recipe) =>
-      _db.into(_db.recipes).insert(_toCompanion(recipe));
+  Future<Recipe?> get(String id) =>
+      _one(id).getSingleOrNull().then(_fromRowOrNull);
+
+  Future<void> create(Recipe recipe) => _db.transaction(() async {
+    await _db.into(_db.recipes).insert(_toCompanion(recipe));
+    await _writer.upsert(_recipe, recipe.id);
+    if (recipe.imagePath case final p?) await _writer.photoUpload(p);
+  });
 
   /// Menja recept i čuva prethodno stanje kao verziju.
   Future<void> update(
@@ -47,6 +72,9 @@ class RecipeRepository {
     if (current == null) throw StateError('Recept ${next.id} ne postoji');
     await _addVersion(current, kind, instruction, changedBy);
     await _replace(next);
+    if (next.imagePath case final p? when p != current.imagePath) {
+      await _writer.photoUpload(p);
+    }
   });
 
   /// Od najnovije ka najstarijoj. Pokvareni zapisi se preskaču.
@@ -59,10 +87,14 @@ class RecipeRepository {
   SimpleSelectStatement<$RecipeVersionsTable, RecipeVersionRow> _versionsQuery(
     String recipeId,
   ) => _db.select(_db.recipeVersions)
-    ..where((t) => t.recipeId.equals(recipeId))
+    ..where(
+      (t) =>
+          t.recipeId.equals(recipeId) &
+          t.householdId.equals(_scope.householdId),
+    )
     ..orderBy([
       (t) => OrderingTerm.desc(t.createdAt),
-      (t) => OrderingTerm.desc(t.id),
+      (_) => OrderingTerm.desc(_rowid),
     ]);
 
   static List<RecipeVersion> _versionsFromRows(List<RecipeVersionRow> rows) => [
@@ -79,40 +111,99 @@ class RecipeRepository {
     await (_db.delete(
       _db.recipeVersions,
     )..where((t) => t.id.equals(last.id))).go();
+    await _writer.delete(_version, last.id);
     return true;
   });
 
   /// Vraća izabranu verziju; trenutno stanje se čuva kao nova verzija.
-  Future<void> restore(int versionId) => _db.transaction(() async {
-    final row = await (_db.select(
-      _db.recipeVersions,
-    )..where((t) => t.id.equals(versionId))).getSingle();
+  Future<void> restore(String versionId) => _db.transaction(() async {
+    final row =
+        await (_db.select(_db.recipeVersions)..where(
+              (t) =>
+                  t.id.equals(versionId) &
+                  t.householdId.equals(_scope.householdId),
+            ))
+            .getSingle();
     final version = _versionFromRow(row);
     if (version == null) throw StateError('Verzija $versionId je pokvarena');
     await update(version.recipe, kind: ChangeKind.restore);
   });
 
-  /// Briše recept, njegove verzije, ocene i slike.
+  /// Briše recept, njegove verzije, ocene i slike (i na serveru).
   Future<void> delete(String id) async {
     final photoPaths = <String>{};
     await _db.transaction(() async {
       final current = await get(id);
-      if (current?.imagePath case final p?) photoPaths.add(p);
+      if (current == null) return;
+      if (current.imagePath case final p?) photoPaths.add(p);
+      final versionIds = [
+        for (final v in await (_db.select(
+          _db.recipeVersions,
+        )..where((t) => t.recipeId.equals(id))).get())
+          v.id,
+      ];
       for (final v in await _versions(id)) {
         if (v.recipe.imagePath case final p?) photoPaths.add(p);
       }
       await (_db.delete(
         _db.recipeVersions,
       )..where((t) => t.recipeId.equals(id))).go();
+      for (final v in versionIds) {
+        await _writer.delete(_version, v);
+      }
+      final ratings = await (_db.select(
+        _db.ratings,
+      )..where((t) => t.recipeId.equals(id))).get();
       await (_db.delete(_db.ratings)..where((t) => t.recipeId.equals(id))).go();
+      for (final r in ratings) {
+        if (r.userId == _scope.userId) await _writer.delete('rating', r.id);
+      }
+      final entries = await (_db.select(
+        _db.mealPlanEntries,
+      )..where((t) => t.recipeId.equals(id))).get();
       await (_db.update(_db.mealPlanEntries)
             ..where((t) => t.recipeId.equals(id)))
           .write(const MealPlanEntriesCompanion(recipeId: Value(null)));
+      for (final e in entries) {
+        await _writer.upsert('meal_plan_entry', e.id);
+      }
       await (_db.delete(_db.recipes)..where((t) => t.id.equals(id))).go();
+      await _writer.delete(_recipe, id);
+      // Slika se briše samo ako je nijedan drugi recept ni verzija ne koristi.
+      for (final p in [...photoPaths]) {
+        if (await _isPhotoUsed(p)) {
+          photoPaths.remove(p);
+        } else {
+          await _writer.photoDelete(p);
+        }
+      }
     });
     for (final p in photoPaths) {
       await _photos.delete(p);
     }
+  }
+
+  Future<bool> _isPhotoUsed(String path) async {
+    final inRecipes =
+        await (_db.select(_db.recipes)
+              ..where(
+                (t) =>
+                    t.imagePath.equals(path) &
+                    t.householdId.equals(_scope.householdId),
+              )
+              ..limit(1))
+            .get();
+    if (inRecipes.isNotEmpty) return true;
+    final inVersions =
+        await (_db.select(_db.recipeVersions)
+              ..where(
+                (t) =>
+                    t.recipeJson.like('%${jsonEncode(path)}%') &
+                    t.householdId.equals(_scope.householdId),
+              )
+              ..limit(1))
+            .get();
+    return inVersions.isNotEmpty;
   }
 
   Future<void> _addVersion(
@@ -121,10 +212,13 @@ class RecipeRepository {
     String? instruction,
     String? changedBy,
   ) async {
+    final versionId = newId();
     await _db
         .into(_db.recipeVersions)
         .insert(
           RecipeVersionsCompanion.insert(
+            id: versionId,
+            householdId: Value(_scope.householdId),
             recipeId: previous.id,
             recipeJson: jsonEncode(previous.toJson()),
             instruction: Value(instruction),
@@ -133,23 +227,36 @@ class RecipeRepository {
             createdAt: _clock(),
           ),
         );
+    await _writer.upsert(_version, versionId);
     final keep = _db.selectOnly(_db.recipeVersions)
       ..addColumns([_db.recipeVersions.id])
       ..where(_db.recipeVersions.recipeId.equals(previous.id))
       ..orderBy([
         OrderingTerm.desc(_db.recipeVersions.createdAt),
-        OrderingTerm.desc(_db.recipeVersions.id),
+        OrderingTerm.desc(_rowid),
       ])
       ..limit(maxVersions);
-    await (_db.delete(_db.recipeVersions)..where(
-          (t) => t.recipeId.equals(previous.id) & t.id.isNotInQuery(keep),
-        ))
-        .go();
+    final pruned =
+        await (_db.select(_db.recipeVersions)..where(
+              (t) => t.recipeId.equals(previous.id) & t.id.isNotInQuery(keep),
+            ))
+            .get();
+    for (final v in pruned) {
+      await (_db.delete(
+        _db.recipeVersions,
+      )..where((t) => t.id.equals(v.id))).go();
+      await _writer.delete(_version, v.id);
+    }
   }
 
-  Future<void> _replace(Recipe recipe) => (_db.update(
-    _db.recipes,
-  )..where((t) => t.id.equals(recipe.id))).write(_toCompanion(recipe));
+  Future<void> _replace(Recipe recipe) async {
+    await (_db.update(_db.recipes)..where(
+          (t) =>
+              t.id.equals(recipe.id) & t.householdId.equals(_scope.householdId),
+        ))
+        .write(_toCompanion(recipe));
+    await _writer.upsert(_recipe, recipe.id);
+  }
 
   RecipesCompanion _toCompanion(Recipe r) => RecipesCompanion.insert(
     id: r.id,
@@ -163,6 +270,7 @@ class RecipeRepository {
     answeredBy: Value(r.answeredBy),
     createdAt: r.createdAt,
     updatedAt: _clock(),
+    householdId: Value(_scope.householdId),
   );
 
   static Recipe? _fromRowOrNull(RecipeRow? row) =>

@@ -113,3 +113,7 @@ because several features (recipes, shopping, pantry, plan) use them.
 ## Complexity Tracking
 
 None.
+
+## Owner revision — 2026-11-02
+
+Integrate current main without replacing auth lifecycle or sync. Refine the existing palette and typography, add responsive recipe previews, serialize theme saves with rollback and Serbian feedback. No new dependencies or schema changes. Add regression tests for default/saved/system modes, failed and overlapping saves, 320 px at 2× text, all six palette contrasts, auth screens and account-scoped shopping/outbox after the existing v4 migration.

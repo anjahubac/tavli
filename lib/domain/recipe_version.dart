@@ -23,7 +23,7 @@ class RecipeVersion {
     this.changedBy,
   });
 
-  final int id;
+  final String id;
   final String recipeId;
 
   /// Recept kakav je bio pre izmene.

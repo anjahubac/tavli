@@ -46,7 +46,7 @@ in the project conversation; these remaining details were decided by Claude:
 
 In "Profil" the person opens "Izgled" and picks one of three themes —
 "Bosiljak" (green, default), "Šafran" (warm orange) or "Borovnica" (blue) —
-and a mode: "Svetla", "Tamna" or "Kao sistem" (default). The whole app
+and a mode: "Svetla", "Tamna" or "Kao sistem" ("Svetla" is the default). The whole app
 switches immediately, and the choice is kept after a restart.
 
 **Why this priority**: the visible face of the app; everything else is themed by it.
@@ -55,7 +55,7 @@ switches immediately, and the choice is kept after a restart.
 
 **Acceptance Scenarios**:
 
-1. **Given** a fresh install, **Then** the app uses "Bosiljak" and follows the system light/dark setting.
+1. **Given** a fresh install, **Then** the app uses "Bosiljak" in "Svetla" mode, even when the system is dark.
 2. **Given** "Profil" → "Izgled", **When** the user taps "Šafran", **Then** the app recolours at once and the "Šafran" card shows as selected.
 3. **Given** mode "Tamna", **When** the system is light, **Then** the app is still dark.
 4. **Given** a chosen theme and mode, **When** the app restarts, **Then** the same theme and mode are used.
@@ -67,7 +67,7 @@ switches immediately, and the choice is kept after a restart.
 
 Cards are flat surfaces with a thin line border and rounded corners, chips are
 pills (selected = filled primary), main buttons are tall with rounded corners,
-the search field is 50 high with rounded corners, the bottom bar is a surface
+the search field is at least 50 high and grows with text with rounded corners, the bottom bar is a surface
 with a thin top line and a pill-shaped highlight, the "Novi recept" button is
 a rounded extended button, and all text uses Plus Jakarta Sans with bold,
 slightly tight headings.
@@ -142,7 +142,7 @@ can be seen in a debug-only "Animacije" gallery in "Profil":
 
 ### Edge Cases
 
-- Saved theme value unknown (e.g. older/newer build) → fall back to "Bosiljak" / "Kao sistem".
+- Saved theme value unknown (e.g. older/newer build) → fall back to "Bosiljak" / "Svetla".
 - Database not ready yet at first frame → default theme until the setting loads (the intro covers the switch).
 - Reduced motion (system "Reduce motion" / "Remove animations") → all animations static, intro still brief.
 - Large text (scale 2.0) → theme cards and empty states wrap, no overflow.
@@ -153,11 +153,11 @@ can be seen in a debug-only "Animacije" gallery in "Profil":
 ### Functional Requirements
 
 - **FR-001**: The app MUST offer exactly three themes named "Bosiljak", "Šafran", "Borovnica", each with a light and a dark palette using the approved colour tokens (background, surface, primary, on-primary, container, on-container, text, muted text, line, box line, three tints).
-- **FR-002**: The user MUST be able to choose the mode "Svetla", "Tamna" or "Kao sistem"; defaults are "Bosiljak" and "Kao sistem".
+- **FR-002**: The user MUST be able to choose the mode "Svetla", "Tamna" or "Kao sistem"; defaults are "Bosiljak" and "Svetla".
 - **FR-003**: Theme and mode MUST be saved locally and restored at start; changes apply immediately without restart.
 - **FR-004**: All screens MUST take colours only from the active theme; no fixed colours outside the theme definitions and the animation artwork (ingredient colours such as basil green or saffron red).
-- **FR-005**: Typography MUST use the bundled Plus Jakarta Sans; headings weight 800 with slightly negative letter spacing.
-- **FR-006**: Component styling MUST follow the mockup: flat bordered cards (radius 16–24, no elevation), pill chips (selected = primary fill), filled buttons 56 high with radius 18, search field 50 high with radius 16, navigation bar with surface background, top line and a container pill indicator with on-container label, extended FAB radius 20.
+- **FR-005**: Typography MUST use the bundled Plus Jakarta Sans; main headings weight 800, secondary headings weight 700, body text 16 with generous line height.
+- **FR-006**: Component styling MUST follow the mockup: flat bordered cards (radius 16–24, no elevation), pill chips (selected = primary fill), filled buttons 56 high with radius 18, search field at least 50 high, growing with text scale, with radius 16, navigation bar with surface background, top line and a container pill indicator with on-container label, extended FAB radius 20.
 - **FR-007**: "Profil" MUST contain "Izgled" with theme cards ("Bosiljak", "Šafran", "Borovnica") showing a colour preview, and a mode selector ("Svetla", "Tamna", "Kao sistem").
 - **FR-008**: The nine animations (intro motif ×3, photo scan with ingredient chips, simmering pot with rotating messages, ingredient check with flying chip and badge bump, filled shopping bag, empty fridge, spoon pull-to-refresh, plate on plan day, egg timer) MUST exist as reusable pieces.
 - **FR-009**: Every animation MUST show a static end state when the platform asks for reduced motion.
@@ -210,4 +210,15 @@ na tanjiru", "Jaje se kuva".
   shopping list when all items are bought; `PlatePlanDrop` into the meal-plan
   calendar; `EggTimer` into a cooking mode.
 - The recipes list has no remote data; pull-to-refresh re-reads the local list.
-- Contrast of the approved palettes is accepted as designed.
+- Palette contrast is checked numerically; meaningful control outlines reach at least 3:1.
+
+## Owner revision — 2026-11-02
+
+- New installs default to light Bosiljak, even on a dark system; saved choices are never overwritten. Explicit system mode continues following the platform.
+- Dark cards, fields and dialogs are lighter and distinct from the background; surface levels increase consistently with elevation.
+- Theme cards show a small recipe, time and sample button, with a selected checkmark. New sample copy: "Recept", "Pasta sa povrćem", "20 min", "Otvori recept"; these are decorative previews, not saved user data.
+- Appearance mode controls adapt to narrow widths and 2× text; search grows with text. Primary and secondary text and button labels remain readable in all six palettes. Meaningful outlines have at least 3:1 contrast.
+- Failed saves restore the last persisted selection and show "Izgled nije sačuvan. Pokušaj ponovo."; rapid changes persist in order.
+- Theme wiring preserves account startup, auth redirects, sync banners, wake lock and every existing feature from current main. Shopping demo remains isolated; the shared repository uses UUIDs, account scoping and the outbox when integrated with account data.
+
+- At enlarged text sizes the phone navigation keeps the active tab label visible with extra height; other tabs retain accessible names and tooltips. This prevents cramped labels at 320 px.

@@ -32,13 +32,54 @@ void main() {
         expect(x.line, p.line);
 
         expect(t.textTheme.headlineSmall?.fontFamily, tavliFontFamily);
-        expect(t.textTheme.headlineSmall?.fontWeight, FontWeight.w800);
+        expect(t.textTheme.headlineSmall?.fontWeight, FontWeight.w700);
         expect(t.textTheme.headlineSmall?.letterSpacing, lessThan(0));
         expect(t.cardTheme.elevation, 0);
         expect(t.navigationBarTheme.indicatorColor, p.container);
       });
     }
   }
+
+  double contrast(Color a, Color b) {
+    final one = a.computeLuminance(), two = b.computeLuminance();
+    return ((one > two ? one : two) + 0.05) / ((one < two ? one : two) + 0.05);
+  }
+
+  test('svih šest paleta ima čitljiv tekst, dugmad i okvire', () {
+    for (final theme in TavliTheme.values) {
+      for (final brightness in Brightness.values) {
+        final p = TavliPalette.of(theme, brightness);
+        for (final bg in [p.surface, p.bg]) {
+          expect(contrast(p.text, bg), greaterThanOrEqualTo(4.5));
+          expect(contrast(p.muted, bg), greaterThanOrEqualTo(4.5));
+          expect(contrast(p.boxLine, bg), greaterThanOrEqualTo(3));
+        }
+        expect(contrast(p.primary, p.onPrimary), greaterThanOrEqualTo(4.5));
+        expect(contrast(p.onContainer, p.container), greaterThanOrEqualTo(4.5));
+        final t = buildTavliTheme(theme, brightness);
+        expect(t.textTheme.bodyMedium?.fontSize, 16);
+        expect(t.textTheme.bodyMedium?.height, 1.5);
+        {
+          final c = t.colorScheme;
+          final levels = [
+            c.surfaceContainerLowest,
+            c.surfaceContainerLow,
+            c.surfaceContainer,
+            c.surfaceContainerHigh,
+            c.surfaceContainerHighest,
+          ];
+          for (var i = 1; i < levels.length; i++) {
+            expect(
+              levels[i].computeLuminance(),
+              brightness == Brightness.dark
+                  ? greaterThan(levels[i - 1].computeLuminance())
+                  : lessThan(levels[i - 1].computeLuminance()),
+            );
+          }
+        }
+      }
+    }
+  });
 
   test('palete se razlikuju po temi i osvetljenosti', () {
     final primaries = {

@@ -11,6 +11,14 @@ and shopping lists. AI turns a photo or a dish name into a recipe and edits
 recipes via chat. AI runs on free tiers of Gemini, Groq and OpenRouter through
 one OpenAI-compatible client and a router with fallback chains.
 
+**An account is required.** After the intro the user signs in (email with a
+6-digit code; Apple/Google later) and every piece of their data is stored on
+Supabase (Auth, Postgres with Row Level Security, Storage; EU region) under the
+account. drift is the offline cache: changes are written locally plus an outbox
+and uploaded when online; data is downloaded on sign-in. Sign-out keeps the data
+(server and per-account device cache); only deleting an item or the account
+deletes data. See constitution principle II and `specs/006-account-login/`.
+
 **All UI text is Serbian, Latin script.** Code identifiers are English;
 existing comments are mostly Serbian — match the surrounding file.
 
@@ -34,12 +42,22 @@ lib/
     model_check.dart        compare chain models with provider /models list
     prompts.dart            system prompt + recipe JSON schema + task prompts
     recipe_ai.dart          RecipeAI: fromImage, fromDishName, refine
-  data/                   drift database (all tables), DriftModelStatusStore,
-                          RecipeRepository, RecipePhotoStore, photo downscaling
-  domain/                 pure Dart models (Recipe, Ingredient, categories)
-  features/<feature>/     screens and widgets per feature (recipes/, settings/)
+  account/                Supabase config/client, AuthGateway (email code), SessionStore
+                          (Keychain), AccountApi, AccountService, AuthController + AccountScope
+  sync/                   entity registry, SyncedWriter (outbox), Supabase SyncRemote/PhotoRemote,
+                          Uploader, Downloader, PhotoSync, LegacyMover, SyncEngine
+  data/                   drift database (all tables, per-account cache + outbox),
+                          DriftModelStatusStore, RecipeRepository, RecipePhotoStore, photo downscaling
+  domain/                 pure Dart models (Recipe, Ingredient, Account, ids)
+  features/<feature>/     screens and widgets per feature (recipes/, settings/, account/)
+supabase/                 config.toml, migrations/ (schema, RLS, grants, storage),
+                          tests/ (pgTAP: `supabase test db`), functions/delete-account/, templates/
 test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio,
-                          helpers/test_app.dart pumps the whole app (testTavli/pumpTavli)
+                          helpers/fake_backend.dart fakes Supabase (auth, tables, storage),
+                          helpers/test_app.dart pumps the whole app signed in (testTavli/pumpTavli)
+supabase/                 Supabase CLI project: config.toml (local ports 5532x),
+                          migrations/ (schema, RLS, grants), tests/ (pgTAP RLS tests),
+                          templates/ (Serbian emails)
 specs/NNN-name/           Spec Kit specs (spec.md, plan.md, tasks.md)
 docs/                     architecture.md, roadmap.md
 .specify/                 Spec Kit memory (constitution), templates, scripts
@@ -54,9 +72,19 @@ flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
-flutter run -d macos --dart-define-from-file=secrets.json   # with built-in AI keys (see secrets.example.json)
+flutter run -d macos --dart-define-from-file=secrets.json   # Supabase URL/anon key + built-in AI keys (see secrets.example.json)
 scripts/check.sh                                            # format check + analyze + test (run before every commit)
+
+supabase start          # local Supabase in Docker (API :55321, DB :55322, Studio :55323, mail :55324)
+supabase status         # local URL and anon key to copy into your own secrets.json
+supabase db reset       # re-apply supabase/migrations from scratch
+supabase test db        # RLS / grant tests (pgTAP) against the local stack
+supabase stop
 ```
+
+The local stack uses ports 5532x so it does not clash with other Supabase
+projects on the same machine (default 5432x). Sign-in emails from the local
+stack land in the mail catcher (Mailpit, :55324), not in a real inbox.
 
 ## Code conventions
 
@@ -72,6 +100,11 @@ unawaited futures and context-after-await are errors).
 - Errors shown to the user go through `aiErrorText` or an equivalent Serbian mapping.
 - Inject time (`DateTime Function() clock`) where behaviour depends on it.
 - Keep generated `lib/data/database.g.dart` committed and in sync.
+- UI reads from drift (the offline cache); never from the network directly.
+  Every user-data write goes through a repository that writes the row and an
+  outbox entry in one transaction. Record ids are client-generated (UUID).
+- Backend access only through the data layer (Supabase client wrapped behind an
+  interface so tests can fake it); no Supabase calls from widgets.
 - Follow `flutter_lints`; no `// ignore:` without a reason in the comment.
 
 ## Spec Kit workflow
@@ -101,6 +134,11 @@ never from another feature branch; full git rules are in
   `dart run build_runner build --delete-conflicting-outputs`.
 - No new dependency without a one-line justification in the active `plan.md`.
 - No drift schema change without a `schemaVersion` bump, a migration step and a test.
+- No server table without RLS enabled, policies, explicit `GRANT`s to
+  `authenticated` only, and a `supabase test db` test with two accounts; schema
+  changes only as new files in `supabase/migrations/` (never edit an applied one).
+- Never put the Supabase service-role key in the app, tests or repo; never call
+  the hosted (production) project from tests or scripts.
 - Before each commit: `dart format lib test`, then `scripts/check.sh`
   (format check, `flutter analyze`, `flutter test`) must pass.
 - Keep changes scoped to the active spec/branch; note unrelated issues instead of fixing them in passing.
@@ -116,14 +154,20 @@ never from another feature branch; full git rules are in
 - Works on phone width and wide (rail) layout.
 - `scripts/check.sh` passes; `flutter build macos --debug` succeeds.
 - AI calls go through `AIRouter`; failures show a Serbian message.
+- User-data changes reach the server via the outbox and work offline; new server
+  tables have RLS, grants and `supabase test db` tests.
 - Small commits with clear messages; generated code included.
 
-## Security rules for keys
+## Security rules for keys and backend
 
 - Never write, print, log, or commit an API key — not in code, tests, fixtures,
   docs, commit messages, or chat output.
-- User keys live only in `SecureKeyStore`. Tests use `InMemoryKeyStore` with fake values.
-- Build-time secrets (if ever added) go in gitignored files (`secrets.json`,
-  `*.env`) passed via `--dart-define-from-file`; never read them in tests.
+- User keys and the auth session live only in secure storage (`SecureKeyStore`,
+  Keychain/Keystore). Tests use `InMemoryKeyStore` and fake backends with fake values.
+- Build-time values (Supabase URL and anon key, built-in AI keys) go in the
+  gitignored `secrets.json` passed via `--dart-define-from-file`;
+  `secrets.example.json` has empty placeholders only; never read them in tests.
+- The Supabase service-role key never goes into the app, the repo or chat output.
+- Never log session tokens, email codes, or personal data (recipes, lists, names, emails).
 - Don't add logging of request headers or full request bodies.
 - Agents must not edit, rotate or test real keys unless the user explicitly asks.

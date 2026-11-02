@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../account/account_header.dart';
+
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -12,6 +14,8 @@ class ProfileScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         children: [
+          const AccountHeader(),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
             title: const Text('Izgled'),

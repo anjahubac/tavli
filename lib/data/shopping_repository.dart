@@ -2,32 +2,56 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../account/auth_controller.dart';
+import '../domain/ids.dart';
 import '../domain/recipe.dart';
 import '../domain/shopping_sync.dart';
+import '../sync/synced_writer.dart';
 import 'database.dart';
 
-/// Lista za kupovinu (za sada jedna, "Kupovina") i usklađivanje sa
-/// sastojcima recepta.
+/// Kupovina domaćinstva; svaka izmena ima outbox u istoj transakciji.
 class ShoppingRepository {
-  ShoppingRepository(this._db);
+  ShoppingRepository(
+    this._db, {
+    required this._scope,
+    required this._writer,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   final AppDatabase _db;
+  final AccountScope _scope;
+  final SyncedWriter _writer;
+  final DateTime Function() _clock;
 
-  static const defaultListId = 'kupovina';
-
-  Future<String> _ensureList() async {
+  Future<String> _ensureList() => _db.transaction(() async {
+    final existing =
+        await (_db.select(_db.shoppingLists)
+              ..where(
+                (t) =>
+                    t.householdId.equals(_scope.householdId) &
+                    t.mealPlanId.isNull(),
+              )
+              ..orderBy([
+                (t) => OrderingTerm.asc(t.createdAt),
+                (t) => OrderingTerm.asc(t.id),
+              ])
+              ..limit(1))
+            .getSingleOrNull();
+    if (existing != null) return existing.id;
+    final id = newId();
     await _db
         .into(_db.shoppingLists)
         .insert(
           ShoppingListsCompanion.insert(
-            id: defaultListId,
+            id: id,
             name: 'Kupovina',
-            createdAt: DateTime.now().toUtc(),
+            createdAt: _clock().toUtc(),
+            householdId: Value(_scope.householdId),
           ),
-          mode: InsertMode.insertOrIgnore,
         );
-    return defaultListId;
-  }
+    await _writer.upsert('shopping_list', id);
+    return id;
+  });
 
   static List<String> _recipes(ShoppingItemRow row) => [
     for (final id in jsonDecode(row.fromRecipeIdsJson) as List<dynamic>)
@@ -35,122 +59,126 @@ class ShoppingRepository {
   ];
 
   Future<List<ShoppingItemRow>> _items() async {
-    final listId = await _ensureList();
-    return (_db.select(
-      _db.shoppingItems,
-    )..where((i) => i.listId.equals(listId))).get();
+    final id = await _ensureList();
+    return (_db.select(_db.shoppingItems)..where(
+          (t) => t.listId.equals(id) & t.householdId.equals(_scope.householdId),
+        ))
+        .get();
   }
 
-  /// Plan za recept: šta bi "Dodaj u kupovinu" dodalo i šta treba ukloniti.
   Future<ShoppingSyncPlan> plan(
     String recipeId, {
     required List<Ingredient> missing,
     required List<Ingredient> have,
   }) async {
-    final fromRecipe = [
+    final rows = [
       for (final row in await _items())
         if (_recipes(row).contains(recipeId)) row,
     ];
     return planRecipeShopping(
       missing: missing,
       have: have,
-      inList: {for (final r in fromRecipe) ingredientKey(r.name)},
+      inList: {for (final row in rows) ingredientKey(row.name)},
       bought: {
-        for (final r in fromRecipe)
-          if (r.isBought) ingredientKey(r.name),
+        for (final row in rows)
+          if (row.isBought) ingredientKey(row.name),
       },
     );
   }
 
-  /// Dodaje samo razliku i vraća šta je dodato. Ako isti sastojak već
-  /// postoji (nekupljen) iz drugog recepta, samo mu se doda ovaj recept.
+  /// Ponovni klik dodaje samo razliku; drugi recept deli postojeću stavku.
   Future<List<Ingredient>> addMissing(
     String recipeId, {
     required List<Ingredient> missing,
     required List<Ingredient> have,
   }) => _db.transaction(() async {
     final p = await plan(recipeId, missing: missing, have: have);
+    final listId = await _ensureList();
     final open = {
       for (final row in await _items())
         if (!row.isBought) ingredientKey(row.name): row,
     };
-    for (final i in p.toAdd) {
-      final existing = open[ingredientKey(i.name)];
+    for (final ingredient in p.toAdd) {
+      final existing = open[ingredientKey(ingredient.name)];
       if (existing != null) {
         await (_db.update(
           _db.shoppingItems,
-        )..where((r) => r.id.equals(existing.id))).write(
+        )..where((t) => t.id.equals(existing.id))).write(
           ShoppingItemsCompanion(
             fromRecipeIdsJson: Value(
               jsonEncode([..._recipes(existing), recipeId]),
             ),
           ),
         );
+        await _writer.upsert('shopping_item', existing.id);
       } else {
+        final id = newId();
         await _db
             .into(_db.shoppingItems)
             .insert(
               ShoppingItemsCompanion.insert(
-                listId: defaultListId,
-                name: i.name,
-                quantity: Value(i.quantity),
-                unit: Value(i.unit),
-                category: i.category,
+                id: id,
+                listId: listId,
+                name: ingredient.name,
+                quantity: Value(ingredient.quantity),
+                unit: Value(ingredient.unit),
+                category: ingredient.category,
                 fromRecipeIdsJson: Value(jsonEncode([recipeId])),
+                householdId: Value(_scope.householdId),
               ),
             );
+        await _writer.upsert('shopping_item', id);
       }
     }
     return p.toAdd;
   });
 
-  /// Korisnik ima sastojak: ako ga je ovaj recept stavio u kupovinu, a nije
-  /// kupljen, recept se skida sa stavke (stavka nestaje kad ostane bez recepta).
+  /// "Imam" uklanja samo doprinos ovog recepta; kupljeno ostaje.
   Future<bool> markHave(String recipeId, Ingredient ingredient) =>
       _db.transaction(() async {
-        final key = ingredientKey(ingredient.name);
         var removed = false;
         for (final row in await _items()) {
           final recipes = _recipes(row);
           if (row.isBought ||
-              ingredientKey(row.name) != key ||
+              ingredientKey(row.name) != ingredientKey(ingredient.name) ||
               !recipes.contains(recipeId)) {
             continue;
           }
           removed = true;
           final rest = [...recipes]..remove(recipeId);
-          final query = _db.shoppingItems.id.equals(row.id);
           if (rest.isEmpty && !row.isManual) {
-            await (_db.delete(_db.shoppingItems)..where((_) => query)).go();
+            await (_db.delete(
+              _db.shoppingItems,
+            )..where((t) => t.id.equals(row.id))).go();
+            await _writer.delete('shopping_item', row.id);
           } else {
-            await (_db.update(_db.shoppingItems)..where((_) => query)).write(
+            await (_db.update(
+              _db.shoppingItems,
+            )..where((t) => t.id.equals(row.id))).write(
               ShoppingItemsCompanion(
                 fromRecipeIdsJson: Value(jsonEncode(rest)),
               ),
             );
+            await _writer.upsert('shopping_item', row.id);
           }
         }
         return removed;
       });
 
-  /// Broj nekupljenih stavki (bedž na tabu "Kupovina").
-  Future<int> openCount() async => [
-    for (final row in await _items())
-      if (!row.isBought) row,
-  ].length;
-
+  Future<int> openCount() async =>
+      (await _items()).where((row) => !row.isBought).length;
   Future<List<String>> openNames() async => [
     for (final row in await _items())
       if (!row.isBought) row.name,
   ];
 
-  Future<void> markBought(String name) async {
-    final key = ingredientKey(name);
+  Future<void> markBought(String name) => _db.transaction(() async {
     for (final row in await _items()) {
-      if (ingredientKey(row.name) == key) {
-        await (_db.update(_db.shoppingItems)..where((r) => r.id.equals(row.id)))
+      if (ingredientKey(row.name) == ingredientKey(name) && !row.isBought) {
+        await (_db.update(_db.shoppingItems)..where((t) => t.id.equals(row.id)))
             .write(const ShoppingItemsCompanion(isBought: Value(true)));
+        await _writer.upsert('shopping_item', row.id);
       }
     }
-  }
+  });
 }

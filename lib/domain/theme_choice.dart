@@ -24,7 +24,7 @@ enum AppThemeMode {
 class ThemeChoice {
   const ThemeChoice(this.theme, this.mode);
 
-  static const defaults = ThemeChoice(TavliTheme.bosiljak, AppThemeMode.system);
+  static const defaults = ThemeChoice(TavliTheme.bosiljak, AppThemeMode.light);
 
   /// Iz sačuvanih podešavanja; nepoznate vrednosti (npr. iz druge verzije
   /// aplikacije) daju podrazumevane.

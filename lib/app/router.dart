@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../account/auth_controller.dart';
+import '../features/account/name_screen.dart';
+import '../features/account/sign_in_screen.dart';
 import '../features/recipes/from_name_screen.dart';
 import '../features/recipes/from_photo_screen.dart';
 import '../features/recipes/recipe_chat_screen.dart';
@@ -15,12 +18,47 @@ import 'animations/intro_motif.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
-final appRouter = createRouter();
+/// Kuda vodi stanje prijave: bez naloga samo "Prijava", bez imena samo
+/// korak sa imenom (FR-001). Tražena adresa se pamti u `from`.
+String? authRedirect(AuthState auth, Uri uri) {
+  final path = uri.path;
+  final from = uri.queryParameters['from'];
+  String withFrom(String target) {
+    final back = path.startsWith('/sign-in') ? from : uri.toString();
+    return back == null || back == '/recipes'
+        ? target
+        : Uri(path: target, queryParameters: {'from': back}).toString();
+  }
 
-/// Pravi novi router (testovi prave svoj, da stanje ne prelazi iz testa u test).
-GoRouter createRouter({String initialLocation = '/recipes'}) => GoRouter(
+  return switch (auth) {
+    Starting() ||
+    SignedOut() ||
+    CodeSent() => path == '/sign-in' ? null : withFrom('/sign-in'),
+    NeedsName() => path == '/sign-in/name' ? null : withFrom('/sign-in/name'),
+    SignedIn() => path.startsWith('/sign-in') ? (from ?? '/recipes') : null,
+  };
+}
+
+/// Pravi novi router (testovi prave svoj, da stanje ne prelazi iz testa u
+/// test). [auth] daje trenutno stanje prijave, [refresh] javlja promene.
+GoRouter createRouter({
+  String initialLocation = '/recipes',
+  AuthState Function()? auth,
+  Listenable? refresh,
+}) => GoRouter(
   initialLocation: initialLocation,
+  refreshListenable: refresh,
+  redirect: auth == null
+      ? null
+      : (context, state) => authRedirect(auth(), state.uri),
   routes: [
+    GoRoute(
+      path: '/sign-in',
+      builder: (context, state) => const SignInScreen(),
+      routes: [
+        GoRoute(path: 'name', builder: (context, state) => const NameScreen()),
+      ],
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => HomeShell(shell: shell),
       branches: [

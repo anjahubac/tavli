@@ -1,19 +1,33 @@
 <!--
 Sync Impact Report
-- Version change: 1.1.0 → 1.2.0 (MINOR: workflow rules added)
-- Modified sections: Development Workflow (branch from latest main only, no stacked
-  branches, everything via PR, git best practices)
-- Dependent docs updated: AGENTS.md (Spec Kit workflow, guardrails),
-  docs/flutter-best-practices.md §17 (git rules), CLAUDE.md,
-  .specify/templates/plan-template.md and spec-template.md (base branch)
-- Templates requiring updates: none further
+- Version change: 1.2.0 → 2.0.0 (MAJOR: principle II redefined — an account is
+  mandatory and the server is the durable store; backend security rules added)
+- Modified principles:
+  - II. "Offline-First Local Data" → "II. Offline-First, Account-Backed Data"
+    (sign-in required; all user data stored on Supabase under the account; drift
+    is the offline cache with an outbox; RLS on every table; explicit GRANTs;
+    tables never auto-exposed)
+  - IV. Secrets Never Committed: covers Supabase URL/anon key (secrets.json),
+    service-role key never in the app or repo, session tokens only in secure storage
+  - V. Test-First: access rules (RLS) need database tests against local Supabase;
+    Flutter tests fake the backend
+- Modified sections: Platform & Technology Constraints (Supabase backend, EU
+  region, local stack via `supabase start` on ports 5532x, migrations in
+  `supabase/migrations/`)
+- Dependent docs updated: AGENTS.md, CLAUDE.md, README.md, docs/architecture.md,
+  docs/roadmap.md, docs/flutter-best-practices.md (§10, §12, §13),
+  specs/006-account-login/spec.md, secrets.example.json, supabase/config.toml
+  (auto_expose_new_tables = false)
+- Templates requiring updates: none (plan template reads gates from this file)
 - Follow-up TODOs: none
 -->
 
 # Tavli Constitution
 
-Tavli is a personal Flutter app (Android, iOS, macOS) for recipes, meal planning,
-pantry and shopping lists, with AI help that runs on free provider tiers.
+Tavli is a Flutter app (Android, iOS, macOS) for recipes, meal planning,
+pantry and shopping lists, with AI help that runs on free provider tiers. Using
+the app requires an account; the user's data is stored on the server under that
+account and cached on the device for offline use.
 
 ## Core Principles
 
@@ -29,15 +43,32 @@ spec MUST state the Serbian (Latin) copy for any new UI text it introduces.
 **Rationale**: the app is built for a Serbian-speaking household; mixed-language
 UI is a defect, not a style choice.
 
-### II. Offline-First Local Data
+### II. Offline-First, Account-Backed Data
 
-All user data (recipes, versions, pantry, shopping lists, meal plans, ratings,
-profile, settings, model status) lives in the local drift (SQLite) database.
-The app MUST be fully usable for browsing and editing existing data with no
-network. Network is needed only for AI calls. No backend account or cloud sync
-is assumed. Schema changes MUST bump `schemaVersion` and ship a migration.
+An account is REQUIRED to use the app: nothing except the intro and the sign-in
+flow is reachable without a signed-in session. All user data (recipes, versions,
+photos, pantry, shopping lists, meal plans, ratings, preferences, profile) is
+stored durably on the server (Supabase, EU region) under the account — household
+data under the household, personal data under the person. The local drift
+(SQLite) database is the offline cache the UI reads from: every change is
+written locally and to an outbox in one transaction, and the outbox is uploaded
+when online; on sign-in the account's data is downloaded. The app MUST stay
+fully usable offline for everything except sign-in, account deletion and AI.
+Sign-out MUST NOT delete data; data is deleted only when the user deletes it or
+deletes the account. Records use client-generated ids so retries never duplicate.
 
-**Rationale**: free AI tiers and connectivity are unreliable; the user's data must not be.
+Server rules: every table in an exposed schema MUST have Row Level Security
+enabled with policies limiting access to the owning person or to members of the
+owning household; new tables are NOT exposed automatically
+(`auto_expose_new_tables = false`) — access for `authenticated` is granted
+explicitly per table, and `anon` gets no table access. Storage buckets are
+private with the same rules. Schema changes go through migrations in
+`supabase/migrations/`; drift schema changes MUST bump `schemaVersion` and ship
+a migration.
+
+**Rationale**: the user's data must survive a lost device and follow the user to
+any device, while free AI tiers and connectivity stay unreliable — so the app
+works offline and the server is the durable copy, protected per row.
 
 ### III. AI Only Through AIRouter
 
@@ -55,21 +86,29 @@ with a Serbian message (see `aiErrorText`), never a crash.
 
 ### IV. Secrets Never Committed
 
-API keys MUST NEVER appear in the repository, logs, test fixtures, screenshots,
-or commit messages. User keys are stored in the platform secure store
-(Keychain on iOS/macOS, Keystore on Android) via `KeyStore`. Any build-time key
-file (e.g. `secrets.json`, `*.env`) MUST be gitignored. Tests use
-`InMemoryKeyStore` with obviously fake values.
+API keys and backend credentials MUST NEVER appear in the repository, logs, test
+fixtures, screenshots, or commit messages. User AI keys are stored in the
+platform secure store (Keychain on iOS/macOS, Keystore on Android) via
+`KeyStore`; the auth session (access/refresh tokens) is stored only in the same
+secure store. Build-time values (built-in AI keys, Supabase URL and anon key)
+come from a gitignored `secrets.json` passed with `--dart-define-from-file`;
+`secrets.example.json` holds empty values only. The Supabase service-role key
+MUST NEVER be in the app or the repository. Tests use `InMemoryKeyStore` and
+fake backends with obviously fake values.
 
-**Rationale**: the repo may become public; a leaked key burns a free quota or worse.
+**Rationale**: the repo may become public; a leaked key burns a free quota or
+exposes other people's data.
 
 ### V. Test-First for Domain and AI Parsing
 
 Domain logic (`lib/domain/`), AI parsing (`fromAiJson`, prompt/JSON handling),
 router behaviour and error mapping MUST be developed test-first: write the
 failing test, then the code. AI is always faked in tests (fake `ChatClient` or
-the `fake_adapter` Dio adapter) — tests MUST NOT hit the network. Widgets get
-widget tests for key flows. `flutter analyze` MUST be clean and `flutter test`
+the `fake_adapter` Dio adapter) and the backend is faked in Flutter tests —
+tests MUST NOT hit the network. Server access rules (RLS policies, grants,
+storage policies) MUST have database tests run against the local Supabase stack
+(`supabase test db`) with at least two test accounts. Widgets get widget tests
+for key flows. `flutter analyze` MUST be clean and `flutter test`
 MUST be green before every commit.
 
 **Rationale**: AI output is messy; parsers and fallback logic are where bugs hide.
@@ -110,8 +149,13 @@ operations.
 
 - Flutter (Dart ≥ 3.13), Material 3, targets Android, iOS, macOS.
 - State: Riverpod (`flutter_riverpod`); routing: `go_router` with a
-  `StatefulShellRoute`; persistence: drift; HTTP: dio; keys:
+  `StatefulShellRoute`; local cache: drift; HTTP: dio; keys and session:
   `flutter_secure_storage`.
+- Backend: Supabase (Auth with email one-time code, Postgres with RLS, Storage),
+  hosted project in the EU region. Local development uses the Supabase CLI stack
+  started with `supabase start` in this repo (`supabase/config.toml`, ports
+  5532x so it does not clash with other local Supabase projects); schema lives in
+  `supabase/migrations/`, email templates in `supabase/templates/`.
 - AI providers: Gemini, Groq, OpenRouter — free tiers only — through one
   OpenAI-compatible `/chat/completions` client.
 - New dependencies require a one-line justification in the feature's `plan.md`.
@@ -142,4 +186,4 @@ wording), and updating dependent templates and docs in the same commit. Every
 `plan.md` Constitution Check MUST evaluate principles I–IX; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-10-30
+**Version**: 2.0.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-10-30

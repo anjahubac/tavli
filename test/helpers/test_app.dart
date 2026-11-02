@@ -2,26 +2,36 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:tavli/account/auth_controller.dart';
+import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli/account/session_store.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/app/app.dart';
-import 'package:tavli/app/router.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/recipe_repository.dart';
-import 'package:tavli/data/settings_repository.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/features/recipes/keep_screen_on.dart';
 import 'package:tavli/features/recipes/photo_picker.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
+import 'package:tavli/sync/synced_writer.dart';
 
 import 'fake_adapter.dart';
+import 'fake_backend.dart';
 import 'fake_photo_store.dart';
+import 'fake_secret_storage.dart';
+
+/// E-pošta naloga pod kojim testovi rade (prijavljen po difoltu).
+const testEmail = 'ana@tavli.test';
 
 const phone = Size(400, 800);
 const wide = Size(1200, 800);
@@ -100,15 +110,70 @@ Recipe sampleRecipe(
   createdAt: createdAt ?? DateTime.utc(2026),
 );
 
+/// Pamti da li je ekran trenutno zadržan upaljen.
+class FakeWakeLock implements ScreenWakeLock {
+  bool on = false;
+  bool fail = false;
+
+  @override
+  Future<void> enable() async {
+    if (fail) throw Exception('nije podržano');
+    on = true;
+  }
+
+  @override
+  Future<void> disable() async => on = false;
+}
+
 class TestApp {
-  TestApp(this.db, this.photos, this.picker, this.adapter);
+  TestApp(this.db, this.photos, this.picker, this.adapter, this.backend)
+    : session = backend.auth.sessionFor(testEmail);
+
+  final wakeLock = FakeWakeLock();
 
   final AppDatabase db;
   final FakePhotoStore photos;
   final FakePhotoPicker picker;
   final FakeAdapter adapter;
+  final FakeBackend backend;
+  final secrets = MapSecretStorage();
+  final keys = InMemoryKeyStore();
 
-  RecipeRepository get repo => RecipeRepository(db, photos);
+  /// Sat za prijavu (odbrojavanje "Pošalji ponovo"); test ga pomera.
+  DateTime now = DateTime(2026, 10, 30, 12);
+
+  /// Sesija test naloga (na serveru postoji od početka).
+  final AuthSession session;
+
+  AccountScope get scope => AccountScope(
+    userId: session.userId,
+    householdId: backend.server.households[session.userId]!,
+  );
+
+  RecipeRepository get repo => RecipeRepository(
+    db,
+    photos,
+    writer: SyncedWriter(db, accountId: scope.userId),
+    scope: scope,
+  );
+
+  /// Nalog kao da je već bio prijavljen na uređaju (sesija + keš).
+  Future<void> signIn({String? name = 'Ana Petrović'}) async {
+    secrets.values[SessionStore.key] = session.json;
+    await db
+        .into(db.accounts)
+        .insertOnConflictUpdate(
+          AccountsCompanion.insert(
+            userId: scope.userId,
+            email: testEmail,
+            displayName: Value(name),
+            householdId: scope.householdId,
+            householdName: 'Moje domaćinstvo',
+            role: 'owner',
+            createdAt: DateTime.utc(2026),
+          ),
+        );
+  }
 
   /// Naslovi sačuvanih recepata. Bez drift tokova: njihovi tajmeri ne
   /// rade dok se test ne pumpa.
@@ -124,9 +189,14 @@ Future<TestApp> pumpTavli(
   Size size = phone,
   String location = '/recipes',
   List<Recipe> recipes = const [],
-  Map<String, String> settings = const {},
   List<(int, String, Map<String, List<String>>)> ai = const [],
   bool canUseCamera = true,
+  bool signedIn = true,
+  String? name = 'Ana Petrović',
+  FakeBackend? backend,
+  List<Override> overrides = const [],
+  Future<void> Function(AppDatabase db)? setup,
+  Map<String, String> settings = const {},
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -138,19 +208,30 @@ Future<TestApp> pumpTavli(
     FakePhotoStore(),
     FakePhotoPicker(canUseCamera: canUseCamera),
     FakeAdapter([...ai]),
+    backend ?? FakeBackend(),
   );
+  if (signedIn) await app.signIn(name: name);
   for (final r in recipes) {
     await app.repo.create(r);
   }
+  await setup?.call(db);
   for (final MapEntry(:key, :value) in settings.entries) {
-    await SettingsRepository(db).set(key, value);
+    await db
+        .into(db.appSettings)
+        .insert(AppSettingsCompanion.insert(key: key, value: value));
   }
 
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
-        keyStoreProvider.overrideWithValue(InMemoryKeyStore()),
+        sessionStoreProvider.overrideWithValue(SessionStore(app.secrets)),
+        authGatewayProvider.overrideWithValue(app.backend.auth),
+        accountApiProvider.overrideWithValue(app.backend.accounts),
+        authClockProvider.overrideWithValue(() => app.now),
+        syncRemoteProvider.overrideWithValue(app.backend.sync),
+        photoRemoteProvider.overrideWithValue(app.backend.photos),
+        keyStoreProvider.overrideWithValue(app.keys),
         builtInKeysProvider.overrideWithValue(
           const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),
         ),
@@ -163,11 +244,10 @@ Future<TestApp> pumpTavli(
         recipePhotoStoreProvider.overrideWithValue(app.photos),
         photoPickerProvider.overrideWithValue(app.picker),
         photoResizerProvider.overrideWithValue((bytes) async => bytes),
+        ...overrides,
+        screenWakeLockProvider.overrideWithValue(app.wakeLock),
       ],
-      child: TavliApp(
-        router: createRouter(initialLocation: location),
-        intro: false,
-      ),
+      child: TavliApp(initialLocation: location, intro: false),
     ),
   );
   await tester.pumpAndSettle();

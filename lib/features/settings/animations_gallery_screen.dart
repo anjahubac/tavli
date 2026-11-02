@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 
+import '../../account/auth_controller.dart';
 import '../../app/animations/egg_timer.dart';
 import '../../app/animations/empty_fridge.dart';
 import '../../app/animations/ingredient_check.dart';
@@ -17,6 +18,7 @@ import '../../data/shopping_repository.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/theme_choice.dart';
+import '../../sync/synced_writer.dart';
 
 /// Nazivi animacija u galeriji, redom.
 const animationNames = [
@@ -176,7 +178,11 @@ class _CheckDemoState extends State<_CheckDemo> {
     Ingredient(name: 'Crni luk', quantity: 2, unit: 'kom'),
   ];
   final _db = AppDatabase(NativeDatabase.memory());
-  late final _repo = ShoppingRepository(_db);
+  late final _repo = ShoppingRepository(
+    _db,
+    scope: const AccountScope(userId: 'demo', householdId: 'demo'),
+    writer: SyncedWriter(_db, accountId: 'demo'),
+  );
   final _keys = [for (final _ in _items) GlobalKey()];
   final _to = GlobalKey();
   final _have = <int>{1};

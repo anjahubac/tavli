@@ -7,7 +7,7 @@ scripts/check.sh
 flutter run -d macos --dart-define-from-file=secrets.json   # copy secrets.json from the main checkout
 ```
 
-1. Launch: the intro shows the Bosiljak basil sprig for ~1,8 s (tap to skip).
+1. Launch: new installations use light Bosiljak; saved settings are retained. The intro shows the active theme motif for ~1,8 s (tap to skip). Sign in to reach the app tabs.
 2. Profil → Izgled: pick "Šafran", then "Tamna"; the app recolours. Restart — still Šafran, dark.
 3. Profil → Animacije (debug builds only): all nine animations.
 4. macOS System Settings → Accessibility → Display → Reduce motion: animations stand still.

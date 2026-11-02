@@ -71,6 +71,9 @@ abstract interface class KeyStore {
   /// Baca [DuplicateKeyException] ako je isti ključ već dodat.
   Future<StoredKey> add(AIProvider provider, String value);
   Future<void> remove(String id);
+
+  /// Briše sve sopstvene ključeve (brisanje naloga, FR-025).
+  Future<void> clear();
 }
 
 /// Greška sistemskog skladišta (Keychain/Keystore). [code] je sistemski kod
@@ -91,8 +94,9 @@ abstract interface class SecretStorage {
   Future<void> delete(String key);
 }
 
-class _FlutterSecretStorage implements SecretStorage {
-  const _FlutterSecretStorage();
+/// Keychain (iOS, macOS) i Keystore (Android).
+class KeychainSecretStorage implements SecretStorage {
+  const KeychainSecretStorage();
 
   static const _storage = FlutterSecureStorage(
     // Klasičan keychain ne traži posebna prava (entitlements)
@@ -126,7 +130,7 @@ class SecureKeyStore implements KeyStore {
     SecretStorage? storage,
     DateTime Function()? clock,
     String Function()? newId,
-  }) : _storage = storage ?? const _FlutterSecretStorage(),
+  }) : _storage = storage ?? const KeychainSecretStorage(),
        _clock = clock ?? DateTime.now,
        _newId = newId ?? _randomId;
 
@@ -214,6 +218,14 @@ class SecureKeyStore implements KeyStore {
     ]);
   }
 
+  @override
+  Future<void> clear() async {
+    await _storage.delete(_listKey);
+    for (final p in AIProvider.values) {
+      await _storage.delete(_legacyKey(p));
+    }
+  }
+
   Future<void> _save(List<StoredKey> keys) =>
       _storage.write(_listKey, jsonEncode([for (final k in keys) k.toJson()]));
 }
@@ -253,6 +265,9 @@ class InMemoryKeyStore implements KeyStore {
 
   @override
   Future<void> remove(String id) async => _keys.removeWhere((k) => k.id == id);
+
+  @override
+  Future<void> clear() async => _keys.clear();
 }
 
 /// Odakle je ključ: korisnikov (Keychain/Keystore) ili ugrađen u Tavli.
@@ -300,9 +315,16 @@ class BuiltInKeys {
   }
 
   bool has(AIProvider provider) => this[provider] != null;
+
+  /// Da li je vrednost neki od ugrađenih ključeva (tada nije korisnička).
+  bool contains(String value) {
+    final v = value.trim();
+    return v.isNotEmpty && AIProvider.values.any((p) => this[p] == v);
+  }
 }
 
-/// Prvo korisnikovi ključevi (redom dodavanja), pa ugrađeni.
+/// Prvo korisnikovi ključevi (redom dodavanja), pa ugrađeni. Sačuvan ključ
+/// koji je isti kao ugrađeni (npr. unet ranije ručno) računa se kao ugrađeni.
 class LayeredKeySource implements KeySource {
   LayeredKeySource(this._own, this._builtIn);
 
@@ -314,7 +336,9 @@ class LayeredKeySource implements KeySource {
     final builtIn = _builtIn[provider];
     return [
       for (final k in await _own.list())
-        if (k.provider == provider && k.value.trim().isNotEmpty)
+        if (k.provider == provider &&
+            k.value.trim().isNotEmpty &&
+            !_builtIn.contains(k.value))
           ApiCredential(provider, k.value.trim(), KeyOrigin.user, keyId: k.id),
       if (builtIn != null) ApiCredential(provider, builtIn, KeyOrigin.builtIn),
     ];

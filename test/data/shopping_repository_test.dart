@@ -1,8 +1,10 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/shopping_repository.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/sync/synced_writer.dart';
 
 const krompir = Ingredient(name: 'Krompir', quantity: 1, unit: 'kg');
 const meso = Ingredient(name: 'Mleveno meso', quantity: 500, unit: 'g');
@@ -14,10 +16,44 @@ void main() {
 
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
-    repo = ShoppingRepository(db);
+    repo = ShoppingRepository(
+      db,
+      scope: const AccountScope(userId: 'one', householdId: 'home-one'),
+      writer: SyncedWriter(db, accountId: 'one'),
+    );
   });
 
   tearDown(() => db.close());
+
+  test('kupovina je odvojena po domaćinstvu i upisuje outbox sa UUID-jevima', () async {
+    await repo.addMissing('musaka', missing: const [luk], have: const []);
+    final other = ShoppingRepository(
+      db,
+      scope: const AccountScope(userId: 'two', householdId: 'home-two'),
+      writer: SyncedWriter(db, accountId: 'two'),
+    );
+    expect(await other.openNames(), isEmpty);
+    await other.addMissing('sarma', missing: const [krompir], have: const []);
+    expect(await repo.openNames(), ['Crni luk']);
+    expect(await other.openNames(), ['Krompir']);
+    final outbox = await db.select(db.syncOutbox).get();
+    expect(
+      outbox.where((r) => r.accountId == 'one').map((r) => r.entity),
+      containsAll(['shopping_list', 'shopping_item']),
+    );
+    final uuid = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+    );
+    for (final row in outbox) {
+      expect(uuid.hasMatch(row.recordId), isTrue);
+    }
+    await repo.markHave('musaka', luk);
+    final deleted = await (db.select(
+      db.syncOutbox,
+    )..where((r) => r.op.equals(OutboxOp.delete))).get();
+    expect(deleted.single.entity, 'shopping_item');
+    expect(deleted.single.accountId, 'one');
+  });
 
   test(
     '3 sastojka, imam 2 → dodaje 1; odštikliram jedan → dodaje samo njega',

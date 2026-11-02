@@ -64,21 +64,21 @@ class TavliPalette {
     text: Color(0xFF1B1F1C),
     muted: Color(0xFF5C6660),
     line: Color(0xFFE5E3DB),
-    boxLine: Color(0xFF8E9892),
+    boxLine: Color(0xFF7B877F),
     tints: [Color(0xFFF6E7CF), Color(0xFFF3DDD5), Color(0xFFDCE9EE)],
   );
 
   static const bosiljakDark = TavliPalette(
-    bg: Color(0xFF121613),
-    surface: Color(0xFF1B201C),
+    bg: Color(0xFF171C18),
+    surface: Color(0xFF26322A),
     primary: Color(0xFF7CC79A),
     onPrimary: Color(0xFF0E2A1A),
     container: Color(0xFF24382B),
     onContainer: Color(0xFFBFE6CC),
     text: Color(0xFFE9EDE9),
-    muted: Color(0xFFA3AEA7),
-    line: Color(0xFF2A312C),
-    boxLine: Color(0xFF6F7A73),
+    muted: Color(0xFFB0BCB3),
+    line: Color(0xFF3A473D),
+    boxLine: Color(0xFF899A8D),
     tints: [Color(0xFF3A3222), Color(0xFF3A2A25), Color(0xFF22333A)],
   );
 
@@ -92,21 +92,21 @@ class TavliPalette {
     text: Color(0xFF2A1E18),
     muted: Color(0xFF6B5A51),
     line: Color(0xFFF0E0D4),
-    boxLine: Color(0xFFA08C81),
+    boxLine: Color(0xFF927C70),
     tints: [Color(0xFFFFF0C9), Color(0xFFE7EED9), Color(0xFFF6DCE0)],
   );
 
   static const safranDark = TavliPalette(
-    bg: Color(0xFF17120F),
-    surface: Color(0xFF211A16),
+    bg: Color(0xFF1E1815),
+    surface: Color(0xFF342A23),
     primary: Color(0xFFF0956C),
     onPrimary: Color(0xFF3A1405),
     container: Color(0xFF3D2418),
     onContainer: Color(0xFFFFD6C2),
     text: Color(0xFFF3E9E3),
-    muted: Color(0xFFB9A79C),
-    line: Color(0xFF33271F),
-    boxLine: Color(0xFF7E6B60),
+    muted: Color(0xFFC6B4A8),
+    line: Color(0xFF4A3B33),
+    boxLine: Color(0xFFA0897B),
     tints: [Color(0xFF3A3220), Color(0xFF2B3324), Color(0xFF3A2529)],
   );
 
@@ -120,21 +120,21 @@ class TavliPalette {
     text: Color(0xFF171A2B),
     muted: Color(0xFF5A5F76),
     line: Color(0xFFE2E4EE),
-    boxLine: Color(0xFF8D91A6),
+    boxLine: Color(0xFF7D8297),
     tints: [Color(0xFFFDE8D8), Color(0xFFDDF0EA), Color(0xFFF3E1F5)],
   );
 
   static const borovnicaDark = TavliPalette(
-    bg: Color(0xFF11131C),
-    surface: Color(0xFF1A1D29),
+    bg: Color(0xFF191C28),
+    surface: Color(0xFF2A3043),
     primary: Color(0xFF9AA3FF),
     onPrimary: Color(0xFF141A5C),
     container: Color(0xFF262B4D),
     onContainer: Color(0xFFD6DAFF),
     text: Color(0xFFE6E8F2),
-    muted: Color(0xFFA2A7BD),
-    line: Color(0xFF2A2E3E),
-    boxLine: Color(0xFF6E7389),
+    muted: Color(0xFFB5BDD4),
+    line: Color(0xFF414A64),
+    boxLine: Color(0xFF919AB6),
     tints: [Color(0xFF3A2C22), Color(0xFF1F3530), Color(0xFF35253A)],
   );
 }

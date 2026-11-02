@@ -51,3 +51,13 @@ Format: `[ID] [P?] [Story] Description` — `[P]` = can run in parallel (differe
 
 - [x] T018 Update `docs/architecture.md` (theme + animations), `docs/roadmap.md`, `AGENTS.md` structure
 - [x] T019 `scripts/check.sh` green; `flutter build macos --debug` succeeds
+
+## Owner revision — 2026-11-02
+
+- [x] T020 Regression tests first: light default, saved/system modes, failed/queued saves, contrast, narrow 2× text and auth themes
+- [x] T021 Refine dark surfaces, borders, type and responsive search
+- [x] T022 Recipe previews and adaptive mode selector; save failure feedback and serialized persistence
+- [x] T023 Integrate current main, account lifecycle and account-scoped shopping UUID/outbox compatibility; keep demo isolated
+- [x] T024 Format, scripts/check.sh, macOS build and rendered phone/wide visual QA
+
+Validation: `scripts/check.sh` — clean analysis, 398 passing tests; `flutter build macos --debug` — succeeds. Six rendered previews with bundled text and icon fonts inspected: light/dark phone and wide layouts, 320 px at 2× text, and dark sign-in. Tests use only in-memory databases and fake backends.

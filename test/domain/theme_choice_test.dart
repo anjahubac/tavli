@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/domain/theme_choice.dart';
 
 void main() {
-  test('podrazumevano: Bosiljak, kao sistem', () {
+  test('podrazumevano: Bosiljak, svetla', () {
     expect(ThemeChoice.defaults.theme, TavliTheme.bosiljak);
-    expect(ThemeChoice.defaults.mode, AppThemeMode.system);
+    expect(ThemeChoice.defaults.mode, AppThemeMode.light);
   });
 
   test('nazivi na srpskom', () {
@@ -33,8 +33,12 @@ void main() {
     );
     expect(
       ThemeChoice.fromSettings(theme: 'borovnica', mode: '??'),
-      const ThemeChoice(TavliTheme.borovnica, AppThemeMode.system),
+      const ThemeChoice(TavliTheme.borovnica, AppThemeMode.light),
     );
+  });
+
+  test('sačuvani sistemski režim ostaje sistemski', () {
+    expect(ThemeChoice.fromSettings(mode: 'system').mode, AppThemeMode.system);
   });
 
   test('copyWith menja samo dato polje', () {

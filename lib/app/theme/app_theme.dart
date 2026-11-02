@@ -39,11 +39,13 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
     onSurface: p.text,
     onSurfaceVariant: p.muted,
     surfaceDim: p.bg,
-    surfaceBright: p.surface,
-    surfaceContainerLowest: p.surface,
+    surfaceBright: dark ? p.line : p.surface,
+    surfaceContainerLowest: dark ? p.bg : p.surface,
     surfaceContainerLow: Color.lerp(p.surface, p.bg, 0.5),
-    surfaceContainer: p.bg,
-    surfaceContainerHigh: Color.lerp(p.bg, p.line, 0.5),
+    surfaceContainer: dark ? p.surface : p.bg,
+    surfaceContainerHigh: dark
+        ? Color.lerp(p.surface, p.line, 0.35)
+        : Color.lerp(p.bg, p.line, 0.5),
     surfaceContainerHighest: p.line,
     outline: p.boxLine,
     outlineVariant: p.line,
@@ -61,20 +63,20 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
     fontFamily: tavliFontFamily,
   );
   final text = base.textTheme;
-  TextStyle? heading(TextStyle? s) => s?.copyWith(
-    fontWeight: FontWeight.w800,
-    letterSpacing: -0.02 * (s.fontSize ?? 16),
-  );
+  TextStyle? heading(TextStyle? s, {FontWeight weight = FontWeight.w700}) => s
+      ?.copyWith(fontWeight: weight, letterSpacing: -0.02 * (s.fontSize ?? 16));
   final textTheme = text.copyWith(
-    displayLarge: heading(text.displayLarge),
-    displayMedium: heading(text.displayMedium),
-    displaySmall: heading(text.displaySmall),
-    headlineLarge: heading(text.headlineLarge),
+    displayLarge: heading(text.displayLarge, weight: FontWeight.w800),
+    displayMedium: heading(text.displayMedium, weight: FontWeight.w800),
+    displaySmall: heading(text.displaySmall, weight: FontWeight.w800),
+    headlineLarge: heading(text.headlineLarge, weight: FontWeight.w800),
     headlineMedium: heading(text.headlineMedium),
     headlineSmall: heading(text.headlineSmall),
     titleLarge: heading(text.titleLarge),
     titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
     titleSmall: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+    bodyLarge: text.bodyLarge?.copyWith(fontSize: 16, height: 1.55),
+    bodyMedium: text.bodyMedium?.copyWith(fontSize: 16, height: 1.5),
     labelLarge: text.labelLarge?.copyWith(fontWeight: FontWeight.w600),
   );
 
@@ -160,15 +162,15 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
       shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      constraints: const BoxConstraints(minHeight: 50, maxHeight: 50),
+      constraints: const BoxConstraints(minHeight: 50),
       padding: const WidgetStatePropertyAll(
         EdgeInsets.symmetric(horizontal: 16),
       ),
       hintStyle: WidgetStatePropertyAll(
-        textTheme.bodyLarge?.copyWith(color: p.muted, fontSize: 15),
+        textTheme.bodyLarge?.copyWith(color: p.muted, fontSize: 16),
       ),
       textStyle: WidgetStatePropertyAll(
-        textTheme.bodyLarge?.copyWith(color: p.text, fontSize: 15),
+        textTheme.bodyLarge?.copyWith(color: p.text, fontSize: 16),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(

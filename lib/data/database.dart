@@ -5,6 +5,11 @@ part 'database.g.dart';
 
 // Liste (sastojci, koraci, tipovi obroka) se čuvaju kao JSON tekst:
 // uvek se čitaju zajedno sa roditeljskim redom.
+//
+// Lokalna baza je keš naloga (006a): podaci domaćinstva imaju `householdId`,
+// lični podaci `userId`. null = podaci od pre naloga (prebacuju se jednom,
+// pri prvoj prijavi). Id-jeve pravi uređaj (tekst), pa ponovljeno slanje
+// na server ne pravi duplikate.
 
 @DataClassName('RecipeRow')
 class Recipes extends Table {
@@ -19,6 +24,7 @@ class Recipes extends Table {
   TextColumn get answeredBy => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get householdId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -27,7 +33,7 @@ class Recipes extends Table {
 /// Prethodne verzije recepta, za vraćanje posle AI izmene.
 @DataClassName('RecipeVersionRow')
 class RecipeVersions extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get recipeId => text().references(Recipes, #id)();
   TextColumn get recipeJson => text()();
   TextColumn get instruction => text().nullable()();
@@ -38,17 +44,25 @@ class RecipeVersions extends Table {
   /// Model koji je napravio AI izmenu.
   TextColumn get changedBy => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
+  TextColumn get householdId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
 @DataClassName('PantryItemRow')
 class PantryItems extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get name => text()();
   RealColumn get quantity => real().nullable()();
   TextColumn get unit => text().nullable()();
   TextColumn get category => text()();
   DateTimeColumn get addedAt => dateTime()();
   DateTimeColumn get expiresAt => dateTime().nullable()();
+  TextColumn get householdId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
 @DataClassName('ShoppingListRow')
@@ -60,6 +74,7 @@ class ShoppingLists extends Table {
   /// Redni broj nedelje kod mesečnog plana (1-5), null inače.
   IntColumn get week => integer().nullable()();
   DateTimeColumn get createdAt => dateTime()();
+  TextColumn get householdId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -67,7 +82,7 @@ class ShoppingLists extends Table {
 
 @DataClassName('ShoppingItemRow')
 class ShoppingItems extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get listId => text().references(ShoppingLists, #id)();
   TextColumn get name => text()();
   RealColumn get quantity => real().nullable()();
@@ -77,6 +92,10 @@ class ShoppingItems extends Table {
   BoolColumn get isManual => boolean().withDefault(const Constant(false))();
   TextColumn get fromRecipeIdsJson =>
       text().withDefault(const Constant('[]'))();
+  TextColumn get householdId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
 @DataClassName('MealPlanRow')
@@ -87,6 +106,7 @@ class MealPlans extends Table {
   TextColumn get mealTypesJson => text()(); // ["breakfast","lunch","dinner"]
   BoolColumn get usePantry => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
+  TextColumn get householdId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -94,30 +114,39 @@ class MealPlans extends Table {
 
 @DataClassName('MealPlanEntryRow')
 class MealPlanEntries extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get planId => text().references(MealPlans, #id)();
   DateTimeColumn get date => dateTime()();
   TextColumn get mealType => text()();
   TextColumn get recipeId => text().nullable().references(Recipes, #id)();
   BoolColumn get isLocked => boolean().withDefault(const Constant(false))();
   BoolColumn get isCooked => boolean().withDefault(const Constant(false))();
+  TextColumn get householdId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
 @DataClassName('RatingRow')
 class Ratings extends Table {
-  IntColumn get id => integer().autoIncrement()();
+  TextColumn get id => text()();
   TextColumn get recipeId => text().references(Recipes, #id)();
   IntColumn get stars => integer()();
   BoolColumn get isComfortFood =>
       boolean().withDefault(const Constant(false))();
   TextColumn get comment => text().nullable()();
   DateTimeColumn get cookedAt => dateTime()();
+  TextColumn get userId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
 }
 
-/// Jedan red sa profilom ukusa kao JSON (polja će se često menjati).
+/// Profil ukusa kao JSON (polja će se često menjati). Id je userId osobe;
+/// `legacy` za red od pre naloga.
 @DataClassName('UserProfileRow')
 class UserProfiles extends Table {
-  IntColumn get id => integer()();
+  TextColumn get id => text()();
   TextColumn get profileJson => text()();
 
   @override
@@ -149,6 +178,63 @@ class ModelStatuses extends Table {
   Set<Column> get primaryKey => {provider, model, keyOrigin};
 }
 
+/// Nalozi prijavljeni na ovom uređaju: profil i domaćinstvo za pokretanje
+/// bez mreže. Sesija (tokeni) se nikad ne čuva ovde, samo u Keychain-u.
+@DataClassName('AccountRow')
+class Accounts extends Table {
+  TextColumn get userId => text()();
+  TextColumn get email => text()();
+  TextColumn get displayName => text().nullable()();
+  TextColumn get householdId => text()();
+  TextColumn get householdName => text()();
+  TextColumn get role => text()();
+  BoolColumn get initialDownloadDone =>
+      boolean().withDefault(const Constant(false))();
+  DateTimeColumn get lastPullAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {userId};
+}
+
+/// Izmene koje čekaju slanje na server, redom. Čuva samo šta je promenjeno;
+/// sadržaj se čita iz reda u trenutku slanja.
+@DataClassName('OutboxRow')
+@TableIndex(
+  name: 'sync_outbox_account_state_seq',
+  columns: {#accountId, #state, #seq},
+)
+class SyncOutbox extends Table {
+  IntColumn get seq => integer().autoIncrement()();
+  TextColumn get accountId => text()();
+  TextColumn get entity => text()();
+  TextColumn get recordId => text()();
+
+  /// upsert | delete | photoUpload | photoDelete
+  TextColumn get op => text()();
+
+  /// pending | rejected
+  TextColumn get state => text().withDefault(const Constant('pending'))();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextAttemptAt => dateTime().nullable()();
+
+  /// Samo kod greške, nikad sadržaj zapisa.
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+/// Dokle je preuzet svaki entitet naloga: (updatedAt, lastId).
+@DataClassName('SyncCursorRow')
+class SyncCursors extends Table {
+  TextColumn get accountId => text()();
+  TextColumn get entity => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get lastId => text()();
+
+  @override
+  Set<Column> get primaryKey => {accountId, entity};
+}
+
 @DriftDatabase(
   tables: [
     Recipes,
@@ -162,6 +248,9 @@ class ModelStatuses extends Table {
     UserProfiles,
     AppSettings,
     ModelStatuses,
+    Accounts,
+    SyncOutbox,
+    SyncCursors,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -169,7 +258,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -184,6 +273,80 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(recipeVersions, recipeVersions.changeKind);
         await m.addColumn(recipeVersions, recipeVersions.changedBy);
       }
+      if (from < 4) await _migrateToAccounts(m);
     },
   );
+
+  /// v4: tekstualni id-jevi, kolone naloga i tabele za slanje. Postojeći
+  /// redovi dobijaju slučajan id i null nalog (prebacuju se pri prijavi).
+  Future<void> _migrateToAccounts(Migrator m) async {
+    const randomId = CustomExpression<String>('lower(hex(randomblob(16)))');
+    final existing = {
+      for (final r in await customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'table'",
+      ).get())
+        r.read<String>('name'),
+    };
+    // Tabela koje nema (stara delimična šema) se samo napravi.
+    Future<void> alter(TableMigration migration) =>
+        existing.contains(migration.affectedTable.actualTableName)
+        ? m.alterTable(migration)
+        : m.createTable(migration.affectedTable);
+    await alter(TableMigration(recipes, newColumns: [recipes.householdId]));
+    await alter(
+      TableMigration(
+        recipeVersions,
+        columnTransformer: {recipeVersions.id: randomId},
+        newColumns: [recipeVersions.householdId],
+      ),
+    );
+    await alter(
+      TableMigration(
+        pantryItems,
+        columnTransformer: {pantryItems.id: randomId},
+        newColumns: [pantryItems.householdId],
+      ),
+    );
+    await alter(
+      TableMigration(shoppingLists, newColumns: [shoppingLists.householdId]),
+    );
+    await alter(
+      TableMigration(
+        shoppingItems,
+        columnTransformer: {shoppingItems.id: randomId},
+        newColumns: [shoppingItems.householdId],
+      ),
+    );
+    await alter(TableMigration(mealPlans, newColumns: [mealPlans.householdId]));
+    await alter(
+      TableMigration(
+        mealPlanEntries,
+        columnTransformer: {mealPlanEntries.id: randomId},
+        newColumns: [mealPlanEntries.householdId],
+      ),
+    );
+    await alter(
+      TableMigration(
+        ratings,
+        columnTransformer: {ratings.id: randomId},
+        newColumns: [ratings.userId],
+      ),
+    );
+    // Jedan red od pre naloga dobija id 'legacy'.
+    await alter(
+      TableMigration(
+        userProfiles,
+        columnTransformer: {
+          userProfiles.id: const CustomExpression<String>(
+            'CASE WHEN id = (SELECT MIN(id) FROM user_profiles) '
+            "THEN 'legacy' ELSE 'legacy-' || id END",
+          ),
+        },
+      ),
+    );
+    await m.createTable(accounts);
+    await m.createTable(syncOutbox);
+    await m.createIndex(syncOutboxAccountStateSeq);
+    await m.createTable(syncCursors);
+  }
 }

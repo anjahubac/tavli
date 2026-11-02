@@ -11,32 +11,47 @@ final settingsRepositoryProvider = Provider<SettingsRepository>(
   (ref) => SettingsRepository(ref.watch(databaseProvider)),
 );
 
-/// Izabrana tema i režim. Kreće od podrazumevanih vrednosti, pa učita
-/// sačuvane iz baze (uvodni ekran pokriva promenu).
+/// Izbor se vidi odmah; upisi čekaju učitavanje i izvršavaju se redom.
 class ThemeController extends Notifier<ThemeChoice> {
-  /// Korisnik je već birao, pa zakasnelo učitavanje ne sme da ga pregazi.
   bool _changed = false;
+  int _revision = 0;
+  ThemeChoice _saved = ThemeChoice.defaults;
+  late Future<void> _pending;
 
   @override
   ThemeChoice build() {
-    unawaited(_load());
+    _pending = _load();
     return ThemeChoice.defaults;
   }
 
   Future<void> _load() async {
     try {
       final saved = await ref.read(settingsRepositoryProvider).loadTheme();
+      _saved = saved;
       if (!_changed && ref.mounted) state = saved;
     } on Exception catch (e) {
-      // Bez baze ostaje podrazumevana tema; aplikacija i dalje radi.
       if (kDebugMode) debugPrint('Tema nije učitana: ${e.runtimeType}');
     }
   }
 
-  Future<void> set(ThemeChoice choice) async {
+  /// false: izbor nije sačuvan; poslednji potvrđeni izbor se vraća.
+  Future<bool> set(ThemeChoice choice) {
     _changed = true;
+    final revision = ++_revision;
+    final repo = ref.read(settingsRepositoryProvider);
     state = choice;
-    await ref.read(settingsRepositoryProvider).saveTheme(choice);
+    final result = _pending.then((_) async {
+      try {
+        await repo.saveTheme(choice);
+        _saved = choice;
+        return true;
+      } on Exception {
+        if (ref.mounted && revision == _revision) state = _saved;
+        return false;
+      }
+    });
+    _pending = result.then((_) {});
+    return result;
   }
 }
 

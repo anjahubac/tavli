@@ -15,10 +15,15 @@
   branch); changes reach `main` only through a PR (git rules: best practices §17).
 - Run `scripts/check.sh` (format, analyze, test) before every commit; run
   `dart run build_runner build --delete-conflicting-outputs` after changing drift tables.
-- Never read, print or modify API keys (Keychain entries `api_key_*`, `secrets.json`).
+- Never read, print or modify API keys or backend credentials (Keychain entries
+  `api_key_*`, the auth session, `secrets.json`).
+- The app requires an account; all user data lives on Supabase (RLS on every
+  table) and drift is the offline cache with an outbox (constitution II). Local
+  backend: `supabase start` in this repo (ports 5532x).
 - Architecture and roadmap: `docs/architecture.md`, `docs/roadmap.md`.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+shell commands, and other important information, read the current plan:
+`specs/006-account-login/plan.md`
 <!-- SPECKIT END -->
