@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/theme_choice.dart';
 import 'tavli_colors.dart';
 import 'tavli_palette.dart';
+import 'tavli_status_colors.dart';
 
 /// Ugrađen font (assets/fonts).
 const tavliFontFamily = 'PlusJakartaSans';
@@ -91,6 +92,7 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
     canvasColor: p.bg,
     textTheme: textTheme,
     extensions: [
+      dark ? TavliStatusColors.dark : TavliStatusColors.light,
       TavliColors(
         motif: theme,
         bg: p.bg,

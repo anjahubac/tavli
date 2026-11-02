@@ -111,13 +111,10 @@ class _RecipeListState extends ConsumerState<_RecipeList> {
     super.dispose();
   }
 
-  /// Ponovo čita listu iz baze; varjača se vidi bar kratko.
+  /// Osvežavanje traje samo dok se lista čita iz baze.
   Future<void> _refresh() async {
     ref.invalidate(recipesProvider);
-    await Future.wait([
-      ref.read(recipesProvider.future),
-      Future<void>.delayed(const Duration(milliseconds: 700)),
-    ]);
+    await ref.read(recipesProvider.future);
   }
 
   @override

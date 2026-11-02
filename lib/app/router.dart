@@ -13,8 +13,8 @@ import '../features/settings/ai_keys_screen.dart';
 import '../features/settings/animations_gallery_screen.dart';
 import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
+import 'animations/empty_basket.dart';
 import 'animations/empty_fridge.dart';
-import 'animations/intro_motif.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
@@ -94,10 +94,15 @@ GoRouter createRouter({
           routes: [
             GoRoute(
               path: '/shopping',
-              builder: (context, state) => const EmptyStateScreen(
-                art: IntroMotif(size: 200),
-                title: 'Lista je prazna',
-                body: 'Sastojci koji ti nedostaju za recept pojaviće se ovde.',
+              builder: (context, state) => EmptyStateScreen(
+                art: const EmptyBasket(),
+                title: 'Nabavka je prazna',
+                body: 'Dodaj sastojke iz plana obroka ili iz pojedinačnog recepta.',
+                action: FilledButton.icon(
+                  onPressed: () => context.go('/recipes'),
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Pogledaj recepte'),
+                ),
               ),
             ),
           ],
@@ -152,8 +157,8 @@ GoRouter createRouter({
               path: '/pantry',
               builder: (context, state) => const EmptyStateScreen(
                 art: EmptyFridge(),
-                title: 'Ostava je prazna',
-                body: 'Vreme je za nabavku',
+                title: 'Još nema unetih namirnica',
+                body: 'Ovde ćeš pratiti namirnice koje imaš kod kuće.',
               ),
             ),
           ],

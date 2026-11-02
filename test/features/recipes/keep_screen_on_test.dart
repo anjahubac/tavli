@@ -25,7 +25,10 @@ void main() {
     expect(
       tester
           .widget<IconButton>(
-            find.widgetWithIcon(IconButton, Icons.light_mode_outlined),
+            find.widgetWithIcon(
+              IconButton,
+              Icons.screen_lock_portrait_outlined,
+            ),
           )
           .isSelected,
       isFalse,
@@ -76,7 +79,9 @@ void main() {
     expect(app.wakeLock.on, isTrue);
     expect(
       tester
-          .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.light_mode))
+          .widget<IconButton>(
+            find.widgetWithIcon(IconButton, Icons.screen_lock_portrait),
+          )
           .isSelected,
       isTrue,
     );

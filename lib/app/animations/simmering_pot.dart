@@ -40,7 +40,8 @@ class _SimmeringPotState extends State<SimmeringPot> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final still = reduceMotion(context);
+    final still =
+        reduceMotion(context) || !TickerMode.valuesOf(context).enabled;
     if (still) {
       _timer?.cancel();
       _timer = null;
@@ -85,7 +86,8 @@ class _SimmeringPotState extends State<SimmeringPot> {
         if (message != null) ...[
           const SizedBox(height: 8),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
+            key: ValueKey(reduceMotion(context)),
+            duration: TavliMotion.duration(context, TavliMotion.feedback),
             child: Text(
               message,
               key: ValueKey(message),

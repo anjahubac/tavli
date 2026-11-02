@@ -117,8 +117,8 @@ class KeepScreenOnButton extends ConsumerWidget {
     return IconButton(
       tooltip: 'Ne gasi ekran',
       isSelected: on,
-      icon: const Icon(Icons.light_mode_outlined),
-      selectedIcon: const Icon(Icons.light_mode),
+      icon: const Icon(Icons.screen_lock_portrait_outlined),
+      selectedIcon: const Icon(Icons.screen_lock_portrait),
       onPressed: () async {
         final messenger = ScaffoldMessenger.of(context);
         await ref.read(keepScreenOnProvider.notifier).set(!on);

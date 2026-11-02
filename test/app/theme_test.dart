@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/app/theme/app_theme.dart';
 import 'package:tavli/app/theme/tavli_colors.dart';
 import 'package:tavli/app/theme/tavli_palette.dart';
+import 'package:tavli/app/theme/tavli_status_colors.dart';
 import 'package:tavli/domain/theme_choice.dart';
 
 void main() {
@@ -76,6 +77,29 @@ void main() {
                   : lessThan(levels[i - 1].computeLuminance()),
             );
           }
+        }
+      }
+    }
+  });
+
+  test('statusi imaju iste čitljive boje u svim paletama', () {
+    for (final brightness in Brightness.values) {
+      final expected = brightness == Brightness.light
+          ? TavliStatusColors.light
+          : TavliStatusColors.dark;
+      for (final theme in TavliTheme.values) {
+        final status = buildTavliTheme(
+          theme,
+          brightness,
+        ).extension<TavliStatusColors>()!;
+        expect(status.success, expected.success);
+        expect(status.warning, expected.warning);
+        expect(status.info, expected.info);
+        for (final tone in [status.success, status.warning, status.info]) {
+          expect(
+            contrast(tone.foreground, tone.background),
+            greaterThanOrEqualTo(4.5),
+          );
         }
       }
     }

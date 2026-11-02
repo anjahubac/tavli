@@ -65,3 +65,26 @@ Validation: `scripts/check.sh` — clean analysis, 398 passing tests; `flutter b
 - [x] T025 Native startup: test and recover v4 cache marked v3, preserving ids and outbox; checks, build and live launch
 
 Native startup validation: regression first reproduced the duplicate-index exception; after the fix, all 399 tests and analysis pass, macOS debug build succeeds, and the live app opens the sign-in screen. Existing device cache was retained; a private local SQLite recovery snapshot was taken before reopening.
+
+
+## UX refinement — 2026-11-02
+
+- [x] T026 Remove timed startup/refresh delays; cover real loading and ready states.
+- [x] T027 Shorten and cap motion; honour reduced motion during active feedback;
+  pause offscreen message timers; remove fridge flicker.
+- [x] T028 Commit shopping demo differences before one batch confirmation;
+  serialize actions, add checked semantics and preserve idempotent behaviour.
+- [x] T029 Add stable semantic status colours, clarify screen-on icon, simplify
+  preview borders and make empty shopping/pantry states accurate and useful.
+- [x] T030 Targeted regressions, full check.sh, macOS build and rendered visual QA.
+
+
+UX validation: `scripts/check.sh` passes (clean analysis, 413 tests);
+`flutter build macos --debug` succeeds. Eight rendered previews with synthetic
+content and bundled fonts checked: shopping, dark pantry, wide shopping,
+320 px shopping at 2× text, gallery normal/320 px at 2×, appearance light/dark.
+Active reduced-motion regressions were reproduced before the fix and now pass;
+refresh uses a controlled data-read gate and finishes without a minimum delay.
+The 320 px / 2× navigation regression was reproduced and fixed; the active
+tab name stays on one line with full text scaling.
+No new dependencies, schema changes or production backend calls.

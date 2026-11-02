@@ -50,6 +50,22 @@ class HomeShell extends StatelessWidget {
         ),
       );
     }
+    final navigation = NavigationBar(
+      height: largeText ? 64 : 80,
+      labelBehavior: largeText
+          ? NavigationDestinationLabelBehavior.alwaysHide
+          : NavigationDestinationLabelBehavior.alwaysShow,
+      selectedIndex: shell.currentIndex,
+      onDestinationSelected: _select,
+      destinations: [
+        for (final t in tabs)
+          NavigationDestination(
+            icon: Icon(t.icon),
+            selectedIcon: Icon(t.selectedIcon),
+            label: t.label,
+          ),
+      ],
+    );
     return Scaffold(
       body: Column(
         children: [
@@ -65,22 +81,40 @@ class HomeShell extends StatelessWidget {
             ),
           ),
         ),
-        child: NavigationBar(
-          height: largeText ? 112 : 80,
-          labelBehavior: largeText
-              ? NavigationDestinationLabelBehavior.onlyShowSelected
-              : NavigationDestinationLabelBehavior.alwaysShow,
-          selectedIndex: shell.currentIndex,
-          onDestinationSelected: _select,
-          destinations: [
-            for (final t in tabs)
-              NavigationDestination(
-                icon: Icon(t.icon),
-                selectedIcon: Icon(t.selectedIcon),
-                label: t.label,
-              ),
-          ],
-        ),
+        child: largeText
+            ? ColoredBox(
+                color: Theme.of(context).colorScheme.surface,
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      MediaQuery.removePadding(
+                        context: context,
+                        removeBottom: true,
+                        child: navigation,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: ExcludeSemantics(
+                          child: Text(
+                            tabs[shell.currentIndex].label,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : navigation,
       ),
     );
   }
