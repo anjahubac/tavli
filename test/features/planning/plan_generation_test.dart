@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 
 import '../../helpers/test_app.dart';
@@ -43,11 +44,13 @@ Future<TestApp> pumpPlan(
   WidgetTester tester, {
   Size size = phone,
   List<(int, String, Map<String, List<String>>)> ai = const [],
+  List<Recipe> recipes = const [],
 }) => pumpTavli(
   tester,
   size: size,
   location: '/plan',
   ai: ai,
+  recipes: recipes,
   overrides: [clockProvider.overrideWithValue(() => today)],
 );
 
@@ -168,5 +171,102 @@ void main() {
     expect(await app.titles(), isEmpty);
     expect(await app.db.select(app.db.shoppingItems).get(), isEmpty);
     expect(await app.db.select(app.db.syncOutbox).get(), isEmpty);
+  });
+
+  group('zamena jednog jela u predlogu', () {
+    /// Otvara izbor zamene za [index]-to jelo u predlogu.
+    Future<void> openReplace(WidgetTester tester, int index) async {
+      final replace = find.byTooltip('Zameni jelo').at(index);
+      await tester.ensureVisible(replace);
+      await tester.pumpAndSettle();
+      await tester.tap(replace);
+      await tester.pumpAndSettle();
+    }
+
+    testTavli('AI predlaže drugo jelo samo za taj obrok', (tester) async {
+      final app = await pumpPlan(
+        tester,
+        ai: [
+          ...fullWeek,
+          aiAnswer({
+            'meals': [
+              {
+                'date': '2026-11-04',
+                'meal': 'lunch',
+                'recipeId': null,
+                'title': 'Pasulj',
+              },
+            ],
+          }),
+          aiAnswer({
+            'recipes': [recipeJson('Pasulj')],
+          }),
+        ],
+      );
+      await tapButton(tester, 'Napravi plan');
+      await tapButton(tester, 'Predloži plan');
+      final before = app.adapter.requests.length;
+
+      await openReplace(tester, 2);
+      await tester.tap(find.text('Predloži drugo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jelo je zamenjeno.'), findsOneWidget);
+      expect(find.textContaining('Pasulj\n'), findsOneWidget);
+      expect(find.textContaining('Jelo 3\n'), findsNothing);
+      expect(find.textContaining('Jelo 2\n'), findsOneWidget);
+      expect(find.textContaining('Jelo 4\n'), findsOneWidget);
+      // Samo raspored za jedno mesto i sastojci novog jela.
+      expect(app.adapter.requests.length - before, 2);
+      expect(app.adapter.requests[before].data.toString(), contains('Jelo 3'));
+      expect(await app.db.select(app.db.mealPlans).get(), isEmpty);
+
+      await tapButton(tester, 'Sačuvaj plan');
+      final titles = await app.titles();
+      expect(titles, contains('Pasulj'));
+      expect(titles, isNot(contains('Jelo 3')));
+      expect(await app.db.select(app.db.mealPlanEntries).get(), hasLength(7));
+    });
+
+    testTavli('recept iz biblioteke zamenjuje predloženo jelo', (tester) async {
+      final app = await pumpPlan(
+        tester,
+        ai: fullWeek,
+        recipes: [sampleRecipe('lib-1', 'Sarma')],
+      );
+      await tapButton(tester, 'Napravi plan');
+      await tapButton(tester, 'Predloži plan');
+
+      await openReplace(tester, 0);
+      await tester.tap(find.text('Iz mojih recepata'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sarma'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jelo je zamenjeno.'), findsOneWidget);
+      expect(find.textContaining('Sarma\nIz mojih recepata'), findsOneWidget);
+      expect(find.textContaining('Jelo 1\n'), findsNothing);
+
+      await tapButton(tester, 'Sačuvaj plan');
+      final entries = await app.db.select(app.db.mealPlanEntries).get();
+      expect(entries, hasLength(7));
+      expect(entries.where((e) => e.recipeId == 'lib-1'), hasLength(1));
+      expect(await app.titles(), isNot(contains('Jelo 1')));
+    });
+
+    testTavli('kad AI ne uspe, predlog ostaje kakav je bio', (tester) async {
+      final app = await pumpPlan(tester, ai: fullWeek);
+      await tapButton(tester, 'Napravi plan');
+      await tapButton(tester, 'Predloži plan');
+
+      await openReplace(tester, 2);
+      await tester.tap(find.text('Predloži drugo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jelo je zamenjeno.'), findsNothing);
+      expect(find.textContaining('Jelo 3\n'), findsOneWidget);
+      await tapButton(tester, 'Sačuvaj plan');
+      expect(await app.titles(), contains('Jelo 3'));
+    });
   });
 }

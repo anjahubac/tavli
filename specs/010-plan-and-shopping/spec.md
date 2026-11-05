@@ -58,6 +58,10 @@ save, restart offline and see exactly the approved meals and portions.
 5. **Given** a reviewed draft, **When** saved, **Then** approved meals and their
    required recipe data are saved together. Partial saving is separately named
    and shows the remaining empty slots.
+6. **Given** an unsaved draft, **When** one suggested meal is replaced with
+   "Predloži drugo" or "Iz mojih recepata", **Then** only that slot changes,
+   other suggestions stay as they were and nothing is saved until approval;
+   a failed or cancelled replacement keeps the previous suggestion.
 
 ### User Story 2 — Review and adapt the calendar (Priority: P1)
 
