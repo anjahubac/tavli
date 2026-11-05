@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../app/animations/motion.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 
@@ -107,18 +108,46 @@ class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Dugme u traci recepta.
+/// Dugme u traci recepta. Status se vidi u svakom trenutku: uključeno je
+/// sunce na obojenoj podlozi („ekran ostaje budan“), isključeno je mesec
+/// bez podloge („ekran sme da zaspi“). Promena se animira (sunce izlazi,
+/// mesec zalazi), osim kad sistem traži smanjeno kretanje.
 class KeepScreenOnButton extends ConsumerWidget {
   const KeepScreenOnButton({super.key});
+
+  static const onIcon = Icons.light_mode;
+  static const offIcon = Icons.bedtime_outlined;
+
+  static String tooltipFor({required bool on}) =>
+      on ? 'Ne gasi ekran: uključeno' : 'Ne gasi ekran: isključeno';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final on = ref.watch(keepScreenOnProvider).value ?? false;
+    final scheme = Theme.of(context).colorScheme;
     return IconButton(
-      tooltip: 'Ne gasi ekran',
+      tooltip: tooltipFor(on: on),
       isSelected: on,
-      icon: const Icon(Icons.screen_lock_portrait_outlined),
-      selectedIcon: const Icon(Icons.screen_lock_portrait),
+      style: IconButton.styleFrom(
+        backgroundColor: on ? scheme.primaryContainer : Colors.transparent,
+        foregroundColor: on
+            ? scheme.onPrimaryContainer
+            : scheme.onSurfaceVariant,
+        animationDuration: TavliMotion.duration(
+          context,
+          TavliMotion.transition,
+        ),
+      ),
+      icon: AnimatedSwitcher(
+        duration: TavliMotion.duration(context, TavliMotion.reveal),
+        switchInCurve: Curves.easeOutBack,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) => RotationTransition(
+          turns: Tween<double>(begin: -0.25, end: 0).animate(animation),
+          child: ScaleTransition(scale: animation, child: child),
+        ),
+        child: Icon(on ? onIcon : offIcon, key: ValueKey(on)),
+      ),
       onPressed: () async {
         final messenger = ScaffoldMessenger.of(context);
         await ref.read(keepScreenOnProvider.notifier).set(!on);
