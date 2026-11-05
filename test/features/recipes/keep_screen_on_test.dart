@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/features/recipes/keep_screen_on.dart';
 
 import '../../helpers/test_app.dart';
 
 void main() {
-  Finder toggle() => find.byTooltip('Ne gasi ekran');
+  Finder toggle() => find.byType(KeepScreenOnButton);
+  Finder statusIcon(IconData icon) =>
+      find.descendant(of: toggle(), matching: find.byIcon(icon));
+
+  void expectStatus({required bool on}) {
+    expect(
+      statusIcon(KeepScreenOnButton.onIcon),
+      on ? findsOneWidget : findsNothing,
+    );
+    expect(
+      statusIcon(KeepScreenOnButton.offIcon),
+      on ? findsNothing : findsOneWidget,
+    );
+    expect(
+      find.byTooltip(
+        on ? 'Ne gasi ekran: uključeno' : 'Ne gasi ekran: isključeno',
+      ),
+      findsOneWidget,
+    );
+  }
 
   Future<String?> stored(TestApp app) async {
     final row = await (app.db.select(
@@ -22,23 +42,14 @@ void main() {
       recipes: [sampleRecipe('a', 'Sarma')],
     );
     expect(app.wakeLock.on, isFalse);
-    expect(
-      tester
-          .widget<IconButton>(
-            find.widgetWithIcon(
-              IconButton,
-              Icons.screen_lock_portrait_outlined,
-            ),
-          )
-          .isSelected,
-      isFalse,
-    );
+    expectStatus(on: false);
 
     await tester.tap(toggle());
     await tester.pumpAndSettle();
 
     expect(app.wakeLock.on, isTrue);
     expect(await stored(app), 'true');
+    expectStatus(on: true);
     expect(
       find.text('Ekran se neće gasiti dok je recept otvoren.'),
       findsOneWidget,
@@ -51,6 +62,7 @@ void main() {
 
     expect(app.wakeLock.on, isFalse);
     expect(await stored(app), 'false');
+    expectStatus(on: false);
     expect(find.text('Ekran se gasi kao i obično.'), findsOneWidget);
   });
 
@@ -77,14 +89,24 @@ void main() {
     );
 
     expect(app.wakeLock.on, isTrue);
-    expect(
-      tester
-          .widget<IconButton>(
-            find.widgetWithIcon(IconButton, Icons.screen_lock_portrait),
-          )
-          .isSelected,
-      isTrue,
+    expectStatus(on: true);
+  });
+
+  testTavli('smanjeno kretanje: ikonica se menja odmah', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
     );
+
+    await tester.tap(toggle());
+    await tester.pump();
+    await tester.pump();
+
+    expectStatus(on: true);
   });
 
   testTavli('širok ekran: recept pored liste takođe drži ekran', (
