@@ -53,6 +53,7 @@ update existing shopping atomically; do not defer this core until purchase UI.
 - [x] T022 [US2] Write protected/stale replace/regenerate, cooked-demand closure/stock review, servings, delete-source and snapshot-preservation tests in `test/data/meal_plan_repository_test.dart`.
 - [x] T023 [US2] Implement reviewed entry edits and protected-slot filtering in `lib/data/meal_plan_repository.dart` and `lib/features/planning/planning_providers.dart`.
 - [x] T024 [US2] Implement `lib/features/planning/plan_screen.dart`, `lib/features/planning/plan_calendar.dart` and `lib/features/planning/meal_entry_card.dart`, including readable phone/month and wide list–detail layouts.
+- [x] T024a [US1/US2] Replace a single meal in the unsaved preview ("Predloži drugo" for that slot only, or "Iz mojih recepata") in `lib/features/planning/plan_generation.dart` and `lib/features/planning/plan_preview_screen.dart`, sharing the pickers in `meal_actions.dart`; tests in `test/features/planning/plan_generation_test.dart`.
 
 ## Phase 5 — US3: quantity-safe shopping (P1)
 
@@ -139,7 +140,7 @@ update existing shopping atomically; do not defer this core until purchase UI.
 | FR-004 | T015, T016, T035, T036, T037, T049 |
 | FR-005 | T015, T016, T019, T020 |
 | FR-006 | T017, T018, T019, T020 |
-| FR-007 | T022, T023, T024 |
+| FR-007 | T022, T023, T024, T024a |
 | FR-008 | T021, T024, T043, T044 |
 | FR-009 | T007, T008, T022, T023, T040, T041 |
 | FR-010 | T011, T012, T013, T014, T027, T028 |

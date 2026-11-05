@@ -8,6 +8,7 @@ import '../../domain/meal_plan.dart';
 import '../../domain/recipe_format.dart';
 import '../recipes/ai_preview.dart';
 import '../recipes/recipe_view.dart';
+import 'meal_actions.dart';
 import 'plan_format.dart';
 import 'plan_generation.dart';
 import 'planning_providers.dart';
@@ -80,6 +81,26 @@ class PlanPreviewScreen extends ConsumerWidget {
             ),
           ),
         );
+    }
+
+    /// Zamena jednog jela pre čuvanja: AI predlog ili recept iz biblioteke.
+    Future<void> replace(MealSlot slot) async {
+      final choice = await pickReplacementSource(context);
+      if (choice == null || !context.mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      final replaced = switch (choice) {
+        ReplacementSource.ai => await controller.replaceSlot(slot),
+        ReplacementSource.library => await () async {
+          final recipe = await pickLibraryRecipe(context, ref);
+          if (recipe == null) return false;
+          controller.useRecipe(slot, recipe);
+          return true;
+        }(),
+      };
+      if (!replaced) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Jelo je zamenjeno.')));
     }
 
     final request = draft.request;
@@ -167,6 +188,11 @@ class PlanPreviewScreen extends ConsumerWidget {
                     draft: draft,
                     slot: slot,
                     previous: current[slot]?.snapshot?.title,
+                    replacing: state.replacing == slot,
+                    onReplace: state.busy
+                        ? null
+                        : () => unawaited(replace(slot)),
+                    onCancelReplace: controller.cancel,
                   ),
               ],
             const SizedBox(height: 24),
@@ -181,6 +207,7 @@ class PlanPreviewScreen extends ConsumerWidget {
               onDiscard: () => unawaited(discard()),
               onBack: isChange ? null : backToSetup,
               saveLabel: isChange ? 'Prihvati' : 'Sačuvaj plan',
+              replacing: state.replacing != null,
             ),
           ],
         ),
@@ -199,8 +226,9 @@ class PlanPreviewScreen extends ConsumerWidget {
     required VoidCallback onDiscard,
     required VoidCallback? onBack,
     required String saveLabel,
+    required bool replacing,
   }) {
-    final saving = phase == GenerationPhase.saving;
+    final saving = phase == GenerationPhase.saving || replacing;
     if (phase == GenerationPhase.generating) return const [];
     return [
       if (complete)
@@ -273,10 +301,24 @@ Future<bool> confirmDiscardPlan(BuildContext context) async =>
     false;
 
 class _SlotTile extends StatelessWidget {
-  const _SlotTile({required this.draft, required this.slot, this.previous});
+  const _SlotTile({
+    required this.draft,
+    required this.slot,
+    this.previous,
+    this.replacing = false,
+    this.onReplace,
+    this.onCancelReplace,
+  });
 
   final PlanDraft draft;
   final MealSlot slot;
+
+  /// AI upravo traži drugo jelo za ovo mesto.
+  final bool replacing;
+
+  /// "Zameni jelo"; null dok traje generisanje, čuvanje ili druga zamena.
+  final VoidCallback? onReplace;
+  final VoidCallback? onCancelReplace;
 
   /// Jelo koje predlog zamenjuje (pregled izmena).
   final String? previous;
@@ -297,6 +339,32 @@ class _SlotTile extends StatelessWidget {
         subtitle: Text('Nije planirano', style: muted),
       );
     }
+    if (replacing) {
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: label,
+        subtitle: Text('${proposal.title}\nTražim drugo jelo…', style: muted),
+        isThreeLine: true,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            TextButton(
+              onPressed: onCancelReplace,
+              child: const Text('Prekini'),
+            ),
+          ],
+        ),
+      );
+    }
+    final replace = IconButton(
+      onPressed: onReplace,
+      icon: const Icon(Icons.swap_horiz),
+      tooltip: 'Zameni jelo',
+    );
     final origin = [
       proposal.isNew ? 'Nov recept' : 'Iz mojih recepata',
       if (previous case final p?) 'umesto: $p',
@@ -309,12 +377,17 @@ class _SlotTile extends StatelessWidget {
           '${proposal.title}\n$origin · sastojci još nisu spremni',
         ),
         isThreeLine: true,
+        trailing: replace,
       );
     }
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
       title: label,
       subtitle: Text('${proposal.title}\n$origin', style: muted),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [replace, const Icon(Icons.expand_more)],
+      ),
       expandedCrossAxisAlignment: CrossAxisAlignment.start,
       childrenPadding: const EdgeInsets.only(bottom: 8),
       children: [

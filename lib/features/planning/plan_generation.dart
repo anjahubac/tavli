@@ -7,6 +7,8 @@ import '../../ai/meal_plan_ai.dart';
 import '../../data/meal_plan_repository.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/plan_calendar.dart';
+import '../../domain/recipe.dart';
+import '../../domain/shopping_source.dart';
 import '../../providers.dart';
 import '../recipes/recipe_providers.dart';
 import '../settings/ai_error_text.dart';
@@ -78,6 +80,7 @@ class PlanGenerationState {
     this.phase = GenerationPhase.idle,
     this.draft,
     this.error,
+    this.replacing,
   });
 
   final PlanSetup setup;
@@ -87,8 +90,13 @@ class PlanGenerationState {
   /// Poruka za osobu (srpski), bez tehničkih detalja.
   final String? error;
 
+  /// Mesto u nacrtu za koje AI upravo traži drugo jelo.
+  final MealSlot? replacing;
+
   bool get busy =>
-      phase == GenerationPhase.generating || phase == GenerationPhase.saving;
+      phase == GenerationPhase.generating ||
+      phase == GenerationPhase.saving ||
+      replacing != null;
 
   PlanGenerationState copyWith({
     PlanSetup? setup,
@@ -97,11 +105,14 @@ class PlanGenerationState {
     bool clearDraft = false,
     String? error,
     bool clearError = false,
+    MealSlot? replacing,
+    bool clearReplacing = false,
   }) => PlanGenerationState(
     setup: setup ?? this.setup,
     phase: phase ?? this.phase,
     draft: clearDraft ? null : (draft ?? this.draft),
     error: clearError ? null : (error ?? this.error),
+    replacing: clearReplacing ? null : (replacing ?? this.replacing),
   );
 }
 
@@ -238,8 +249,106 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
     return true;
   }
 
-  /// Prekida generisanje; gotov deo ostaje u pregledu.
+  /// Zamena jednog jela u nesačuvanom predlogu: AI predlaže drugo jelo
+  /// samo za [slot], ostala mesta ostaju kakva su. Vraća true kad je jelo
+  /// zamenjeno; pri grešci ili prekidu nacrt ostaje nepromenjen.
+  Future<bool> replaceSlot(MealSlot slot) async {
+    final draft = state.draft;
+    if (draft == null || state.busy) return false;
+    final current = draft.proposals[slot];
+    if (current == null) return false;
+    final base = draft.request;
+    final wishes = [
+      if (base.wishes case final w? when w.trim().isNotEmpty) w.trim(),
+      'Nešto drugačije od: ${current.title}',
+    ].join('. ');
+    final request = PlanRequest(
+      range: base.range,
+      mealTypes: base.mealTypes,
+      servings: base.servings,
+      usePantry: base.usePantry,
+      wishes: wishes,
+      pantryNames: base.pantryNames,
+      only: {slot},
+    );
+    // Ostala jela idu kao već planirana, da se ne ponavljaju.
+    final resume = PlanDraft(
+      request: request,
+      proposals: {
+        for (final e in draft.proposals.entries)
+          if (e.key != slot) e.key: e.value,
+      },
+      newRecipes: draft.newRecipes,
+      libraryRecipes: draft.libraryRecipes,
+    );
+    final run = ++_run;
+    final cancel = _cancel = PlanCancellation();
+    state = state.copyWith(replacing: slot, clearError: true);
+    try {
+      final library = await ref.read(recipeRepositoryProvider).getAll();
+      final result = await ref
+          .read(mealPlanAIProvider)
+          .propose(request, library: library, resume: resume, cancel: cancel);
+      if (run != _run || cancel.isCancelled) return false;
+      final next = result.proposals[slot];
+      if (next == null) {
+        state = state.copyWith(
+          clearReplacing: true,
+          error: 'Drugo jelo nije pronađeno. Pokušaj ponovo.',
+        );
+        return false;
+      }
+      state = state.copyWith(
+        clearReplacing: true,
+        draft: draft.copyWith(
+          proposals: {...draft.proposals, slot: next},
+          newRecipes: {...draft.newRecipes, ...result.newRecipes},
+          libraryRecipes: {...draft.libraryRecipes, ...result.libraryRecipes},
+        ),
+      );
+      return true;
+    } on PlanGenerationCancelled {
+      if (run == _run) state = state.copyWith(clearReplacing: true);
+      return false;
+    } on PlanGenerationFailed catch (e) {
+      if (run != _run) return false;
+      state = state.copyWith(
+        clearReplacing: true,
+        error: cancel.isCancelled ? null : aiErrorText(e.error),
+      );
+      return false;
+    }
+  }
+
+  /// Zamena jednog jela u nesačuvanom predlogu receptom iz biblioteke.
+  void useRecipe(MealSlot slot, Recipe recipe) {
+    final draft = state.draft;
+    if (draft == null || state.busy || !draft.request.slots.contains(slot)) {
+      return;
+    }
+    state = state.copyWith(
+      clearError: true,
+      draft: draft.copyWith(
+        proposals: {
+          ...draft.proposals,
+          slot: SlotProposal(title: recipe.title, libraryRecipeId: recipe.id),
+        },
+        libraryRecipes: {
+          ...draft.libraryRecipes,
+          recipe.id: RecipeSnapshot.fromRecipe(recipe),
+        },
+      ),
+    );
+  }
+
+  /// Prekida generisanje ili zamenu jela; gotov deo ostaje u pregledu.
   void cancel() {
+    if (state.replacing != null) {
+      _cancel?.cancel();
+      _run++;
+      state = state.copyWith(clearReplacing: true);
+      return;
+    }
     if (state.phase != GenerationPhase.generating) return;
     _cancel?.cancel();
     state = state.copyWith(phase: GenerationPhase.cancelled);

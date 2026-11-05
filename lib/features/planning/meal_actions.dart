@@ -47,6 +47,68 @@ Future<bool> runMealEdit(
   }
 }
 
+/// Odakle dolazi zamena jednog jela.
+enum ReplacementSource { ai, library }
+
+/// Pita da li AI predlaže drugo jelo ili osoba bira svoj recept.
+Future<ReplacementSource?> pickReplacementSource(BuildContext context) =>
+    showModalBottomSheet<ReplacementSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.auto_awesome),
+              title: const Text('Predloži drugo'),
+              subtitle: const Text('AI predlaže novo jelo za ovaj obrok'),
+              onTap: () => Navigator.pop(context, ReplacementSource.ai),
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book_outlined),
+              title: const Text('Iz mojih recepata'),
+              onTap: () => Navigator.pop(context, ReplacementSource.library),
+            ),
+          ],
+        ),
+      ),
+    );
+
+/// Izbor recepta iz biblioteke; null kad osoba odustane ili nema recepata.
+Future<Recipe?> pickLibraryRecipe(BuildContext context, WidgetRef ref) async {
+  final recipes = await ref.read(recipeRepositoryProvider).getAll();
+  if (!context.mounted) return null;
+  if (recipes.isEmpty) {
+    _say(context, 'Još nemaš sačuvanih recepata.');
+    return null;
+  }
+  return showModalBottomSheet<Recipe>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Izaberi recept')),
+            for (final r in recipes)
+              ListTile(
+                title: Text(r.title),
+                subtitle: Text(servingsLabel(r.servings)),
+                onTap: () => Navigator.pop(context, r),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// "Zameni jelo": AI predlog ili recept iz biblioteke, uvek uz pregled
 /// pre prihvatanja. Ako se plan u međuvremenu promeni, zamena se odbija.
 Future<void> replaceMeal(
@@ -55,28 +117,7 @@ Future<void> replaceMeal(
   MealPlan plan,
   PlannedMeal meal,
 ) async {
-  final choice = await showModalBottomSheet<String>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.auto_awesome),
-            title: const Text('Predloži drugo'),
-            subtitle: const Text('AI predlaže novo jelo za ovaj obrok'),
-            onTap: () => Navigator.pop(context, 'ai'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.menu_book_outlined),
-            title: const Text('Iz mojih recepata'),
-            onTap: () => Navigator.pop(context, 'library'),
-          ),
-        ],
-      ),
-    ),
-  );
+  final choice = await pickReplacementSource(context);
   if (choice == null || !context.mounted) return;
   final repo = ref.read(mealPlanRepositoryProvider);
   final base = PlanBase(
@@ -94,7 +135,7 @@ Future<void> replaceMeal(
     only: {meal.slot},
   );
   if (!context.mounted) return;
-  final draft = choice == 'ai'
+  final draft = choice == ReplacementSource.ai
       ? await _proposeOne(context, ref, request, base)
       : await _pickFromLibrary(context, ref, request, base);
   if (draft == null || !context.mounted) return;
@@ -209,36 +250,7 @@ Future<PlanDraft?> _pickFromLibrary(
   PlanRequest request,
   PlanBase base,
 ) async {
-  final recipes = await ref.read(recipeRepositoryProvider).getAll();
-  if (!context.mounted) return null;
-  if (recipes.isEmpty) {
-    _say(context, 'Još nemaš sačuvanih recepata.');
-    return null;
-  }
-  final picked = await showModalBottomSheet<Recipe>(
-    context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder: (context) => SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
-        ),
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const ListTile(title: Text('Izaberi recept')),
-            for (final r in recipes)
-              ListTile(
-                title: Text(r.title),
-                subtitle: Text(servingsLabel(r.servings)),
-                onTap: () => Navigator.pop(context, r),
-              ),
-          ],
-        ),
-      ),
-    ),
-  );
+  final picked = await pickLibraryRecipe(context, ref);
   if (picked == null) return null;
   final slot = request.slots.single;
   return PlanDraft(
