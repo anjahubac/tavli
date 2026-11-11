@@ -1,0 +1,43 @@
+# Primenjuje supabase/migrations i edge funkcije na hostovani projekat:
+# push na dev → okruženje "dev" (tavli-dev), push na main → "production".
+# Tajne (SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD)
+# žive u GitHub okruženjima, ne u repou; production traži odobrenje.
+name: deploy-supabase
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - ".github/workflows/deploy-supabase.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-supabase-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy (${{ github.ref_name == 'main' && 'production' || 'dev' }})
+    if: github.ref_name == 'dev' || github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ github.ref_name == 'main' && 'production' || 'dev' }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+      - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Pending migrations
+        run: supabase db push --dry-run
+      - run: supabase db push --yes
+      - run: supabase functions deploy delete-account --project-ref "$SUPABASE_PROJECT_REF"

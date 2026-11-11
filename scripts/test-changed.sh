@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pokreće testove na koje utiču izmenjeni fajlovi (direktno ili preko importa).
 # Bez argumenata gleda fajlove spremne za commit (git add); sa argumentom
-# poredi sa zadatom granom, npr. `scripts/test-changed.sh origin/main`.
+# poredi sa zadatom granom, npr. `scripts/test-changed.sh origin/dev`.
 # Testovi se vrte nad radnim stablom, ne samo nad onim što je u indeksu.
 set -euo pipefail
 

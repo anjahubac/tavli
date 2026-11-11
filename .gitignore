@@ -56,3 +56,6 @@ secrets.*.json
 *.env
 !.env.example
 !secrets.example.json
+
+# Per-developer Xcode signing (Team ID)
+macos/Runner/Configs/Local.xcconfig
