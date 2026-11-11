@@ -43,7 +43,8 @@ Historical specs retain their delivered acceptance criteria.
   toggle on the recipe screen, remembered in `AppSettings`.
 - **Dev process**: Spec Kit, constitution, AGENTS.md, CLAUDE.md,
   `docs/flutter-best-practices.md`, strict lints, `scripts/check.sh`, git rules
-  (branch from latest `main`, squash-merge, delete branch after merge).
+  (branch from latest `dev`, squash-merge into `dev`, release `dev` → `main`,
+  delete branch after merge).
 
 ## In review / specified
 
@@ -107,7 +108,7 @@ Historical specs retain their delivered acceptance criteria.
 
 Unspecified future features receive numbers when work starts. 008/009 retain
 their existing roadmap reservations; 010 preserves those references. Every
-new feature branch starts from current main.
+new feature branch starts from current `dev`.
 
 ## Decisions (account & household)
 

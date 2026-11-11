@@ -11,8 +11,10 @@
   `/speckit-analyze`, `/speckit-implement`, `/speckit-checklist`,
   `/speckit-constitution`). Templates and scripts are in `.specify/`.
 - Follow `docs/flutter-best-practices.md` and the guardrails in `AGENTS.md`.
-- New branches always start from the latest `main` (never stacked on another
-  branch); changes reach `main` only through a PR (git rules: best practices §17).
+- New branches always start from the latest `dev` (never stacked on another
+  branch) and their PRs target `dev`; `main` is production and only receives
+  the release PR from `dev` or a `hotfix/…` (git rules: best practices §17,
+  environments: `AGENTS.md` → Branches and environments).
 - Enable the pre-commit hook once per clone (`git config core.hooksPath .githooks`):
   it runs `scripts/check.sh` (format, analyze) and `scripts/test-changed.sh`
   (affected tests). The full `flutter test` runs in CI before merge; run

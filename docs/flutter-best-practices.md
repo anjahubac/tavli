@@ -173,17 +173,30 @@ Binding for humans and AI agents. The constitution
 
 **Branching**
 
-- Every new branch starts from the latest `main`:
-  `git fetch origin && git switch -c <branch> origin/main`.
+- `dev` is the default and integration branch (deploys to `tavli-dev`);
+  `main` is production. Every new branch starts from the latest `dev`:
+  `git fetch origin && git switch -c <branch> origin/dev`.
   Never branch from another feature branch (no stacked branches). If new work
   depends on an unmerged branch, merge that PR first (or ask the owner).
-- Branch names: `NNN-short-name` (Spec Kit feature), `chore/…`, `fix/…`, `docs/…`.
-- One branch = one topic = one PR into `main`. Keep branches short-lived.
-- Never commit directly to `main`; everything lands through a pull request.
-- Before opening or updating a PR, bring the branch up to date with `main`
-  (`git fetch origin && git rebase origin/main` on your own unshared branch,
-  otherwise `git merge origin/main`), run `scripts/check.sh` and
-  `scripts/test-changed.sh origin/main` (or the full `flutter test`).
+- Branch names (checked in CI by `branch-name`): `NNN-short-name` (Spec Kit
+  feature), or `feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `perf/…`,
+  `test/…`, `ci/…`, `spec/…`, lowercase kebab-case; `hotfix/…` only for urgent
+  production fixes.
+- One branch = one topic = one PR into `dev`. Keep branches short-lived.
+- Never commit directly to `dev` or `main`; everything lands through a pull request.
+- Before opening or updating a PR, bring the branch up to date with `dev`
+  (`git fetch origin && git rebase origin/dev` on your own unshared branch,
+  otherwise `git merge origin/dev`), run `scripts/check.sh` and
+  `scripts/test-changed.sh origin/dev` (or the full `flutter test`).
+
+**Releases and hotfixes**
+
+- Release: when `tavli-dev` has been tested, open a PR `dev` → `main` and merge
+  it with a **merge commit** (never squash, or `dev` and `main` drift apart).
+  Migrations then deploy to production after approval in the `production`
+  environment.
+- Hotfix: branch `hotfix/…` from `origin/main`, PR into `main` (squash), then
+  open a PR `main` → `dev` (merge commit) so the fix is not lost.
 
 **Commits**
 
@@ -197,8 +210,11 @@ Binding for humans and AI agents. The constitution
 
 **Pull requests and history**
 
-- PR title follows the commit convention; the body says what changed, why, and how it was tested.
-- Merge only with green CI (`scripts/check.sh` + full `flutter test`); resolve conflicts on the branch, not on `main`.
-- No force-push to `main`. On your own feature branch use `--force-with-lease`, and only after asking.
+- PR title follows the commit convention (checked in CI by `pr-title`); it
+  becomes the squash commit on `dev`. The body says what changed, why, and how
+  it was tested (`.github/pull_request_template.md`).
+- Work branches are **squash-merged** into `dev`.
+- Merge only with green CI (`check`, `branch-name`, `pr-title`); resolve conflicts on the branch, not on `dev` or `main`.
+- No force-push to `dev` or `main`. On your own feature branch use `--force-with-lease`, and only after asking.
 - No history rewrite of shared branches, no branch deletion, no `reset --hard` without asking.
 - Delete a branch after its PR is merged (ask first if someone else might use it).

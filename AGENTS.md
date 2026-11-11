@@ -82,10 +82,11 @@ flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
-flutter run -d macos --dart-define-from-file=secrets.json   # Supabase URL/anon key + built-in AI keys (see secrets.example.json)
+flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend + built-in AI keys (see secrets.example.json)
+flutter run -d macos --dart-define-from-file=secrets.json       # local stack (`supabase start`) or your own config
 scripts/check.sh                                            # format check + analyze (fast, no tests)
 scripts/test-changed.sh                                     # tests affected by staged changes
-scripts/test-changed.sh origin/main                         # tests affected by the whole branch
+scripts/test-changed.sh origin/dev                          # tests affected by the whole branch
 git config core.hooksPath .githooks                         # once per clone: pre-commit runs both scripts above
 
 supabase start          # local Supabase in Docker (API :55321, DB :55322, Studio :55323, mail :55324)
@@ -98,6 +99,26 @@ supabase stop
 The local stack uses ports 5532x so it does not clash with other Supabase
 projects on the same machine (default 5432x). Sign-in emails from the local
 stack land in the mail catcher (Mailpit, :55324), not in a real inbox.
+
+## Branches and environments
+
+| Branch | Backend (Supabase) | App config | Updated by |
+|---|---|---|---|
+| work branch | local stack (`supabase start`) | `secrets.json` | you |
+| `dev` (default) | `tavli-dev` | `secrets.dev.json` | squash-merged PRs; CI deploys migrations |
+| `main` | production | `secrets.prod.json` | release PR `dev` → `main` (merge commit), approval required |
+
+- PRs into `dev` and `main` must pass `check`, `branch-name` and `pr-title`
+  (`.github/workflows/check.yml`, `pr-conventions.yml`).
+- Merging into `dev` applies new migrations and edge functions to `tavli-dev`;
+  merging into `main` applies them to production after approval in the
+  `production` environment (`deploy-supabase.yml`).
+- `secrets.*.json` are gitignored and shared through a password manager.
+  Until the app has flavors, sign out before switching between dev and prod
+  config: both builds share the Keychain session and the drift cache.
+- macOS debug signing: copy `macos/Runner/Configs/Local.xcconfig.example` to
+  `Local.xcconfig` (gitignored) and set your own `DEVELOPMENT_TEAM`, so Keychain
+  "Always Allow" survives rebuilds.
 
 ## Code conventions
 
@@ -123,8 +144,8 @@ unawaited futures and context-after-await are errors).
 ## Spec Kit workflow
 
 One feature = one spec = one branch (`NNN-short-name`). **Every new branch is
-created from the latest `main`** (`git fetch origin && git switch -c NNN-name origin/main`),
-never from another feature branch; full git rules are in
+created from the latest `dev`** (`git fetch origin && git switch -c NNN-name origin/dev`),
+never from another feature branch, and its PR targets `dev`; full git rules are in
 [docs/flutter-best-practices.md §17](docs/flutter-best-practices.md).
 
 1. `/speckit-specify <what and why>` — creates `specs/NNN-name/spec.md` and the branch.
@@ -159,8 +180,13 @@ never from another feature branch; full git rules are in
 - The full `flutter test` suite runs in CI on every PR; run it locally
   (`flutter test`) before opening a PR that touches shared code.
 - Keep changes scoped to the active spec/branch; note unrelated issues instead of fixing them in passing.
-- Branch only from the latest `main`; never stack a branch on another unmerged branch.
-  Never commit directly to `main` — open a PR from the branch.
+- Branch only from the latest `dev`; never stack a branch on another unmerged branch.
+  Never commit directly to `dev` or `main` — open a PR into `dev`. Only the
+  release PR (`dev` → `main`) and `hotfix/…` branches target `main`; agents
+  never open or merge those unless asked.
+- Never run migrations, `supabase db push`, `supabase link` or
+  `supabase config push` against a hosted project; hosted projects are updated
+  only by `.github/workflows/deploy-supabase.yml`.
 - Ask before destructive git operations (reset --hard, force push, branch deletion, history rewrite).
 - All new UI text in Serbian (Latin); AI only through `AIRouter`.
 

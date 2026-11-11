@@ -1,6 +1,15 @@
 <!--
 Sync Impact Report
-- Version change: 2.0.0 → 2.0.1 (PATCH: test gate split — affected tests run
+- Version change: 2.0.1 → 2.1.0 (MINOR: Development Workflow — `dev` is the
+  default/integration branch deployed to the `tavli-dev` Supabase project;
+  branches start from `dev` and PRs target `dev`; `main` is production and only
+  receives the release PR from `dev` or a `hotfix/…`; hosted Supabase projects
+  change only through `.github/workflows/deploy-supabase.yml`)
+- Dependent docs updated: AGENTS.md, CLAUDE.md, docs/flutter-best-practices.md
+  (§17), docs/roadmap.md, scripts/test-changed.sh, .github/workflows/
+- Templates requiring updates: plan-template.md, spec-template.md (branch base)
+
+Previous: 2.0.0 → 2.0.1 (PATCH: test gate split — affected tests run
   in the pre-commit hook, the full `flutter test` suite runs in CI before merge;
   `scripts/check.sh` is format + analyze only)
 - Dependent docs updated: AGENTS.md, CLAUDE.md, README.md,
@@ -171,11 +180,15 @@ operations.
 
 ## Development Workflow
 
-1. Every new branch MUST be created from the latest `main`
-   (`git fetch origin && git switch -c <branch> origin/main`) and named
-   `NNN-feature-name` (Spec Kit numbering) or `chore/…` / `fix/…` / `docs/…`.
-   Branches MUST NOT be stacked on other unmerged branches; nothing is committed
-   directly to `main` — every change lands through a pull request. Git
+1. Every new branch MUST be created from the latest `dev`
+   (`git fetch origin && git switch -c <branch> origin/dev`), named
+   `NNN-feature-name` (Spec Kit numbering) or `<type>/…` (`feat`, `fix`,
+   `chore`, `docs`, …), and its pull request MUST target `dev`. `main` is
+   production: it only receives the release pull request from `dev` (merge
+   commit) or a `hotfix/…` branch. Branches MUST NOT be stacked on other
+   unmerged branches; nothing is committed directly to `dev` or `main` — every
+   change lands through a pull request. Hosted Supabase projects (`tavli-dev`,
+   production) change only through `.github/workflows/deploy-supabase.yml`. Git
    conventions (commit messages, rebasing, force-push rules) are in
    `docs/flutter-best-practices.md` §17.
 2. `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks`
@@ -197,4 +210,4 @@ wording), and updating dependent templates and docs in the same commit. Every
 `plan.md` Constitution Check MUST evaluate principles I–IX; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 2.0.1 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-02
+**Version**: 2.1.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-11
