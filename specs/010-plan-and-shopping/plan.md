@@ -1,5 +1,10 @@
 # Implementation Plan: Meal plans and linked shopping
 
+> Direction review, 2026-11-13: read the [current direction overlay](current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 **Branch**: `010-plan-and-shopping` (from latest `main`)
 **Date**: 2026-11-02
 **Spec**: [spec.md](spec.md)

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/app/theme/tavli_palette.dart';
 import 'package:tavli/app/theme/theme_controller.dart';
 import 'package:tavli/data/settings_repository.dart';

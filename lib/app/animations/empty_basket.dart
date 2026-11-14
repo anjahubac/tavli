@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Miran, kontekstualni prikaz prazne nabavke.
 class EmptyBasket extends StatelessWidget {

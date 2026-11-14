@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/features/account/sync_banner.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/sync_engine.dart';
