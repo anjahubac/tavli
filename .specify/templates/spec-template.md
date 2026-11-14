@@ -1,131 +1,71 @@
 # Feature Specification: [FEATURE NAME]
 
-**Feature Branch**: `[###-feature-name]` (created from latest `dev`)
+**Spec ID**: [NNN-name] | **Status**: Draft / Ready / In progress / Accepted
+**Date**: [YYYY-MM-DD] | **Baseline**: [dev commit]
+**Owner**: [developer] | **Reviewer**: [different human]
+**Branch**: [NNN-name or scoped slice, from latest origin/dev; PR to dev]
+**Source**: [product-plan key, Trello card, requirement/decision]
 
-**Created**: [DATE]
+Write English engineering prose; quote exact new Serbian Latin UI copy.
+Read the current constitution, architecture, product plan and relevant contracts.
+Separate existing behavior, proposed changes and unresolved decisions. Do not
+rewrite a completed feature's acceptance history. Reserve the spec number first.
 
-**Status**: Draft
+## Problem and scope
 
-**Input**: User description: "$ARGUMENTS"
+[User problem, current evidence/paths, outcome, in scope and explicit exclusions.]
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing
 
-<!--
-  IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
-  Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
-  you should still have a viable MVP (Minimum Viable Product) that delivers value.
+### User Story 1 — [visible outcome] (Priority: P1)
 
-  Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
-  Think of each story as a standalone slice of functionality that can be:
-  - Developed independently
-  - Tested independently
-  - Deployed independently
-  - Demonstrated to users independently
--->
+[As a user, context, action and useful result.]
+**Independent test**: [observable behavior, without unrelated new features]
 
-### User Story 1 - [Brief Title] (Priority: P1)
-
-[Describe this user journey in plain language]
-
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-2. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
-
-### User Story 2 - [Brief Title] (Priority: P2)
-
-[Describe this user journey in plain language]
-
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
-
-### User Story 3 - [Brief Title] (Priority: P3)
-
-[Describe this user journey in plain language]
-
-**Why this priority**: [Explain the value and why it has this priority level]
-
-**Independent Test**: [Describe how this can be tested independently]
-
-**Acceptance Scenarios**:
-
-1. **Given** [initial state], **When** [action], **Then** [expected outcome]
-
----
-
-[Add more user stories as needed, each with an assigned priority]
+1. **Given** [state], **When** [action], **Then** [result].
+2. **Given** [offline/failure/empty state], **When** [action], **Then** [recovery].
 
 ### Edge Cases
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right edge cases.
--->
+[Repeat action, cancellation, empty/invalid input, restart, account switch,
+concurrent update, undo, membership change where relevant.]
 
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
-
-## Requirements *(mandatory)*
-
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right functional requirements.
--->
+## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]
-- **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
-- **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
-- **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-001**: [Actor MUST achieve an observable behavior, with bounds.]
+- **FR-002**: [Data ownership, validation and failure behavior.]
 
-*Example of marking unclear requirements:*
+### Data and privacy
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+[Entities, household/person/device-only classification, durable versus cache,
+retention/deletion, offline/replay/undo rules. No schema implementation here.]
 
-### Key Entities *(include if feature involves data)*
+### UI copy and usability
 
-- **[Entity 1]**: [What it represents, key attributes without implementation]
-- **[Entity 2]**: [What it represents, relationships to other entities]
+| Context | Exact Serbian Latin copy | Interaction / accessible alternative |
+| --- | --- | --- |
+| [state] | [copy] | [action and semantic label] |
 
-## Success Criteria *(mandatory)*
+[Phone/wide, 2× text, keyboard/focus, reduced motion, loading/error/undo criteria.]
 
-<!--
-  ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
--->
+## Success Criteria
 
-### Measurable Outcomes
+- **SC-001**: [Measurable acceptance outcome and how to observe it.]
 
-- **SC-001**: [Measurable metric, e.g., "Users can complete account creation in under 2 minutes"]
-- **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
-- **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
-- **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+## Dependencies and open decisions
 
-## Assumptions
+[Producer/consumer, contract version, blocking decision with owner and resolution.
+Unresolved privacy, destructive migration or product contradictions block Ready.]
 
-<!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right assumptions based on reasonable defaults
-  chosen when the feature description did not specify certain details.
--->
+## Acceptance evidence
 
-- [Assumption about target users, e.g., "Users have stable internet connectivity"]
-- [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
-- [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
-- [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+[Task/requirement → test or manual evidence → reviewer → merged PR.
+Leave incomplete checks open; do not infer shipped status from implementation.]
+
+## Security and abuse cases
+
+[Assets, trust boundaries, least privilege, sensitive storage, unsafe file/AI
+input, rate limits and recovery. Link 012 controls and define negative acceptance
+cases. State N/A with reason; a UI check is not server authorization.]

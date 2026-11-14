@@ -1,5 +1,10 @@
 # Tasks: Meal plans and linked shopping
 
+> Direction review, 2026-11-13: read the [current direction overlay](current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 **Input**: [spec](spec.md), [plan](plan.md), [research](research.md),
 [data model](data-model.md), [contracts](contracts/app-interfaces.md),
 [UX gates](contracts/ux.md).
@@ -177,4 +182,5 @@ update existing shopping atomically; do not defer this core until purchase UI.
 
 Operational setup/foundation T001/T004–T014 and release T047–T051 support
 multiple stories and constitution gates; they are intentionally not marked as
-separate product user stories. All implementation checkboxes remain open.
+separate product user stories. Existing checked and unchecked items retain their
+recorded status; remaining acceptance needs fresh evidence under the direction overlay.

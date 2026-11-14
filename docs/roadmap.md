@@ -1,147 +1,72 @@
 # Tavli roadmap
 
-Each phase below becomes one or more Spec Kit features (`specs/NNN-name/`).
-Spec numbers are assigned when a feature is specified, in the order it is started.
+Updated 2026-11-13. Baseline: `main` `1eca2c3`; `dev` `207c94c`.
+See [product plan](product-plan.md), [architecture](architecture.md) and
+[Spec Kit index](../specs/README.md). This replaces old expiry/Cloudflare/four-tab
+future directions; completed acceptance history remains intact.
 
-Last updated: 2026-11-02.
+## Current code
 
-## Product direction (2026-11-02)
+001–004 provide shell, AI/keys and recipe workflows. 005 themes/animations,
+006 account/server/offline sync and 007 keep-screen-on are in the baseline.
+010 has implementation for plan generation/review/calendar and plan/recipe
+shopping, including snapshots, source contributions and supply allocation.
+Its full UX/pantry/preferences/cooking acceptance is unfinished.
 
-Tavli centers on **weekly/monthly meal plans and their shopping**. Target
-navigation is **Plan, Nabavka, Recepti, Ostava**, with profile/settings behind
-the avatar. "Danas" is inside Plan. See [product design](product-design.md)
-and [010](../specs/010-plan-and-shopping/spec.md).
+Current navigation has four tabs (Plan, Nabavka, Recepti, Ostava); profile is
+behind the avatar. Home is not implemented; pantry has repository/receipt
+support but placeholder UI. drift is version 5. Catalog, member invitations,
+tracker, prices, voice, cookbooks and Windows are not implemented here.
+This is code evidence, not a declaration of production QA or successful tests.
 
-Standalone recipe → ingredient review → shopping is also a first-class path,
-with no plan required. Generate → review/replace/lock → save → confirm pantry → shop by week → cook
-→ rate. This is the target, not a claim that the screens are implemented.
-Historical specs retain their delivered acceptance criteria.
+## Next deliveries
 
-## Done (on `main`)
+1. Foundation: active defects, contracts, strict AI/schema, Edge gateway spike,
+   calendar dates, kitchen units, shared-file refactor, meal tags/snacks/rules,
+   current-design UI standards and Home navigation.
+2. Catalog: identity/aliases/conversions, reviewed seed/matcher/backfill,
+   unresolved UI and nutrition provenance. Household invites/roles (008),
+   preferences and Home/cooking can proceed against approved contracts.
+3. Catalog consumers: shopping/pantry, nutrition per portion, allergies/favorites,
+   plan inputs and realtime invalidation (009), preserving the existing ledger.
+4. Extensions: prices/QR spike, cookbook RAG, personal tracker, voice, Windows,
+   calorie strip and store-ready website links. Split large work and review
+   remaining effort by person/phase; counts are not capacity estimates.
+5. Cycle: opt-in device-only data, approved hints and local indicator.
+6. Nutritionist import: reviewed image/text then PDF/alternatives/repeats;
+   preserve grams, original wording and locked meals.
 
-- **Phase 0 — project setup**: Flutter project for Android, iOS, macOS.
-- **Phase 1 — foundation** (`specs/001-foundation-ai-router`): app shell with
-  responsive tabs/rail, drift schema for all planned data, AI layer
-  (OpenAI-compatible client, vision/text fallback chains, persisted cooldowns),
-  `RecipeAI` (photo, dish name, refine), recipe domain model.
-- **AI keys screen**: enter/check/delete Gemini, Groq, OpenRouter keys
-  (Keychain/Keystore), compare chain models with the provider's model list,
-  chain test that generates a sample recipe and shows the attempt log.
-- **Built-in Tavli AI keys** (`specs/002-builtin-ai-keys`): local gitignored
-  `secrets.json` via `--dart-define-from-file`; own key first, built-in second
-  per model; cooldowns per key. Cloudflare proxy remains a later phase.
-- **Phase 2 — recipe screens** (`specs/003-recipe-screens`): recipe list with
-  search and detail (list–detail on wide windows); add from a photo, a dish
-  name or manually with a preview before saving; AI chat edits with version
-  history, undo and restore; delete.
-- **AI keys list** (`specs/004-ai-keys-list`): one generic "API ključ" field
-  (service detected from the key), any number of keys per service, list of
-  added keys with check/delete; keys used in order with per-key cooldowns.
-- **Hide built-in keys** (PR #4): the keys page never shows built-in keys;
-  "Probaj AI" removed from the keys page.
-- **Keep screen on while cooking** (`specs/007-keep-screen-on`): "Ne gasi ekran"
-  toggle on the recipe screen, remembered in `AppSettings`.
-- **Dev process**: Spec Kit, constitution, AGENTS.md, CLAUDE.md,
-  `docs/flutter-best-practices.md`, strict lints, `scripts/check.sh`, git rules
-  (branch from latest `dev`, squash-merge into `dev`, release `dev` → `main`,
-  delete branch after merge).
+Separate UI package construction waits for team agreement. Apple/Google sign-in,
+recipe media separation and store release are separate features; existing email
+code and original-photo behavior remain usable meanwhile.
 
-## In review / specified
+## Evidence and team setup
 
-- **005 Themes & animations**: implemented and pushed on 005-themes-animations,
-  awaiting merge/review. Light/dark palettes, appearance, animations and the
-  add-only-the-difference demo; startup fixes preserve already-upgraded caches.
-  The recipe-name-only demo is not a complete plan quantity ledger.
-- **010 Plan & shopping**: specification, plan and tasks prepared; **not
-  implemented**. Documentation starts from latest main; app implementation
-  waits for 005 to land through main, without stacking feature branches.
-- **006a account/server storage** and **007 keep screen on** are already on
-  main. Preserve them as dependencies rather than listing them as unfinished.
+The [87-ticket register](../specs/011-team-development/contracts/delivery-backlog.md)
+records source order/phase/owner and links into feature preparation. It does not
+mark source tasks finished. Statuses are Proposed, Clarification needed, Ready,
+In progress, In review, Integrated and Released, with blockers recorded separately.
 
-## Next — implementation order
+Before parallel work: agree producer contracts, reserve spec numbers, verify
+reviewer GitHub identities and protect dev/main where the account plan supports
+it. Local SQL/Edge automation, macOS smoke and future Windows CI are dedicated
+infrastructure tasks; this documentation does not silently enable those jobs.
+No deployment, credential change or Trello reassignment is part of this revision.
 
-1. **010 Plan & shopping**: next product priority on the existing personal
-   household. Deliver tested slices:
-   - Plan-first shell/prototype, four tabs, profile avatar, phone/wide layouts.
-   - Weekly and calendar-month AI plans; breakfast/lunch/dinner selection,
-     editable servings, personal preferences and optional confirmed pantry.
-     Preview before saving; progress and resumable in-session partial drafts.
-   - Calendar review, replacement, locked/cooked flags, protection of past meals,
-     approved recipe snapshots and today's cooking inside Plan.
-   - Shopping per entry and per calendar week, including six-week months;
-     whole-month views aggregate the same underlying weekly rows. Compatible
-     units sum, repeated recipes count per occurrence, only the difference is
-     reconciled, bought/manual rows remain.
-   - Standalone saved/searched/imported/generated recipe shopping without a
-     plan or forced library save; stable preparation identity distinguishes
-     repeated adds from an explicit later preparation.
-   - Pantry CRUD/expiry/search, supply allocated once, idempotent purchase-to-
-     pantry transfer, personal preferences and optional ratings.
-   - Add a saved recipe to Plan; readable cooking steps and existing wake lock.
-     Saved planning/shopping/pantry remain offline-capable and account-synced.
-   See [spec](../specs/010-plan-and-shopping/spec.md),
-   [plan](../specs/010-plan-and-shopping/plan.md),
-   [tasks](../specs/010-plan-and-shopping/tasks.md). Monthly planning and weekly
-   shopping are release requirements, not an unspecified follow-up.
-2. **008 Household invites & roles** (number retained): invite by link, code
-   or QR (7-day expiry/revocation), join confirmation, Vlasnik/Član,
-   leave/remove/transfer ownership. Share plans, recipes, shopping and pantry;
-   keep taste profiles, ratings, AI keys and themes personal. Solo planning
-   does not wait for invitations.
-3. **009 Realtime sharing** (number retained): household change notifications
-   and simultaneous-edit conflict handling. Until then retain 006a record-level
-   last-write-wins/delete-wins behavior; do not claim realtime or conflict-free
-   multi-user stock allocation.
-4. **Recipe media refinement**: distinct original recipe documents and actual
-   dish photos, classification of old photos, storage/sync/version cleanup.
-   010 must not present an unclassified scan as a confirmed dish photograph.
-5. **Planning refinements**: household-level servings default (not in today's
-   Account schema), richer taste/favorite feedback and pantry suggestions.
-   Basic plan servings, preferences, ratings and expiry are already in 010.
-6. **006b Apple/Google sign-in** after the Apple Developer account; email code
-   sign-in remains available during planning development.
-7. **AI models screen**: persisted ordering/enabling of fallback-chain models.
-8. **Cloudflare key proxy**: account-verified requests, provider keys in Worker,
-   per-user limits; remove build-time provider keys from the app.
-9. **Store release**: privacy/terms/domain, declarations/manifests, deletion
-   page, review account, export, crash reporting and optional notifications.
+## Security track (012)
 
-Unspecified future features receive numbers when work starts. 008/009 retain
-their existing roadmap reservations; 010 preserves those references. Every
-new feature branch starts from current `dev`.
+Additional cross-cutting work requested after the source plan: see
+[security assessment](development/security.md) and
+[012 tasks](../specs/012-security-baseline/tasks.md). Fix high-priority file/error
+boundaries, complete gateway key cutover and gate backend deployment on local
+security evidence before affected release. Isolation/storage, auth/deletion and
+future household/RAG/privacy tests accompany their feature slices. These are
+open tasks, not completed hardening or changes to the 87 imported cards.
 
-## Decisions (account & household)
+## Specifications prepared — 2026-11-14
 
-Proposal: <https://claude.ai/artifact/A9M8mfChMncTQW43DRVV6d>
-Full plan with flows: <https://claude.ai/artifact/KLvzjyHrPn6HWjnDwFvF5z>
-
-Decided (2026-10-30):
-
-- Backend: Supabase (Auth, Postgres with RLS, Storage), EU region. Local
-  development with `supabase start` in this repo (ports 5532x).
-- Account mandatory; all user data on the server, drift as offline cache with an
-  outbox; sign-out keeps data; deletion only by the user (item or account).
-- Sign-in methods: email code (006a), Apple + Google (006b).
-- One household per user in the first version (schema allows more).
-- AI keys stay on the device on sign-out, deleted on account deletion.
-
-Still open:
-
-- Recipes shared by default with a "private" option (008).
-- Whether members (not only the owner) can invite (008).
-- App domain (for invite links, sign-in emails and the privacy policy).
-
-Prerequisites: Supabase account and EU project (006a), app domain and a custom
-email sender (before release), Apple Developer account (006b).
-
-## Planning decisions (2026-11-02)
-
-- Plan and shopping are the primary value; today's cooking is inside the plan.
-- Repeated recipes count per occurrence and servings. Approved snapshots keep
-  later library edits from silently changing plan quantities.
-- Monday–Sunday periods are clipped to a calendar month; six are supported.
-- Bought stock and its pantry receipt are the same supply. Never credit them
-  twice or independently reuse one pantry quantity in every week.
-- Planning uses the creator's private profile and explicit plan requirements,
-  without reading or sharing other members' private taste data.
-- This documentation revision implements no UI, AI calls or schema changes.
+All 87 source cards now map to focused requirements and implementation tasks in
+[the source mapping](development/source-task-map.md). The [spec index](../specs/README.md)
+allocates 001–033. Testing 013 and release/operations 033 add shared delivery work;
+new runtime specs remain drafts where product, source or platform decisions are
+open. No features are marked complete by this preparation.

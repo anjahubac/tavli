@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../app/animations/egg_timer.dart';

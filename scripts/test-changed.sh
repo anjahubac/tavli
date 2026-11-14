@@ -19,15 +19,15 @@ if [[ -z "$changed" ]]; then
 fi
 
 # shellcheck disable=SC2086 # putanje u repou nemaju razmake
-tests=$(dart run scripts/affected_tests.dart $changed)
+tests=$(scripts/with-sdk-env.sh dart run scripts/affected_tests.dart $changed)
 
 if [[ "$tests" == "ALL" ]]; then
   echo "==> flutter test (svi testovi: izmena važi za ceo projekat)"
-  flutter test
+  scripts/with-sdk-env.sh flutter test
 elif [[ -z "$tests" ]]; then
   echo "==> flutter test: izmene ne utiču ni na jedan test"
 else
   echo "==> flutter test ($(wc -l <<<"$tests" | tr -d ' ') fajlova)"
   # shellcheck disable=SC2086
-  flutter test $tests
+  scripts/with-sdk-env.sh flutter test $tests
 fi

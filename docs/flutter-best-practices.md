@@ -8,9 +8,11 @@ Binding for humans and AI agents. The constitution
 
 - **Feature-first folders**: `lib/features/<feature>/` holds that feature's
   screens, widgets and feature-level providers. Shared layers stay in
-  `lib/ai/`, `lib/data/`, `lib/domain/`, `lib/app/`.
-- **Layers**: UI → providers (Riverpod) → domain / services (`RecipeAI`,
-  `AIRouter`) → data (drift, secure storage, HTTP). Dependencies point inward only.
+  `lib/ai/`, `lib/data/`, `lib/domain/`, `lib/app/`, `lib/account/`, `lib/sync/`.
+- **Layers**: UI → providers (Riverpod) → repositories/services, with pure domain
+  models. Repositories use drift and SyncedWriter; sync/account adapters wrap
+  Supabase. AI facades use AIRouter and ChatClient. See architecture.md for the
+  actual dependency map; do not introduce a new layer hierarchy for team roles.
 - **No business logic in widgets.** Widgets render state and forward intents.
   Parsing, calculations, AI calls and DB writes live in domain/services and are unit-tested.
 - **Domain is pure Dart**: no `package:flutter` imports in `lib/domain/`.
@@ -44,7 +46,8 @@ Binding for humans and AI agents. The constitution
 - Never swallow exceptions: no empty `catch`, no `catch (e)` without `on`.
   Catch what you can handle; let the rest surface.
 - Every user-facing error is a short **Serbian** message (`aiErrorText` pattern).
-  Technical detail goes to debug logs, never to the user verbatim.
+  Only sanitized diagnostic categories may go to debug logs; never raw
+  exceptions, provider payloads or personal data.
 
 ## 5. Async
 
@@ -71,7 +74,7 @@ Binding for humans and AI agents. The constitution
 - Icon-only buttons need `tooltip` (also used as the semantic label); custom
   visuals get `Semantics(label: ...)` in Serbian.
 - Layouts must survive text scale 2.0 (no fixed-height text containers; test with `textScaler`).
-- Use theme colors (`ColorScheme`) only; they keep contrast in light and dark mode.
+- Use `ColorScheme` and existing `TavliColors`/`TavliStatusColors` tokens; they keep contrast in light and dark mode.
 
 ## 8. Responsive / adaptive layout
 
@@ -91,13 +94,18 @@ Binding for humans and AI agents. The constitution
 
 - Every schema change: bump `schemaVersion`, add a step in `MigrationStrategy.onUpgrade`,
   regenerate with `dart run build_runner build --delete-conflicting-outputs`,
-  and add a test that opens the DB and exercises the changed table.
+  and test both fresh creation and upgrades from supported cache versions,
+  including pending outbox rows and account scoping. Coordinate the next version
+  with Dev 1 after preceding schema PRs merge.
 - Never edit `*.g.dart` by hand. Commit generated files with the source change.
 - Lists in rows are JSON text only when always read with the parent row.
 - drift is the offline cache of server data (constitution II): user-data rows
   carry a client-generated UUID, owner (`householdId` or `userId`), `updatedAt`
-  and a soft-delete flag; each write also inserts an outbox entry in the same
-  transaction. Cached rows are scoped to the signed-in account.
+  and deletion semantics defined by the entity registry. Local deletes use the
+  existing outbox/tombstone mechanism; do not assume every local table has a
+  soft-delete flag. Row mutations and their outbox entries share a transaction.
+  Cached rows are scoped to the signed-in account. Device-only exceptions follow
+  constitution II; do not sync keys, device settings or future raw cycle data.
 
 ## 10a. Backend (Supabase)
 
@@ -129,7 +137,7 @@ Binding for humans and AI agents. The constitution
   `secrets.example.json` holds empty values only. The service-role key never
   enters the app or the repo.
 - Never log request headers, full request bodies, keys, or personal data
-  (recipes and pantry are personal data — log ids, not content).
+  (including recipes, pantry, health data and identifying record/account IDs).
 - Don't display keys after saving (obscured fields, no "show saved key").
 
 ## 13. Testing
@@ -167,14 +175,15 @@ Binding for humans and AI agents. The constitution
 ## 16. Logging
 
 - Use `debugPrint`/`dart:developer` `log` behind `kDebugMode`; `print` is an error.
-- Log events and ids, never secrets or personal content.
+- Log non-identifying event/error categories only, never secrets, user-linked IDs
+  or personal content. Production telemetry needs an explicit privacy decision.
 
 ## 17. Git and commits
 
 **Branching**
 
-- `dev` is the default and integration branch (deploys to `tavli-dev`);
-  `main` is production. Every new branch starts from the latest `dev`:
+- `dev` is the integration branch (deploys to `tavli-dev`);
+  `main` is production. Every normal work branch starts from the latest `dev`:
   `git fetch origin && git switch -c <branch> origin/dev`.
   Never branch from another feature branch (no stacked branches). If new work
   depends on an unmerged branch, merge that PR first (or ask the owner).
@@ -185,8 +194,8 @@ Binding for humans and AI agents. The constitution
 - One branch = one topic = one PR into `dev`. Keep branches short-lived.
 - Never commit directly to `dev` or `main`; everything lands through a pull request.
 - Before opening or updating a PR, bring the branch up to date with `dev`
-  (`git fetch origin && git rebase origin/dev` on your own unshared branch,
-  otherwise `git merge origin/dev`), run `scripts/check.sh` and
+  (prefer `git fetch origin` then `git merge origin/dev`; ask before rebasing
+  or any history rewrite, including on your own branch), run `scripts/check.sh` and
   `scripts/test-changed.sh origin/dev` (or the full `flutter test`).
 
 **Releases and hotfixes**
@@ -217,4 +226,47 @@ Binding for humans and AI agents. The constitution
 - Merge only with green CI (`check`, `branch-name`, `pr-title`); resolve conflicts on the branch, not on `dev` or `main`.
 - No force-push to `dev` or `main`. On your own feature branch use `--force-with-lease`, and only after asking.
 - No history rewrite of shared branches, no branch deletion, no `reset --hard` without asking.
-- Delete a branch after its PR is merged (ask first if someone else might use it).
+- Ask before deleting a branch, including after merge.
+
+## 18. Shared contracts and current architecture
+
+Follow [team workflow](development/team-workflow.md),
+[AI development](development/ai-development.md),
+[UI standards](development/ui-standard.md) and
+[quality gates](development/quality-gates.md). New/revised engineering docs use
+English; preserve Serbian Latin UI copy and surrounding code-comment conventions.
+
+- Use existing CivilDate for calendar days; use UTC instants for event timestamps.
+  Do not infer a selected meal date from UTC conversion. Test time-zone boundaries.
+- Shopping contributions and explicit purchase receipts are separate from source
+  recipe requirements. Test repeated add, changed servings, two recipes sharing
+  an ingredient, purchase/undo and offline replay before changing aggregation.
+- Keep original ingredient text while introducing food IDs/units in future work.
+  Unknown pantry quantity is not zero or an unlimited confirmed supply.
+- Domain/AI parsing/router/error changes are test-first, not optional. New AI
+  contracts validate types and semantics; use bounded repair and fake transports.
+- Built-in AI keys currently come from build configuration. The future gateway
+  moves them server-side; BYOK stays secure on device. A doc is not a deployment.
+- Human review is required across ownership boundaries. Reserve schema versions,
+  name exact shared paths, and merge producer contracts before consumer branches.
+- Coverage targets are goals, not currently enforced CI thresholds. New SQL,
+  platform and hosted ruleset checks require explicit infrastructure work/evidence.
+
+## 19. Security boundaries
+
+Follow [security baseline](development/security.md). Treat server/AI/document
+input as untrusted: validate filesystem leaf names and root containment, bound
+decoding, map failures to safe categories, never interpolate raw errors in UI.
+Test RLS/grants/RPC/object access with allowed and denied local cases. No shared
+provider secrets in new client features; gateway cutover and safe diagnostics
+are tracked in spec 012. Keep authentication, data and release checks independent
+of whether the client followed the intended UI. Known current gaps require
+runtime fixes; documentation is not their remediation.
+
+Testing-lane clarification (013): normal Flutter unit/widget tests use fakes and
+no network. A separately invoked endpoint-guarded integration runner may use only
+ephemeral local Supabase with synthetic accounts and fake AI. This exception is
+not permission to read secrets files, probe hosted services or weaken default
+checks. See `specs/013-testing-strategy/` and `docs/development/testing.md`.
+Release 033 coordinates artifacts and recovery; 012 owns security gates, 013
+owns their execution infrastructure. Implement shared CI work once and link evidence.

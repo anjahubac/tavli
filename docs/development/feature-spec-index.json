@@ -1,0 +1,194 @@
+{
+  "created": "2026-11-14",
+  "features": [
+    {
+      "key": "HOUSEHOLD",
+      "spec": "specs/008-household-members/spec.md",
+      "lead": "Dev 3",
+      "dependencies": []
+    },
+    {
+      "key": "REALTIME",
+      "spec": "specs/009-household-realtime/spec.md",
+      "lead": "Dev 3",
+      "dependencies": [
+        8
+      ]
+    },
+    {
+      "key": "AI-SCHEMA",
+      "spec": "specs/014-ai-response-contracts/spec.md",
+      "lead": "Dev 2",
+      "dependencies": [
+        13
+      ]
+    },
+    {
+      "key": "AI-GATEWAY",
+      "spec": "specs/015-ai-server-gateway/spec.md",
+      "lead": "Dev 2",
+      "dependencies": [
+        12,
+        14
+      ]
+    },
+    {
+      "key": "DATES",
+      "spec": "specs/016-calendar-date-storage/spec.md",
+      "lead": "Dev 1",
+      "dependencies": [
+        13
+      ]
+    },
+    {
+      "key": "UNITS",
+      "spec": "specs/017-kitchen-unit-conversion/spec.md",
+      "lead": "Dev 1",
+      "dependencies": [
+        13
+      ]
+    },
+    {
+      "key": "CATALOG",
+      "spec": "specs/018-ingredient-catalog/spec.md",
+      "lead": "Dev 1",
+      "dependencies": [
+        17
+      ]
+    },
+    {
+      "key": "MEAL-RULES",
+      "spec": "specs/019-meal-selection-rules/spec.md",
+      "lead": "Dev 2",
+      "dependencies": [
+        8,
+        14
+      ]
+    },
+    {
+      "key": "SHOPPING-FOODS",
+      "spec": "specs/020-catalog-shopping/spec.md",
+      "lead": "Dev 1",
+      "dependencies": [
+        17,
+        18
+      ]
+    },
+    {
+      "key": "EVERYDAY-UX",
+      "spec": "specs/021-home-and-cooking/spec.md",
+      "lead": "Dev 4",
+      "dependencies": []
+    },
+    {
+      "key": "PANTRY",
+      "spec": "specs/022-simple-pantry/spec.md",
+      "lead": "Dev 4",
+      "dependencies": [
+        18,
+        20,
+        21
+      ]
+    },
+    {
+      "key": "NUTRITION",
+      "spec": "specs/023-optional-nutrition/spec.md",
+      "lead": "Dev 3",
+      "dependencies": [
+        8,
+        18,
+        21
+      ]
+    },
+    {
+      "key": "PRICES",
+      "spec": "specs/024-store-prices/spec.md",
+      "lead": "Dev 1",
+      "dependencies": [
+        18,
+        20
+      ]
+    },
+    {
+      "key": "RECEIPT-QR",
+      "spec": "specs/025-receipt-qr-spike/spec.md",
+      "lead": "Dev 1",
+      "dependencies": [
+        18
+      ]
+    },
+    {
+      "key": "COOKBOOKS",
+      "spec": "specs/026-cookbook-library/spec.md",
+      "lead": "Dev 2",
+      "dependencies": [
+        15,
+        18
+      ]
+    },
+    {
+      "key": "VOICE",
+      "spec": "specs/027-voice-recipe-agent/spec.md",
+      "lead": "Dev 4",
+      "dependencies": [
+        14,
+        15,
+        18
+      ]
+    },
+    {
+      "key": "WINDOWS",
+      "spec": "specs/028-windows-support/spec.md",
+      "lead": "Dev 4",
+      "dependencies": [
+        12,
+        13
+      ]
+    },
+    {
+      "key": "CYCLE",
+      "spec": "specs/029-private-cycle-hints/spec.md",
+      "lead": "Dev 3",
+      "dependencies": [
+        8,
+        19,
+        12
+      ]
+    },
+    {
+      "key": "PLAN-IMPORT",
+      "spec": "specs/030-nutritionist-plan-import/spec.md",
+      "lead": "Dev 2",
+      "dependencies": [
+        18,
+        19,
+        23
+      ]
+    },
+    {
+      "key": "UI-PACKAGE",
+      "spec": "specs/031-external-ui-library/spec.md",
+      "lead": "Dev 4",
+      "dependencies": [
+        21
+      ]
+    },
+    {
+      "key": "WEBSITE",
+      "spec": "specs/032-website-downloads/spec.md",
+      "lead": "Dev 4",
+      "dependencies": [
+        28
+      ]
+    },
+    {
+      "key": "TEAM-SETUP",
+      "spec": "specs/033-release-operations/spec.md",
+      "lead": "Dev 3",
+      "dependencies": [
+        12,
+        13
+      ]
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # Future implementation validation guide
 
+> Direction review, 2026-11-13: read the [current direction overlay](current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 **Status:** run after the tasks are implemented. This documentation revision does
 not create the listed screens/test files or claim checks have already passed.
 
