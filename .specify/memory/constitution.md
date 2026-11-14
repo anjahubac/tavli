@@ -1,41 +1,16 @@
 <!--
-Sync Impact Report
-- Version change: 2.0.1 → 2.1.0 (MINOR: Development Workflow — `dev` is the
-  default/integration branch deployed to the `tavli-dev` Supabase project;
-  branches start from `dev` and PRs target `dev`; `main` is production and only
-  receives the release PR from `dev` or a `hotfix/…`; hosted Supabase projects
-  change only through `.github/workflows/deploy-supabase.yml`)
-- Dependent docs updated: AGENTS.md, CLAUDE.md, docs/flutter-best-practices.md
-  (§17), docs/roadmap.md, scripts/test-changed.sh, .github/workflows/
-- Templates requiring updates: plan-template.md, spec-template.md (branch base)
-
-Previous: 2.0.0 → 2.0.1 (PATCH: test gate split — affected tests run
-  in the pre-commit hook, the full `flutter test` suite runs in CI before merge;
-  `scripts/check.sh` is format + analyze only)
-- Dependent docs updated: AGENTS.md, CLAUDE.md, README.md,
-  docs/flutter-best-practices.md (§13, §17), .github/workflows/check.yml
-- Templates requiring updates: none
-
-Previous: 1.2.0 → 2.0.0 (MAJOR: principle II redefined — an account is
-  mandatory and the server is the durable store; backend security rules added)
-- Modified principles:
-  - II. "Offline-First Local Data" → "II. Offline-First, Account-Backed Data"
-    (sign-in required; all user data stored on Supabase under the account; drift
-    is the offline cache with an outbox; RLS on every table; explicit GRANTs;
-    tables never auto-exposed)
-  - IV. Secrets Never Committed: covers Supabase URL/anon key (secrets.json),
-    service-role key never in the app or repo, session tokens only in secure storage
-  - V. Test-First: access rules (RLS) need database tests against local Supabase;
-    Flutter tests fake the backend
-- Modified sections: Platform & Technology Constraints (Supabase backend, EU
-  region, local stack via `supabase start` on ports 5532x, migrations in
-  `supabase/migrations/`)
-- Dependent docs updated: AGENTS.md, CLAUDE.md, README.md, docs/architecture.md,
-  docs/roadmap.md, docs/flutter-best-practices.md (§10, §12, §13),
-  specs/006-account-login/spec.md, secrets.example.json, supabase/config.toml
-  (auto_expose_new_tables = false)
-- Templates requiring updates: none (plan template reads gates from this file)
-- Follow-up TODOs: none
+Sync Impact Report — 2026-11-14
+- Version: 2.1.0 → 3.0.0 (MAJOR: narrow the all-data-sync rule with explicit
+  device-only privacy exceptions; allow independently owned feature slices).
+- Added principle X: four-developer collaboration and shared contracts.
+- Clarified current client AI transport versus the planned server gateway.
+- Updated AGENTS.md, CLAUDE.md, architecture/product/development docs,
+  Spec Kit templates, PR template and local Spec Kit skill policy.
+- Historical completed specs retain their original acceptance evidence.
+- Security assessment/spec 012 adds explicit boundary and release-test requirements.
+- Spec 013 distinguishes network-free default tests from guarded local integration;
+  all roadmap specs and release/operations 033 are prepared with open gates.
+- No runtime, schema, credential, hosted settings or deployment change here.
 -->
 
 # Tavli Constitution
@@ -53,7 +28,7 @@ All user-facing text — labels, buttons, messages, errors, empty states, AI out
 shown to the user — MUST be in Serbian, Latin script (ćčđšž, never Cyrillic).
 AI prompts MUST instruct the model to answer in Serbian (Latin). Code identifiers
 are English; code comments may be Serbian (the existing codebase uses Serbian
-comments) or English. Specs and agent docs may be written in English but every
+comments) or English. New and revised engineering docs, specs and agent guidance MUST be in English; every
 spec MUST state the Serbian (Latin) copy for any new UI text it introduces.
 
 **Rationale**: the app is built for a Serbian-speaking household; mixed-language
@@ -62,16 +37,25 @@ UI is a defect, not a style choice.
 ### II. Offline-First, Account-Backed Data
 
 An account is REQUIRED to use the app: nothing except the intro and the sign-in
-flow is reachable without a signed-in session. All user data (recipes, versions,
+flow is reachable without a signed-in session. Synced business data (recipes, versions,
 photos, pantry, shopping lists, meal plans, ratings, preferences, profile) is
 stored durably on the server (Supabase, EU region) under the account — household
 data under the household, personal data under the person. The local drift
 (SQLite) database is the offline cache the UI reads from: every change is
 written locally and to an outbox in one transaction, and the outbox is uploaded
-when online; on sign-in the account's data is downloaded. The app MUST stay
-fully usable offline for everything except sign-in, account deletion and AI.
+when online; on sign-in the account's data is downloaded. Existing cached operations MUST remain usable offline. A new capability that
+requires a remote service (for example invitations or future book processing)
+MUST document its offline state, retry and recovery behavior in its spec.
 Sign-out MUST NOT delete data; data is deleted only when the user deletes it or
 deletes the account. Records use client-generated ids so retries never duplicate.
+
+Explicit device-only exceptions are credentials/session secrets in secure
+storage and device settings/cooldowns according to their existing stores. The
+planned cycle feature MUST keep raw consent/dates in secure device storage;
+it MUST NOT add those fields to drift sync, Supabase or AI requests. New
+exceptions require an explicit privacy decision, retention/deletion behavior
+and tests. Personal diary/targets, when implemented, remain private to their
+owner; household membership alone MUST NOT expose them.
 
 Server rules: every table in an exposed schema MUST have Row Level Security
 enabled with policies limiting access to the owning person or to members of the
@@ -98,6 +82,12 @@ a hard dependency on a single provider or model; model names live only in
 throws `FormatException` on schema mismatch. AI failures MUST degrade gracefully
 with a Serbian message (see `aiErrorText`), never a crash.
 
+Current code uses the client router and compatible HTTP transport. The planned
+gateway moves built-in provider credentials to a server function; BYOK stays in
+device secure storage. Preserve the router/facade boundary, bounded retries,
+structured schema/semantic validation and fakeable transport in that migration.
+Do not describe the gateway as deployed until code and operational evidence exist.
+
 **Rationale**: free tiers hit rate limits constantly and model names change; resilience is the product.
 
 ### IV. Secrets Never Committed
@@ -106,11 +96,21 @@ API keys and backend credentials MUST NEVER appear in the repository, logs, test
 fixtures, screenshots, or commit messages. User AI keys are stored in the
 platform secure store (Keychain on iOS/macOS, Keystore on Android) via
 `KeyStore`; the auth session (access/refresh tokens) is stored only in the same
-secure store. Build-time values (built-in AI keys, Supabase URL and anon key)
+secure store. Current build-time values (built-in AI keys, Supabase URL and anon key)
 come from a gitignored `secrets.json` passed with `--dart-define-from-file`;
 `secrets.example.json` holds empty values only. The Supabase service-role key
 MUST NEVER be in the app or the repository. Tests use `InMemoryKeyStore` and
 fake backends with obviously fake values.
+
+Build-time injection does not make a distributed client a safe store for a
+shared provider secret. The accepted gateway migration moves built-in provider
+keys server-side; never add new shared provider keys to client features.
+
+Security requirements in `docs/development/security.md` apply at trust boundaries:
+validate synced file paths, sanitize diagnostics, authenticate/limit endpoints
+and prove server authorization independently of client checks. Record negative
+tests and release evidence using spec 012; new rules do not imply existing gaps
+are already fixed.
 
 **Rationale**: the repo may become public; a leaked key burns a free quota or
 exposes other people's data.
@@ -120,8 +120,11 @@ exposes other people's data.
 Domain logic (`lib/domain/`), AI parsing (`fromAiJson`, prompt/JSON handling),
 router behaviour and error mapping MUST be developed test-first: write the
 failing test, then the code. AI is always faked in tests (fake `ChatClient` or
-the `fake_adapter` Dio adapter) and the backend is faked in Flutter tests —
-tests MUST NOT hit the network. Server access rules (RLS policies, grants,
+the `fake_adapter` Dio adapter). Default Flutter unit/widget tests fake the
+backend and MUST NOT hit the network. Only an explicitly invoked integration
+lane may contact a verified ephemeral local Supabase endpoint with synthetic
+accounts, fake AI and a fail-closed endpoint guard (spec 013); never hosted
+projects, real keys or production data. Server access rules (RLS policies, grants,
 storage policies) MUST have database tests run against the local Supabase stack
 (`supabase test db`) with at least two test accounts. Widgets get widget tests
 for key flows. `flutter analyze` MUST be clean and the tests affected by the
@@ -144,11 +147,16 @@ Each commit does one thing, builds, passes analyze and tests, and has a clear
 message. Generated code (`*.g.dart`) is committed together with the source
 change that caused it. No drive-by refactors mixed into feature commits.
 
-### VIII. One Feature = One Spec = One Branch
+### VIII. One Feature = One Spec; Independently Owned Branches
 
-Each feature starts with a Spec Kit spec in `specs/NNN-short-name/` on a branch
-of the same name, and follows specify → clarify → plan → tasks → analyze →
-implement. Scope changes update the spec first.
+Each feature has one canonical Spec Kit directory in `specs/NNN-short-name/`
+and follows specify → clarify → plan → tasks → analyze → implement. Scope
+changes update the spec first. A feature may be delivered as small, sequential
+or independent slices: each branch has one owner, one topic and one PR, links
+the same spec and distinct task IDs, and starts from current `origin/dev`.
+Dependent consumers wait for producer contracts to merge, rather than stacking
+branches. Reserve spec numbers centrally; isolate working trees and explicit
+Spec Kit feature context per developer/agent.
 
 ### IX. Flutter Best Practices & Agent Guardrails
 
@@ -163,9 +171,23 @@ operations.
 
 **Rationale**: AI agents write most of the code; guardrails keep quality from drifting.
 
+### X. Shared Contracts and Independent Review
+
+Every Ready task names one implementer, a different human reviewer, spec/task
+IDs, dependencies, changed paths and acceptance/test evidence. Cross-owner
+interfaces (food identity/units, planning/member inputs, shopping/pantry,
+cooked/undo, AI schemas and privacy) require a producer/consumer contract
+before implementation. Coordinate schema versions and shared-file merges under
+`docs/development/team-workflow.md`; do not split the existing app into new
+layers/packages merely to match team roles. AI review supplements human review.
+Done means accepted behavior, applicable checks and a merged PR, not generated
+code or ticket count. Track remaining effort and integration risk per phase.
+
 ## Platform & Technology Constraints
 
-- Flutter (Dart ≥ 3.13), Material 3, targets Android, iOS, macOS.
+- Flutter/Dart versions are defined in `pubspec.yaml` and the lockfile; Material 3.
+  Existing targets: Android, iOS, macOS. Windows is planned and needs platform
+  scaffolding, plugin/security validation and CI before it is supported.
 - State: Riverpod (`flutter_riverpod`); routing: `go_router` with a
   `StatefulShellRoute`; local cache: drift; HTTP: dio; keys and session:
   `flutter_secure_storage`.
@@ -180,7 +202,7 @@ operations.
 
 ## Development Workflow
 
-1. Every new branch MUST be created from the latest `dev`
+1. Every normal work branch MUST be created from the latest `dev`
    (`git fetch origin && git switch -c <branch> origin/dev`), named
    `NNN-feature-name` (Spec Kit numbering) or `<type>/…` (`feat`, `fix`,
    `chore`, `docs`, …), and its pull request MUST target `dev`. `main` is
@@ -197,8 +219,13 @@ operations.
    `dart format lib test`, then the pre-commit hook (`.githooks/pre-commit`:
    `scripts/check.sh` format check + analyze, `scripts/test-changed.sh`
    affected tests). CI runs the full test suite on every pull request.
-4. A feature is done when its tasks are checked off, acceptance scenarios pass,
-   UI text is Serbian, and it runs on macOS debug (`flutter build macos --debug`).
+4. Apply `docs/development/quality-gates.md`: runtime features need acceptance,
+   Serbian UI, relevant offline/security/UI checks and a macOS debug smoke build.
+   Documentation-only changes need document/link/register and diff checks;
+   do not claim unrun app tests. CI's full Flutter gate still applies to the PR.
+5. New/revised contracts must separate implemented behavior from targets and
+   unresolved decisions. Preserve completed specs as history; add a dated overlay
+   when future direction changes rather than rewriting old acceptance evidence.
 
 ## Governance
 
@@ -206,8 +233,8 @@ This constitution overrides other conventions in the repo. `AGENTS.md` is the
 operational guide and MUST stay consistent with it. Amendments are made by
 editing this file with a Sync Impact Report, bumping the version (MAJOR: a
 principle removed or redefined; MINOR: a principle or section added; PATCH:
-wording), and updating dependent templates and docs in the same commit. Every
-`plan.md` Constitution Check MUST evaluate principles I–IX; violations go in
+wording), and updating dependent templates and docs in the same commit. Every new or revised active
+`plan.md` Constitution Check MUST evaluate principles I–X; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 2.1.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-11
+**Version**: 3.0.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-14

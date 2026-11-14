@@ -1,5 +1,10 @@
 # UX contract and acceptance gates
 
+> Direction review, 2026-11-13: read the [current direction overlay](../current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 The owner explicitly prioritizes intuitive, easy UI/UX. These requirements apply
 to prototype and production, not only to the final visual polish.
 

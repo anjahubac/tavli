@@ -2,35 +2,39 @@
 
 # Claude Code notes
 
-- `AGENTS.md` (imported above) is the canonical guide; the constitution in
-  `.specify/memory/constitution.md` wins on conflicts.
-- The user writes in Serbian. Reply in Serbian unless asked otherwise; all app UI
-  text is Serbian (Latin script).
-- Spec Kit 0.11.2 is installed as skills in `.claude/skills/speckit-*`
-  (`/speckit-specify`, `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`,
-  `/speckit-analyze`, `/speckit-implement`, `/speckit-checklist`,
-  `/speckit-constitution`). Templates and scripts are in `.specify/`.
-- Follow `docs/flutter-best-practices.md` and the guardrails in `AGENTS.md`.
-- New branches always start from the latest `dev` (never stacked on another
-  branch) and their PRs target `dev`; `main` is production and only receives
-  the release PR from `dev` or a `hotfix/…` (git rules: best practices §17,
-  environments: `AGENTS.md` → Branches and environments).
-- Enable the pre-commit hook once per clone (`git config core.hooksPath .githooks`):
-  it runs `scripts/check.sh` (format, analyze) and `scripts/test-changed.sh`
-  (affected tests). The full `flutter test` runs in CI before merge; run
-  `dart run build_runner build --delete-conflicting-outputs` after changing drift tables.
-- Never read, print or modify API keys or backend credentials (Keychain entries
-  `api_key_*`, the auth session, `secrets.json`).
-- The app requires an account; all user data lives on Supabase (RLS on every
-  table) and drift is the offline cache with an outbox (constitution II). Local
-  backend: `supabase start` in this repo (ports 5532x).
-- Architecture and roadmap: `docs/architecture.md`, `docs/roadmap.md`.
-- Product direction: `docs/product-design.md`; weekly/monthly Plan and linked
-  Nabavka are central. 010 is specified, not implemented. Preserve old feature
-  history and treat UX usability gates as release requirements.
+AGENTS.md is the operational entry point; `.specify/memory/constitution.md`
+takes precedence. Follow `docs/development/ai-development.md` and the current
+architecture in `docs/architecture.md`. Reply to the user in Serbian unless
+asked otherwise. Write engineering documents in English; app UI copy is Serbian Latin.
+
+The installed `.claude/skills/speckit-*` workflows use `.specify/` templates and
+scripts. Set `SPECIFY_FEATURE_DIRECTORY` to the task's spec in this worktree;
+verify it before running a workflow. The tracked feature pointer is not proof
+of the active task. Feature creation does not create a Git branch here.
+Normal branches start from current `origin/dev`; PRs target `dev`.
+
+Read `docs/product-design.md`, `docs/product-plan.md` and the active spec.
+010 has existing planning/shopping implementation and incomplete acceptance;
+its `current-direction.md` records later product changes. Do not call the full
+010 feature unimplemented or complete. Historical specs retain their evidence.
+
+Use existing folders/providers; name changed files, contract owner and reviewer.
+Never read secrets, hand-edit generated files, bypass checks or treat AI output
+as trusted code/data. Use the shared quality matrix and report actual results.
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-`specs/010-plan-and-shopping/plan.md`
+Resolve the current plan from explicit `SPECIFY_FEATURE_DIRECTORY` in this
+worktree. Read that spec's `spec.md`, `plan.md`, `tasks.md` and contracts before work.
 <!-- SPECKIT END -->
+
+Security work follows `docs/development/security.md` and spec 012. Findings are
+source evidence, not proof of exploitation or completed remediation. Include
+negative authorization/input tests and never use real secrets to reproduce issues.
+
+Testing infrastructure is specified in `specs/013-testing-strategy/`; use
+`docs/development/testing.md` and the critical journey matrix. Default unit/widget
+suites are network-free; only the explicitly invoked guarded local-backend lane
+may contact ephemeral local Supabase with synthetic accounts and fake AI.
+All roadmap specs are indexed in `specs/README.md`; source tasks map through
+`docs/development/source-task-map.md`. Release/operations use spec 033. Drafts
+need their recorded decisions before dependent code; never treat them as shipped.

@@ -1,5 +1,10 @@
 # Data model: planned additions, not current schema
 
+> Direction review, 2026-11-13: read the [current direction overlay](current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 **Status:** design for future implementation. No tables/columns/migrations are
 created by this documentation change. Keep current rows/ids and applied SQL.
 

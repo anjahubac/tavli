@@ -1,5 +1,10 @@
 # App/service contracts (planned)
 
+> Direction review, 2026-11-13: read the [current direction overlay](../current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 These are future internal interfaces, not new public HTTP endpoints. Pure Dart
 models carry immutable data; widgets forward intents through Riverpod. Backend
 access stays behind repositories/remote interfaces with fake implementations.

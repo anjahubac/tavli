@@ -27,3 +27,12 @@ jobs:
       - run: flutter pub get
       - run: scripts/check.sh
       - run: flutter test
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - run: python3 scripts/check-docs.py

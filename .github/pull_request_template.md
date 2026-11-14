@@ -1,23 +1,41 @@
-## What
+## Behavior and reason
 
-<!-- Short summary of the change. -->
+<!-- Concrete problem and resulting behavior; distinguish implemented from planned. -->
 
-## Why
+## Scope and ownership
 
-<!-- Link the spec/task or issue: Closes #… / specs/NNN-name T0xx -->
+- Spec / requirement / task / Trello:
+- Implementer / independent reviewer:
+- Base: dev (release/hotfix exceptions must be explicit)
+- Shared paths / coordinator / producer-consumer contract:
+- New dependency and plan justification: none / link
 
-## How it was tested
+## Data and compatibility
 
-- [ ] `scripts/check.sh`
-- [ ] `flutter test` (or `scripts/test-changed.sh origin/dev`)
-- [ ] `supabase test db` (if `supabase/` changed)
-- [ ] Ran the app (`flutter run -d macos --dart-define-from-file=secrets.dev.json`)
+<!-- None if no data changes. Otherwise drift version/upgrade/outbox tests, SQL
+migration/RLS/grants/local two-account tests, sync registry/deletion, old clients.
+Hosted deployment is via CI only; record rollout/forward recovery. -->
 
-## Screenshots
+## Validation evidence
 
-<!-- For UI changes. -->
+<!-- State command + result or Not run + reason. Do not tick tests you did not run. -->
 
-## Notes
+| Check | Result / evidence |
+| --- | --- |
+| Document checks / diff checks | |
+| Format/analyze / affected tests | |
+| Full Flutter suite | |
+| Local SQL / migration / function tests (if applicable) | |
+| Phone / wide / 2× text / reduced motion (UI changes) | |
+| Platform smoke build (if applicable) | |
 
-- [ ] Created by an AI agent
-- [ ] New migration (deploys to `tavli-dev` on merge into `dev`)
+## Review notes
+
+<!-- Screenshots for UI, unresolved limits, external settings still needed,
+AI-generated code areas requiring verification. No secrets or personal data. -->
+
+## Security impact
+
+<!-- Relevant 012 controls / negative tests; auth, RLS, file paths, provider
+errors, secrets, quota, private data or CI permissions. N/A with a reason.
+No production probing or claim of resolved findings without evidence. -->

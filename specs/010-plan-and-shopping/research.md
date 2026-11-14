@@ -1,5 +1,10 @@
 # Research: Plan-first experience and quantity-safe shopping
 
+> Direction review, 2026-11-13: read the [current direction overlay](current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 **Date**: 2026-11-02. Repository inspection and a read-only schema review.
 No provider/production requests, new packages or credential reads were needed.
 
