@@ -34,7 +34,8 @@ standalone package types.
 Current `.github/workflows/check.yml` runs format/analyze and full Flutter tests;
 `pr-conventions.yml` checks names and PR titles; `deploy-supabase.yml` deploys
 on supported `dev`/`main` changes. The docs job added with 011 validates active
-Markdown/registry consistency. macOS, SQL/pgTAP and future Windows checks are
+Markdown/registry consistency; the separate scripts job runs every script
+regression test (`scripts/test_*.py`). macOS, SQL/pgTAP and future Windows checks are
 not silently claimed to be current CI jobs: each needs a dedicated setup task.
 
 Dev 3 records actual repository plan/ruleset availability and required checks

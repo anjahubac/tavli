@@ -35,5 +35,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - run: python3 scripts/check-docs.py
+
+  scripts:
+    name: scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      # Regression tests for every repository script (scripts/test_*.py).
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
