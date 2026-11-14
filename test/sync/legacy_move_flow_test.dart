@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart' show SnackBar;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart' show SnackBar;
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/features/account/sync_banner.dart';

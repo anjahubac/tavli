@@ -1,6 +1,6 @@
 # Tasks: four-developer standardization
 
-Scope: documentation/tooling only. These checkboxes describe this revision,
+Scope: documentation/tooling plus the owner-approved Flutter 3.50 migration. These checkboxes describe this revision,
 not completion of product features in the separate 87-task register.
 
 - [x] T001 [US1] Inventory baseline Markdown/Spec Kit and actual main/dev architecture.
@@ -25,3 +25,4 @@ remain external/future work, not hidden tasks claimed complete here.
 - [x] T012 [US2] Prepare the full roadmap spec/plan/task/checklist set and map all 87 source tickets.
 - [x] T013 [US1] Add release/operations 033 and reconcile indexes, testing lanes and shared gates.
 - [x] T014 [US3] Validate the expanded spec/mapping set, run document-tool regression tests and format/analyze checks, and prepare the authorized documentation commit; the enabled pre-commit hook rechecks the staged scope.
+- [ ] T015 [US3] Upgrade local/CI Flutter to 3.50.0, migrate Material imports and declare the dependency, preserve unrelated edits, and validate analyze/full tests/macOS debug build plus the PR workflow without suppressing diagnostics.

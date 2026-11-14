@@ -22,6 +22,15 @@ separate measured change. No real AI/provider/backend keys in tests.
 
 ## Current infrastructure versus required setup
 
+The supported Flutter toolchain is **3.50.0 stable**. Use that version locally;
+`.github/workflows/check.yml` pins the same release so a new stable release
+cannot silently change PR checks. SDK upgrades need a dedicated change with
+analyze, full tests and affected platform evidence. App and test Material widgets
+come from the explicit `material_ui` dependency, following the
+[official migration guide](https://docs.flutter.dev/release/breaking-changes/material-ui-and-cupertino-ui).
+Keep analyzer diagnostics enabled; do not mix legacy Flutter Material types with
+standalone package types.
+
 Current `.github/workflows/check.yml` runs format/analyze and full Flutter tests;
 `pr-conventions.yml` checks names and PR titles; `deploy-supabase.yml` deploys
 on supported `dev`/`main` changes. The docs job added with 011 validates active

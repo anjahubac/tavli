@@ -102,3 +102,13 @@ to be committed together. Prepare 008/009 and 013–033, preserve all original s
 roles/phases, and map every source ticket to an existing requirement/test/implementation
 task. Document independent decisions instead of pretending every feature is Ready.
 Validation now covers all active specs, source mappings and dependency cycles.
+
+## Scope addition — Flutter 3.50 upgrade, 2026-11-14
+
+The owner approved upgrading the app and local SDK to Flutter 3.50.0, replacing
+an initially proposed pin to 3.47.8. This expands the earlier documentation-only
+scope to the SDK constraint, Material import migration, dependency declaration
+and CI version pin; no product behavior, schema or UI copy change is intended.
+Acceptance: CI and local checks use Flutter 3.50.0; app and test Material imports
+use the standalone package consistently; analyze, full tests and macOS debug
+build pass without suppressed diagnostics. Preserve unrelated local edits.

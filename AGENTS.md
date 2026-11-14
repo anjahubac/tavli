@@ -81,6 +81,12 @@ docs/                     architecture, product plan/design, development standar
 
 ## Commands
 
+Use Flutter 3.50.0 stable, matching the CI pin. Import Material widgets from
+`package:material_ui/material_ui.dart` in app code and tests; the legacy
+`package:flutter/material.dart` library is deprecated. SDK upgrades require
+analyze, full tests and affected platform validation; see
+[quality gates](docs/development/quality-gates.md).
+
 ```bash
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs   # after drift table changes

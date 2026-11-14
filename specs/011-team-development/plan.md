@@ -58,3 +58,18 @@ commands if committing. This request does not require running the entire app
 suite or builds for Markdown-only changes; do not report those checks as run.
 CI still retains its full Flutter checks. Documentation review is pending until
 the team reviews this branch.
+
+## Approved Flutter 3.50 upgrade (2026-11-14)
+
+The owner requested Flutter 3.50 rather than pinning to the older local SDK.
+Upgrade the Homebrew-managed local SDK and pin CI to 3.50.0. Add a Flutter minimum
+constraint and migrate all app/test Material imports consistently, preserving
+unrelated local edits. Declare `material_ui: ^1.9.0` directly: it replaces the
+deprecated SDK Material library and already exists in the lockfile transitively.
+No unrelated package upgrades, schema changes or analyzer suppressions.
+
+This explicitly expands this revision beyond its original documentation-only
+scope. Review the migration against constitution I–X: no UI copy/behavior change,
+account/sync/AI boundaries unchanged, no secrets, full tests and macOS smoke build,
+existing checkout and coordinated shared files. Validate analyze, full tests,
+macOS debug build and updated PR checks; SDK upgrades remain deliberate changes.
