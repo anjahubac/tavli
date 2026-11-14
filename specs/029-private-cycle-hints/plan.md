@@ -37,7 +37,8 @@ If no schema change is needed, explicitly record that decision in the slice PR.
    identify work already present and record remaining effort. Never redo completed
    behavior simply because a source ticket is unassessed.
 2. Merge the agreed contract/fixtures first; no consumer branch stacks on an
-   unmerged producer. Independent research/tests may proceed in separate worktrees.
+   unmerged producer. Independent research/tests may proceed in developers' existing
+   checkouts, with one active writer per checkout; no automatic extra worktrees.
 3. Implement one source task vertically through affected layers with test-first
    logic/parsing and ownership review. Keep phase boundaries in tasks.md.
 4. Integrate consumers after producer merge, preserving offline/replay and previous

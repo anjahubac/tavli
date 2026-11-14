@@ -1,6 +1,7 @@
 <!--
 Sync Impact Report — 2026-11-14
-- Version: 2.1.0 → 3.0.0 (MAJOR: narrow the all-data-sync rule with explicit
+- Version: 3.0.0 → 3.0.1 (PATCH: clarify existing-checkout branch workflow).
+- Previous revision: 2.1.0 → 3.0.0 (MAJOR: narrow the all-data-sync rule with explicit
   device-only privacy exceptions; allow independently owned feature slices).
 - Added principle X: four-developer collaboration and shared contracts.
 - Clarified current client AI transport versus the planned server gateway.
@@ -155,8 +156,12 @@ changes update the spec first. A feature may be delivered as small, sequential
 or independent slices: each branch has one owner, one topic and one PR, links
 the same spec and distinct task IDs, and starts from current `origin/dev`.
 Dependent consumers wait for producer contracts to merge, rather than stacking
-branches. Reserve spec numbers centrally; isolate working trees and explicit
-Spec Kit feature context per developer/agent.
+branches. Reserve spec numbers centrally and set explicit Spec Kit feature context
+per session. Switch branches in the existing repository directory; do not create
+additional worktrees, clones or branch-specific folders unless the user explicitly
+requests them. Each developer uses their existing checkout with one active writer
+at a time. Preserve unrelated local edits; if they block a branch switch, stop
+and ask how to handle them instead of automatically stashing or resetting them.
 
 ### IX. Flutter Best Practices & Agent Guardrails
 
@@ -237,4 +242,4 @@ wording), and updating dependent templates and docs in the same commit. Every ne
 `plan.md` Constitution Check MUST evaluate principles I–X; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 3.0.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-14
+**Version**: 3.0.1 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-14

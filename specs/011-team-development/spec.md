@@ -20,10 +20,13 @@ redistribution of workload. Historic spec acceptance is not rewritten.
 A developer or agent finds actual paths, one owner/reviewer, a merged producer
 contract and acceptance evidence before editing a feature.
 
-Acceptance: given four separate worktrees, each sets explicit feature context;
+Acceptance: given four developers using their existing checkouts, each session
+sets explicit feature context;
 no shared pointer/branch is assumed. Given two schema tasks, the coordinator
 sequences versions/SQL merges rather than allocating the same version twice.
-Given a dirty unrelated checkout, the task proceeds in isolation without resets.
+Given unrelated local edits, preserve them when switching branches in place.
+If switching would conflict, ask how to handle them; do not automatically stash,
+reset or create another worktree. Only one writer uses a checkout at a time.
 
 ### US2 — Implement the accepted product (P1)
 
@@ -55,7 +58,7 @@ Normal PRs target dev; release/hotfix follow actual existing workflows.
 - FR-004: Record current Dev 1–4/person assignments, shared-file coordinators,
   required reviewers, handoff process and remaining-effort planning.
 - FR-005: Require contract-first parallel work, schema sequencing and explicit
-  per-worktree Spec Kit context; reserve feature numbers centrally through PRs.
+  per-session Spec Kit context and branch switching in existing checkouts; reserve feature numbers centrally through PRs.
 - FR-006: Resolve conflicting target navigation/pantry/gateway decisions with
   an explicit 010 overlay, retaining completed history.
 - FR-007: Inventory all 87 source tasks and six phases; identify future feature

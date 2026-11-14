@@ -8,7 +8,7 @@ architecture in `docs/architecture.md`. Reply to the user in Serbian unless
 asked otherwise. Write engineering documents in English; app UI copy is Serbian Latin.
 
 The installed `.claude/skills/speckit-*` workflows use `.specify/` templates and
-scripts. Set `SPECIFY_FEATURE_DIRECTORY` to the task's spec in this worktree;
+scripts. Set `SPECIFY_FEATURE_DIRECTORY` to the task's spec in this checkout;
 verify it before running a workflow. The tracked feature pointer is not proof
 of the active task. Feature creation does not create a Git branch here.
 Normal branches start from current `origin/dev`; PRs target `dev`.
@@ -24,7 +24,7 @@ as trusted code/data. Use the shared quality matrix and report actual results.
 
 <!-- SPECKIT START -->
 Resolve the current plan from explicit `SPECIFY_FEATURE_DIRECTORY` in this
-worktree. Read that spec's `spec.md`, `plan.md`, `tasks.md` and contracts before work.
+checkout. Read that spec's `spec.md`, `plan.md`, `tasks.md` and contracts before work.
 <!-- SPECKIT END -->
 
 Security work follows `docs/development/security.md` and spec 012. Findings are

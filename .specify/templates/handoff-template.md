@@ -1,7 +1,7 @@
 # Handoff: [spec / task / branch]
 
 - Owner / next reviewer: [people]
-- Baseline / branch / worktree: [SHA / name / path]
+- Baseline / branch / checkout: [SHA / name / path]
 - Feature context: [SPECIFY_FEATURE_DIRECTORY]
 - Requirement / Trello / task IDs: [links]
 - Changed behavior and files: [concrete before/after]

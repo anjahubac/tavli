@@ -16,7 +16,8 @@ The repository constitution and AGENTS.md override generic examples below. Read
 Use current Tavli templates and existing Flutter folders, English engineering
 prose and Serbian Latin UI copy. Domain/AI parsing/router tests and applicable
 local two-account access tests are mandatory, even if generic text calls tests
-optional. Isolate worktrees, start normal branches from origin/dev, name owners
+optional. Reuse the existing checkout with one active writer; create additional
+worktrees/clones only when explicitly requested. Start normal branches from origin/dev, name owners
 and independent human reviewers, and coordinate shared contracts/migrations.
 Feature-file creation here does not create a Git branch. Never rewrite completed
 spec history or claim planned infrastructure exists. See

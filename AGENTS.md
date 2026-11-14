@@ -170,7 +170,11 @@ never from another feature branch, and its PR targets `dev`; full git rules are 
 
 - Follow [team workflow](docs/development/team-workflow.md) for owners, contracts,
   migration ordering, independent review and remaining-effort planning.
-- Use one writable worktree per developer/agent. Set `SPECIFY_FEATURE_DIRECTORY`
+- Switch branches in the existing repository folder; do not create additional
+  worktrees, clones or branch-specific folders unless explicitly requested. Allow
+  only one active writer in a checkout. Preserve unrelated edits; if they block
+  switching branches, ask rather than automatically stashing or resetting them.
+- Set `SPECIFY_FEATURE_DIRECTORY`
   to your spec explicitly; do not overwrite tracked `.specify/feature.json` to
   redirect someone else's work. Reserve the next number in `specs/README.md`.
 - Shared-file changes name paths and coordinator before implementation. Existing
@@ -250,11 +254,11 @@ Built-in provider credentials will move behind the planned AI gateway. This is
 not deployed yet; preserve `AIRouter` and fakeable transport during migration.
 
 Spec Kit state caveat: the installed `get_feature_paths` persists an explicit
-`SPECIFY_FEATURE_DIRECTORY` into that worktree's `.specify/feature.json`, even
+`SPECIFY_FEATURE_DIRECTORY` into the current checkout's `.specify/feature.json`, even
 when a command only checks prerequisites. Inspect the resulting diff; keep this
 session pointer out of a feature PR unless intentionally updating shared default
-context. The environment selection is isolated by worktree, not a promise that
-the helper is read-only. Do not overwrite another person's existing pointer edit.
+context. Set the environment selection for each session; it does not make the
+helper read-only. Serialize writers in the same checkout. Do not overwrite another person's existing pointer edit.
 
 ## Security review for every feature
 

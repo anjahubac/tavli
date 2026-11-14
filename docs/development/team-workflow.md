@@ -45,7 +45,7 @@ to another owner can be a small PR, not a reason to block all independent work.
 2. **Contract first:** merge a small contract/domain-model PR before consumers
    depend on it. Consumers can prepare isolated tests using fakes. No feature
    branches based on an unmerged producer branch.
-3. **Implement:** use a separate branch/worktree per task; limit work in progress
+3. **Implement:** use a separate branch per task in the existing checkout; limit work in progress
    to one implementation task per person plus review. Aim for 1–2-day slices;
    split work that cannot produce a reviewable result in that interval.
 4. **Review:** author summarizes behavior and evidence. Reviewer reads the diff,
@@ -61,19 +61,24 @@ before moving cards. This document does not change the board. Person labels aid
 filtering; the card member is the actual assignee. Existing 20/21/20/26 ticket
 counts are assignments, not an assertion of balanced effort.
 
-## Branches and worktrees
+## Branches in the existing checkout
 
 Normal work starts from current `origin/dev`, PRs target `dev`:
 
 ```bash
+git status --short --branch
 git fetch origin
-git worktree add -b 034-example-feature ../tavli-034 origin/dev
+git switch -c 034-example-feature origin/dev
 ```
 
 Use the next reserved spec number, not the example literally. A spec may have
 sequential implementation slices named `feat/<topic>-<task>` against the same
-spec. Each branch has one owner, one topic and one PR; multiple developers never
-share a writable checkout. Before merging, update from `dev`, rerun applicable
+spec. Each branch has one owner, one topic and one PR. Each developer uses their
+existing checkout; switch branches in that directory. Do not create additional
+worktrees, clones or branch-specific folders unless explicitly requested. Only
+one developer/agent may write to a given checkout at a time. Before switching,
+inspect pending changes and preserve them; if a switch would conflict, stop and
+ask how to handle the changes. Never create a worktree as an automatic workaround. Before merging, update from `dev`, rerun applicable
 checks, verify producer PRs and regenerate derived files. Never reset or stash
 another person's edits automatically.
 
@@ -84,7 +89,7 @@ destructive operation, including history rewrites and branch deletion.
 
 The existing Spec Kit `create-new-feature.sh` prepares files/state; it does not
 create a Git branch in this installation. Create/verify the branch separately.
-Use worktree-local `SPECIFY_FEATURE_DIRECTORY` explicitly; do not assume that
+Use session-specific `SPECIFY_FEATURE_DIRECTORY` explicitly; do not assume that
 the tracked `.specify/feature.json` points to your current task.
 
 ## Migration coordination
@@ -113,8 +118,8 @@ work and projected phase load weekly. A developer may help another area through
 an owner-reviewed PR while retaining one accountable task owner.
 
 Spec Kit state caveat: the installed `get_feature_paths` persists an explicit
-`SPECIFY_FEATURE_DIRECTORY` into that worktree's `.specify/feature.json`, even
+`SPECIFY_FEATURE_DIRECTORY` into the current checkout's `.specify/feature.json`, even
 when a command only checks prerequisites. Inspect the resulting diff; keep this
 session pointer out of a feature PR unless intentionally updating shared default
-context. The environment selection is isolated by worktree, not a promise that
-the helper is read-only. Do not overwrite another person's existing pointer edit.
+context. Set the environment selection for each session; it does not make the
+helper read-only. Serialize writers in the same checkout. Do not overwrite another person's existing pointer edit.

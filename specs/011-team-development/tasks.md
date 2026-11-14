@@ -5,7 +5,7 @@ not completion of product features in the separate 87-task register.
 
 - [x] T001 [US1] Inventory baseline Markdown/Spec Kit and actual main/dev architecture.
 - [x] T002 [US2] Review the supplied plan and record contradictory/superseded decisions.
-- [x] T003 [US1] Define ownership, review, branch/worktree, schema and integration rules in `docs/development/team-workflow.md`.
+- [x] T003 [US1] Define ownership, review, branch/checkout, schema and integration rules in `docs/development/team-workflow.md`.
 - [x] T004 [US3] Define AI context/brief/handoff/evidence rules in `docs/development/ai-development.md`.
 - [x] T005 [US2] Revise architecture, product design, plan, roadmap and 010 overlay without changing app code.
 - [x] T006 [US1] Add producer/consumer contracts and an English 87-task delivery register.

@@ -36,7 +36,7 @@ go_router, drift, dio and Supabase; no new runtime dependency or schema.
 | V tests | Pass: document validation appropriate; runtime gates remain mandatory |
 | VI responsive | Pass: UI matrix/interaction standard, no runtime layout edits |
 | VII reviewable changes | Pass: isolated documentation scope, user edits preserved |
-| VIII feature/spec/branches | Pass: one process spec, separate worktree from dev |
+| VIII feature/spec/branches | Pass: one process spec, branch from dev; existing checkout, one writer (v3.0.1 clarification) |
 | IX architecture/guardrails | Pass: actual paths reused; generic examples overridden |
 | X collaboration | Pass: owners, contracts, schema coordination and human review documented |
 

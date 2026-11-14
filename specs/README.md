@@ -49,7 +49,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 2. Confirm current code, exact affected files, remaining effort, reviewer and
    open questions. Drafts become Ready only after dependent contracts, data-model/
    migration design and Serbian UI copy are settled. Research can proceed separately.
-3. Implement slices in separate worktrees/branches from current origin/dev; PRs
+3. Implement slices on branches from current origin/dev in existing checkouts; PRs
    target dev. Consumer branches wait for producer contracts to merge. No stacking.
 4. Set SPECIFY_FEATURE_DIRECTORY per session. The installed script prepares files,
    not Git branches; its get_feature_paths also persists the local feature pointer.

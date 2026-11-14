@@ -4,8 +4,9 @@
    [team workflow](../../docs/development/team-workflow.md); identify your task owner.
 2. Find the task in [delivery register](contracts/delivery-backlog.md) and its
    feature preparation key in [product plan](../../docs/product-plan.md).
-3. Reserve a spec number, create a branch/worktree from latest dev and select
-   its feature explicitly. Do not redirect another worktree's tracked pointer.
+3. Reserve a spec number and create a branch from latest dev in the existing
+   checkout, preserving local edits. Select its feature explicitly for the session.
+   Do not create extra worktrees/folders unless requested or run concurrent writers.
 4. Clarify blocking product/privacy decisions. Merge producer contracts before
    consumers; prepare fakes where independent work can proceed.
 5. Fill spec/plan/tasks from the project templates and run the analysis pass.
