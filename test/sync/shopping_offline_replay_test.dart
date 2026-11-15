@@ -86,6 +86,21 @@ void main() {
       Downloader downloader(AppDatabase db) =>
           Downloader(db: db, remote: backend.sync, scope: scope);
 
+      Future<void> expectLocalShoppingState(AppDatabase db) async {
+        final item = await db.select(db.shoppingItems).getSingle();
+        final contribution = await db
+            .select(db.shoppingContributions)
+            .getSingle();
+        final allocation = await db.select(db.supplyAllocations).getSingle();
+        expect(item.quantity, 200);
+        expect(item.unit, 'g');
+        expect(contribution.micros, 300000000);
+        expect(contribution.shoppingItemId, item.id);
+        expect(allocation.contributionId, contribution.id);
+        expect(allocation.pantryItemId, 'stock');
+        expect(allocation.micros, 100000000);
+      }
+
       await addAccount(first);
       await addAccount(second);
       await first
@@ -150,19 +165,14 @@ void main() {
         isTrue,
       );
       expect(backend.server.rows('shopping_items'), isEmpty);
+      await expectLocalShoppingState(first);
 
       await first.close();
       first = null;
       first = AppDatabase(NativeDatabase(deviceFile));
       final queuedAfterRestart = await first.select(first.syncOutbox).get();
-      expect(
-        queuedAfterRestart
-            .map((r) => (r.entity, r.recordId, r.op, r.state))
-            .toSet(),
-        queuedBeforeRestart
-            .map((r) => (r.entity, r.recordId, r.op, r.state))
-            .toSet(),
-      );
+      expect(queuedAfterRestart, unorderedEquals(queuedBeforeRestart));
+      await expectLocalShoppingState(first);
       backend.server.offline = false;
       expect((await uploader(first).run()).stoppedBy, isNull);
       expect(await first.select(first.syncOutbox).get(), isEmpty);
