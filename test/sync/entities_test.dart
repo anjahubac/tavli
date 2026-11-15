@@ -183,6 +183,26 @@ void main() {
     expect(CivilDate.fromWire(row.endDate), CivilDate(2027, 1, 6));
   });
 
+  test(
+    'datumi perioda nedeljnog spiska čuvaju granice kalendarskog dana',
+    () async {
+      const entity = ShoppingListEntity();
+      await entity.write(db, {
+        'id': 'week-date-only',
+        'name': 'Nedelja 53',
+        'meal_plan_id': null,
+        'week': 53,
+        'period_start': '2026-12-28',
+        'period_end': '2027-01-03',
+        'created_at': '2026-12-01T10:00:00Z',
+      });
+
+      final row = await db.select(db.shoppingLists).getSingle();
+      expect(CivilDate.fromWire(row.periodStart!), CivilDate(2026, 12, 28));
+      expect(CivilDate.fromWire(row.periodEnd!), CivilDate(2027, 1, 3));
+    },
+  );
+
   test('vremenska oznaka sa vremenskom zonom ostaje isti trenutak', () async {
     const entity = RecipeEntity();
     await entity.write(db, {
