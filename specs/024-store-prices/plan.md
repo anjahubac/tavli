@@ -22,6 +22,10 @@ Price reference records carry retailer, product/food mapping, package unit, date
 
 Producer dependencies: [018](../018-ingredient-catalog/spec.md), [020](../020-catalog-shopping/spec.md)
 
+Independent [price-source research](research.md) records public-source
+limitations and a synthetic comparison fixture from the separate checkout.
+It is not approved source selection or a shipped importer.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,
