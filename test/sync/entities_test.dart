@@ -183,6 +183,29 @@ void main() {
     expect(CivilDate.fromWire(row.endDate), CivilDate(2027, 1, 6));
   });
 
+  test('vremenska oznaka sa vremenskom zonom ostaje isti trenutak', () async {
+    const entity = RecipeEntity();
+    await entity.write(db, {
+      'id': 'offset-time',
+      'household_id': 'h1',
+      'title': 'Sarma',
+      'servings': 2,
+      'prep_minutes': null,
+      'source': 'manual',
+      'ingredients': [],
+      'steps': [],
+      'image_path': null,
+      'answered_by': null,
+      'created_at': '2026-12-31T01:30:00+02:00',
+    });
+
+    final row = await entity.read(db, 'offset-time');
+    expect(
+      entity.toRemote(row as RecipeRow)['created_at'],
+      '2026-12-30T23:30:00.000Z',
+    );
+  });
+
   test('ocena i profil ukusa pripadaju osobi', () async {
     await roundTrip(
       const RatingEntity(),
