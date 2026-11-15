@@ -23,6 +23,10 @@ Calendar days use CivilDate/Postgres date; event timestamps remain UTC instants.
 
 Producer dependencies: [013](../013-testing-strategy/spec.md)
 
+The [calendar-date cutover proposal](cutover-proposal.md) records current
+columns, a reproducible compatibility fixture and decisions for review. It is
+not an accepted migration plan or evidence that T001 has been completed.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,
