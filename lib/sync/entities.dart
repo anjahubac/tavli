@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../data/database.dart';
+import '../domain/plan_calendar.dart';
 
 /// Pripada li zapis domaćinstvu ili osobi.
 enum EntityScope { household, user }
@@ -50,7 +51,15 @@ abstract class SyncEntity<T extends Table, R> {
 }
 
 String _ts(DateTime d) => d.toUtc().toIso8601String();
-DateTime _date(Object? v) => DateTime.parse(v! as String).toLocal();
+DateTime _date(Object? v) {
+  final text = v! as String;
+  if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
+    final date = CivilDate.parse(text);
+    return DateTime.utc(date.year, date.month, date.day, 12);
+  }
+  return DateTime.parse(text).toLocal();
+}
+
 DateTime? _dateOrNull(Object? v) => v == null ? null : _date(v);
 String? _tsOrNull(DateTime? d) => d == null ? null : _ts(d);
 String _json(Object? v) => jsonEncode(v);

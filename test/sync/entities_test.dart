@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/sync/entities.dart';
 
 /// Kako bi red izgledao kad stigne sa servera (JSON + updated_at).
@@ -164,6 +165,22 @@ void main() {
       'e1',
       (r) => expect(r['plan_id'], 'p1'),
     );
+  });
+
+  test('datum bez vremena sa servera čuva isti kalendarski dan', () async {
+    const entity = MealPlanEntity();
+    await entity.write(db, {
+      'id': 'date-only',
+      'start_date': '2026-12-31',
+      'end_date': '2027-01-06',
+      'meal_types': ['lunch'],
+      'created_at': '2026-12-01T10:00:00Z',
+      'household_id': 'h1',
+    });
+
+    final row = await db.select(db.mealPlans).getSingle();
+    expect(CivilDate.fromWire(row.startDate), CivilDate(2026, 12, 31));
+    expect(CivilDate.fromWire(row.endDate), CivilDate(2027, 1, 6));
   });
 
   test('ocena i profil ukusa pripadaju osobi', () async {
