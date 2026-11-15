@@ -86,10 +86,12 @@ class RecipeView extends StatelessWidget {
               child: Text('• ${ingredientLine(i)}'),
             ),
         ],
-        if (recipe.steps.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          Text('Priprema', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
+        const SizedBox(height: 20),
+        Text('Priprema', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (recipe.steps.isEmpty)
+          const Text('Koraci pripreme nisu uneti.')
+        else
           for (final (n, step) in recipe.steps.indexed)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -109,7 +111,6 @@ class RecipeView extends StatelessWidget {
                 ],
               ),
             ),
-        ],
         if (origin != null) ...[
           const SizedBox(height: 16),
           Text(origin, style: theme.textTheme.bodySmall),
