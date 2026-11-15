@@ -24,6 +24,10 @@ Proposed foods/aliases/units/household overrides; immutable UUID and readable sl
 
 Producer dependencies: [017](../017-kitchen-unit-conversion/spec.md)
 
+The [ingredient identity and lookup proposal](ingredient-model-proposal.md)
+is available for consumer review. It is a draft, not an accepted contract or
+evidence that T001 has been completed.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,
