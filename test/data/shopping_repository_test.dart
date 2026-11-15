@@ -25,6 +25,24 @@ void main() {
   late AppDatabase db;
   late ShoppingRepository repo;
 
+  test('shopping read models remain public through the repository import', () {
+    const total = PlanTotal(
+      ingredient: 'krompir',
+      unitGroup: 'mass',
+      name: 'Krompir',
+      category: 'Povrće',
+      baseUnit: 'g',
+      openMicros: 200000000,
+      boughtMicros: 100000000,
+      hasUnknown: false,
+      itemIds: ['item-1'],
+      listIds: ['list-1'],
+    );
+
+    expect(total.openMicros, 200000000);
+    expect(total.itemIds, ['item-1']);
+  });
+
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     repo = ShoppingRepository(

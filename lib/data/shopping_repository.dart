@@ -12,62 +12,9 @@ import '../domain/shopping_sync.dart';
 import '../domain/supply_allocation.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
+import 'shopping_models.dart';
 
-/// Zbir jedne namirnice u celom planu (mesec): samo za čitanje. Radnje idu
-/// na nedeljne stavke iz [itemIds]; mesečna lista se ne čuva.
-class PlanTotal {
-  const PlanTotal({
-    required this.ingredient,
-    required this.unitGroup,
-    required this.name,
-    required this.category,
-    required this.baseUnit,
-    required this.openMicros,
-    required this.boughtMicros,
-    required this.hasUnknown,
-    required this.itemIds,
-    required this.listIds,
-  });
-
-  final String ingredient;
-  final String unitGroup;
-  final String name;
-  final String category;
-  final String baseUnit;
-
-  /// Preostalo za kupovinu i već kupljeno, u milionitim delovima [baseUnit].
-  final int openMicros;
-  final int boughtMicros;
-
-  /// Neka otvorena stavka nema poznatu količinu (traži proveru).
-  final bool hasUnknown;
-  final List<String> itemIds;
-  final List<String> listIds;
-}
-
-/// Stavka nedeljne liste plana sa početkom te nedelje.
-class PlanShoppingItem {
-  const PlanShoppingItem({required this.weekStart, required this.item});
-
-  final CivilDate weekStart;
-  final ShoppingItemRow item;
-}
-
-/// Samostalna priprema recepta u nabavci: zamrznut recept sa sastojcima
-/// koje osoba nema (ostale je označila sa "imam") i porcije.
-class RecipePreparation {
-  const RecipePreparation({
-    required this.id,
-    required this.snapshot,
-    required this.servings,
-    this.recipeId,
-  });
-
-  final String id;
-  final RecipeSnapshot snapshot;
-  final int servings;
-  final String? recipeId;
-}
+export 'shopping_models.dart';
 
 /// Kupovina domaćinstva; svaka izmena ima outbox u istoj transakciji.
 class ShoppingRepository {
