@@ -9,6 +9,7 @@ import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli/features/shopping/shopping_list_view.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
 import '../../helpers/test_app.dart';
@@ -90,6 +91,12 @@ Future<void> tapIn(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  test('oznaka približne količine se prikazuje samo kada je zadata', () {
+    expect(amountLabel(35, 'ml', approximate: true), '~35 ml');
+    expect(amountLabel(35, 'ml'), '35 ml');
+    expect(amountLabel(null, 'ml', approximate: true), isNull);
+  });
+
   testTavli('iz plana u dva dodira: nabavka tekuće nedelje po kategorijama', (
     tester,
   ) async {
