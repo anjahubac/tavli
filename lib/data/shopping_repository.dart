@@ -13,6 +13,7 @@ import '../domain/supply_allocation.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
 import 'shopping_models.dart';
+import 'shopping_totals.dart';
 
 export 'shopping_models.dart';
 
@@ -809,37 +810,8 @@ class ShoppingRepository {
   }
 
   /// Zbir stavki po namirnici i grupi jedinica (za prikaz celog plana).
-  static List<PlanTotal> totalsOf(List<ShoppingItemRow> items) {
-    final groups = <(String, String), List<ShoppingItemRow>>{};
-    for (final i in items) {
-      final unit = normalizeUnit(i.unit);
-      final group = i.quantity == null ? unknownGroup : unit.group;
-      groups.putIfAbsent((ingredientKey(i.name), group), () => []).add(i);
-    }
-    int micros(ShoppingItemRow i) => i.quantity == null
-        ? 0
-        : toMicros(i.quantity!) * normalizeUnit(i.unit).factor;
-    return [
-      for (final MapEntry(key: (ingredient, group), value: rows)
-          in groups.entries)
-        PlanTotal(
-          ingredient: ingredient,
-          unitGroup: group,
-          name: rows.first.name,
-          category: rows.first.category,
-          baseUnit: normalizeUnit(rows.first.unit).base,
-          openMicros: rows
-              .where((r) => !r.isBought)
-              .fold(0, (sum, r) => sum + micros(r)),
-          boughtMicros: rows
-              .where((r) => r.isBought)
-              .fold(0, (sum, r) => sum + micros(r)),
-          hasUnknown: rows.any((r) => !r.isBought && r.quantity == null),
-          itemIds: [for (final r in rows) r.id],
-          listIds: {for (final r in rows) r.listId}.toList(),
-        ),
-    ];
-  }
+  static List<PlanTotal> totalsOf(List<ShoppingItemRow> items) =>
+      shoppingTotalsOf(items);
 
   /// Briše izvor i njegovu decu (deca pre roditelja, i u outbox-u).
   Future<void> _deleteSource(String sourceId) async {
