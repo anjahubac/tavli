@@ -1,0 +1,44 @@
+{
+  "contract": "recipe.v1",
+  "expect": "accept",
+  "rule": "R1-R10",
+  "why": "Complete recipe with canonical units, a null quantity and steps.",
+  "response": {
+    "title": "Sarma",
+    "servings": 6,
+    "prepMinutes": 180,
+    "ingredients": [
+      {
+        "name": "kiseli kupus",
+        "quantity": 1,
+        "unit": "glavica",
+        "category": "konzerve i tegle",
+        "note": null
+      },
+      {
+        "name": "mleveno meso",
+        "quantity": 500,
+        "unit": "g",
+        "category": "meso i riba",
+        "note": "mešano"
+      },
+      {
+        "name": "biber",
+        "quantity": null,
+        "unit": null,
+        "category": "začini i sosovi",
+        "note": "po ukusu"
+      }
+    ],
+    "steps": [
+      "Umotati sarme.",
+      "Kuvati 3 sata na tihoj vatri."
+    ]
+  },
+  "expected": {
+    "servings": 6,
+    "ingredients[1].unitCanonical": "g",
+    "ingredients[2].quantity": null,
+    "detailLevel": "full"
+  }
+}
