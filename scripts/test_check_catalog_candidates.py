@@ -1,6 +1,8 @@
+import subprocess
+import sys
 import unittest
 
-from scripts.check_catalog_candidates import validate
+from scripts.check_catalog_candidates import ROOT, validate
 
 
 class CandidateChecks(unittest.TestCase):
@@ -21,6 +23,21 @@ class CandidateChecks(unittest.TestCase):
             'allergen_reviewer': '',
             'notes': '',
         }
+
+    def test_actual_research_csvs(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'scripts/check_catalog_candidates.py')],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_disputed_alias_can_be_reviewed_as_a_separate_candidate(self):
+        self.row['candidate_name'] = 'jaja'
+        self.assertTrue(validate(self.catalog, [self.row])[0])
+        correction = {'historical_name': 'jaje', 'alias': 'jaja', 'reason': 'split'}
+        self.assertEqual(validate(self.catalog, [self.row], [correction]), ([], 0))
+        correction['historical_name'] = 'missing'
+        self.assertTrue(validate(self.catalog, [self.row], [correction])[0])
 
     def test_pending_is_valid_but_not_review_marked(self):
         errors, count = validate(self.catalog, [self.row])

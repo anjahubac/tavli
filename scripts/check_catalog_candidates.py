@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RESEARCH = ROOT / 'specs/018-ingredient-catalog/research'
 CATALOG = RESEARCH / 'legacy-food-reference.csv'
 CANDIDATES = RESEARCH / 'candidates.csv'
+ALIAS_CORRECTIONS = RESEARCH / 'alias-correction-proposals.csv'
 FIELDS = {
     'candidate_name', 'category_hint', 'proposed_base_unit', 'identity_status',
     'identity_source', 'identity_reviewer', 'allergen_status', 'allergen_codes',
@@ -24,7 +25,7 @@ def normalize(value):
     return ' '.join(value.strip().lower().split())
 
 
-def validate(catalog, candidates):
+def validate(catalog, candidates, alias_corrections=()):
     """Return validation errors and the count marked reviewed, not approval."""
     errors = []
     marked_reviewed = 0
@@ -39,11 +40,38 @@ def validate(catalog, candidates):
     ):
         errors.append('invalid catalog row')
         return errors, 0
-    existing = {
-        normalize(name)
-        for row in catalog
-        for name in [row['name'], *row['aliases'].split('|')]
-        if name.strip()
+    aliases_by_food = {}
+    canonical_names = set()
+    for row in catalog:
+        food = normalize(row['name'])
+        canonical_names.add(food)
+        aliases_by_food.setdefault(food, set()).update(
+            normalize(alias) for alias in row['aliases'].split('|') if alias.strip()
+        )
+
+    proposed_candidates = {
+        row.get('candidate_name') for row in candidates
+        if row.get('identity_status') in {'pending', 'reviewed'}
+    }
+    disputed = set()
+    for number, row in enumerate(alias_corrections, start=2):
+        if set(row) != {'historical_name', 'alias', 'reason'} or any(
+            not isinstance(value, str) or not value.strip() for value in row.values()
+        ):
+            errors.append(f'alias correction row {number}: invalid columns or reason')
+            continue
+        food, alias = normalize(row['historical_name']), normalize(row['alias'])
+        pair = (food, alias)
+        if alias not in aliases_by_food.get(food, ()) or alias in canonical_names:
+            errors.append(f'alias correction row {number}: expected a historical alias')
+        elif pair in disputed or alias not in proposed_candidates:
+            errors.append(f'alias correction row {number}: duplicate or missing candidate')
+        else:
+            disputed.add(pair)
+
+    existing = canonical_names | {
+        alias for food, aliases in aliases_by_food.items() for alias in aliases
+        if (food, alias) not in disputed
     }
     categories = {row['category'] for row in catalog}
     seen = set()
@@ -109,7 +137,7 @@ def main():
     try:
         catalog = read_rows(CATALOG)
         candidates = read_rows(CANDIDATES)
-        errors, marked = validate(catalog, candidates)
+        errors, marked = validate(catalog, candidates, read_rows(ALIAS_CORRECTIONS))
     except (OSError, csv.Error, KeyError, TypeError) as error:
         print(f'Unable to check candidate data: {error}', file=sys.stderr)
         return 1
