@@ -90,7 +90,12 @@ class RecipeView extends StatelessWidget {
         Text('Priprema', style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
         if (recipe.steps.isEmpty)
-          const Text('Koraci pripreme nisu uneti.')
+          Text(
+            'Koraci pripreme nisu uneti.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
         else
           for (final (n, step) in recipe.steps.indexed)
             Padding(
