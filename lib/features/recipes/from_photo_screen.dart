@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -11,6 +10,7 @@ import '../../domain/recipe.dart';
 import '../../providers.dart';
 import '../settings/ai_error_text.dart';
 import 'ai_preview.dart';
+import 'photo_picker.dart';
 import 'recipe_providers.dart';
 import 'recipe_view.dart';
 
@@ -38,6 +38,16 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
     final Uint8List? picked;
     try {
       picked = await ref.read(photoPickerProvider).pick(camera: camera);
+    } on PhotoAccessDeniedException {
+      if (!mounted) return;
+      setState(
+        () => _error = camera
+            ? 'Tavli nema dozvolu za kameru. Dozvoli pristup u '
+                  'podešavanjima telefona.'
+            : 'Tavli nema dozvolu za galeriju. Dozvoli pristup u '
+                  'podešavanjima telefona.',
+      );
+      return;
     } on Exception {
       if (!mounted) return;
       setState(() => _error = 'Slika nije učitana.');
@@ -123,7 +133,12 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
   Widget build(BuildContext context) {
     final result = _result;
     final photo = _photo;
-    final canUseCamera = ref.watch(photoPickerProvider).canUseCamera;
+    // Telefon nudi kameru i galeriju; računar (macOS/Windows/Linux) samo izbor.
+    final isPhone = switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
+    final showCamera = isPhone && ref.watch(photoPickerProvider).canUseCamera;
     return Scaffold(
       appBar: AppBar(title: const Text('Recept iz slike')),
       body: result != null && photo != null
@@ -150,11 +165,11 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
                   const SizedBox(height: 16),
                 ] else ...[
                   const Text(
-                    'Slikaj recept iz kuvara, rukom pisan recept ili snimak '
+                    'Slika recepta iz kuvara, rukom pisan recept ili snimak '
                     'ekrana.',
                   ),
                   const SizedBox(height: 16),
-                  if (canUseCamera) ...[
+                  if (showCamera) ...[
                     FilledButton.icon(
                       onPressed: _busy ? null : () => _pick(camera: true),
                       icon: const Icon(Icons.photo_camera_outlined),

@@ -58,11 +58,13 @@ class FakePhotoPicker implements PhotoPicker {
 
   /// Šta sledeći izbor vraća (null = korisnik je odustao).
   Uint8List? next;
+  Exception? failure;
   final calls = <bool>[];
 
   @override
   Future<Uint8List?> pick({required bool camera}) async {
     calls.add(camera);
+    if (failure case final error?) throw error;
     return next;
   }
 }
