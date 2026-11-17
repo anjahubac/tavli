@@ -1,0 +1,40 @@
+{
+  "contract": "plan-outline.v1",
+  "expect": "reject",
+  "rule": "P4",
+  "why": "recipeId must come from the sent library; ids are never invented.",
+  "request": {
+    "slots": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner"
+      }
+    ],
+    "library": [
+      {
+        "id": "r-123",
+        "title": "Sarma"
+      }
+    ]
+  },
+  "response": {
+    "meals": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch",
+        "recipeId": "r-999",
+        "title": "Musaka"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner",
+        "recipeId": null,
+        "title": "Riba"
+      }
+    ]
+  }
+}
