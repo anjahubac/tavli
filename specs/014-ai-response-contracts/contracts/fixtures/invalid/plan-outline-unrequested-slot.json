@@ -1,0 +1,46 @@
+{
+  "contract": "plan-outline.v1",
+  "expect": "reject",
+  "rule": "P2",
+  "why": "A slot that was not requested cannot be placed.",
+  "request": {
+    "slots": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner"
+      }
+    ],
+    "library": [
+      {
+        "id": "r-123",
+        "title": "Sarma"
+      }
+    ]
+  },
+  "response": {
+    "meals": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch",
+        "recipeId": null,
+        "title": "Pasulj"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner",
+        "recipeId": null,
+        "title": "Riba"
+      },
+      {
+        "date": "2026-11-18",
+        "meal": "breakfast",
+        "recipeId": null,
+        "title": "Kajgana"
+      }
+    ]
+  }
+}
