@@ -16,13 +16,10 @@ calls for a stable UUID and readable slug, with separate matched, unresolved
 and proposed outcomes. This document proposes that interface; it does not add
 a database, matcher, migration, network call or application behavior.
 
-The separate `tavli-next` implementation is useful evidence, not a drop-in
-contract: its shared seed uses readable identifiers such as `f_krompir` as
-primary IDs and its matcher uses exact aliases. Those IDs must not silently
-become UUIDs or be confused with slugs. No data migration between the two
-repositories is assumed by this proposal.
-
 ## Proposed interface
+
+Proposed contract version: **1**. A change to required fields, result semantics
+or lookup precedence requires a new contract version and consumer review.
 
 The following Dart-like types specify intent, not compiled code:
 
@@ -50,23 +47,40 @@ abstract interface class FoodMatcher {
 }
 ```
 
-`FoodLookupScope` identifies the active household through an authenticated
-application context, not a client assertion of server permission. Its exact
-type and lifecycle remain open. Reference data is shared or household-scoped;
-this small identity value does not itself confer read or write access. The
-server must independently enforce access when persistence is introduced.
+### Scope and match confidence
 
-An empty or whitespace-only name cannot match a food; the caller receives an
-unresolved result without a network request. A `Matched` result identifies a
-reviewed or explicitly confirmed food; a `Proposed` result is a suggestion and
-may refer only to an existing, visible food identity. A suggestion to create a
-new food remains unresolved until a separate reviewed creation flow; no UUID
-is invented for it. A proposal must not silently persist an alias or food. A
-consumer retains `originalText` regardless of outcome. Lookup errors or
-cancellation must not be interpreted as a successful match. Exact error and
-cancellation types remain open. No
-normalization, AI candidate generation, persistence or fallback is implemented
-by this contract-only slice.
+Resolve the active household from the authenticated application context at
+lookup start. A lookup may use shared reference data plus data visible to that
+household. A confirmed household alias takes priority over a shared alias.
+If equally authoritative visible mappings disagree, return `Unresolved` until
+the user confirms the intended food. Discard an in-flight result if the
+household changes or access is revoked. The server independently enforces
+authorization. Overrides affect future lookups in that household and do not
+rewrite references already confirmed and saved.
+
+`Matched` means there is evidence that the input refers to the returned food:
+a unique reviewed canonical name or alias, or an explicit confirmation in the
+active scope. The mere existence of a food in the catalog is insufficient.
+Fuzzy or AI suggestions may return `Proposed` for a visible existing identity.
+A suggestion to create a new food stays unresolved until a separate creation
+flow accepts it. Lookup does not persist aliases or accept suggestions.
+
+### Offline, errors and cancellation
+
+Keep the original text for every outcome. Empty or whitespace-only input
+returns `Unresolved` without I/O. Offline lookup can use an authorized local
+snapshot of reviewed entries and confirmed overrides for the active household.
+If that snapshot cannot establish a match, keep the original text and return
+`Unresolved` with a retry opportunity when online. A failed lookup is a
+retryable error for transport failures or an access error for invalid scope,
+distinct from an ordinary unresolved name. A canceled lookup returns no
+match result. Error and cancellation never write data.
+
+Backfill uses the ingredient's stable record identity and the contract version
+to recognize prior work. Repeating the same backfill against unchanged input
+and catalog evidence leaves the same links and creates no duplicate aliases or
+proposals. Skip already confirmed identities and do not overwrite a newer user
+edit. Unresolved rows may be retried when evidence changes.
 
 `piece`, `gram` and `milliliter` are proposed domain units, not new UI copy or
 a settled wire representation. Aliases, conversions, nutritional data and
@@ -86,6 +100,11 @@ These examples are proposed acceptance fixtures, not passing test results.
 | A user has not accepted an AI suggestion | At most `Proposed`; no canonical food or alias is saved. |
 | Empty or whitespace-only input | `Unresolved`, without a remote request. |
 | Two households have different custom foods | Each lookup uses only its authorized active scope; server access is tested independently. |
+| Household A confirms an override for a shared alias | A uses the override; household B retains the shared mapping. |
+| The active household changes while lookup is pending | Discard the result; no write occurs. |
+| Offline cache has no confident match | Preserve original text; the caller can retry online. |
+| Lookup is canceled or transport fails | No match is applied. Only the transport failure is offered for retry. |
+| The same backfill runs twice after a user confirms a correction | One link remains, and the confirmation wins. |
 | A confirmed food is renamed | Its UUID stays the same; existing ingredient text is not rewritten. |
 
 ## Compatibility, failure and privacy
@@ -111,8 +130,6 @@ consent, privacy and gateway contract.
   cancellation, offline and error outcomes; no AI proposal is a trusted match.
 - Dev 1 and Dev 4: coordinate unit terminology with the unresolved 017
   conversion decisions. No conversion assumptions are finalized here.
-- Dev 1 and reviewers: decide whether any `tavli-next` data will be imported;
-  if so, review a separate stable old-ID-to-UUID mapping and migration plan.
 
 Owners, decision dates, accepted examples and the producing PR must be recorded
 when decisions are actually made. This proposal does not mark T001 or D1-001
