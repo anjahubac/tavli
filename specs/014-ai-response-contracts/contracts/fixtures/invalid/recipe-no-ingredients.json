@@ -1,0 +1,11 @@
+{
+  "contract": "recipe.v1",
+  "expect": "reject",
+  "rule": "R4",
+  "why": "A recipe needs at least one ingredient.",
+  "response": {
+    "title": "Supa",
+    "servings": 4,
+    "ingredients": []
+  }
+}

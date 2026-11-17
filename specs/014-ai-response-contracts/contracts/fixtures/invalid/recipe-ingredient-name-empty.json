@@ -1,0 +1,18 @@
+{
+  "contract": "recipe.v1",
+  "expect": "reject",
+  "rule": "R5",
+  "why": "Ingredient name must not be blank.",
+  "response": {
+    "title": "Supa",
+    "servings": 4,
+    "ingredients": [
+      {
+        "name": "  ",
+        "quantity": 1,
+        "unit": "l",
+        "category": "ostalo"
+      }
+    ]
+  }
+}
