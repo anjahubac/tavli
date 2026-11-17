@@ -1,0 +1,40 @@
+{
+  "contract": "plan-outline.v1",
+  "expect": "reject",
+  "rule": "P2",
+  "why": "meal must be a MealType name.",
+  "request": {
+    "slots": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner"
+      }
+    ],
+    "library": [
+      {
+        "id": "r-123",
+        "title": "Sarma"
+      }
+    ]
+  },
+  "response": {
+    "meals": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch",
+        "recipeId": null,
+        "title": "Pasulj"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "supper",
+        "recipeId": null,
+        "title": "Riba"
+      }
+    ]
+  }
+}

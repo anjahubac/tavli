@@ -63,6 +63,26 @@ void main() {
     expect(find.text('Ručno unet'), findsOneWidget);
   });
 
+  testTavli('ručni obrok bez koraka može da se sačuva i doda u nabavku', (
+    tester,
+  ) async {
+    final app = await pumpTavli(tester, location: '/recipes/new/manual');
+    await tester.enterText(field('Naziv'), 'Užina');
+    await addIngredient(tester, name: 'jogurt', quantity: '200', unit: 'ml');
+    await tapButton(tester, 'Sačuvaj');
+
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.stepsJson, '[]');
+    expect(find.widgetWithText(AppBar, 'Užina'), findsOneWidget);
+    await tapButton(tester, 'Proveri sastojke');
+    await tapButton(tester, 'Dodaj u nabavku (1)');
+
+    final item = await app.db.select(app.db.shoppingItems).getSingle();
+    expect(item.name, 'jogurt');
+    expect(item.quantity, 200);
+    expect(item.unit, 'ml');
+  });
+
   testTavli('izmena čuva prethodnu verziju kao ručnu izmenu', (tester) async {
     final app = await pumpTavli(
       tester,
