@@ -4,7 +4,6 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/data/database.dart';
-import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/sync/entities.dart';
 
 /// Kako bi red izgledao kad stigne sa servera (JSON + updated_at).
@@ -179,8 +178,8 @@ void main() {
     });
 
     final row = await db.select(db.mealPlans).getSingle();
-    expect(CivilDate.fromWire(row.startDate), CivilDate(2026, 12, 31));
-    expect(CivilDate.fromWire(row.endDate), CivilDate(2027, 1, 6));
+    expect(row.startDate.toUtc(), DateTime.utc(2026, 12, 31));
+    expect(row.endDate.toUtc(), DateTime.utc(2027, 1, 6));
   });
 
   test(
@@ -198,8 +197,8 @@ void main() {
       });
 
       final row = await db.select(db.shoppingLists).getSingle();
-      expect(CivilDate.fromWire(row.periodStart!), CivilDate(2026, 12, 28));
-      expect(CivilDate.fromWire(row.periodEnd!), CivilDate(2027, 1, 3));
+      expect(row.periodStart!.toUtc(), DateTime.utc(2026, 12, 28));
+      expect(row.periodEnd!.toUtc(), DateTime.utc(2027, 1, 3));
     },
   );
 

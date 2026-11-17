@@ -54,8 +54,7 @@ String _ts(DateTime d) => d.toUtc().toIso8601String();
 DateTime _date(Object? v) {
   final text = v! as String;
   if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
-    final date = CivilDate.parse(text);
-    return DateTime.utc(date.year, date.month, date.day, 12);
+    return CivilDate.parse(text).toWire();
   }
   return DateTime.parse(text).toLocal();
 }
