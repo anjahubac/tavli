@@ -36,9 +36,14 @@ Therefore the rules below apply **only at the AI boundary**, as a validation
 step before the existing readers. They must never be applied to stored rows,
 synced snapshots or manual input; otherwise saved recipes would fail to load.
 
-Out of scope: food identity (`food_id`) and catalog matching (#40, Dev 1),
-unit conversion factors (measure contract, spec 017, Dev 1), recipe labels
-(see Decisions), retry policy (FR-003).
+Out of scope: food identity (`food_id`) and catalog matching (#20/#40, Dev 1),
+unit conversion factors (measure contract, spec 017, #23/#100, Dev 1), recipe
+labels (see Decisions), retry policy (FR-003, #42) and the nutritionist plan
+import shape (#52/#53: grams per item, “Proveri” flags, alternatives), which
+gets its own versioned shape with #52 and reuses R5–R9 for its items.
+
+Fixtures are plain JSON so the planned AI gateway (#36) can run the same cases
+if validation also moves server-side.
 
 ## Interface
 
@@ -50,7 +55,8 @@ unit conversion factors (measure contract, spec 017, Dev 1), recipe labels
 | C2 | Unknown fields are ignored, at every level. |
 | C3 | Strings are trimmed. An optional string that is blank after trimming becomes `null`. |
 | C4 | "Integer" means a JSON number without a fractional part (`4` and `4.0` pass, `4.5` and `"4"` fail). |
-| C5 | Any rejection rejects the whole response (`FormatException`); nothing is saved or partly applied. The router may then retry (FR-003). |
+| C5 | Any rejection rejects the whole response (`FormatException`); nothing is saved or partly applied. The router may then retry (FR-003, #42); the rule ID gives the repair prompt a precise error description. |
+| C7 | This contract covers shape only. Semantic plan rules applied after a valid response (meal-slot rules #39, allergens #43, candidate filtering #45) are a separate step and may re-request a single slot; they never relax these rules. |
 | C6 | The version (`recipe.v1`, …) is known by the client from the prompt it sent; the model does not return it. |
 
 Field classes: **strict** fields drive calculation or placement and reject on a
@@ -185,7 +191,7 @@ Rejection leaves local data, outbox and plan unchanged.
 | D1 | Contract format | Markdown plus JSON fixtures; no shared code until #34 | Dev 2 |
 | D2 | Recipe `servings` bound | 1–99 for `recipe.v1` (same as manual recipes, so refining a saved recipe never fails); summaries keep 1–20 | Dev 2, review Dev 1 |
 | D3 | Unknown unit | accepted and marked unknown, never rejected; card #34 says "nepoznata jedinica nikad ne stiže do baze" — propose product design wins | Dev 1 + Dev 2 |
-| D4 | Recipe labels (`suitableFor`, `weight`, `dishType`) | not in v1; when a consumer exists they are fallback fields (unknown → `null`, user edits) | Dev 2 |
+| D4 | Recipe labels (#37: suitable meals, weight lagan/srednji/jak, dish type) | not in v1; #37 adds them as optional fields, which C2 makes backward compatible. They are fallback fields: an unknown value becomes `null` and the user edits it on the recipe; #39 must treat `null` as unknown, not as a rule violation | Dev 2 |
 | D5 | Meal types | v1 has three; snacks arrive with #38 as an additive change | Dev 2, review Dev 4 |
 | D6 | Food identity | no `food_id` in AI output; matching belongs to #40 | Dev 1 |
 
