@@ -52,6 +52,8 @@ that UI task becomes Ready. English is used for engineering documents only.
 Producer specs: [013](../013-testing-strategy/spec.md)
 
 - **Q1** (Dev 2 with reviewer): Agree exact task schema versions, numeric/string bounds and allowed unknown fields before parser changes.
+  Proposed 2026-11-16 in [contracts/ai-response-contract.md](contracts/ai-response-contract.md)
+  with [acceptance fixtures](contracts/fixtures/); pending approval by Dev 1 and Dev 4 (Trello #33).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
