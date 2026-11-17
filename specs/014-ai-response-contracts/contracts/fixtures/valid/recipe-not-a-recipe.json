@@ -1,0 +1,9 @@
+{
+  "contract": "recipe.v1",
+  "expect": "not_a_recipe",
+  "rule": "R11",
+  "why": "A photo without a recipe gets its own outcome, not a format error or retry.",
+  "response": {
+    "error": "not_a_recipe"
+  }
+}
