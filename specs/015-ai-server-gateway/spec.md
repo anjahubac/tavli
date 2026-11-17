@@ -52,6 +52,9 @@ Producer specs: [012](../012-security-baseline/spec.md), [014](../014-ai-respons
 
 - **Q1** (Dev 2 with reviewer): Concrete quota/size/time budgets, service plan limits, rotation/cutover and key-free artifact verification?
 - **Q2** (Dev 2 with reviewer): Does image processing fit synchronous limits or need a queued job? Decide from the spike.
+  Spike 2026-11-17: [spike-photo-timing.md](spike-photo-timing.md). One attempt fits (slowest success 15.4 s,
+  limit 150 s); the full fallback chain can exceed it. Proposed: synchronous gateway with one model attempt per
+  call, client `AIRouter` keeps fallback. Pending team decision (Trello #35).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
