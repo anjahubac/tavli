@@ -58,6 +58,24 @@ server-owned importer, current retailer feeds or real price freshness. The
 fixture does not cover the full 024 three-priced-plus-one-unknown acceptance
 case, historical import idempotency, retries or live-data validity.
 
+## Proposed price acceptance cases
+
+Record each observation with retailer, explicit retailer or store scope, source
+and observation time. Display scope and age together with the comparison. Use
+store-specific prices only for their matching store. Label any retailer-wide
+fallback and preserve its age so it cannot appear to be a fresh store quote.
+
+| Scenario | Expected result |
+| --- | --- |
+| A needed item has no comparable price | Show coverage and label the subtotal partial. Exclude it from cheapest complete basket ranking. |
+| The same demand is offered in different pack sizes | Compare the cost of enough whole packs for the requested amount and show the purchased quantities. |
+| Import the same source observation twice | Reuse the existing observation and keep the same basket totals. |
+| Refresh fails | Retain the last successful observation and its original time. Display that the refresh failed. |
+| A store price and a retailer-wide price both exist | Retain both scopes and prefer the matching store observation for that store. |
+
+These are acceptance cases for the eventual importer and comparison against the
+team catalog. They are not results from the existing synthetic fixture.
+
 ## Decisions and checks still required
 
 - Review allowed sources, license obligations, retailer coverage, ingestion
