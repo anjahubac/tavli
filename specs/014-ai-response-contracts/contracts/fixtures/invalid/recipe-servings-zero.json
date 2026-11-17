@@ -1,0 +1,18 @@
+{
+  "contract": "recipe.v1",
+  "expect": "reject",
+  "rule": "R2",
+  "why": "Servings must be an integer 1-99.",
+  "response": {
+    "title": "Hleb",
+    "servings": 0,
+    "ingredients": [
+      {
+        "name": "brašno",
+        "quantity": 500,
+        "unit": "g",
+        "category": "suvi proizvodi"
+      }
+    ]
+  }
+}

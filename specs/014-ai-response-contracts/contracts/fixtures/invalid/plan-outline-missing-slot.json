@@ -1,0 +1,34 @@
+{
+  "contract": "plan-outline.v1",
+  "expect": "reject",
+  "rule": "P3",
+  "why": "Every requested slot must be filled exactly once.",
+  "request": {
+    "slots": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner"
+      }
+    ],
+    "library": [
+      {
+        "id": "r-123",
+        "title": "Sarma"
+      }
+    ]
+  },
+  "response": {
+    "meals": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch",
+        "recipeId": null,
+        "title": "Pasulj"
+      }
+    ]
+  }
+}
