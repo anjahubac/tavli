@@ -85,6 +85,20 @@ integrated or accepted.
    happens if a client returns after a long offline period. Hosted deployment
    remains the team's CI responsibility and is not part of this proposal.
 
+## Fresh database option raised in review
+
+A disposable local database can be recreated from the checked-in migration
+chain when validating the new PostgreSQL types. Before applying this option
+to any shared environment, the schema coordinator must confirm that it has no
+data to preserve and that no supported clients have pending writes. A local
+reset does not settle the handling of installed clients or offline caches.
+
+The compatibility reader is being verified in #42, including equality with
+the UTC-midnight values used for shopping week lookups. The server-side slice
+still needs tests for all five date fields, timestamp fields that must stay
+instants, and shopping ordering and uniqueness. Use the existing requirement
+to add a new migration to the chain instead of editing an applied migration.
+
 ## Decisions required before dependent implementation
 
 - Dev 1 and Dev 2: accepted legacy-day interpretation, invalid input behavior,
