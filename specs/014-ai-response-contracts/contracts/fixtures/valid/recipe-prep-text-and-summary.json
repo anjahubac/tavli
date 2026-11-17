@@ -1,0 +1,31 @@
+{
+  "contract": "recipe.v1",
+  "expect": "accept",
+  "rule": "R3, R7, R10",
+  "why": "prepMinutes as text becomes null; missing steps make a summary recipe; plural and capitalized units match the vocabulary.",
+  "response": {
+    "title": "Palačinke",
+    "servings": 4,
+    "prepMinutes": "oko pola sata",
+    "ingredients": [
+      {
+        "name": "brašno",
+        "quantity": 2,
+        "unit": "šolje",
+        "category": "suvi proizvodi"
+      },
+      {
+        "name": "šećer",
+        "quantity": 1,
+        "unit": "Kašike",
+        "category": "suvi proizvodi"
+      }
+    ]
+  },
+  "expected": {
+    "prepMinutes": null,
+    "ingredients[0].unitCanonical": "šolja",
+    "ingredients[1].unitCanonical": "kašika",
+    "detailLevel": "summary"
+  }
+}
