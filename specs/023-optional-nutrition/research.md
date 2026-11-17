@@ -59,6 +59,20 @@ separate checkout: the recipe screen, shopping entry and cooking screen. Those
 tests do not by themselves establish the complete team flow from saving a
 step-free meal through shopping and per-portion nutrition.
 
+## Partial-result acceptance case
+
+Use eight recipe ingredients with known quantities and confirmed catalog links.
+Give seven ingredients nutrition records and leave the eighth without a record.
+The result reports coverage of 7 out of 8 ingredients and marks the per-serving
+calculation incomplete. Check that each displayed subtotal equals the sum of
+the seven contributions divided by the recipe servings. The missing ingredient
+must remain identifiable and must not be treated as a zero-nutrition entry.
+
+Review the display copy and whether partial totals appear in the nutrition
+diary with Dev 3. Repeat this case against the accepted Tavli catalog, alongside
+a complete control and an unknown-quantity case, before treating the workflow
+as verified. The separate-checkout fixture does not satisfy that gate.
+
 ## Remaining review and integration
 
 - Review each candidate food identity, source version, portion mass/density
