@@ -1,0 +1,17 @@
+{
+  "contract": "recipe.v1",
+  "expect": "reject",
+  "rule": "R2",
+  "why": "Missing servings is rejected; today it silently becomes 2.",
+  "response": {
+    "title": "Hleb",
+    "ingredients": [
+      {
+        "name": "brašno",
+        "quantity": 500,
+        "unit": "g",
+        "category": "suvi proizvodi"
+      }
+    ]
+  }
+}
