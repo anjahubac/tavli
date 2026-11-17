@@ -57,6 +57,28 @@ unsupported-unit, release or mixed-client requirements in 017.
 These bullets are proposals to review against 017 and C4, not approval to
 reinterpret existing plans, derive mass from volume, or change any stored data.
 
+## Conversion table and aliases
+
+Use the merged [AI unit vocabulary](../014-ai-response-contracts/contracts/ai-response-contract.md#unit-vocabulary)
+as the shared list for exact physical units and count labels. Review this table
+as the source of the default kitchen factors.
+
+| Canonical unit | Accepted aliases proposed for shopping | Base amount |
+| --- | --- | --- |
+| kašičica | kašičice, kasicica, kasicice | approximately 5 ml |
+| kašika | kašike, kasika, kasike | approximately 15 ml |
+| čaša | čaše, casa, case | approximately 200 ml |
+| šolja | šolje, solja, solje | approximately 250 ml |
+| prstohvat | none | no conversion; keep separate and flag for review |
+
+Trim and collapse whitespace and match case-insensitively. Keep the original
+text alongside the canonical key. Use explicit aliases rather than removing
+diacritics from arbitrary input. Treat added aliases as reviewed vocabulary
+changes, with fixtures for the AI and shopping consumers. The unaccented forms
+above need consumer agreement. The draft calculation in #41 is evidence for
+review. Integrate the accepted contract and calculation on the agreed delivery
+PR after confirming the behavior and rollout with the reviewers.
+
 ## Acceptance and compatibility cases
 
 | Scenario | Expected behavior for review |
