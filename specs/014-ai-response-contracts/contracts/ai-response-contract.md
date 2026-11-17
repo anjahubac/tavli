@@ -138,18 +138,22 @@ Summaries for new dishes from the outline (title and ingredients, no steps).
 ### Unit vocabulary
 
 Matching is case-insensitive after trimming, with listed plural and abbreviated
-forms. The canonical form is stored next to the original text; the original is
-never discarded. Factors for kitchen measures come from the measure contract
-(spec 017, Dev 1) and are approximate.
+forms. The unit is stored exactly as written; the canonical form is derived when
+needed (`canonicalUnit` in `lib/ai/ai_units.dart`) and is never stored, so the
+vocabulary needs no schema change. Factors for kitchen measures come from the
+measure contract (spec 017, Dev 1) and are approximate.
 
 | Dimension | Canonical | Also matches | Base amount |
 | --- | --- | --- | --- |
-| mass | `g`, `dkg`, `kg` | `gr`, `grama`, `kilogram` | 1, 10, 1000 g |
-| volume | `ml`, `dl`, `l` | `mililitar`, `litar`, `litra` | 1, 100, 1000 ml |
+| mass | `g`, `dkg`, `kg` | `gr`, `gram`, `grama`, `dag`, `dekagram(a)`, `kilogram(a)` | 1, 10, 1000 g |
+| volume | `ml`, `dl`, `l` | `mililitar(a)`, `decilitar(a)`, `litar`, `litra`, `litara` | 1, 100, 1000 ml |
 | kitchen measure (≈) | `kašičica`, `kašika`, `čaša`, `šolja` | `kašičice`, `kašike`, `čaše`, `šolje` | ≈ 5, 15, 200, 250 ml |
-| piece | `kom`, `glavica`, `čen`, `veza` | `kom.`, `komad`, `komada`, `glavice`, `čena`, `vezica` | count of that piece |
-| package | `pakovanje`, `kesica`, `konzerva`, `tegla` | plural forms | count, not convertible |
-| no measure | `prstohvat`, `null` | — | not summed |
+| piece | `kom`, `glavica`, `čen`, `veza` | `kom.`, `komad`, `komada`, `glavice`, `čena`, `čenova`, `veze`, `vezica`, `vezice` | count of that piece |
+| package | `pakovanje`, `kesica`, `konzerva`, `tegla` | `pakovanja`, `kesice`, `konzerve`, `tegle` | count, not convertible |
+| no measure | `prstohvat`, `null` | `prstohvata` | not summed |
+
+A compound unit such as “kafena šolja” is not in the vocabulary, so it stays
+unknown rather than being read as `šolja`.
 
 An unknown unit is **accepted, kept and marked unknown**; shopping then shows
 “Proveri količinu” instead of guessing (`docs/product-design.md`). Adding a unit
@@ -163,11 +167,17 @@ Rejection leaves local data, outbox and plan unchanged.
 
 ## Compatibility and tests
 
-- This contract changes no prompt or parser. #34 implements it in one slice:
-  the prompt schemas in `lib/ai/prompts.dart` and `lib/ai/meal_plan_prompts.dart`
-  are aligned with these rules (integer servings, numeric quantity, unit
-  vocabulary) together with the AI-boundary validator, so the model is asked
-  for exactly what the validator accepts.
+- Implemented by #34 (2026-11-17) in one slice: the AI-boundary validator
+  `lib/ai/ai_response_validator.dart` (used by `RecipeAI` for photo, dish name
+  and refine, and by `parseSummaries`; `parseOutline` uses R1 for P5), the unit
+  vocabulary `lib/ai/ai_units.dart`, and prompt schemas in `lib/ai/prompts.dart`
+  and `lib/ai/meal_plan_prompts.dart` built from the same rules and unit list, so
+  the model is asked for exactly what the validator accepts. A rejection's
+  `FormatException` message is the rule ID only (for example `R2`), never
+  response content.
+- When every model's response is rejected, `AllModelsExhausted.invalidOutput`
+  is set and the user sees “AI je vratio neispravan odgovor.” instead of the
+  missing-keys message.
 - No migration and no sync change: accepted values are a subset of what the
   existing columns and snapshots already store.
 - Existing data: the local development database had no recipes or plans on
@@ -175,10 +185,9 @@ Rejection leaves local data, outbox and plan unchanged.
   calling it from scripts). Saved rows may hold anything the lenient readers
   accepted (for example servings up to 99, quantities from `"1/2"`), which is
   why these rules stay at the AI boundary only.
-- Tests that encode today's lenient AI behavior and will change with #34:
-  `test/domain/recipe_test.dart` (`"0,5"`, `"1/2"` and default servings `2`
-  through `Recipe.fromAiJson`). They must move to the manual/stored reader or
-  become rejection cases; they are not weakened.
+- `Recipe.fromAiJson` and `Ingredient.fromJson` stay the lenient readers for
+  stored versions, snapshots and manual input; `test/domain/recipe_test.dart`
+  keeps covering them unchanged. AI responses no longer pass through them.
 - Acceptance fixtures: [fixtures/](fixtures/). Each file names the contract,
   the expected outcome (`accept`, `reject`, `not_a_recipe`), the rule and a
   reason; accepted fixtures list expected normalized values. #34 runs all of
@@ -190,7 +199,7 @@ Rejection leaves local data, outbox and plan unchanged.
 | --- | --- | --- | --- |
 | D1 | Contract format | Markdown plus JSON fixtures; no shared code until #34 | Dev 2 |
 | D2 | Recipe `servings` bound | 1–99 for `recipe.v1` (same as manual recipes, so refining a saved recipe never fails); summaries keep 1–20 | Dev 2, review Dev 1 |
-| D3 | Unknown unit | accepted and marked unknown, never rejected; card #34 says "nepoznata jedinica nikad ne stiže do baze" — propose product design wins | Dev 1 + Dev 2 |
+| D3 | Unknown unit | accepted and marked unknown, never rejected; card #34 says "nepoznata jedinica nikad ne stiže do baze" — product design wins. Applied in #34 (2026-11-17): an unknown unit is kept verbatim and never converted; card text to be corrected; Dev 1 to confirm | Dev 1 + Dev 2 |
 | D4 | Recipe labels (#37: suitable meals, weight lagan/srednji/jak, dish type) | not in v1; #37 adds them as optional fields, which C2 makes backward compatible. They are fallback fields: an unknown value becomes `null` and the user edits it on the recipe; #39 must treat `null` as unknown, not as a rule violation | Dev 2 |
 | D5 | Meal types | v1 has three; snacks arrive with #38 as an additive change | Dev 2, review Dev 4 |
 | D6 | Food identity | no `food_id` in AI output; matching belongs to #40 | Dev 1 |

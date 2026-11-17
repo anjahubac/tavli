@@ -74,6 +74,35 @@ void main() {
     expect(await app.titles(), isEmpty);
   });
 
+  testTavli('odgovor koji ne prolazi ugovor se ne čuva', (tester) async {
+    // Svaki model (tri Gemini sa test ključem) dva puta vrati recept bez
+    // porcija ili sa količinom kao tekst.
+    final broken = [
+      {...recipeJson('Pita')}..remove('servings'),
+      {
+        ...recipeJson('Pita'),
+        'ingredients': [
+          {'name': 'brašno', 'quantity': '1/2', 'unit': 'kg'},
+        ],
+      },
+    ];
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/new/photo',
+      ai: [for (var i = 0; i < 6; i++) aiAnswer(broken[i % 2])],
+    );
+    app.picker.next = fakePhoto;
+
+    await tapButton(tester, 'Izaberi iz galerije');
+
+    expect(app.adapter.requests, hasLength(6));
+    expect(find.text('AI je vratio neispravan odgovor.'), findsOneWidget);
+    expect(find.text('Sačuvaj'), findsNothing);
+    expect(find.text('Pokušaj ponovo'), findsOneWidget);
+    expect(await app.titles(), isEmpty);
+    expect(app.photos.saved, isEmpty);
+  });
+
   testTavli('odustajanje od izbora ne menja ništa', (tester) async {
     final app = await pumpTavli(tester, location: '/recipes/new/photo');
 

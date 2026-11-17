@@ -1,6 +1,7 @@
 import '../domain/ids.dart';
 import '../domain/recipe.dart';
 import 'ai_models.dart';
+import 'ai_response_validator.dart';
 import 'ai_router.dart';
 import 'prompts.dart';
 
@@ -67,7 +68,7 @@ class RecipeAI {
             system: recipeSystemPrompt,
             prompt: refineRecipePrompt(current, instruction),
           ),
-          (json) => Recipe.fromAiJson(
+          (json) => recipeFromAiResponse(
             json,
             id: current.id,
             source: current.source,
@@ -82,7 +83,7 @@ class RecipeAI {
     Map<String, dynamic> json,
     RecipeSource source, {
     String? imagePath,
-  }) => Recipe.fromAiJson(
+  }) => recipeFromAiResponse(
     json,
     id: newId(),
     source: source,
