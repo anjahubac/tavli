@@ -119,6 +119,7 @@ class DemandLine {
     required this.baseUnit,
     this.notes = const [],
     this.approximate = false,
+    this.unsupportedUnit = false,
   });
 
   final DemandKey key;
@@ -130,11 +131,12 @@ class DemandLine {
   final String baseUnit;
   final List<String> notes;
   final bool approximate;
+  final bool unsupportedUnit;
 
   bool get isUnknown => micros == null;
 
-  /// Nepoznata količina se nikad ne oduzima brojčano; osoba je proverava.
-  bool get needsReview => isUnknown;
+  /// Nepoznata količina ili nepodržana jedinica traže proveru.
+  bool get needsReview => isUnknown || unsupportedUnit;
 }
 
 /// Potrebe jednog izvora, skalirane na njegove porcije. Redovi istog sastojka
@@ -169,6 +171,11 @@ List<DemandLine> demandFor(DemandSource source) {
           : (micros == null ? null : prev.micros! + micros),
       baseUnit: prev?.baseUnit ?? unit.base,
       notes: [...?prev?.notes, if (i.note != null) i.note!],
+      unsupportedUnit:
+          (prev?.unsupportedUnit ?? false) ||
+          (source.kitchenMeasures &&
+              unit.base.isNotEmpty &&
+              unit.group.startsWith('unit:')),
       approximate:
           (prev?.approximate ?? false) ||
           (known &&
@@ -194,6 +201,7 @@ class ShoppingNeed {
     required this.baseUnit,
     required this.sourceIds,
     this.approximate = false,
+    this.unsupportedUnit = false,
   });
 
   final String ingredient;
@@ -204,8 +212,10 @@ class ShoppingNeed {
   final String baseUnit;
   final List<String> sourceIds;
   final bool approximate;
+  final bool unsupportedUnit;
 
   bool get isUnknown => micros == null;
+  bool get needsReview => isUnknown || unsupportedUnit;
 }
 
 List<ShoppingNeed> summarize(Iterable<DemandLine> lines) {
@@ -226,6 +236,7 @@ List<ShoppingNeed> summarize(Iterable<DemandLine> lines) {
         baseUnit: ls.first.baseUnit,
         sourceIds: {for (final l in ls) l.key.sourceId}.toList(),
         approximate: ls.any((l) => l.approximate),
+        unsupportedUnit: ls.any((l) => l.unsupportedUnit),
       ),
   ];
 }

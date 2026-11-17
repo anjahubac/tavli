@@ -117,6 +117,23 @@ void main() {
       expect(proposed[2].needsReview, isTrue);
     });
 
+    test('prstohvat ostaje zasebna mera i traži proveru', () {
+      const ingredients = [
+        Ingredient(name: 'so', quantity: 1, unit: 'prstohvat'),
+        Ingredient(name: 'so', quantity: 5, unit: 'g'),
+      ];
+      final legacy = demandFor(source('e1', ingredients));
+      expect(legacy.first.needsReview, isFalse);
+
+      final lines = demandFor(source('e1', kitchenMeasures: true, ingredients));
+      expect(lines, hasLength(2));
+      expect(lines.first.baseUnit, 'prstohvat');
+      expect(lines.first.micros, toMicros(1));
+      expect(lines.first.needsReview, isTrue);
+      expect(lines.last.needsReview, isFalse);
+      expect(summarize(lines).first.needsReview, isTrue);
+    });
+
     test('zbir više izvora čuva oznaku približne mere', () {
       final needs = summarize([
         ...demandFor(

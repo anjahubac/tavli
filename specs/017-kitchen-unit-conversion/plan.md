@@ -44,6 +44,14 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 4. Integrate consumers after producer merge, preserving offline/replay and previous
    UI/quantity behavior. Run relevant 012/013 gates and update real evidence.
 
+## Calculation preparation
+
+PR #41 prepares the optional calculation, a review flag for unsupported units,
+and approximate amount formatting. The app keeps the option disabled pending
+agreement on the unit contract. Enabling it also requires conversion provenance
+to survive storage and allocation and to reach shopping display. This slice has
+no schema or stored payload change.
+
 ## Constitution check (3.0.0)
 
 | Gate | Required response before implementation |
