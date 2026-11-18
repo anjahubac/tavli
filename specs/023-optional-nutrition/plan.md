@@ -25,7 +25,7 @@ Attributed nutrition values on reference foods are separate from owner-only inta
 Producer dependencies: [008](../008-household-members/spec.md), [018](../018-ingredient-catalog/spec.md), [021](../021-home-and-cooking/spec.md)
 
 Independent [nutrition reference research](research.md) records source and
-separate-checkout test evidence. It does not approve a mapping or implement
+prototype evidence. It does not approve a mapping or implement
 the team nutrition or diary features.
 
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)

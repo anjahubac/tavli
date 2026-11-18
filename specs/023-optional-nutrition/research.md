@@ -21,27 +21,21 @@ meaning and identifying source and version. No Ciqual data was imported here;
 the relevant team reviewer must assess source terms and version before any use.
 No claim is made that either source provides personalized dietary advice.
 
-## Existing separate-checkout evidence
+## Earlier prototype evidence
 
-A separate reference `main` at `e181050` contains a USDA SR Legacy
-mapping, portion calculation and ingredient-unit conversions. A later,
-unmerged `fix/review-findings` branch at `78c0ae1` documents five questionable
-mappings (coffee, tea, coconut, breadcrumbs and puff pastry) being removed
-from that separate candidate dataset, leaving 161 of 171 mapped there. That
-branch is not team `dev`, has not been merged into the separate `main`, and
-is not an accepted team seed. These counts do not describe an active team
-catalog or prove correctness of the remaining mappings.
+An earlier prototype of the nutrition features contained a USDA SR Legacy
+mapping for 171 foods, a portion calculation and ingredient-unit conversions.
+A review of that mapping found five questionable entries (coffee, tea, coconut,
+breadcrumbs and puff pastry). Removing them would leave 161 of the 171 mapped.
+None of this is in team `dev`, and the mapping is not an accepted team seed.
+The counts do not describe an active team catalog or prove correctness of the
+remaining mappings.
 
-On 2026-11-15, 25 synthetic nutrition calculation, CSV-validation and unit
-weight tests passed in a separate checkout based on `e181050`, using Flutter
-3.47.9. The [portion-calculation fixture](fixtures/recipe_nutrition_test.dart.txt)
-contains nine of those tests and can be rerun from that checkout, whose
-nutrition modules and package configuration must already exist:
-
-```sh
-cp /path/to/team-checkout/specs/023-optional-nutrition/fixtures/recipe_nutrition_test.dart.txt /tmp/tavli-nutrition-test.dart
-flutter test --no-pub /tmp/tavli-nutrition-test.dart --reporter expanded
-```
+The [portion-calculation fixture](fixtures/recipe_nutrition_test.dart.txt)
+holds nine synthetic test cases for a per-portion calculation. It is stored as
+text and is not run by the team test suite: the nutrition modules it exercises
+do not exist in team `dev`, so these cases are specifications of expected
+results for whoever implements the calculation, not passing tests.
 
 All fixture values are synthetic. Two manually checkable examples are:
 
@@ -54,9 +48,8 @@ not treated as zero. It does not establish that actual food matches, densities,
 brands, sources or individual results are accurate. Its modules do not exist
 on team `dev` at baseline `928d655b`.
 
-Three targeted tests for meals without preparation steps passed in the same
-separate checkout: the recipe screen, shopping entry and cooking screen. Those
-tests do not by themselves establish the complete team flow from saving a
+The step-free shopping journey is covered by team tests on `dev` (PR #40).
+They do not by themselves establish the complete team flow from saving a
 step-free meal through shopping and per-portion nutrition.
 
 ## Partial-result acceptance case
@@ -71,17 +64,17 @@ must remain identifiable and must not be treated as a zero-nutrition entry.
 Review the display copy and whether partial totals appear in the nutrition
 diary with Dev 3. Repeat this case against the accepted Tavli catalog, alongside
 a complete control and an unknown-quantity case, before treating the workflow
-as verified. The separate-checkout fixture does not satisfy that gate.
+as verified. The stored fixture does not satisfy that gate.
 
 ## Remaining review and integration
 
 - Review each candidate food identity, source version, portion mass/density
   and preparation state. Do not import ambiguous mappings or invent values;
-  absent values remain unknown. Reassess the separate branch's corrections
+  absent values remain unknown. Reassess the prototype's corrections
   rather than copying either historical seed blindly.
 - Agree how consumers represent coverage, approximate conversions and missing
-  data. Team acceptance includes a seven-of-eight ingredient case; the copied
-  fixture is evidence of the earlier implementation, not that team case.
+  data. Team acceptance includes a seven-of-eight ingredient case; the stored
+  fixture specifies the earlier prototype's behavior, not that team case.
 - Keep attributed reference values separate from private member diaries and
   targets. Tracking is off by default according to [spec 023](spec.md); this
   research does not implement tracking, consent, storage or access control.
