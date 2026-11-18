@@ -59,6 +59,27 @@ is not a test of this PR, the current 3.50.0 application, a server migration,
 offline replay or two-device synchronization. The prototype has not been
 integrated or accepted.
 
+## Reader verification on the team branch
+
+The same fixture passed all nine cases under both `Europe/Belgrade` and
+`America/Los_Angeles` with Flutter 3.50.0 on
+[#42 at ff4bc8d](https://github.com/anjahubac/tavli/pull/42/commits/ff4bc8d75f292bbfb7f595d0267e7d494ca33a63).
+It covers all five date fields, timestamp offsets, the year boundary,
+daylight-saving dates, null shopping periods and invalid calendar input.
+To reproduce, copy the fixture as above and run it from that PR's checkout
+with each time zone. The reader PR also asserts exact UTC-midnight storage
+after a Drift round trip for plan dates and shopping periods.
+
+The fixture verifies reading only. Before converting columns, rehearse on a
+disposable database with synthetic records. Include two legacy shopping lists
+for the same plan with different UTC times on the same UTC day. The current
+timestamp constraint permits these, but a date constraint would treat them as
+duplicates. The preflight must identify that case before any schema change.
+Include an offset timestamp whose local date differs from its UTC date,
+a standalone list with null bounds, and a queued write from an older client.
+Record which writes are permitted during rollout and how queued changes are
+replayed before accepting the server migration.
+
 ## Proposed sequence for review
 
 1. Agree the meaning of existing timestamp values and how to handle exceptional
