@@ -93,7 +93,12 @@ final class AliasFoodMatcher implements FoodMatcher {
     List<AliasEntry> entries, {
     List<CatalogFood> foods = const [],
   }) : _entries = [
-         ...entries,
+         for (final e in entries)
+           AliasEntry(
+             food: e.food,
+             aliasNormalized: ingredientKey(e.aliasNormalized),
+             householdId: e.householdId,
+           ),
          for (final f in foods)
            AliasEntry(
              food: f.food,

@@ -100,6 +100,11 @@ void main() {
       expect(await find(entries, '  sir   kajmak '), isA<Matched>());
     });
 
+    test('alias given with case and spaces still matches', () async {
+      final r = await find([alias(jaje, ' Jaja ')], 'jaja');
+      expect((r as Matched).food.id, 'jaje');
+    });
+
     test('diacritics are not folded', () async {
       final luk = food('cesnjak', 'češnjak');
       final r = await find([alias(luk, 'češnjak')], 'cesnjak');
