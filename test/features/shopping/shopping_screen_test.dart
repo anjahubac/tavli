@@ -66,6 +66,27 @@ Future<String> seedPlan(AppDatabase db, DateRange range) async {
   );
 }
 
+/// Bez plana: samo nabavka po receptu (dve stavke).
+Future<void> seedRecipeOnly(AppDatabase db) async {
+  final scope = await scopeOf(db);
+  await ShoppingRepository(
+    db,
+    scope: scope,
+    writer: SyncedWriter(db, accountId: scope.userId),
+  ).addRecipePreparation(
+    snapshot: const RecipeSnapshot(
+      title: 'Musaka',
+      baseServings: 4,
+      ingredients: [
+        Ingredient(name: 'patlidžan', quantity: 2, unit: 'kom'),
+        Ingredient(name: 'mleko', quantity: 0.5, unit: 'l'),
+      ],
+    ),
+    servings: 4,
+    originKey: 'recipe:musaka',
+  );
+}
+
 Future<TestApp> pumpShopping(
   WidgetTester tester, {
   Size size = phone,
@@ -202,6 +223,32 @@ void main() {
     expect(find.text('Napravi plan'), findsOneWidget);
   });
 
+  testTavli('bez plana, sa nabavkom po receptu: „Po planu“ kaže šta čeka i '
+      'vodi na recept', (tester) async {
+    await pumpShopping(tester, setup: seedRecipeOnly);
+    await tapIn(tester, find.text('Po planu'));
+    expect(find.text('Još nemaš plan'), findsOneWidget);
+    expect(
+      find.text('Po receptu te čeka 2 stavke za kupovinu.'),
+      findsOneWidget,
+    );
+    await tapIn(tester, find.widgetWithText(FilledButton, 'Otvori po receptu'));
+    expect(find.text('Recepti u nabavci'), findsOneWidget);
+    expect(find.text('patlidžan'), findsOneWidget);
+  });
+
+  for (final size in [const Size(320, 700), const Size(400, 800), wide]) {
+    testTavli('${size.width} px, tekst 2×: „Po planu“ bez plana bez '
+        'preliva', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpShopping(tester, size: size, setup: seedRecipeOnly);
+      await tapIn(tester, find.text('Po planu'));
+      expect(find.text('Otvori po receptu'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testTavli('po receptu bez plana: pripreme i njihove stavke; uklanjanje '
       'pripreme čuva kupljeno', (tester) async {
     await pumpShopping(
@@ -232,8 +279,8 @@ void main() {
         );
       },
     );
-    expect(find.text('Još nemaš plan'), findsOneWidget);
-    await tapIn(tester, find.widgetWithText(OutlinedButton, 'Po receptu'));
+    // Bez plana, a sa nabavkom po receptu: odmah se otvara „Po receptu“.
+    expect(find.text('Još nemaš plan'), findsNothing);
     expect(find.text('Recepti u nabavci'), findsOneWidget);
     expect(find.text('4 porcije · 2 sastojka za kupovinu'), findsOneWidget);
     await tapIn(tester, tileOf('patlidžan'));
