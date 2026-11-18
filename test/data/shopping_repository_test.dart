@@ -11,6 +11,7 @@ import 'package:tavli/data/shopping_repository.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
+import 'package:tavli/sync/entities.dart';
 import 'package:tavli/sync/synced_writer.dart';
 import 'package:tavli/sync/uploader.dart';
 
@@ -931,4 +932,27 @@ void main() {
       expect(await db.select(db.syncOutbox).get(), isEmpty);
     });
   });
+
+  test(
+    'nedeljna lista preuzeta sa servera kao datum se ponovo nalazi',
+    () async {
+      await const ShoppingListEntity().write(db, {
+        'id': 'server-week',
+        'name': 'Nedelja 1',
+        'meal_plan_id': 'p1',
+        'week': 1,
+        'period_start': '2026-12-28',
+        'period_end': '2027-01-03',
+        'created_at': '2026-12-01T10:00:00Z',
+        'household_id': 'home-one',
+      });
+      final period = WeekPeriod(
+        1,
+        DateRange(CivilDate(2026, 12, 28), CivilDate(2027, 1, 3)),
+      );
+
+      expect(await repo.weekList('p1', period), 'server-week');
+      expect(await db.select(db.shoppingLists).get(), hasLength(1));
+    },
+  );
 }
