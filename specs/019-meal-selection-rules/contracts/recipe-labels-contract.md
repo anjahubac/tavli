@@ -182,6 +182,18 @@ only records the decision.
 1. This contract, reviewed by Dev 1 and Dev 3.
 2. Domain + validator + prompts + drift and server columns + sync mapping, with
    tests (one PR, because the migration and the mapping must ship together).
+   Explicit tasks, from the Dev 1 review:
+   - **drift version:** the PR merges the latest `dev` right before merging and
+     takes the next free `schemaVersion` last (other schema PRs, such as #41,
+     may claim a number first); the `test/data/migration_test.dart` case for
+     the new columns lands in the same PR;
+   - **sync mapping:** `RecipeEntity.toRemote` and `fromRemote`
+     (`lib/sync/entities.dart`) map all four columns, with a round-trip test
+     and a test that an unknown `dish_kind` from a newer server is stored
+     unchanged and read as unknown (`null` in the domain), never as an error;
+   - **snack mapping:** one function maps a plan meal type to its suitability
+     (`morningSnack` and `afternoonSnack` → `snack`, the other three to
+     themselves), with a test; #39 and #45 use it.
 3. Recipe screen section and edit sheet, then the one-time labelling pass.
 
 Estimate: slice 2 about 1.5 days, slice 3 about 1.5 days, plus review.
