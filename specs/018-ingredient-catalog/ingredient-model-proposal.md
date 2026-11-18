@@ -76,11 +76,25 @@ retryable error for transport failures or an access error for invalid scope,
 distinct from an ordinary unresolved name. A canceled lookup returns no
 match result. Error and cancellation never write data.
 
-Backfill uses the ingredient's stable record identity and the contract version
-to recognize prior work. Repeating the same backfill against unchanged input
-and catalog evidence leaves the same links and creates no duplicate aliases or
-proposals. Skip already confirmed identities and do not overwrite a newer user
-edit. Unresolved rows may be retried when evidence changes.
+### Link stored on a recipe ingredient
+
+An ingredient the matcher resolved carries two optional, additive fields beside
+its original `name`: `foodId` (the UUID of the matched food) and `matchedKey`
+(the value of `ingredientKey(name)` when it was resolved; the function is in
+`lib/domain/shopping_sync.dart`). `matchedKey` is required whenever `foodId` is
+present. A link is **valid** only while `ingredientKey(name)` still equals
+`matchedKey`. If the name is edited, the link stops being valid by itself:
+consumers ignore it, the original text is untouched and the ingredient can be
+resolved again. No ingredient identifier is needed. Whether the matcher or a
+person set the link is a proposed third field, `linkSource` (`matched` or
+`confirmed`); see the decisions below.
+
+Backfill recognizes prior work by this link: an ingredient with a valid link is
+skipped. Repeating the same backfill against unchanged input and catalog
+evidence leaves the same links and creates no duplicate aliases or proposals.
+Backfill never overwrites a `confirmed` link or a newer user edit. Unresolved
+ingredients carry no link and may be retried when evidence or the contract
+version changes.
 
 `piece`, `gram` and `milliliter` are proposed domain units, not new UI copy or
 a settled wire representation. Aliases, conversions, nutritional data and
@@ -106,6 +120,8 @@ These examples are proposed acceptance fixtures, not passing test results.
 | Lookup is canceled or transport fails | No match is applied. Only the transport failure is offered for retry. |
 | The same backfill runs twice after a user confirms a correction | One link remains, and the confirmation wins. |
 | A confirmed food is renamed | Its UUID stays the same; existing ingredient text is not rewritten. |
+| An ingredient is renamed after it was matched | The link is no longer valid because `matchedKey` differs from `ingredientKey(name)`; the original text is kept, consumers ignore the link and the ingredient can be resolved again. |
+| A build without the link fields saves the recipe | The two fields are dropped. Backfill resolves the ingredient again; a `confirmed` link has to be confirmed again by a person. |
 
 ## Compatibility, failure and privacy
 
@@ -113,8 +129,12 @@ Existing recipe JSON and approved snapshots remain readable; absence of a food
 identity is valid. A later implementation must define additive serialization,
 old/new client behavior, migration and rollback before it changes persisted
 data. It must preserve pending outbox entries and original ingredient text,
-and test offline replay and two-account isolation. There is no schema or
-outbox change in this proposal. Ingredient text can be user data: no raw text
+and test offline replay and two-account isolation. The ingredient link is
+additive JSON on the existing embedded ingredient. Today `Ingredient.fromJson`
+ignores unknown fields and `toJson` omits them, so a build that does not know
+`foodId` and `matchedKey` drops them when it saves a recipe. Team builds update
+together; if a build outside the team can write recipes, this needs a decision
+before rollout. There is no schema or outbox change in this proposal. Ingredient text can be user data: no raw text
 or request content should be logged; any AI use requires its own reviewed
 consent, privacy and gateway contract.
 
@@ -130,6 +150,10 @@ consent, privacy and gateway contract.
   cancellation, offline and error outcomes; no AI proposal is a trusted match.
 - Dev 1 and Dev 4: coordinate unit terminology with the unresolved 017
   conversion decisions. No conversion assumptions are finalized here.
+- Dev 1 and Dev 4: confirm that the link lives on the embedded ingredient
+  (`foodId`, `matchedKey`, and whether `linkSource` is needed) and not in a
+  separate table. The alternative adds a synced table and a join whenever a
+  plan snapshot is made.
 
 Owners, decision dates, accepted examples and the producing PR must be recorded
 when decisions are actually made. This proposal does not mark T001 or D1-001
