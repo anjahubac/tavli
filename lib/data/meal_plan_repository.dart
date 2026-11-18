@@ -319,7 +319,8 @@ class MealPlanRepository {
 
   /// Mesto obroka; null za vrstu obroka koju ova verzija ne zna (npr. iz
   /// novije aplikacije). Takav obrok se ne prikazuje i ne menja, umesto da
-  /// se pogrešno pokaže kao ručak.
+  /// se pogrešno pokaže kao ručak. Nabavka ga namerno i dalje računa: obrok
+  /// postoji u domaćinstvu, samo ga ova verzija ne ume da prikaže.
   static MealSlot? _slotOf(MealPlanEntryRow e) {
     final type = MealType.tryParse(e.mealType);
     return type == null ? null : MealSlot(CivilDate.fromWire(e.date), type);
