@@ -142,6 +142,8 @@ class _IngredientReviewSheetState extends ConsumerState<IngredientReviewSheet> {
                 ? 'Sve imaš; ništa nije dodato.'
                 : 'Dodato u nabavku: ${missing.length}',
           ),
+          duration: const Duration(seconds: 5),
+          persist: false,
           action: SnackBarAction(
             label: 'Otvori',
             onPressed: () {

@@ -62,6 +62,8 @@ Future<void> setBought(
   messenger.showSnackBar(
     SnackBar(
       content: Text(bought ? 'Kupljeno: $name' : 'Vraćeno u nabavku: $name'),
+      duration: const Duration(seconds: 5),
+      persist: false,
       action: SnackBarAction(
         label: 'Poništi',
         onPressed: () => unawaited(repo.setBought(ids, bought: !bought)),
@@ -219,6 +221,8 @@ class ShoppingItemTile extends ConsumerWidget {
         ..showSnackBar(
           SnackBar(
             content: Text('Obrisano: ${item.name}'),
+            duration: const Duration(seconds: 5),
+            persist: false,
             action: SnackBarAction(
               label: 'Vrati',
               onPressed: () => unawaited(
