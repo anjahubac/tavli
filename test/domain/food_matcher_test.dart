@@ -75,6 +75,68 @@ void main() {
       expect(r, isA<Matched>());
     });
 
+    test(
+      'household A override wins over shared alias; B keeps shared',
+      () async {
+        final prepelica = food('jaje-prepelica', 'jaje od prepelice');
+        final entries = [
+          alias(jaje, 'jaja'),
+          alias(prepelica, 'jaja', householdId: 'A'),
+        ];
+        final a = await find(entries, 'jaja');
+        final b = await find(
+          entries,
+          'jaja',
+          scope: const FoodLookupScope(householdId: 'B'),
+        );
+        expect((a as Matched).food.id, 'jaje-prepelica');
+        expect((b as Matched).food.id, 'jaje');
+      },
+    );
+
+    test('custom food of household A is invisible to household B', () async {
+      final tajna = food('tajna', 'tajni sastojak');
+      final entries = [alias(tajna, 'tajni', householdId: 'A')];
+      expect(await find(entries, 'tajni'), isA<Matched>());
+      final b = await find(
+        entries,
+        'tajni',
+        scope: const FoodLookupScope(householdId: 'B'),
+      );
+      expect(b, isA<Unresolved>());
+    });
+
+    test('custom food name matches only in its own household', () async {
+      final tajna = food('tajna', 'tajni sastojak');
+      final entries = [alias(tajna, 'tajni', householdId: 'A')];
+      final b = await find(
+        entries,
+        'tajni sastojak',
+        scope: const FoodLookupScope(householdId: 'B'),
+      );
+      expect(b, isA<Unresolved>());
+      expect(await find(entries, 'tajni sastojak'), isA<Matched>());
+    });
+
+    test('two disagreeing household mappings are Unresolved', () async {
+      final prepelica = food('jaje-prepelica', 'jaje od prepelice');
+      final r = await find([
+        alias(jaje, 'jaja', householdId: 'A'),
+        alias(prepelica, 'jaja', householdId: 'A'),
+      ], 'jaja');
+      expect(r, isA<Unresolved>());
+    });
+
+    test('household alias to the same food as shared is one match', () async {
+      final r = await find([
+        alias(jaje, 'jaja'),
+        alias(jaje, 'jaja', householdId: 'A'),
+      ], 'jaja');
+      expect((r as Matched).food.id, 'jaje');
+    });
+  });
+
+  group('shared conflicts', () {
     test('same shared alias for two foods is Unresolved', () async {
       final prepelica = food('jaje-prepelica', 'jaje od prepelice');
       final r = await find([

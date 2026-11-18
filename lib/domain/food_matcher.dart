@@ -99,13 +99,18 @@ final class AliasFoodMatcher implements FoodMatcher {
   }) async {
     final key = ingredientKey(originalText);
     if (key.isEmpty) return const Unresolved();
-    final foods = {
-      for (final e in _entries)
-        if (e.householdId == null && e.aliasNormalized == key)
-          e.food.id: e.food,
-    };
+    final own = _foodsFor(key, scope.householdId);
+    // Potvrda domaćinstva ima prednost nad deljenim aliasom.
+    final foods = own.isNotEmpty ? own : _foodsFor(key, null);
     return foods.length == 1
         ? Matched(foods.values.single)
         : const Unresolved();
   }
+
+  /// Namirnice čiji alias odgovara ključu; `householdId == null` = deljeni.
+  Map<String, FoodIdentity> _foodsFor(String key, String? householdId) => {
+    for (final e in _entries)
+      if (e.householdId == householdId && e.aliasNormalized == key)
+        e.food.id: e.food,
+  };
 }
