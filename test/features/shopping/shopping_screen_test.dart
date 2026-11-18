@@ -224,15 +224,17 @@ void main() {
   });
 
   testTavli('bez plana, sa nabavkom po receptu: „Po planu“ kaže šta čeka i '
-      'vodi na recept', (tester) async {
+      'nema drugog dugmeta', (tester) async {
     await pumpShopping(tester, setup: seedRecipeOnly);
     await tapIn(tester, find.text('Po planu'));
     expect(find.text('Još nemaš plan'), findsOneWidget);
     expect(
-      find.text('Po receptu te čeka 2 stavke za kupovinu.'),
+      find.text('U „Po receptu“ te čeka 2 stavke za kupovinu.'),
       findsOneWidget,
     );
-    await tapIn(tester, find.widgetWithText(FilledButton, 'Otvori po receptu'));
+    expect(find.widgetWithText(FilledButton, 'Napravi plan'), findsOneWidget);
+    expect(find.byType(OutlinedButton), findsNothing);
+    await tapIn(tester, find.text('Po receptu'));
     expect(find.text('Recepti u nabavci'), findsOneWidget);
     expect(find.text('patlidžan'), findsOneWidget);
   });
@@ -244,7 +246,7 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await pumpShopping(tester, size: size, setup: seedRecipeOnly);
       await tapIn(tester, find.text('Po planu'));
-      expect(find.text('Otvori po receptu'), findsOneWidget);
+      expect(find.text('Napravi plan'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

@@ -64,6 +64,7 @@ class ShoppingScreen extends ConsumerWidget {
         view.mode == null &&
         ((plansAsync.isLoading && !plansAsync.hasValue) ||
             (recipeAsync.isLoading && !recipeAsync.hasValue));
+    final largeText = MediaQuery.textScalerOf(context).scale(16) > 16 * 1.3;
     final mode = view.effectiveMode(
       hasPlan: plans?.isNotEmpty ?? false,
       hasRecipeItems: recipeItems?.isNotEmpty ?? false,
@@ -80,16 +81,22 @@ class ShoppingScreen extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: SegmentedButton<ShoppingMode>(
-                    segments: const [
+                    // Uz veliki tekst: bez ikonica, natpis u jednom redu.
+                    showSelectedIcon: !largeText,
+                    segments: [
                       ButtonSegment(
                         value: ShoppingMode.plan,
-                        icon: Icon(Icons.calendar_month_outlined),
-                        label: Text('Po planu'),
+                        icon: largeText
+                            ? null
+                            : const Icon(Icons.calendar_month_outlined),
+                        label: const _SegmentLabel('Po planu'),
                       ),
                       ButtonSegment(
                         value: ShoppingMode.recipe,
-                        icon: Icon(Icons.menu_book_outlined),
-                        label: Text('Po receptu'),
+                        icon: largeText
+                            ? null
+                            : const Icon(Icons.menu_book_outlined),
+                        label: const _SegmentLabel('Po receptu'),
                       ),
                     ],
                     selected: {mode},
@@ -115,6 +122,19 @@ class ShoppingScreen extends ConsumerWidget {
   }
 }
 
+/// Natpis segmenta u jednom redu; smanjuje se ako ne staje.
+class _SegmentLabel extends StatelessWidget {
+  const _SegmentLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(text, maxLines: 1, softWrap: false),
+  );
+}
+
 class _PlanShopping extends ConsumerWidget {
   const _PlanShopping();
 
@@ -138,8 +158,8 @@ class _PlanShopping extends ConsumerWidget {
   }
 }
 
-/// „Po planu“ bez plana. Kad postoji nabavka po receptu, kaže koliko čeka i
-/// nudi je kao glavnu akciju, da ekran ne izgleda kao da nabavke nema.
+/// „Po planu“ bez plana. Kad postoji nabavka po receptu, kaže koliko čeka u
+/// tabu „Po receptu“, da ekran ne izgleda kao da nabavke nema.
 class _NoPlan extends ConsumerWidget {
   const _NoPlan();
 
@@ -150,50 +170,21 @@ class _NoPlan extends ConsumerWidget {
         ref.watch(recipeShoppingProvider).value ?? const <ShoppingItemRow>[];
     final open = recipeItems.where((i) => !i.isBought).length;
     final hasRecipe = recipeItems.isNotEmpty;
-    void openRecipe() =>
-        ref.read(shoppingViewProvider.notifier).setMode(ShoppingMode.recipe);
-    void newPlan() => context.go('/plan/new');
-
     return EmptyStateBody(
       art: Icon(Icons.calendar_month_outlined, size: 56, color: colors.primary),
       title: 'Još nemaš plan',
       body: 'Nabavka po planu nastaje iz sačuvanog plana obroka.',
+      // „Po receptu“ je već tab iznad, pa ovde nema drugog dugmeta.
       note: hasRecipe ? _RecipeWaiting(open: open) : null,
-      action: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: hasRecipe
-            ? [
-                FilledButton.icon(
-                  onPressed: openRecipe,
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text('Otvori po receptu'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: newPlan,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Napravi plan'),
-                ),
-              ]
-            : [
-                FilledButton.icon(
-                  onPressed: newPlan,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Napravi plan'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: openRecipe,
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: const Text('Po receptu'),
-                ),
-              ],
+      action: FilledButton.icon(
+        onPressed: () => context.go('/plan/new'),
+        icon: const Icon(Icons.add),
+        label: const Text('Napravi plan'),
       ),
     );
   }
 }
 
-/// Napomena da nabavka po receptu postoji: koliko stavki još treba kupiti.
 class _RecipeWaiting extends StatelessWidget {
   const _RecipeWaiting({required this.open});
 
@@ -220,7 +211,7 @@ class _RecipeWaiting extends StatelessWidget {
             Expanded(
               child: Text(
                 open > 0
-                    ? 'Po receptu te čeka ${itemsCount(open)} za kupovinu.'
+                    ? 'U „Po receptu“ te čeka ${itemsCount(open)} za kupovinu.'
                     : 'Sve iz nabavke po receptu je kupljeno.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colors.onSecondaryContainer,
