@@ -27,6 +27,17 @@ class DocumentChecksTest(unittest.TestCase):
             self.assertTrue(any("missing.md" in e for e in errors))
             self.assertTrue(any("outside.md" in e for e in errors))
 
+    def test_spec_must_not_name_the_private_checkout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / "specs/001-x").mkdir(parents=True)
+            (root / "specs/001-x/ok.md").write_text("A reference implementation.")
+            self.assertEqual(checker.sibling_checkout_errors(root), [])
+            (root / "specs/001-x/bad.md").write_text("The `tavli-next` branch.")
+            errors = checker.sibling_checkout_errors(root)
+            self.assertEqual(len(errors), 1)
+            self.assertIn("bad.md", errors[0])
+
     def registry(self):
         tasks = []
         for role, count in enumerate((20, 21, 20, 26), 1):
