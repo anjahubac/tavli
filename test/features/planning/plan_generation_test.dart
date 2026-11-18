@@ -91,6 +91,46 @@ void main() {
     });
   }
 
+  testTavli('užine se biraju same; podrazumevano je samo ručak', (
+    tester,
+  ) async {
+    await pumpPlan(tester);
+    await tapButton(tester, 'Napravi plan');
+
+    final chips = tester.widgetList<FilterChip>(find.byType(FilterChip));
+    expect(
+      [for (final c in chips) ((c.label as Text).data, c.selected)],
+      [
+        ('Doručak', false),
+        ('Užina pre podne', false),
+        ('Ručak', true),
+        ('Užina posle podne', false),
+        ('Večera', false),
+      ],
+    );
+    expect(find.text('7 obroka · 2 porcije po obroku'), findsOneWidget);
+
+    await tester.tap(find.text('Užina pre podne'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Užina posle podne'));
+    await tester.pumpAndSettle();
+    expect(find.text('21 obrok · 2 porcije po obroku'), findsOneWidget);
+  });
+
+  for (final size in [const Size(320, 700), wide]) {
+    testTavli('${size.width} px, tekst 2×: pet obroka bez preliva', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpPlan(tester, size: size);
+      await tapButton(tester, 'Napravi plan');
+
+      expect(find.byType(FilterChip), findsNWidgets(5));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testTavli('izbori ostaju posle greške i povratka na podešavanje', (
     tester,
   ) async {

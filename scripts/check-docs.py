@@ -145,6 +145,13 @@ def broken_links(root, path):
     return errors
 
 
+def sibling_checkout_errors(root):
+    """Specs describe this repository; a private checkout name is not a source."""
+    return [f"Private checkout name in spec: {path.relative_to(root)}"
+            for path in sorted((root / "specs").rglob("*.md"))
+            if "tavli-next" in path.read_text(encoding="utf-8")]
+
+
 def check(root):
     errors = []
     documents = active_documents(root)
@@ -180,6 +187,7 @@ def check(root):
                 errors.append(f"Unknown feature key: {task['feature_key']}")
     except (OSError, ValueError, KeyError, TypeError) as exc:
         errors.append(f"Cannot validate task register: {exc}")
+    errors.extend(sibling_checkout_errors(root))
     constitution = (root / ".specify/memory/constitution.md").read_text()
     if "**Version**: 3.0.1" not in constitution or "### X." not in constitution:
         errors.append("Update the checker alongside a deliberate constitution version change")

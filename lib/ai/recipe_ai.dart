@@ -1,6 +1,7 @@
 import '../domain/ids.dart';
 import '../domain/recipe.dart';
 import 'ai_models.dart';
+import 'ai_response_validator.dart';
 import 'ai_router.dart';
 import 'prompts.dart';
 
@@ -67,13 +68,21 @@ class RecipeAI {
             system: recipeSystemPrompt,
             prompt: refineRecipePrompt(current, instruction),
           ),
-          (json) => Recipe.fromAiJson(
-            json,
-            id: current.id,
-            source: current.source,
-            createdAt: current.createdAt,
-            imagePath: current.imagePath,
-          ),
+          (json) {
+            final refined = recipeFromAiResponse(
+              json,
+              id: current.id,
+              source: current.source,
+              createdAt: current.createdAt,
+              imagePath: current.imagePath,
+            );
+            // R10: izmena ne sme tiho da obriše korake recepta koji ih ima;
+            // router tada pita ponovo.
+            if (current.steps.isNotEmpty && refined.steps.isEmpty) {
+              throw const FormatException('R10');
+            }
+            return refined;
+          },
         )
         .then(_stampModel);
   }
@@ -82,7 +91,7 @@ class RecipeAI {
     Map<String, dynamic> json,
     RecipeSource source, {
     String? imagePath,
-  }) => Recipe.fromAiJson(
+  }) => recipeFromAiResponse(
     json,
     id: newId(),
     source: source,

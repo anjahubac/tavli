@@ -1,9 +1,10 @@
 import '../domain/meal_plan.dart';
 import '../domain/plan_calendar.dart';
 import '../domain/recipe.dart';
-import '../domain/shopping_demand.dart' show maxServings, minServings;
+import '../domain/shopping_demand.dart' show maxServings;
 import '../domain/shopping_source.dart';
 import 'ai_models.dart';
+import 'ai_response_validator.dart';
 import 'ai_router.dart';
 import 'meal_plan_prompts.dart';
 
@@ -175,8 +176,7 @@ Map<MealSlot, SlotProposal> parseOutline(
       result[slot] = SlotProposal(title: title, libraryRecipeId: id as String);
       continue;
     }
-    final title = (raw['title'] as String?)?.trim() ?? '';
-    if (title.isEmpty) throw const FormatException('Obrok nema naziv');
+    final title = aiTitle(raw['title']);
     result[slot] = SlotProposal(
       title: title,
       draftRecipeKey: draftRecipeKey(title),
@@ -190,7 +190,7 @@ Map<MealSlot, SlotProposal> parseOutline(
 
 /// Čita sažetke: tačno jedan recept za svaki od [titles], po
 /// [draftRecipeKey]. Baca [FormatException] za višak, manjak, duplikat,
-/// porcije van 1–20 i recept bez sastojaka.
+/// porcije van 1–20 i sastojke koji ne prolaze ugovor (S1–S3).
 Map<String, RecipeSnapshot> parseSummaries(
   Map<String, dynamic> json, {
   required List<String> titles,
@@ -210,26 +210,11 @@ Map<String, RecipeSnapshot> parseSummaries(
     if (result.containsKey(key)) {
       throw FormatException('Recept se ponavlja', key);
     }
-    final servings = raw['servings'];
-    if (servings is! num ||
-        servings != servings.roundToDouble() ||
-        servings < minServings ||
-        servings > maxServings) {
-      throw const FormatException('Neispravne porcije');
-    }
-    final ingredients = raw['ingredients'];
-    if (ingredients is! List || ingredients.isEmpty) {
-      throw const FormatException('Recept nema sastojke');
-    }
-    final prep = raw['prepMinutes'];
     result[key] = RecipeSnapshot(
       title: wanted[key]!,
-      baseServings: servings.toInt(),
-      prepMinutes: prep is num && prep > 0 ? prep.round() : null,
-      ingredients: [
-        for (final i in ingredients)
-          Ingredient.fromJson(i as Map<String, dynamic>),
-      ],
+      baseServings: aiServings(raw['servings'], max: maxServings, rule: 'S2'),
+      prepMinutes: aiPrepMinutes(raw['prepMinutes']),
+      ingredients: aiIngredients(raw['ingredients']),
     );
   }
   if (result.length != wanted.length) {
