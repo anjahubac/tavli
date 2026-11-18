@@ -23,7 +23,7 @@ No claim is made that either source provides personalized dietary advice.
 
 ## Existing separate-checkout evidence
 
-The separate `tavli-next` `main` at `e181050` contains a USDA SR Legacy
+A separate reference `main` at `e181050` contains a USDA SR Legacy
 mapping, portion calculation and ingredient-unit conversions. A later,
 unmerged `fix/review-findings` branch at `78c0ae1` documents five questionable
 mappings (coffee, tea, coconut, breadcrumbs and puff pastry) being removed
