@@ -23,6 +23,31 @@ historical pair exists. A canonical name or an alias still mapped to another
 food remains a conflict. The historical CSV stays intact. The T-400 and
 T-500 candidates remain pending with unknown allergen status.
 
+## Review worksheet
+
+`catalog-review-worksheet.csv` joins the 163 candidates and the 171 reference
+rows (334 foods) with **proposed** evidence for a human reviewer. It is a
+reviewer aid: no row is accepted, nothing is imported, and every row keeps
+`identity_status = pending` and `allergen_status = unknown`. The first eleven
+columns match `candidates.csv`; the rest are added evidence.
+
+| Column | Meaning |
+| --- | --- |
+| `origin` | `candidate` or `legacy_reference`; the second also lists `legacy_aliases`. |
+| `proposed_base_unit` | `gram`, `milliliter` or `piece` (names from the #30 contract). For candidates it is a proposal from the typical way the food is measured; for reference rows it is the unit in the historical catalog. Neither is reviewed. |
+| `usda_fdc_id`, `usda_description` | A proposed USDA FoodData Central SR Legacy record (April 2018 release), or empty. |
+| `usda_basis` | How the record was chosen: a keyword search of record descriptions (proposal), the historical mapping (its id and description match the downloaded release; the food match itself is not reviewed), or no match found. |
+| `usda_alternates` | Other records the search found, for the reviewer to compare. |
+| `notes` | Known approximations, for example a cut of meat or a proxy species or product. |
+| `base_unit_reviewer`, `usda_reviewer` | Empty; filled by an independent human reviewer. |
+
+Current counts: 308 rows have a proposed USDA record and 26 have none (the
+foods are not in SR Legacy, such as halloumi, skyr and sumac). The matching only
+compares names, so a proposed record can be the wrong food, a different cut or a
+proxy. A record is evidence for the reviewer to confirm, not a conversion or
+nutrition value to use. USDA terms and the seed provenance still need the team's
+acceptance under Q1. The worksheet is not read by the offline checker below.
+
 ## Offline checks
 
 From the repository root:
