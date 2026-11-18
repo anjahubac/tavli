@@ -23,7 +23,7 @@ downloaded, complete, current or compatible on 2026-11-15. Source terms,
 update schedules, coverage and acceptable processing limits still require
 review before selection or integration.
 
-Earlier research in the separate `tavli-next` checkout reported that the two
+Earlier research in a separate reference checkout reported that the two
 CSV endpoints returned data on 2026-11-13. Its sampled files contained both
 historical and current-list rows. It also reported product names containing
 package sizes that were not safely inferable from the observed unit-price
@@ -33,7 +33,7 @@ contents of every retailer file.
 ## Synthetic comparison evidence
 
 The [fixture](fixtures/basket_comparison_test.dart.txt) is a copy of three
-existing tests for the separate `tavli-next` comparison implementation based
+existing tests for a separate reference comparison implementation based
 on `e181050`. It requires that checkout's `basket_comparison.dart` and package
 configuration; team `dev` at `928d655b` does not yet contain that module. With
 Flutter 3.47.9 and cached dependencies, the following passed on 2026-11-15:
