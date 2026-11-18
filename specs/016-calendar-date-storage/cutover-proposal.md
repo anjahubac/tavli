@@ -80,6 +80,30 @@ a standalone list with null bounds, and a queued write from an older client.
 Record which writes are permitted during rollout and how queued changes are
 replayed before accepting the server migration.
 
+## Shopping-period SQL rehearsal
+
+The [synthetic SQL fixture](fixtures/shopping_period_cutover.sql) reproduces
+the shopping period check and uniqueness constraints on a temporary table.
+The preflight groups by plan and explicit UTC day. Two distinct timestamps
+for one plan project to `2026-12-31`; a different plan on that day and
+standalone lists with null bounds do not collide. PostgreSQL rejects the
+attempted conversion under the existing unique constraint. The clean
+control then verifies the UTC date boundaries, unchanged event timestamp,
+null periods and rejection of reversed dates.
+
+The fixture passed on embedded PostgreSQL 18.6 (PGlite 0.5.16) in the Belgrade
+and Los Angeles session time zones. To repeat it on a disposable local
+PostgreSQL instance already selected in your shell, run:
+
+```sh
+PGTZ=Europe/Belgrade psql -X -v ON_ERROR_STOP=1 -f specs/016-calendar-date-storage/fixtures/shopping_period_cutover.sql
+PGTZ=America/Los_Angeles psql -X -v ON_ERROR_STOP=1 -f specs/016-calendar-date-storage/fixtures/shopping_period_cutover.sql
+```
+
+A passing run reaches `ROLLBACK`. This checks the conversion mechanics on
+synthetic data. The Supabase migration chain, access rules and queued client
+writes still require local integration tests after the cutover is agreed.
+
 ## Proposed sequence for review
 
 1. Agree the meaning of existing timestamp values and how to handle exceptional
