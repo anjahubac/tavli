@@ -28,8 +28,10 @@ typedef NormalizedUnit = ({String group, String base, int factor});
 const _units = <String, NormalizedUnit>{
   'g': (group: 'mass', base: 'g', factor: 1),
   'gr': (group: 'mass', base: 'g', factor: 1),
+  'dkg': (group: 'mass', base: 'g', factor: 10),
   'kg': (group: 'mass', base: 'g', factor: 1000),
   'ml': (group: 'volume', base: 'ml', factor: 1),
+  'dl': (group: 'volume', base: 'ml', factor: 100),
   'l': (group: 'volume', base: 'ml', factor: 1000),
   'kom': (group: 'count:kom', base: 'kom', factor: 1),
   'kom.': (group: 'count:kom', base: 'kom', factor: 1),

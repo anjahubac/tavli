@@ -340,6 +340,43 @@ void main() {
       expect(c.micros, 450000000);
     });
 
+    test('stari doprinos sa grupom unit:dl prelazi u grupu volume, bez '
+        'duplirane stavke', () async {
+      await plan('p1', mon, mon.addDays(6));
+      const mleko = Ingredient(name: 'Mleko', quantity: 5, unit: 'dl');
+      await entry('e1', mon, ingredients: const [mleko]);
+      await shop.reconcilePlan('p1');
+
+      // Stanje pre izmene: dl je bio zasebna grupa jedinica.
+      final c = (await db.select(db.shoppingContributions).get()).single;
+      await (db.update(
+        db.shoppingContributions,
+      )..where((t) => t.id.equals(c.id))).write(
+        const ShoppingContributionsCompanion(
+          unitGroup: Value('unit:dl'),
+          baseUnit: Value('dl'),
+          micros: Value(5000000),
+        ),
+      );
+      await db
+          .update(db.shoppingItems)
+          .write(
+            const ShoppingItemsCompanion(quantity: Value(5), unit: Value('dl')),
+          );
+
+      await shop.reconcilePlan('p1');
+
+      final week = await shop.weekList(
+        'p1',
+        weekPeriods(DateRange(mon, mon.addDays(6))).first,
+      );
+      expect(await open(week), hasLength(1));
+      final after = (await db.select(db.shoppingContributions).get()).single;
+      expect(after.unitGroup, 'volume');
+      expect(after.micros, 500000000);
+      expect(await db.select(db.shoppingItems).get(), hasLength(1));
+    });
+
     test('ostava 400 g na 300/100/200 hronološki: dve nedelje, kupuje se '
         'samo 200 g u drugoj', () async {
       final end = mon.addDays(13);

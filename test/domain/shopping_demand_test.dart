@@ -44,6 +44,35 @@ void main() {
       ));
     });
 
+    test('dl i dkg su tačne jedinice, bez uključenih kuhinjskih mera', () {
+      expect(normalizeUnit('dl'), (group: 'volume', base: 'ml', factor: 100));
+      expect(normalizeUnit(' DKG '), (group: 'mass', base: 'g', factor: 10));
+    });
+
+    test('dl se sabira sa l, a dkg sa g, u jednu tačnu stavku', () {
+      final milk = demandFor(
+        source('e1', [
+          const Ingredient(name: 'mleko', quantity: 5, unit: 'dl'),
+          const Ingredient(name: 'mleko', quantity: 0.5, unit: 'l'),
+        ]),
+      );
+      expect(milk, hasLength(1));
+      expect(milk.single.micros, toMicros(1000));
+      expect(milk.single.baseUnit, 'ml');
+      expect(milk.single.approximate, isFalse);
+
+      final cheese = demandFor(
+        source('e1', [
+          const Ingredient(name: 'sir', quantity: 20, unit: 'dkg'),
+          const Ingredient(name: 'sir', quantity: 100, unit: 'g'),
+        ]),
+      );
+      expect(cheese, hasLength(1));
+      expect(cheese.single.micros, toMicros(300));
+      expect(cheese.single.baseUnit, 'g');
+      expect(cheese.single.approximate, isFalse);
+    });
+
     test('ostale jedinice su uporedive samo kad su iste', () {
       expect(normalizeUnit('Kašika'), (
         group: 'unit:kašika',
