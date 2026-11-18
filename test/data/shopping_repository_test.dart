@@ -10,6 +10,7 @@ import 'package:tavli/data/recipe_photo_store.dart';
 import 'package:tavli/data/shopping_repository.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/shopping_demand.dart';
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/sync/entities.dart';
 import 'package:tavli/sync/synced_writer.dart';
@@ -26,6 +27,24 @@ void main() {
   late AppDatabase db;
   late ShoppingRepository repo;
 
+  test('shopping read models remain public through the repository import', () {
+    const total = PlanTotal(
+      ingredient: 'krompir',
+      unitGroup: 'mass',
+      name: 'Krompir',
+      category: 'Povrće',
+      baseUnit: 'g',
+      openMicros: 200000000,
+      boughtMicros: 100000000,
+      hasUnknown: false,
+      itemIds: ['item-1'],
+      listIds: ['list-1'],
+    );
+
+    expect(total.openMicros, 200000000);
+    expect(total.itemIds, ['item-1']);
+  });
+
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     repo = ShoppingRepository(
@@ -36,6 +55,32 @@ void main() {
   });
 
   tearDown(() => db.close());
+
+  test(
+    'plan totals keep known quantities grouped and unknown items separate',
+    () async {
+      final listId = await repo.recipeList();
+      await repo.addManual(listId, 'Krompir', quantity: 2, unit: 'kg');
+      await repo.addManual(listId, 'krompir', quantity: 500, unit: 'g');
+      await repo.addManual(listId, 'Krompir');
+
+      final totals = ShoppingRepository.totalsOf(
+        await db.select(db.shoppingItems).get(),
+      );
+
+      expect(totals, hasLength(2));
+      final known = totals.singleWhere((total) => total.unitGroup == 'mass');
+      expect(known.ingredient, 'krompir');
+      expect(known.openMicros, 2500000000);
+      expect(known.baseUnit, 'g');
+      expect(known.hasUnknown, isFalse);
+      final unknown = totals.singleWhere(
+        (total) => total.unitGroup == unknownGroup,
+      );
+      expect(unknown.openMicros, 0);
+      expect(unknown.hasUnknown, isTrue);
+    },
+  );
 
   test('kupovina je odvojena po domaćinstvu i upisuje outbox sa UUID-jevima', () async {
     await repo.addMissing('musaka', missing: const [luk], have: const []);
