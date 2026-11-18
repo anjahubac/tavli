@@ -18,7 +18,11 @@ Future<FoodMatchResult> find(
   List<AliasEntry> entries,
   String text, {
   FoodLookupScope scope = scopeA,
-}) => AliasFoodMatcher(entries).findByName(originalText: text, scope: scope);
+  List<CatalogFood> foods = const [],
+}) => AliasFoodMatcher(
+  entries,
+  foods: foods,
+).findByName(originalText: text, scope: scope);
 
 void main() {
   final jaje = food('jaje', 'jaje');
@@ -31,10 +35,42 @@ void main() {
     });
 
     test('canonical name matches without an alias row', () async {
-      final r = await find([alias(jaje, 'jaja')], 'jaje');
-      expect(r, isA<Matched>());
-      expect((r as Matched).food.id, 'jaje');
+      final mleko = food('mleko', 'mleko');
+      final r = await find(
+        [alias(jaje, 'jaja')],
+        'mleko',
+        foods: [CatalogFood(jaje), CatalogFood(mleko)],
+      );
+      expect((r as Matched).food.id, 'mleko');
     });
+
+    test('shared canonical name is visible when only A has an alias', () async {
+      final b = await find(
+        [alias(jaje, 'jajce', householdId: 'A')],
+        'jaje',
+        scope: const FoodLookupScope(householdId: 'B'),
+        foods: [CatalogFood(jaje)],
+      );
+      expect((b as Matched).food.id, 'jaje');
+    });
+
+    test(
+      'unrelated household alias does not promote a canonical name',
+      () async {
+        final prepelica = food('jaje-prepelica', 'jaje od prepelice');
+        final entries = [
+          alias(jaje, 'jaja'),
+          alias(prepelica, 'jaje'),
+          alias(jaje, 'jajce', householdId: 'A'),
+        ];
+        final r = await find(
+          entries,
+          'jaje',
+          foods: [CatalogFood(jaje), CatalogFood(prepelica)],
+        );
+        expect(r, isA<Unresolved>());
+      },
+    );
 
     test('unknown zmajevo voće is Unresolved', () async {
       final r = await find([alias(jaje, 'jaja')], 'zmajevo voće');
@@ -109,13 +145,18 @@ void main() {
     test('custom food name matches only in its own household', () async {
       final tajna = food('tajna', 'tajni sastojak');
       final entries = [alias(tajna, 'tajni', householdId: 'A')];
+      final foods = [CatalogFood(tajna, householdId: 'A')];
       final b = await find(
         entries,
         'tajni sastojak',
         scope: const FoodLookupScope(householdId: 'B'),
+        foods: foods,
       );
       expect(b, isA<Unresolved>());
-      expect(await find(entries, 'tajni sastojak'), isA<Matched>());
+      expect(
+        await find(entries, 'tajni sastojak', foods: foods),
+        isA<Matched>(),
+      );
     });
 
     test('two disagreeing household mappings are Unresolved', () async {

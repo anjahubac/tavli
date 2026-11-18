@@ -77,18 +77,30 @@ final class AliasEntry {
   final String? householdId;
 }
 
+/// Namirnica kataloga i njen vlasnik. `householdId == null` = deljena.
+final class CatalogFood {
+  const CatalogFood(this.food, {this.householdId});
+
+  final FoodIdentity food;
+  final String? householdId;
+}
+
 /// Matcher v1: samo tačan alias (ili kanonsko ime) preko `ingredientKey`.
+/// Kanonska imena se indeksiraju iz `foods` sa vlasnikom namirnice, ne iz
+/// redova aliasa, pa tuđi alias ne menja čiji je prioritet imena.
 final class AliasFoodMatcher implements FoodMatcher {
-  AliasFoodMatcher(List<AliasEntry> entries)
-    : _entries = [
-        ...entries,
-        for (final e in entries)
-          AliasEntry(
-            food: e.food,
-            aliasNormalized: ingredientKey(e.food.name),
-            householdId: e.householdId,
-          ),
-      ];
+  AliasFoodMatcher(
+    List<AliasEntry> entries, {
+    List<CatalogFood> foods = const [],
+  }) : _entries = [
+         ...entries,
+         for (final f in foods)
+           AliasEntry(
+             food: f.food,
+             aliasNormalized: ingredientKey(f.food.name),
+             householdId: f.householdId,
+           ),
+       ];
 
   final List<AliasEntry> _entries;
 
