@@ -68,13 +68,21 @@ class RecipeAI {
             system: recipeSystemPrompt,
             prompt: refineRecipePrompt(current, instruction),
           ),
-          (json) => recipeFromAiResponse(
-            json,
-            id: current.id,
-            source: current.source,
-            createdAt: current.createdAt,
-            imagePath: current.imagePath,
-          ),
+          (json) {
+            final refined = recipeFromAiResponse(
+              json,
+              id: current.id,
+              source: current.source,
+              createdAt: current.createdAt,
+              imagePath: current.imagePath,
+            );
+            // R10: izmena ne sme tiho da obriše korake recepta koji ih ima;
+            // router tada pita ponovo.
+            if (current.steps.isNotEmpty && refined.steps.isEmpty) {
+              throw const FormatException('R10');
+            }
+            return refined;
+          },
         )
         .then(_stampModel);
   }

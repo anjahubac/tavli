@@ -19,6 +19,14 @@ const maxNoteLength = 200;
 const maxSteps = 40;
 const maxStepLength = 1000;
 
+/// R6: najmanja i najveća količina. Nabavka računa u milionitim delovima
+/// (`toMicros`), pa manja vrednost postaje 0, a besmisleno velika kvari zbir.
+const minQuantity = 0.001;
+const maxQuantity = 100000;
+
+/// R3: duže od 30 dana nije vreme pripreme (kiseli kupus staje u granicu).
+const maxPrepMinutes = 30 * 24 * 60;
+
 Never _reject(String rule) => throw FormatException(rule);
 
 /// C3: tekst bez razmaka sa krajeva; prazan postaje `null`.
@@ -49,9 +57,10 @@ int aiServings(Object? v, {required int max, String rule = 'R2'}) {
   return n;
 }
 
-/// R3: broj veći od nule, zaokružen; sve ostalo postaje `null`.
+/// R3: broj veći od nule i najviše [maxPrepMinutes], zaokružen; sve ostalo
+/// postaje `null`.
 int? aiPrepMinutes(Object? v) {
-  if (v is! num || !v.isFinite || v <= 0) return null;
+  if (v is! num || !v.isFinite || v <= 0 || v > maxPrepMinutes) return null;
   final n = v.round();
   return n > 0 ? n : null;
 }
@@ -68,7 +77,10 @@ Ingredient aiIngredient(Object? v) {
   final name = _requiredText(v['name'], maxIngredientNameLength, 'R5');
   final quantity = v['quantity'];
   if (quantity != null &&
-      (quantity is! num || !quantity.isFinite || quantity <= 0)) {
+      (quantity is! num ||
+          !quantity.isFinite ||
+          quantity < minQuantity ||
+          quantity > maxQuantity)) {
     _reject('R6');
   }
   final category = v['category'];

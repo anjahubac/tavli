@@ -129,7 +129,17 @@ void main() {
         ...Directory('$fixtureDir/$dir').listSync().whereType<File>(),
     ]..sort((a, b) => a.path.compareTo(b.path));
 
-    test('svi primeri su učitani', () => expect(files, hasLength(19)));
+    // Folder nije prazan, pa testovi ispod nisu prazni; broj primera se
+    // ne zaključava, da novi primer ne obori ovaj test.
+    test('primeri su učitani iz oba foldera', () {
+      for (final dir in ['valid', 'invalid']) {
+        expect(
+          files.where((f) => f.parent.path.endsWith(dir)),
+          isNotEmpty,
+          reason: dir,
+        );
+      }
+    });
 
     for (final file in files) {
       final name = file.uri.pathSegments.last;
@@ -231,7 +241,14 @@ void main() {
         parse(recipe(ingredient: {'name': 'so'})).ingredients.single.quantity,
         isNull,
       );
-      for (final bad in [0, '0,5', 'malo', true]) {
+      double? quantity(num v) =>
+          parse(recipe(ingredient: {'name': 'so', 'quantity': v}))
+              .ingredients
+              .single
+              .quantity;
+      expect(quantity(minQuantity), minQuantity);
+      expect(quantity(maxQuantity), maxQuantity);
+      for (final bad in [0, 0.0009, 100001, 1e300, '0,5', 'malo', true]) {
         expect(
           rule(recipe(ingredient: {'name': 'so', 'quantity': bad})),
           'R6',
@@ -282,6 +299,10 @@ void main() {
       expect(prep(-5), isNull);
       expect(prep(0.2), isNull);
       expect(prep('30'), isNull);
+      expect(prep(2880), 2880, reason: 'testo odstoji 48 h');
+      expect(prep(maxPrepMinutes), maxPrepMinutes);
+      expect(prep(maxPrepMinutes + 1), isNull);
+      expect(prep(1e12), isNull);
     });
   });
 

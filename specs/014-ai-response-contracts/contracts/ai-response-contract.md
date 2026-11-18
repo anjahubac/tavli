@@ -83,14 +83,14 @@ text and reject only on structure (wrong type, blank, too long).
 | --- | --- | --- | --- | --- |
 | R1 | `title` | open | string, 1–120 characters | reject |
 | R2 | `servings` | strict | integer 1–99 (matches manual recipes) | reject, including missing |
-| R3 | `prepMinutes` | fallback | number > 0, rounded to integer; no upper bound (dough may rest 48 h) | `null`, never reject |
+| R3 | `prepMinutes` | fallback | number > 0 and ≤ 43 200 (30 days, so dough resting 48 h or sauerkraut fits), rounded to integer | `null`, never reject |
 | R4 | `ingredients` | strict | list of 1–60 objects | reject |
 | R5 | `ingredients[].name` | open | string, 1–80 characters, base name without quantity; preparation goes to `note` | reject |
-| R6 | `ingredients[].quantity` | strict | number > 0, or `null`/missing ("po ukusu") | reject: `0`, negative, any string (`"1/2"`, `"0,5"`, `"malo"`) |
+| R6 | `ingredients[].quantity` | strict | number from 0.001 to 100 000, or `null`/missing ("po ukusu"); shopping counts millionths (`toMicros`), so smaller values become 0 and huge ones break sums | reject: `0`, negative, out of range, any string (`"1/2"`, `"0,5"`, `"malo"`) |
 | R7 | `ingredients[].unit` | open + vocabulary | string ≤ 30 characters or `null`; matched against the unit vocabulary below | wrong type or too long → reject; unknown text → kept, marked unknown |
 | R8 | `ingredients[].category` | fallback | one of `ingredientCategories` (`lib/domain/recipe.dart`) | `ostalo` |
 | R9 | `ingredients[].note` | open | string ≤ 200 characters or `null` | wrong type or too long → reject |
-| R10 | `steps` | open | list of strings, ≤ 40 items, each ≤ 1000 characters, blank items dropped, no numbering; missing or `null` → `[]` (summary recipe) | not a list, non-string item, too many or too long → reject |
+| R10 | `steps` | open | list of strings, ≤ 40 items, each ≤ 1000 characters, blank items dropped, no numbering; missing or `null` → `[]` (summary recipe); when refining a recipe that has steps, an empty result is rejected so steps are never dropped silently | not a list, non-string item, too many or too long → reject |
 | R11 | error object | — | `{"error": "not_a_recipe"}` from photo import only | outcome *not a recipe* (Serbian message), not a format error |
 
 ### `plan-outline.v1`
