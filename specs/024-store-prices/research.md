@@ -23,7 +23,7 @@ downloaded, complete, current or compatible on 2026-11-15. Source terms,
 update schedules, coverage and acceptable processing limits still require
 review before selection or integration.
 
-Earlier research in a separate reference checkout reported that the two
+An earlier exploratory check reported that the two
 CSV endpoints returned data on 2026-11-13. Its sampled files contained both
 historical and current-list rows. It also reported product names containing
 package sizes that were not safely inferable from the observed unit-price
@@ -32,19 +32,13 @@ contents of every retailer file.
 
 ## Synthetic comparison evidence
 
-The [fixture](fixtures/basket_comparison_test.dart.txt) is a copy of three
-existing tests for a separate reference comparison implementation based
-on `e181050`. It requires that checkout's `basket_comparison.dart` and package
-configuration; team `dev` at `928d655b` does not yet contain that module. With
-Flutter 3.47.9 and cached dependencies, the following passed on 2026-11-15:
+The [fixture](fixtures/basket_comparison_test.dart.txt) holds three
+synthetic test cases for a basket comparison. It is stored as text and is not
+run by the team test suite: the `basket_comparison.dart` module it exercises
+does not exist in team `dev` at `928d655b`, so these cases are specifications
+of expected results for whoever implements the comparison, not passing tests.
 
-```sh
-# Copy the fixture from the team checkout to /tmp/tavli-price-test.dart.
-# Run from the separate checkout that contains the comparison module.
-flutter test --no-pub /tmp/tavli-price-test.dart --reporter expanded
-```
-
-The synthetic tests cover full packages, missing or conflicting offers and
+The synthetic cases cover full packages, missing or conflicting offers and
 sharing a single pack across repeated lines. One hand-checkable example is
 1,500 ml of milk in 1,000 ml packs at 120 RSD plus six eggs in a ten-pack at
 250 RSD: `2 × 120 + 1 × 250 = 490 RSD`. A store with only the milk price has
@@ -52,9 +46,8 @@ a partial 200 RSD subtotal and an uncovered egg item; it is not a complete
 basket comparison. Another test confirms two 400 ml needs share one 1,000 ml
 pack. All prices, products and source URLs in the fixture are fictional.
 
-Seven earlier comparison and catalog tests also passed in the separate
-checkout with Flutter 3.47.9. Neither result tests the current team app, a
-server-owned importer, current retailer feeds or real price freshness. The
+None of this tests the current team app, a server-owned importer, current
+retailer feeds or real price freshness. The
 fixture does not cover the full 024 three-priced-plus-one-unknown acceptance
 case, historical import idempotency, retries or live-data validity.
 
