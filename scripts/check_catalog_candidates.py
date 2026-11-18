@@ -10,10 +10,25 @@ RESEARCH = ROOT / 'specs/018-ingredient-catalog/research'
 CATALOG = RESEARCH / 'legacy-food-reference.csv'
 CANDIDATES = RESEARCH / 'candidates.csv'
 ALIAS_CORRECTIONS = RESEARCH / 'alias-correction-proposals.csv'
+WORKSHEET = RESEARCH / 'catalog-review-worksheet.csv'
 FIELDS = {
     'candidate_name', 'category_hint', 'proposed_base_unit', 'identity_status',
     'identity_source', 'identity_reviewer', 'allergen_status', 'allergen_codes',
     'allergen_source', 'allergen_reviewer', 'notes',
+}
+WORKSHEET_EXTRA_FIELDS = {
+    'origin', 'legacy_aliases', 'base_unit_basis', 'usda_fdc_id',
+    'usda_description', 'usda_basis', 'usda_alternates', 'base_unit_reviewer',
+    'usda_reviewer',
+}
+REVIEW_FIELDS = (
+    'identity_status', 'identity_source', 'identity_reviewer', 'allergen_status',
+    'allergen_codes', 'allergen_source', 'allergen_reviewer',
+)
+UNREVIEWED = {
+    'identity_status': 'pending', 'identity_source': '', 'identity_reviewer': '',
+    'allergen_status': 'unknown', 'allergen_codes': 'unknown',
+    'allergen_source': '', 'allergen_reviewer': '',
 }
 ALLERGENS = {
     'gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soy', 'milk',
@@ -128,6 +143,77 @@ def validate(catalog, candidates, alias_corrections=()):
     return errors, marked_reviewed
 
 
+def validate_worksheet(worksheet, catalog, candidates):
+    """Check the review worksheet against its sources; it never approves a food.
+
+    Review decisions live in candidates.csv. The worksheet only adds proposed
+    evidence, so its review columns must repeat the candidate row and a
+    reference row can carry no decision.
+    """
+    errors = []
+    candidate_rows = {
+        normalize(row['candidate_name']): row for row in candidates
+        if isinstance(row.get('candidate_name'), str)
+    }
+    catalog_rows = {
+        normalize(row['name']): row for row in catalog
+        if isinstance(row.get('name'), str)
+    }
+    seen = set()
+    for number, row in enumerate(worksheet, start=2):
+        label = f'worksheet row {number}'
+        if set(row) != FIELDS | WORKSHEET_EXTRA_FIELDS or any(
+            not isinstance(value, str) for value in row.values()
+        ):
+            errors.append(f'{label}: invalid columns')
+            continue
+        name = normalize(row['candidate_name'])
+        if name in seen:
+            errors.append(f'{label}: duplicate worksheet food {name}')
+            continue
+        seen.add(name)
+        if name not in candidate_rows and name not in catalog_rows:
+            errors.append(f'{label}: not a candidate or reference food: {name}')
+            continue
+        is_candidate = name in candidate_rows
+        origin = 'candidate' if is_candidate else 'legacy_reference'
+        if row['origin'] != origin:
+            errors.append(f'{label}: origin must be {origin}')
+        category = (
+            candidate_rows[name]['category_hint'] if is_candidate
+            else catalog_rows[name]['category']
+        )
+        if row['category_hint'] != category:
+            errors.append(f'{label}: category differs from its source')
+        if row['proposed_base_unit'] not in {'g', 'ml', 'kom'}:
+            errors.append(f'{label}: every worksheet row needs a known base unit')
+        for key in ('base_unit_basis', 'usda_basis'):
+            if not row[key].strip():
+                errors.append(f'{label}: {key} is required')
+        fdc, description = row['usda_fdc_id'], row['usda_description'].strip()
+        if fdc and not fdc.isdigit():
+            errors.append(f'{label}: usda_fdc_id must be a number')
+        if fdc and not description:
+            errors.append(f'{label}: usda_description is required with usda_fdc_id')
+        if not fdc and description:
+            errors.append(f'{label}: usda_description must be empty without usda_fdc_id')
+        if is_candidate:
+            source = candidate_rows[name]
+            for key in REVIEW_FIELDS:
+                if row[key] != source[key]:
+                    errors.append(f'{label}: {key} differs from candidates.csv')
+            if source['identity_status'] == 'reviewed':
+                if not row['base_unit_reviewer'].strip():
+                    errors.append(f'{label}: base_unit_reviewer is required for a reviewed food')
+                if fdc and not row['usda_reviewer'].strip():
+                    errors.append(f'{label}: usda_reviewer is required for a reviewed food')
+        elif any(row[key] != UNREVIEWED[key] for key in REVIEW_FIELDS):
+            errors.append(f'{label}: a reference row cannot carry review decisions')
+    for name in sorted((candidate_rows.keys() | catalog_rows.keys()) - seen):
+        errors.append(f'missing from worksheet: {name}')
+    return errors
+
+
 def read_rows(path):
     with path.open(encoding='utf-8', newline='') as source:
         return list(csv.DictReader(source))
@@ -137,7 +223,9 @@ def main():
     try:
         catalog = read_rows(CATALOG)
         candidates = read_rows(CANDIDATES)
+        worksheet = read_rows(WORKSHEET)
         errors, marked = validate(catalog, candidates, read_rows(ALIAS_CORRECTIONS))
+        errors += validate_worksheet(worksheet, catalog, candidates)
     except (OSError, csv.Error, KeyError, TypeError) as error:
         print(f'Unable to check candidate data: {error}', file=sys.stderr)
         return 1
@@ -146,7 +234,7 @@ def main():
             print(error, file=sys.stderr)
         return 1
     print(f'Historical reference: {len(catalog)}; proposals: {len(candidates)}; '
-          f'marked reviewed: {marked}.')
+          f'worksheet rows: {len(worksheet)}; marked reviewed: {marked}.')
     print('The reference is not the team catalog; proposals are not active foods.')
     print('Exact checks do not prove identity, allergen safety or human approval.')
     return 0

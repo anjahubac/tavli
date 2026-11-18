@@ -34,7 +34,7 @@ columns match `candidates.csv`; the rest are added evidence.
 | Column | Meaning |
 | --- | --- |
 | `origin` | `candidate` or `legacy_reference`; the second also lists `legacy_aliases`. |
-| `proposed_base_unit` | `gram`, `milliliter` or `piece` (names from the #30 contract). For candidates it is a proposal from the typical way the food is measured; for reference rows it is the unit in the historical catalog. Neither is reviewed. |
+| `proposed_base_unit` | `g`, `ml` or `kom`, the same values `candidates.csv` allows; the wire names are still open decision D6. For candidates it is a proposal from the typical way the food is measured; for reference rows it is the unit in the historical catalog. Neither is reviewed. |
 | `usda_fdc_id`, `usda_description` | A proposed USDA FoodData Central SR Legacy record (April 2018 release), or empty. |
 | `usda_basis` | How the record was chosen: a keyword search of record descriptions (proposal), the historical mapping (its id and description match the downloaded release; the food match itself is not reviewed), or no match found. |
 | `usda_alternates` | Other records the search found, for the reviewer to compare. |
@@ -46,7 +46,10 @@ foods are not in SR Legacy, such as halloumi, skyr and sumac). The matching only
 compares names, so a proposed record can be the wrong food, a different cut or a
 proxy. A record is evidence for the reviewer to confirm, not a conversion or
 nutrition value to use. USDA terms and the seed provenance still need the team's
-acceptance under Q1. The worksheet is not read by the offline checker below.
+acceptance under Q1. The offline checker below validates the worksheet: it must list
+every candidate and reference food exactly once, keep each row's origin, category
+and USDA fields consistent, and carry no review decision of its own (review
+columns repeat `candidates.csv`; a reference row stays unreviewed).
 
 ## Offline checks
 
@@ -60,9 +63,10 @@ python3 -m unittest scripts.test_check_catalog_candidates
 The checker detects invalid rows, missing evidence in rows marked reviewed,
 unrecognized allergen codes and normalized exact duplicate names against this
 historical reference or another candidate. A rejected candidate may remain as
-history if it has a reason. The scripts CI job runs the checker against all three CSV files via the test suite.
-The current expected output is 171 reference rows,
-163 proposals and zero marked reviewed.
+history if it has a reason. It also checks the worksheet against its sources. The
+scripts CI job runs the checker against all four CSV files via the test suite.
+The current expected output is 171 reference rows, 163 proposals, 334 worksheet
+rows and zero marked reviewed.
 
 **A passing check is not approval.** Exact comparison does not catch every
 semantic duplicate, establish that a reference alias is correct, verify a
