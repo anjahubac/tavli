@@ -59,7 +59,7 @@ this proposal does not satisfy independent review or mark T001 complete.
 
 ## Previous synthetic matching experiment
 
-An offline experiment on the separate `tavli-next` catalog implementation
+An offline experiment on a separate reference catalog implementation
 based on `e181050` used only fictional names and the existing exact-alias
 matcher. On 2026-11-15, it produced:
 
