@@ -285,5 +285,7 @@ Testing infrastructure is specified in `specs/013-testing-strategy/`; use
 suites are network-free; only the explicitly invoked guarded local-backend lane
 may contact ephemeral local Supabase with synthetic accounts and fake AI.
 All roadmap specs are indexed in `specs/README.md`; source tasks map through
-`docs/development/source-task-map.md`. Release/operations use spec 033. Drafts
+`docs/development/source-task-map.md`; the task inventory is
+`docs/development/task-register.json` (`not_assessed` means not yet checked
+against code and PRs). Release/operations use spec 033. Drafts
 need their recorded decisions before dependent code; never treat them as shipped.
