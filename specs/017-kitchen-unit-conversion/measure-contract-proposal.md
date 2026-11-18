@@ -29,7 +29,7 @@ instead of one 35 ml line, and `1 prstohvat` is not flagged for review. This
 fixture is intentionally outside the default suite until the behavior is
 implemented; its failure is evidence of missing work, not a green test claim.
 
-The separate `tavli-next` branch already has a versioned measure dictionary
+A separate reference branch already has a versioned measure dictionary
 and tests for a 350 ml yogurt sum, exact conversions and old snapshots. On the
 local 051 checkout, eleven focused tests in `shopping_demand_v3_test.dart` and
 `shopping_demand_v3_sum_test.dart` passed with Flutter 3.47.9. That is useful
