@@ -43,6 +43,39 @@ void main() {
     expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
   });
 
+  testTavli('AI oznake se vide u pregledu i čuvaju sa receptom', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/new/name',
+      ai: [
+        aiAnswer({
+          ...recipeJson('Pasulj'),
+          'meals': ['lunch', 'dinner'],
+          'weight': 'hearty',
+          'dishKind': 'cooked',
+        }),
+      ],
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Naziv jela'),
+      'pasulj',
+    );
+    await tester.pump();
+    await tapButton(tester, 'Napravi recept');
+
+    expect(find.text('Oznake'), findsOneWidget);
+    expect(find.text('Izmeni oznake'), findsNothing, reason: 'samo pregled');
+    await tapButton(tester, 'Sačuvaj');
+
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.mealTypesJson, '["lunch","dinner"]');
+    expect(row.weight, 'hearty');
+    expect(row.dishKind, 'cooked');
+    expect(row.labelsSource, 'ai');
+  });
+
   testTavli('odbacivanje ne čuva ništa', (tester) async {
     final app = await pumpTavli(
       tester,

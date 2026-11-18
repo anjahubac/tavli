@@ -5,6 +5,7 @@ import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli/domain/recipe_version.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
@@ -102,6 +103,74 @@ void main() {
     expect((await repo.get('a'))!.title, 'Sarma');
     expect(await repo.watchVersions('a').first, isEmpty);
     expect(await repo.undoLast('a'), isFalse);
+  });
+
+  group('oznake', () {
+    final aiLabels = RecipeLabels(
+      meals: const ['lunch'],
+      weight: 'hearty',
+      dishKind: 'cooked',
+      source: LabelsSource.ai.name,
+    );
+
+    test('AI recept čuva oznake; čitaju se nazad iste', () async {
+      await repo.create(recipe('a').copyWith(labels: aiLabels));
+
+      final saved = (await repo.get('a'))!.labels;
+      expect(saved, aiLabels);
+      expect(saved.mealSet, {MealSuitability.lunch});
+    });
+
+    test('korisnik menja oznake: bez nove verzije, sa outbox-om', () async {
+      await repo.create(recipe('a'));
+      await db.delete(db.syncOutbox).go();
+
+      await repo.setLabels(
+        'a',
+        RecipeLabels.byUser(
+          meals: {MealSuitability.dinner, MealSuitability.snack},
+          weight: DishWeight.light,
+        ),
+      );
+
+      final labels = (await repo.get('a'))!.labels;
+      expect(labels.meals, ['snack', 'dinner']);
+      expect(labels.weightValue, DishWeight.light);
+      expect(labels.dishKind, isNull);
+      expect(labels.isUserSet, isTrue);
+      expect(await repo.watchVersions('a').first, isEmpty);
+      final outbox = await db.select(db.syncOutbox).get();
+      expect(outbox.map((r) => (r.entity, r.recordId)), [('recipe', 'a')]);
+    });
+
+    test('poništavanje i vraćanje verzije čuvaju trenutne oznake', () async {
+      await repo.create(recipe('a'));
+      await repo.update(recipe('a', title: 'Druga'), kind: ChangeKind.ai);
+      final user = RecipeLabels.byUser(meals: {MealSuitability.lunch});
+      await repo.setLabels('a', user);
+
+      expect(await repo.undoLast('a'), isTrue);
+      expect((await repo.get('a'))!.title, 'Sarma');
+      expect((await repo.get('a'))!.labels, user);
+
+      await repo.update(recipe('a', title: 'Treća'), kind: ChangeKind.ai);
+      await repo.setLabels('a', user);
+      final version = (await repo.watchVersions('a').first).single;
+      await repo.restore(version.id);
+      expect((await repo.get('a'))!.labels, user);
+    });
+
+    test('ručna izmena recepta ne briše oznake', () async {
+      await repo.create(recipe('a').copyWith(labels: aiLabels));
+      final current = (await repo.get('a'))!;
+
+      await repo.update(
+        current.copyWith(title: 'Sarma od zelja'),
+        kind: ChangeKind.manual,
+      );
+
+      expect((await repo.get('a'))!.labels, aiLabels);
+    });
   });
 
   test('vraćanje starije verzije čuva trenutno stanje', () async {

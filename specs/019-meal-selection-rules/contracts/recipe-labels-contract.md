@@ -194,9 +194,16 @@ only records the decision.
    - **snack mapping:** one function maps a plan meal type to its suitability
      (`morningSnack` and `afternoonSnack` → `snack`, the other three to
      themselves), with a test; #39 and #45 use it.
-3. Recipe screen section and edit sheet, then the one-time labelling pass.
+3. The one-time labelling pass for existing recipes, and labels in plan
+   summaries (`recipe-summary.v1`, `RecipeSnapshot`); until then recipes
+   created by a plan stay unlabelled and are picked up by the pass.
 
-Estimate: slice 2 about 1.5 days, slice 3 about 1.5 days, plus review.
+Change on 2026-11-18 (TRELLO-37 code PR): the recipe screen section and the
+edit sheet moved from slice 3 into slice 2, so the first PR shows the labels in
+the app. Plan summaries moved to slice 3 with the pass, because they need
+labels in `RecipeSnapshot`, a shared shopping type.
+
+Estimate: slice 2 about 2 days, slice 3 about 1 day, plus review.
 
 ## Decisions
 
