@@ -679,7 +679,9 @@ class ShoppingRepository {
       result.add((
         DemandOrder(
           date: date?.toWire(),
-          mealOrder: entry == null ? 3 : mealOrder(entry.mealType),
+          mealOrder: entry == null
+              ? unplannedMealOrder
+              : mealOrder(entry.mealType),
         ),
         ItemSource(
           title: snapshot.title,
