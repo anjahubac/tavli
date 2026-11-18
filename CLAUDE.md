@@ -30,11 +30,3 @@ checkout. Read that spec's `spec.md`, `plan.md`, `tasks.md` and contracts before
 Security work follows `docs/development/security.md` and spec 012. Findings are
 source evidence, not proof of exploitation or completed remediation. Include
 negative authorization/input tests and never use real secrets to reproduce issues.
-
-Testing infrastructure is specified in `specs/013-testing-strategy/`; use
-`docs/development/testing.md` and the critical journey matrix. Default unit/widget
-suites are network-free; only the explicitly invoked guarded local-backend lane
-may contact ephemeral local Supabase with synthetic accounts and fake AI.
-All roadmap specs are indexed in `specs/README.md`; source tasks map through
-`docs/development/source-task-map.md`. Release/operations use spec 033. Drafts
-need their recorded decisions before dependent code; never treat them as shipped.
