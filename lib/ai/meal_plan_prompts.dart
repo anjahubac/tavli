@@ -26,17 +26,28 @@ String planOutlinePrompt({
   final libraryJson = jsonEncode([
     for (final r in library) {'id': r.id, 'title': r.title},
   ]);
+  final hasSnack = slots.any((s) => _snacks.contains(s.type));
   return '''
 Plan one dish for EVERY slot below, and nothing else: no extra or missing slots.
 The household eats $servings servings per meal.
-${wishes == null || wishes.trim().isEmpty ? '' : 'Wishes of the household: ${wishes.trim()}\n'}${pantry.isEmpty ? '' : 'Prefer using what is at home: ${jsonEncode(pantry)}\n'}${alreadyPlanned.isEmpty ? '' : 'Already planned in other weeks (avoid repeating too often): ${jsonEncode(alreadyPlanned)}\n'}You may reuse the household's own saved recipes by their "id"; never invent ids.
+${hasSnack ? '$snackHint\n' : ''}${wishes == null || wishes.trim().isEmpty ? '' : 'Wishes of the household: ${wishes.trim()}\n'}${pantry.isEmpty ? '' : 'Prefer using what is at home: ${jsonEncode(pantry)}\n'}${alreadyPlanned.isEmpty ? '' : 'Already planned in other weeks (avoid repeating too often): ${jsonEncode(alreadyPlanned)}\n'}You may reuse the household's own saved recipes by their "id"; never invent ids.
 Library: $libraryJson
 Slots: $slotsJson
 Return:
-{"meals": [{"date": "YYYY-MM-DD", "meal": "breakfast" | "lunch" | "dinner",
+{"meals": [{"date": "YYYY-MM-DD", "meal": $_mealValues,
   "recipeId": string | null, // id from Library, or null for a new dish
   "title": string}]}''';
 }
+
+const _snacks = {MealType.morningSnack, MealType.afternoonSnack};
+
+/// Užina je malo jelo; puna pravila rasporeda dolaze posebno (TRELLO-39).
+const snackHint =
+    'A snack (morningSnack, afternoonSnack) is a small, light dish such as '
+    'fruit, yoghurt or a sandwich, never a cooked meal.';
+
+/// Vrednosti polja "meal", istim redom kao u danu.
+final _mealValues = MealType.values.map((t) => '"${t.name}"').join(' | ');
 
 /// Sažeci novih recepata (naziv i sastojci, bez koraka).
 String recipeSummariesPrompt(List<String> titles) =>
