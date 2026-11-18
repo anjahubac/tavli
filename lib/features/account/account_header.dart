@@ -64,22 +64,66 @@ class InitialsAvatar extends StatelessWidget {
   }
 }
 
-/// Avatar gore desno na svakom tabu; otvara Profil i podešavanja.
+/// Avatar prijavljenog člana, ili ikonica dok ime nije poznato.
+Widget _profileAvatar(WidgetRef ref, double radius) {
+  final auth = ref.watch(authControllerProvider);
+  final name = auth is SignedIn ? auth.account.displayName ?? '' : '';
+  return name.trim().isEmpty
+      ? Icon(Icons.account_circle_outlined, size: radius * 2)
+      : InitialsAvatar(name: name, radius: radius);
+}
+
+/// Avatar gore desno na svakom tabu (telefon); otvara Profil i podešavanja.
 class ProfileButton extends ConsumerWidget {
   const ProfileButton({super.key});
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+    padding: const EdgeInsets.only(right: 8),
+    child: IconButton(
+      tooltip: 'Profil i podešavanja',
+      onPressed: () => context.push('/profile'),
+      icon: _profileAvatar(ref, 16),
+    ),
+  );
+}
+
+/// Profil na dnu bočnog menija (širok ekran): avatar i „Profil“, pored
+/// avatara kad je meni proširen, ispod njega kad je uzan.
+class ProfileRailItem extends ConsumerWidget {
+  const ProfileRailItem({super.key, required this.extended});
+
+  final bool extended;
+
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authControllerProvider);
-    final name = auth is SignedIn ? auth.account.displayName ?? '' : '';
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: IconButton(
-        tooltip: 'Profil i podešavanja',
-        onPressed: () => context.push('/profile'),
-        icon: name.trim().isEmpty
-            ? const Icon(Icons.account_circle_outlined)
-            : InitialsAvatar(name: name, radius: 16),
+    final theme = Theme.of(context);
+    final avatar = _profileAvatar(ref, 15);
+    const label = Text('Profil');
+    return Semantics(
+      button: true,
+      label: 'Profil i podešavanja',
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.push('/profile'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: DefaultTextStyle.merge(
+            style: extended
+                ? theme.textTheme.labelLarge
+                : theme.textTheme.labelMedium,
+            child: extended
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [avatar, const SizedBox(width: 12), label],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [avatar, const SizedBox(height: 4), label],
+                  ),
+          ),
+        ),
       ),
     );
   }

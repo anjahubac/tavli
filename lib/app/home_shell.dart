@@ -1,8 +1,13 @@
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../features/account/account_header.dart';
 import '../features/account/sync_banner.dart';
 import 'router.dart';
+
+/// Od ove širine tabovi su bočni meni, a Profil je na dnu menija umesto
+/// avatara gore desno.
+const wideLayoutWidth = 720.0;
 
 /// Donji tabovi na telefonu, bočni meni na širem ekranu (macOS, tablet).
 class HomeShell extends StatelessWidget {
@@ -17,7 +22,7 @@ class HomeShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
-    if (width >= 720) {
+    if (width >= wideLayoutWidth) {
       return Scaffold(
         body: Row(
           children: [
@@ -26,10 +31,15 @@ class HomeShell extends StatelessWidget {
               labelType: width >= 1000
                   ? NavigationRailLabelType.none
                   : NavigationRailLabelType.all,
-              selectedIndex: shell.currentIndex,
-              onDestinationSelected: _select,
+              selectedIndex: railBranchOrder.indexOf(shell.currentIndex),
+              onDestinationSelected: (i) => _select(railBranchOrder[i]),
+              trailingAtBottom: true,
+              trailing: Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ProfileRailItem(extended: width >= 1000),
+              ),
               destinations: [
-                for (final t in tabs)
+                for (final t in railBranchOrder.map((i) => tabs[i]))
                   NavigationRailDestination(
                     icon: Icon(t.icon),
                     selectedIcon: Icon(t.selectedIcon),

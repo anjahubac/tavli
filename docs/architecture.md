@@ -181,8 +181,9 @@ locked meals. None of those workers/endpoints currently exists here.
 ## 6. Accepted product evolution and privacy
 
 Target tabs: Plan, Nabavka, **Početna**, Recepti, Ostava; profile via avatar.
-Current code still starts at Plan with four tabs. Home, pantry and cooking extend
-existing planning/shopping repositories; they do not create a second plan store.
+Code has these five tabs (wide menu: Home first); empty `/home` is default.
+Home, pantry and cooking extend existing planning/shopping repositories; they do
+not create a second plan store.
 Keep route compatibility and auth gates during the transition.
 
 Catalog: stable UUID + readable slug, aliases, base units, conversions and

@@ -37,9 +37,10 @@ invent a second set of arbitrary measurements per screen. Body text targets
 
 ## Navigation and platform behavior
 
-Current code has four tabs. The accepted next change adds Home in the middle:
+Code has five tabs with Home in the middle (default `/home`, still empty):
 **Plan, Nabavka, Početna, Recepti, Ostava**, with Home opening after auth/name
-gates and profile behind the avatar. This is a target; route additions and
+gates and profile behind the avatar. The wide side menu lists Home first and
+ends with Profil instead of the top avatar. Further route additions and
 redirect changes require Dev 4 review and regression tests. Preserve `/plan`,
 `/shopping`, `/recipes`, `/pantry`, `/profile` and recipe deep links.
 
