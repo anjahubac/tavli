@@ -63,3 +63,8 @@ Producer specs: [017](../017-kitchen-unit-conversion/spec.md)
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
 record decision owner/date, precise typed contract and reviewed acceptance fixtures.
+
+## Review-only research
+
+The [candidate review materials](research/README.md) are unapproved research,
+not a shipped catalog or a substitute for the decisions and reviews above.
