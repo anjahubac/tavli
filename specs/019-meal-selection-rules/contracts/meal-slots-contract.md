@@ -63,7 +63,7 @@ the drift columns are text. No drift version, no migration, no sync change.
 | --- | --- |
 | Plans saved before #38 | Only the old three values; shown exactly as today. |
 | Old client reads a plan with snacks | Today an unknown `meal_type` is read as **lunch**, so a snack appears as a second “Ručak”, and regenerating on the old client can treat a locked snack as a locked lunch. |
-| Mitigation | Before #38 merges, confirm with Dev 4 that no build outside the team uses `tavli-dev` or production; team builds update after merge. The skip-unknown reader ships in the same PR so later meal types do not repeat this. If an external build exists, #38 waits for a minimum app version check (not in this contract). |
+| Mitigation | Confirmed 2026-11-18: no build outside the team uses `tavli-dev` or production, so no version gate is needed; team builds update after merge. The skip-unknown reader ships in the same PR so later meal types do not repeat this. |
 
 ## AI cost
 
@@ -83,8 +83,9 @@ monthly plan before the gateway slice sets defaults.
 - Shopping lists include snack ingredients; pantry allocation follows the day
   order.
 
-Estimate: about 1 day plus review, one PR, after Dev 1's #16 (calendar dates)
-is merged, as the card states.
+Estimate: about 1 day plus review, one PR. The card's dependency on Dev 1's
+TRELLO-16 (calendar dates) was dropped with Dev 1's agreement on 2026-11-18,
+because snacks do not touch date fields.
 
 ## Decisions
 
@@ -92,5 +93,5 @@ is merged, as the card states.
 | --- | --- | --- | --- |
 | S-D1 | Wire names | `morningSnack`, `afternoonSnack` (`MealType.name`) | Dev 2, review Dev 1 |
 | S-D2 | Server value check on `meal_type` | none now; the app validates; a check constraint would need every client updated first | Dev 2 + Dev 1 |
-| S-D3 | Old builds | team-only today (to be confirmed by Dev 4); no version gate in #38 | Dev 4 |
+| S-D3 | Old builds | team-only (confirmed 2026-11-18); no version gate in TRELLO-38 | Dev 4 |
 | S-D4 | Snack guidance in the prompt | one line now; rules in #39 | Dev 2 |
