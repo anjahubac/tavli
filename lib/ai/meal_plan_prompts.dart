@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../domain/meal_plan.dart';
 import '../domain/recipe.dart';
+import 'ai_units.dart';
 
 const mealPlanSystemPrompt = '''
 You are the meal-planning assistant inside "Tavli", a recipe and shopping app.
@@ -51,8 +52,8 @@ Return:
   "prepMinutes": integer | null,
   "ingredients": [{
     "name": string,
-    "quantity": number | null,
-    "unit": string | null,  // g, kg, ml, l, kom, kašika, kašičica, šolja, prstohvat, čen, glavica
+    "quantity": number | null, // a number > 0, never text
+    "unit": string | null,  // e.g. $aiUnitList
     "category": one of ${jsonEncode(ingredientCategories)},
     "note": string | null
   }]

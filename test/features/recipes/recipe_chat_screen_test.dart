@@ -49,6 +49,46 @@ void main() {
     expect(await app.db.select(app.db.recipeVersions).get(), isEmpty);
   });
 
+  testTavli('izmena bez koraka ne briše korake: pita ponovo, pa '
+      'prihvata odgovor sa koracima', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [sampleRecipe('a', 'Sarma')],
+      ai: [
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': null}),
+        aiAnswer(recipeJson('Posna sarma')),
+      ],
+    );
+
+    await send(tester, 'posno');
+
+    expect(app.adapter.requests, hasLength(2));
+    await tapButton(tester, 'Prihvati');
+    final saved = await app.db.select(app.db.recipes).getSingle();
+    expect(saved.stepsJson, contains('Kuvati.'));
+  });
+
+  testTavli('izmena koja stalno gubi korake ne menja recept', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [sampleRecipe('a', 'Sarma')],
+      ai: [
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+      ],
+    );
+
+    await send(tester, 'posno');
+
+    expect(find.text('AI je vratio neispravan odgovor.'), findsOneWidget);
+    expect(find.text('Predlog izmene'), findsNothing);
+    expect(await app.titles(), ['Sarma']);
+    final saved = await app.db.select(app.db.recipes).getSingle();
+    expect(saved.stepsJson, contains('Umotati.'));
+  });
+
   testTavli('Odbaci ne menja recept i vraća tekst u polje', (tester) async {
     final app = await pumpTavli(
       tester,
