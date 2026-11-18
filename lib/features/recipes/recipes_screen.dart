@@ -133,7 +133,7 @@ class _RecipeListState extends ConsumerState<_RecipeList> {
               return const _Message(
                 icon: Icons.menu_book_outlined,
                 title: 'Još nema recepata',
-                body: 'Dodaj prvi recept iz slike, po nazivu jela ili ručno.',
+                body: 'Dodaj prvi recept sa slike, po nazivu jela ili ručno.',
               );
             }
             final recipes = filterRecipes(all, query);

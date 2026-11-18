@@ -12,13 +12,14 @@ void main() {
 
     expect(find.text('Još nema recepata'), findsOneWidget);
     expect(
-      find.text('Dodaj prvi recept iz slike, po nazivu jela ili ručno.'),
+      find.text('Dodaj prvi recept sa slike, po nazivu jela ili ručno.'),
       findsOneWidget,
     );
 
     await tester.tap(find.text('Dodaj recept'));
     await tester.pumpAndSettle();
-    expect(find.text('Iz slike'), findsOneWidget);
+    expect(find.text('Sa slike'), findsOneWidget);
+    expect(find.text('Slikaj ili izaberi sliku recepta'), findsOneWidget);
     expect(find.text('Po nazivu jela'), findsOneWidget);
     expect(find.text('Ručno'), findsOneWidget);
   });
