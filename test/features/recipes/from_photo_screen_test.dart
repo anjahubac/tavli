@@ -62,6 +62,89 @@ void main() {
     }
   }
 
+  for (final platform in [TargetPlatform.macOS, TargetPlatform.windows]) {
+    testTavli('${platform.name}: "Sa slike" odmah otvara izbor slike', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = platform;
+      try {
+        final app = await pumpTavli(tester, ai: [aiAnswer(recipeJson('Pita'))]);
+        await tester.tap(find.text('Dodaj recept'));
+        await tester.pumpAndSettle();
+        expect(find.text('Izaberi sliku recepta'), findsOneWidget);
+        expect(find.text('Slikaj ili izaberi sliku recepta'), findsNothing);
+
+        // Odustajanje: ostaje lista, bez međuekrana i bez greške.
+        await tester.tap(find.text('Sa slike'));
+        await tester.pumpAndSettle();
+        expect(app.picker.calls, [false]);
+        expect(find.text('Recept sa slike'), findsNothing);
+        expect(find.text(explanation), findsNothing);
+        expect(find.text('Još nema recepata'), findsOneWidget);
+        expect(find.byType(SnackBar), findsNothing);
+        expect(app.adapter.requests, isEmpty);
+
+        // Izabrana slika ide pravo na čitanje i pregled.
+        app.picker.next = fakePhoto;
+        await tester.tap(find.text('Dodaj recept'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Sa slike'));
+        await tester.pumpAndSettle();
+        expect(app.picker.calls, [false, false]);
+        expect(app.adapter.requests, hasLength(1));
+        expect(find.text('Pita'), findsOneWidget);
+        expect(find.text('Izaberi iz galerije'), findsNothing);
+        await tapButton(tester, 'Sačuvaj');
+        expect(await app.titles(), ['Pita']);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  }
+
+  testTavli('macOS: greška izbora iz menija je poruka, bez međuekrana', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      final app = await pumpTavli(tester);
+      app.picker.failure = Exception('synthetic-picker-failure');
+      await tester.tap(find.text('Dodaj recept'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sa slike'));
+      await tester.pumpAndSettle();
+      expect(find.text('Slika nije učitana.'), findsOneWidget);
+      expect(find.text('synthetic-picker-failure'), findsNothing);
+      expect(find.text('Recept sa slike'), findsNothing);
+      expect(tester.takeException(), isNull);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    testTavli('${platform.name}: "Sa slike" otvara ekran sa izborom', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = platform;
+      try {
+        final app = await pumpTavli(tester);
+        await tester.tap(find.text('Dodaj recept'));
+        await tester.pumpAndSettle();
+        expect(find.text('Slikaj ili izaberi sliku recepta'), findsOneWidget);
+        await tester.tap(find.text('Sa slike'));
+        await tester.pumpAndSettle();
+        expect(app.picker.calls, isEmpty);
+        expect(find.text('Recept sa slike'), findsOneWidget);
+        expect(find.text(explanation), findsOneWidget);
+        expect(find.text('Slikaj'), findsOneWidget);
+        expect(find.text('Izaberi iz galerije'), findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  }
+
   for (final (camera, label, message) in [
     (
       true,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,10 +16,33 @@ import 'photo_picker.dart';
 import 'recipe_providers.dart';
 import 'recipe_view.dart';
 
-/// Novi recept iz slike: izbor slike → smanjivanje → AI → pregled → čuvanje.
+/// Telefon (Android/iOS) nudi kameru i galeriju; računar samo izbor slike.
+bool isPhonePlatform(BuildContext context) =>
+    switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
+
+/// Poruka kad izbor slike ne uspe; null znači da poruke nema.
+String photoPickErrorText(Exception error, {required bool camera}) =>
+    switch (error) {
+      PhotoAccessDeniedException() when camera =>
+        'Tavli nema dozvolu za kameru. Dozvoli pristup u podešavanjima '
+            'telefona.',
+      PhotoAccessDeniedException() =>
+        'Tavli nema dozvolu za galeriju. Dozvoli pristup u podešavanjima '
+            'telefona.',
+      _ => 'Slika nije učitana.',
+    };
+
+/// Novi recept sa slike: izbor slike → smanjivanje → AI → pregled → čuvanje.
 /// Slika se čuva na disku tek kad korisnik sačuva recept.
+/// Na računaru meni već bira sliku i prosleđuje je kao [initialPhoto].
 class FromPhotoScreen extends ConsumerStatefulWidget {
-  const FromPhotoScreen({super.key});
+  const FromPhotoScreen({super.key, this.initialPhoto});
+
+  /// Već izabrana (nesmanjena) slika; ekran odmah počinje čitanje.
+  final Uint8List? initialPhoto;
 
   @override
   ConsumerState<FromPhotoScreen> createState() => _FromPhotoScreenState();
@@ -34,26 +59,30 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
   /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
   int _request = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialPhoto case final picked?) {
+      _busy = true;
+      unawaited(Future.microtask(() => _process(picked)));
+    }
+  }
+
   Future<void> _pick({required bool camera}) async {
     final Uint8List? picked;
     try {
       picked = await ref.read(photoPickerProvider).pick(camera: camera);
-    } on PhotoAccessDeniedException {
+    } on Exception catch (e) {
       if (!mounted) return;
-      setState(
-        () => _error = camera
-            ? 'Tavli nema dozvolu za kameru. Dozvoli pristup u '
-                  'podešavanjima telefona.'
-            : 'Tavli nema dozvolu za galeriju. Dozvoli pristup u '
-                  'podešavanjima telefona.',
-      );
-      return;
-    } on Exception {
-      if (!mounted) return;
-      setState(() => _error = 'Slika nije učitana.');
+      setState(() => _error = photoPickErrorText(e, camera: camera));
       return;
     }
     if (picked == null || !mounted) return;
+    await _process(picked);
+  }
+
+  Future<void> _process(Uint8List picked) async {
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -133,14 +162,10 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
   Widget build(BuildContext context) {
     final result = _result;
     final photo = _photo;
-    // Telefon nudi kameru i galeriju; računar (macOS/Windows/Linux) samo izbor.
-    final isPhone = switch (Theme.of(context).platform) {
-      TargetPlatform.android || TargetPlatform.iOS => true,
-      _ => false,
-    };
-    final showCamera = isPhone && ref.watch(photoPickerProvider).canUseCamera;
+    final showCamera =
+        isPhonePlatform(context) && ref.watch(photoPickerProvider).canUseCamera;
     return Scaffold(
-      appBar: AppBar(title: const Text('Recept iz slike')),
+      appBar: AppBar(title: const Text('Recept sa slike')),
       body: result != null && photo != null
           ? AiRecipePreview(
               recipe: result,
