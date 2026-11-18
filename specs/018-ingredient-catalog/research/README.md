@@ -9,8 +9,8 @@ identity, base units, sources and allergen details have not been independently
 reviewed. Every row starts `pending`, with allergen status `unknown`. They are
 not included in application code, database seeds or migrations.
 
-The adjacent `legacy-food-reference.csv` contains only name, category and
-aliases from a separate reference catalog at commit `e181050`. It is a
+The adjacent `legacy-food-reference.csv` lists 171 food names with their
+category and aliases, collected before the team catalog work began. It is a
 historical research reference, not the current team catalog, an accepted schema,
 verified identity data or an import file. Its names and aliases may themselves
 contain errors. It has no IDs, conversion values, nutrition or allergen data.
