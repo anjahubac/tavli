@@ -160,6 +160,23 @@ void main() {
     expect((r.counted, r.total), (1, 7));
   });
 
+  test('sedam od osam sastojaka: delimičan rezultat, osmi nije nula', () {
+    // Osmi sastojak (kajmak) nema vrednosti i ne sme da se računa kao nula.
+    final r = calc([
+      item('f_krompir', 200, 'g'), // 154
+      item('f_beli_luk', 2, 'čen'), // 10 g -> 14.9
+      item('f_jaje', 2, 'kom'), // 100 g -> 143
+      item('f_mleko', 100, 'ml'), // 103 g -> 62.83
+      item('f_ulje', 10, 'ml'), // 9.2 g -> 81.328
+      item('f_jabuka', 1, 'kom'), // 182 g -> 94.64
+      item('f_brasno', 100, 'g'), // 364
+      item('f_kajmak', 100, 'g'),
+    ], servings: 2)!;
+    expect((r.counted, r.total), (7, 8));
+    // (154 + 14.9 + 143 + 62.83 + 81.328 + 94.64 + 364) / 2
+    expect(r.perServing.kcal, closeTo(457.349, 1e-9));
+  });
+
   test('ništa pokriveno: nema rezultata umesto pogrešnog broja', () {
     expect(
       calc([item('f_kajmak', 100, 'g'), item('f_jogurt', 100, 'ml')]),
