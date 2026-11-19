@@ -50,7 +50,7 @@ enum ShoppingMode { plan, recipe }
 class ShoppingView {
   const ShoppingView({this.mode, this.weekStart, this.wholePlan = false});
 
-  /// Izbor korisnika; null = još nije birao, pa važi [effectiveMode].
+  /// Sačuvan početni ili ručni izbor; null = učitavanje još nije završeno.
   final ShoppingMode? mode;
 
   /// Izabrana nedelja; null = nedelja sa današnjim danom, inače prva.
@@ -72,6 +72,13 @@ class ShoppingViewController extends Notifier<ShoppingView> {
   ShoppingView build() {
     ref.watch(accountScopeProvider);
     return const ShoppingView();
+  }
+
+  void initializeMode({required bool hasPlan, required bool hasRecipeItems}) {
+    if (state.mode != null) return;
+    setMode(
+      state.effectiveMode(hasPlan: hasPlan, hasRecipeItems: hasRecipeItems),
+    );
   }
 
   void setMode(ShoppingMode mode) => state = ShoppingView(

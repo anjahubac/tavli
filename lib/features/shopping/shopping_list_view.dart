@@ -48,6 +48,7 @@ Future<void> setBought(
   String name, {
   required bool bought,
 }) async {
+  final accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
   final messenger = ScaffoldMessenger.of(context);
   final repo = ref.read(shoppingRepositoryProvider);
   final changed = await repo.setBought(ids, bought: bought);
@@ -63,7 +64,8 @@ Future<void> setBought(
     SnackBar(
       content: Text(bought ? 'Kupljeno: $name' : 'Vraćeno u nabavku: $name'),
       duration: const Duration(seconds: 5),
-      persist: false,
+      persist: accessibleNavigation,
+      showCloseIcon: accessibleNavigation,
       action: SnackBarAction(
         label: 'Poništi',
         onPressed: () => unawaited(repo.setBought(ids, bought: !bought)),
@@ -213,6 +215,7 @@ class ShoppingItemTile extends ConsumerWidget {
       setBought(context, ref, [item.id], item.name, bought: !item.isBought),
     );
     Future<void> delete() async {
+      final accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
       final messenger = ScaffoldMessenger.of(context);
       final repo = ref.read(shoppingRepositoryProvider);
       await repo.deleteManual(item.id);
@@ -222,7 +225,8 @@ class ShoppingItemTile extends ConsumerWidget {
           SnackBar(
             content: Text('Obrisano: ${item.name}'),
             duration: const Duration(seconds: 5),
-            persist: false,
+            persist: accessibleNavigation,
+            showCloseIcon: accessibleNavigation,
             action: SnackBarAction(
               label: 'Vrati',
               onPressed: () => unawaited(

@@ -119,9 +119,8 @@ void main() {
     expect(find.bySemanticsLabel('Prazan frižider'), findsOneWidget);
 
     await tester.tap(find.text('Nabavka'));
-    // Nabavka sada ima miran prikaz prazne korpe.
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    // Sačekaj obe lokalne liste i inicijalizaciju prikaza Nabavke.
+    await tester.pumpAndSettle();
     expect(find.text('Nabavka je prazna'), findsOneWidget);
     expect(find.bySemanticsLabel('Prazna korpa za nabavku'), findsOneWidget);
     await tester.tap(find.text('Pogledaj recepte'));

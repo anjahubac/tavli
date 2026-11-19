@@ -114,6 +114,7 @@ class _IngredientReviewSheetState extends ConsumerState<IngredientReviewSheet> {
         );
 
   Future<void> _add({required bool repeat}) async {
+    final accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -143,7 +144,8 @@ class _IngredientReviewSheetState extends ConsumerState<IngredientReviewSheet> {
                 : 'Dodato u nabavku: ${missing.length}',
           ),
           duration: const Duration(seconds: 5),
-          persist: false,
+          persist: accessibleNavigation,
+          showCloseIcon: accessibleNavigation,
           action: SnackBarAction(
             label: 'Otvori',
             onPressed: () {

@@ -87,12 +87,6 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
         (s) => s.contains(WidgetState.selected) ? on : off,
       );
 
-  // Sva dugmad (glavna i sporedna) iste visine, ugla i teksta; razlikuju se
-  // samo po popuni.
-  final buttonText = textTheme.labelLarge?.copyWith(
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
-  );
   return base.copyWith(
     scaffoldBackgroundColor: p.bg,
     canvasColor: p.bg,
@@ -140,18 +134,20 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: _buttonSize,
-        shape: _buttonShape,
-        textStyle: buttonText,
+        minimumSize: const Size(64, 56),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        textStyle: textTheme.labelLarge?.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        minimumSize: _buttonSize,
-        shape: _buttonShape,
-        textStyle: buttonText,
+        minimumSize: const Size(64, 48),
         foregroundColor: p.text,
         side: BorderSide(color: p.boxLine),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -281,9 +277,3 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
     ),
   );
 }
-
-/// Jedna visina i ugao za sva dugmad (FilledButton, OutlinedButton).
-const _buttonSize = Size(64, 48);
-final _buttonShape = RoundedRectangleBorder(
-  borderRadius: BorderRadius.circular(16),
-);
