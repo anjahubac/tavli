@@ -61,23 +61,27 @@ class TavliPageHeader extends StatelessWidget {
       ],
     );
     if (actions.isEmpty) return heading;
+    // Kao na platnu: naslov levo, akcije desno u istom redu. Tek kad red
+    // nema mesta (uzak prozor, krupan tekst), akcije prelaze ispod naslova,
+    // a ako ni same ne staju u red, ređaju se jedna ispod druge.
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 48),
-      child: Row(
+      // Cela širina (kao `width: 100%`), da akcije stoje uz desnu ivicu.
+      constraints: const BoxConstraints(
+        minWidth: double.infinity,
+        minHeight: 48,
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 12,
         children: [
-          Expanded(child: heading),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 12,
-                children: actions,
-              ),
-            ),
+          heading,
+          OverflowBar(
+            spacing: 12,
+            overflowSpacing: 12,
+            overflowAlignment: OverflowBarAlignment.end,
+            children: actions,
           ),
         ],
       ),
