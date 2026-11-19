@@ -68,7 +68,7 @@ Before merging Windows changes, record evidence for:
 - release compilation and installed-MSIX start/close;
 - file selection and cancellation;
 - secure-storage denial with sanitized Serbian feedback;
-- wake-lock release on background/dispose and reacquisition on resume;
+- existing wake-lock toggle, persistence and release on leaving a recipe;
 - resize, scaling and keyboard navigation;
 - OTP sign-in, offline restart and account-scoped cache/outbox behavior; and
 - uninstall without deleting server data.

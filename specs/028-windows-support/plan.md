@@ -66,10 +66,10 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 - **Authentication**: preserve the current six-digit email OTP flow. There is no
   native callback registration to add until a future OAuth provider is accepted.
 - **Fallbacks**: file selection only (no desktop camera), cancel without error,
-  fail-closed secure storage with sanitized Serbian feedback, wake-lock release
-  on inactive/background/dispose, and the existing drift cache path.
+  fail-closed secure storage with sanitized Serbian feedback, the existing
+  recipe-scoped wake-lock behavior, and the existing drift cache path.
 - **Manual hardware**: Windows install/start, OTP sign-in, restart offline,
-  picker select/cancel, storage denial, wake-lock lifecycle, resize/scaling,
+  picker select/cancel, storage denial, wake-lock toggle/dispose, resize/scaling,
   keyboard and uninstall are recorded against the tested SHA.
 
 ## Constitution check (3.0.0)

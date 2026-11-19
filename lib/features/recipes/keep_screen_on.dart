@@ -71,55 +71,36 @@ class KeepScreenOnScope extends ConsumerStatefulWidget {
 
 class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   late final ScreenWakeLock _lock = ref.read(screenWakeLockProvider);
-  late final AppLifecycleListener _lifecycle;
-  late bool _active;
-  bool _requested = false;
   bool _held = false;
-  Future<void> _pending = Future<void>.value();
 
   @override
   void initState() {
     super.initState();
-    final lifecycleState = WidgetsBinding.instance.lifecycleState;
-    _active =
-        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
-    _lifecycle = AppLifecycleListener(onStateChange: _onLifecycleStateChanged);
-    ref.listenManual(keepScreenOnProvider, (_, next) {
-      _requested = next.value ?? false;
-      _sync();
-    }, fireImmediately: true);
+    ref.listenManual(
+      keepScreenOnProvider,
+      (_, next) => _apply(next.value ?? false),
+      fireImmediately: true,
+    );
   }
 
-  void _onLifecycleStateChanged(AppLifecycleState state) {
-    _active = state == AppLifecycleState.resumed;
-    _sync();
+  void _apply(bool on) {
+    if (on == _held) return;
+    _held = on;
+    unawaited(_call(on ? _lock.enable : _lock.disable));
   }
 
-  void _sync() {
-    _pending = _pending.then((_) => _apply());
-    unawaited(_pending);
-  }
-
-  /// Serijalizuje promene da spor platformski poziv ne vrati stari status.
-  Future<void> _apply() async {
-    final shouldHold = _requested && _active;
-    if (shouldHold == _held) return;
+  /// Ako platforma ne podrži zahtev, aplikacija radi dalje.
+  static Future<void> _call(Future<void> Function() action) async {
     try {
-      await (shouldHold ? _lock.enable() : _lock.disable());
+      await action();
     } on Exception {
       if (kDebugMode) debugPrint('Ekran: zahtev nije uspeo.');
-      return;
     }
-    _held = shouldHold;
-    if ((_requested && _active) != _held) await _apply();
   }
 
   @override
   void dispose() {
-    _lifecycle.dispose();
-    _requested = false;
-    _active = false;
-    _sync();
+    if (_held) unawaited(_call(_lock.disable));
     super.dispose();
   }
 

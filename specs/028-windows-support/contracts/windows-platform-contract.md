@@ -25,8 +25,8 @@ OS auth callback. Future OAuth/deep-link registration is outside this slice.
 | Secrets/session | `flutter_secure_storage` 11.2.0, Windows 4.2.2 | Store session and user keys with the Windows implementation; build requires C++ ATL. Platform failures expose only a typed/sanitized category and fail closed. |
 | Recipe image | `image_picker` 1.2.4, Windows 0.2.2, `file_selector_windows` 0.9.3+6 | Native file dialog with image filters. No Windows camera control. Cancel returns `null` and performs no AI, file or database write. Bytes are downscaled by the existing post-pick path. |
 | Cache | `drift_flutter` 0.3.1, `sqlite3` 3.5.2, `path_provider_windows` 2.3.0 | Keep `tavli.sqlite` in the platform application-documents location. Preserve account scoping, pending outbox and offline restart; no migration. |
-| Wake lock | `wakelock_plus` 1.8.2 | Enable only while an open recipe requests it and the app is active; release on inactive/hidden/paused/detached and dispose, restore on resume, and sanitize failure diagnostics. |
-| Lifecycle/sync | Flutter `AppLifecycleListener` | Existing auth restore and sync resume behavior stays intact. Wake-lock lifecycle is local to its recipe scope. |
+| Wake lock | `wakelock_plus` 1.8.2 | Preserve the existing persisted toggle and recipe-scope enable/disable behavior; release on scope disposal and sanitize failure diagnostics. |
+| Lifecycle/sync | Existing app listeners | Existing auth restore and sync resume behavior stays intact. This slice adds no shared lifecycle behavior. |
 | Packaging | `msix` 3.18.0 (planned dev dependency) | Create an installable MSIX. Test signing is local/tester-only; trusted public signing and distribution are deferred to spec 033. No Store publication is part of this feature. |
 
 Official support evidence was checked on 2026-11-19 against the package pages
@@ -45,7 +45,7 @@ existing injectable boundaries:
   persistence failure prevents sign-in completion and shows
   “Funkcija nije dostupna na ovom uređaju.”
 - `ScreenWakeLock.enable/disable`; failures do not crash or expose raw exception
-  text. The scope tracks requested state separately from whether the app is active.
+  text. Existing recipe-scope behavior is preserved.
 
 ## State transitions
 
@@ -56,9 +56,9 @@ existing injectable boundaries:
 2. **Photo**: open dialog -> cancel returns to the unchanged screen, or select ->
    read/downscale -> existing AI preview. Repeated cancel/select does not create
    a recipe or photo until the existing save action.
-3. **Wake lock**: requested off/on is persisted as today. Held state is
-   `requested && appActive && recipeScopeMounted`; background/dispose releases
-   it, and resume reacquires it only when still requested and mounted.
+3. **Wake lock**: requested off/on is persisted as today. The recipe scope
+   enables or disables the platform request and releases it on disposal. Minimize
+   and background semantics are unchanged by this Windows slice.
 4. **Install**: clean machine installs the MSIX, starts Tavli, and can uninstall
    it. A test certificate is not represented as public signing.
 
@@ -69,8 +69,8 @@ existing injectable boundaries:
   native plugin coverage is J13 in
   [the 013 journey matrix](../../013-testing-strategy/contracts/journey-matrix.md).
 - Unit/widget: Windows is desktop; picker cancel/error/repeat; secure-storage
-  read/write refusal with sanitized Serbian UI; wake-lock pause/resume/dispose
-  and rejected calls; keyboard, 320/400/1200 widths and 2x text where UI changes.
+  read/write refusal with sanitized Serbian UI; wake-lock toggle/dispose and
+  rejected calls; keyboard, 320/400/1200 widths and 2x text where UI changes.
 - Existing offline/replay and account-switch suites remain the deterministic
   cache/outbox evidence. A Windows restart smoke verifies the native path on the
   same synthetic account without inspecting cache contents or tokens.
@@ -78,7 +78,7 @@ existing injectable boundaries:
   existing Ubuntu job owns analysis and full tests; Windows CI retains no build
   artifact and does not claim native dialog, DPAPI, install or wake-lock proof.
 - Manual Windows 10/11: install/start/uninstall, OTP sign-in, offline restart,
-  file select/cancel, storage failure, wake-lock foreground/background,
+  file select/cancel, storage failure, wake-lock toggle/recipe exit,
   resize/scaling, keyboard navigation and native dialogs. Record SHA, OS,
   commands, result, reviewer and remaining limits without personal data.
 

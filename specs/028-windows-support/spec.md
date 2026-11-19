@@ -31,7 +31,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
   existing verified six-digit email OTP flow; offline restart preserves the
   correct account cache. Native auth callbacks are not used by the current
   email-code flow and remain a future OAuth acceptance gate.
-- **US2 / SC-002**: File pick/cancel, safe storage failure and wake-lock lifecycle behave correctly on a real Windows machine.
+- **US2 / SC-002**: File pick/cancel, safe storage failure and the existing wake-lock toggle/dispose behavior work on a real Windows machine.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
@@ -64,8 +64,8 @@ Producer specs: [012](../012-security-baseline/spec.md), [013](../013-testing-st
   is not part of this spec.
 - **D3** (accepted by the product owner on 2026-11-19): Windows uses the native
   file dialog and does not offer a camera. Picker cancel is a no-op. Secure
-  storage fails closed with Serbian UI, wake lock releases outside the active
-  recipe lifecycle, and SQLite remains the existing account-scoped drift cache.
+  storage fails closed with Serbian UI, wake-lock behavior remains aligned with
+  the existing recipe scope, and SQLite remains the existing account-scoped drift cache.
 
 The accepted typed behavior, plugin audit and fixtures are in
 [the Windows platform contract](contracts/windows-platform-contract.md).
