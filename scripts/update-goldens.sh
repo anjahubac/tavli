@@ -48,7 +48,9 @@ docker run --rm --platform linux/amd64 \
     flutter pub get >/dev/null
     cd packages/tavli_ui
     # shellcheck disable=SC2086 # prazan UPDATE znači samo poređenje
-    flutter test --tags golden $UPDATE
+    # Dva testa odjednom: sa više njih emulirani amd64 kontejner na Apple
+    # računaru ume da zastane posle poslednjeg fajla.
+    flutter test --tags golden -j 2 $UPDATE
     if [[ -n "$UPDATE" ]]; then
       rm -f /out/*.png
       cp test/goldens/*.png /out/

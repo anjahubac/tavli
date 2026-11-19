@@ -24,13 +24,14 @@ class TavliTableRow {
   final List<String> cells;
   final VoidCallback? onTap;
 
-  /// Desni klik (meni akcija na računaru).
-  final VoidCallback? onSecondaryTap;
+  /// Desni klik: dobija mesto klika, za `showTavliActionMenu`.
+  final ValueChanged<Offset>? onSecondaryTap;
 }
 
 /// Tabela za računar (Ostava: Namirnica i Količina): zaglavlje sa
 /// prigušenim nazivima kolona, redovi od najmanje 48 sa razdelnicima, u
-/// okviru radijusa 16. Prazna ćelija se prikazuje prazna.
+/// okviru radijusa 16. Prazna ćelija se prikazuje prazna. Desni klik na red
+/// otvara meni akcija (`showTavliActionMenu` sa mestom klika).
 class TavliDataTable extends StatelessWidget {
   const TavliDataTable({super.key, required this.columns, required this.rows})
     : assert(columns.length > 0);
@@ -110,7 +111,9 @@ class TavliDataTable extends StatelessWidget {
             MergeSemantics(
               child: InkWell(
                 onTap: row.onTap,
-                onSecondaryTap: row.onSecondaryTap,
+                onSecondaryTapUp: row.onSecondaryTap == null
+                    ? null
+                    : (d) => row.onSecondaryTap!(d.globalPosition),
                 child: line(row.cells, minHeight: 48, style: body),
               ),
             ),

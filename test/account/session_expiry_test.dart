@@ -100,17 +100,11 @@ void main() {
     // Izmena ostaje i šalje se posle ponovne prijave istim nalogom.
     expect(await app.db.select(app.db.syncOutbox).get(), hasLength(1));
     app.backend.server.revoked.clear();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'E-pošta'),
-      testEmail,
-    );
+    await tester.enterText(textField('E-pošta'), testEmail);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Kod iz poruke'),
-      FakeServer.code,
-    );
+    await tester.enterText(textField('Kod iz poruke'), FakeServer.code);
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
     expect(find.text('Ana Petrović'), findsOneWidget);

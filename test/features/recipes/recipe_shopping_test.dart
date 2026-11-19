@@ -121,10 +121,7 @@ void main() {
       location: '/recipes/new/name',
       ai: [aiAnswer(recipeJson('Sarma'))],
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'sarma',
-    );
+    await tester.enterText(textField('Naziv jela'), 'sarma');
     await tester.pump();
     await tapButton(tester, 'Napravi recept');
     await openReview(tester);
