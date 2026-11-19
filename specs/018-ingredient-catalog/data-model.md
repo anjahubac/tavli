@@ -3,7 +3,7 @@
 **Status:** proposal for review; nothing here is implemented, migrated or agreed.
 **Source:** D1-005 / FR-002 in [spec.md](spec.md), task T004/T005 in [tasks.md](tasks.md).
 **Owner:** Dev 1. **Reviewers requested:** Dev 4 (schema coordinator), Dev 3 (scope and RLS).
-**Baseline:** `dev` 9fe5345. **Depends on:** the ingredient identity contract in
+**Baseline:** `dev` as of 18 Nov 2026. **Depends on:** the ingredient identity contract in
 PR #30 (D1-001, version 1). If #30 changes, this document changes with it.
 
 This is documentation only. It adds no migration, drift table, generated code or
@@ -45,6 +45,7 @@ ingredient units, density and conversions (D1-010, depends on 017), nutrition
 | `base_unit` | `text` not null, check in (`piece`, `gram`, `milliliter`) | Wire values are decision D6. |
 | `source` | `text` null | Provenance of a shared entry (FR-105). |
 | `reviewed_at` | `timestamptz` null | Shared rows are promoted only after review (FR-101). |
+| `withdrawn_at` | `timestamptz` null | A shared entry is withdrawn by setting this, never by deleting the row (see Withdrawing a shared entry). |
 | `created_at`, `updated_at`, `updated_by` | as other tables | `updated_by default auth.uid()`. |
 
 ### `food_aliases`
@@ -66,6 +67,48 @@ which the matcher handles; the table only has to keep both rows.
 Consistency: a shared alias must point to a shared food; a household alias may
 point to a shared food or to a food of the same household. A foreign key cannot
 say "either", so this is enforced by a trigger and covered by a test (decision D2).
+
+## Ownership and consistency rules
+
+- **Ownership is immutable.** `id` and `household_id` of a food, and `id`,
+  `food_id` and `household_id` of an alias, cannot change after insert. A
+  trigger rejects such an update for every role. Promoting a household food to
+  the shared catalog is a new shared row made by a migration or the service
+  role, not a change of `household_id`; the household row and its aliases stay.
+- **Alias consistency when foods change.** Because ownership cannot change, a
+  food cannot move out from under its aliases. The consistency trigger runs on
+  every insert and update of `food_aliases`. Updating `name`, `slug` or
+  `category` of a food never rewrites aliases or recipe text. Deleting a
+  household food removes its aliases (cascade) and the household's links to it
+  stop resolving; deleting a shared food is not allowed while any alias or
+  recipe link may reference it (see below), so shared entries are withdrawn.
+- **Name normalization.** `alias_normalized` is the existing `ingredientKey`
+  unchanged (decision D4). Inflected forms are reviewed aliases; there is no
+  stemming and no diacritic stripping in this slice.
+- **Priority.** The canonical name of a food owned by the household counts as a
+  confirmed household alias, ahead of shared matches. Mappings of the same
+  priority that name different foods stay `Unresolved`. A household alias on a
+  shared food never changes who owns that food's canonical name (#30).
+
+## Withdrawing a shared entry
+
+A shared entry that turns out to be wrong is withdrawn: `withdrawn_at` is set
+and the row stays, so its id keeps meaning the same thing and clients can learn
+about the change through ordinary incremental download. A hard delete would
+leave offline caches with a row nobody tells them to drop.
+
+- Clients download shared rows with a cursor on `updated_at`; a row with
+  `withdrawn_at` set replaces the cached one. The matcher ignores withdrawn
+  foods and aliases that point to them.
+- A recipe link to a withdrawn food is not rewritten. Consumers treat it like an
+  unresolved ingredient: the original text stays, and the ingredient can be
+  reviewed again (#57).
+- An offline device keeps matching against its cache until its next successful
+  download. That staleness is accepted: a match is evidence for a suggestion
+  and for shopping, not authority, and no write depends on the food still being
+  active. The server rejects a new household alias that points to a withdrawn
+  food.
+- Withdrawal does not touch approved plan snapshots.
 
 ## Access rules (server)
 
@@ -114,17 +157,39 @@ and the recipe labels slice (#54) also need one.
 | D1 | One `foods` table with nullable `household_id`, or separate shared and household tables | One table: one foreign key target and one matcher query. Costs two partial unique indexes. | Dev 4, Dev 3 |
 | D2 | How to enforce alias and food consistency | Trigger, since a foreign key cannot express it | Dev 3 |
 | D3 | Slug uniqueness scope and rename behavior | Unique among shared rows and within one household; the id never changes on rename | Dev 4 |
-| D4 | Normalization function and where it runs | One documented function, same result on client and server, covered by shared fixtures | Dev 2, Dev 4 |
+| D4 | Normalization function and where it runs | The existing `ingredientKey`, unchanged, so stored `alias_normalized` equals what the client already computes; covered by shared fixtures. Inflections are reviewed aliases. | Dev 2, Dev 4 |
 | D5 | Category vocabulary | Reuse the current ingredient categories unchanged | Dev 4 |
 | D6 | Wire values for `base_unit` | `piece`, `gram`, `milliliter`, final once 017 settles unit terms | Dev 4 |
 | D7 | UUID generation and validation boundary | Client generates UUID for household rows, server validates format | Dev 4 |
+| D8 | Immutable ownership | Trigger blocks changing `id` and `household_id`; promotion creates a new shared row | Dev 3, Dev 4 |
+| D9 | Withdrawn shared entries | `withdrawn_at` tombstone instead of delete; clients drop it on the next download | Dev 3, Dev 4 |
 
 ## Rollout
 
+Shipping the migration and the app change in one PR does not make a deployment
+compatible: the hosted server and installed clients change at different times.
+The order is therefore:
+
 1. #30 accepted (T001), then this document accepted.
-2. Migration PR (T005): new SQL file with RLS, grants and tests; applied SQL is
-   never edited. The drift tables and the version bump ship in the same PR so a
-   client never talks to a server without them.
-3. Hosted deployment only through CI; forward recovery is a new additive
-   migration, not an edit.
-4. No consumer changes until the producer is merged; D1-006 to D1-010 follow.
+2. **Server first.** Migration PR (T005): new additive SQL file with RLS, grants
+   and tests; applied SQL is never edited. It is deployed to hosted only through
+   CI and checked there. Nothing reads the new tables yet, and installed clients
+   ignore them.
+3. **Client second.** The drift tables, the version bump and the read-only
+   download ship in a client release that treats a missing table, an access
+   error or an empty result as "no catalog", so it also works against a server
+   that does not have the tables yet. Local and CI checks run both directions:
+   new client with old server, old client with new server.
+4. **Writes last.** No consumer writes a link, alias or food until step 3 is
+   released. Links on recipe ingredients carry the mixed-version gate from #30:
+   an older build drops `foodId`, `matchedKey` and `linkSource` when it saves a
+   recipe, including from old outbox entries, so link writing stays off until
+   that gate is agreed.
+5. Forward recovery is a new additive migration, not an edit.
+6. No consumer changes until the producer is merged; D1-006 to D1-010 follow.
+
+## Remaining reviews
+
+Dev 3 still has to review scope and access rules, and Dev 4 the schema decisions
+D1–D9. Dev 4's support for keeping the link on the embedded ingredient (#30)
+is not approval of those.
