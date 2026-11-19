@@ -20,14 +20,16 @@ void main() {
   );
 
   Future<void> openDialog(WidgetTester tester) async {
-    await tester.ensureVisible(find.text('Obriši nalog'));
+    await tester.scrollUntilVisible(find.text('Obriši nalog'), 100);
+    await tester.pump();
     await tester.tap(find.text('Obriši nalog'));
     await tester.pumpAndSettle();
   }
 
   testTavli('brisanje je na dnu profila, odvojeno od odjave', (tester) async {
     await pumpTavli(tester, location: '/profile');
-    await tester.ensureVisible(find.text('Obriši nalog'));
+    await tester.scrollUntilVisible(find.text('Obriši nalog'), 100);
+    await tester.pump();
     final signOut = tester.getRect(find.text('Odjavi se'));
     final settings = tester.getRect(find.text('AI ključevi'));
     final delete = tester.getRect(find.text('Obriši nalog'));

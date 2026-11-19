@@ -16,6 +16,23 @@ new screen-specific widgets belong under `lib/features/<feature>/`.
 An approved reusable component can stay in its current feature until a second
 consumer justifies extraction into `packages/tavli_ui`.
 
+## Component gallery and library checks
+
+Debug builds have Profil > Komponente (route `/components`), which opens
+even without sign-in from the sign-in screen. It shows `TavliGallery` from the
+package with switches for theme, light/dark, text size and simulated platform.
+Release builds do not register the route. Every new library component adds a
+section to `TavliGallerySections` and a golden image.
+
+- `scripts/check.sh` formats and analyzes the package and fails when app code
+  imports anything from `package:tavli_ui` other than `tavli_ui.dart`.
+- The pre-commit hook runs package tests when a package file changes.
+- Golden images (`packages/tavli_ui/test/goldens`, tag `golden`) are compared
+  only on Linux, as in CI; other systems skip them. Regenerate them with
+  `scripts/update-goldens.sh` (Docker, CI's Flutter version) and review the
+  image diff before committing; `--check` only compares. A failed CI run
+  uploads the differences as the `golden-failures` artifact.
+
 ## Required component behavior
 
 | Component | Required behavior |
@@ -38,10 +55,9 @@ invent a second set of arbitrary measurements per screen. Body text targets
 
 ## Navigation and platform behavior
 
-Code has five tabs with Home in the middle (default `/home`, still empty):
+Current code has four tabs. The accepted next change adds Home in the middle:
 **Plan, Nabavka, Početna, Recepti, Ostava**, with Home opening after auth/name
-gates and profile behind the avatar. The wide side menu lists Home first and
-ends with Profil instead of the top avatar. Further route additions and
+gates and profile behind the avatar. This is a target; route additions and
 redirect changes require Dev 4 review and regression tests. Preserve `/plan`,
 `/shopping`, `/recipes`, `/pantry`, `/profile` and recipe deep links.
 

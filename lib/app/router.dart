@@ -1,7 +1,7 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
 import '../features/account/name_screen.dart';
@@ -27,11 +27,16 @@ import 'placeholder_screen.dart';
 /// Glavni ekran: Početna, srednji tab (021 FR-002).
 const homeLocation = '/home';
 
+/// Galerija komponenti (Profil > Komponente); postoji samo u debug verziji.
+const componentsPath = '/components';
+
 /// Kuda vodi stanje prijave: bez naloga samo "Prijava", bez imena samo
 /// korak sa imenom (FR-001). Tražena adresa se pamti u `from`; Početna
 /// ([homeLocation]) je podrazumevana pa se ne pamti.
-String? authRedirect(AuthState auth, Uri uri) {
+/// Uz [debugTools] galerija komponenti se otvara i bez prijave.
+String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
   final path = uri.path;
+  if (debugTools && path == componentsPath) return null;
   final from = uri.queryParameters['from'];
   String withFrom(String target) {
     final back = path.startsWith('/sign-in') ? from : uri.toString();
@@ -51,17 +56,28 @@ String? authRedirect(AuthState auth, Uri uri) {
 
 /// Pravi novi router (testovi prave svoj, da stanje ne prelazi iz testa u
 /// test). [auth] daje trenutno stanje prijave, [refresh] javlja promene.
+/// [debugTools] uključuje ekrane za razvoj; u verziji za objavu ih nema.
 GoRouter createRouter({
   String initialLocation = homeLocation,
   AuthState Function()? auth,
   Listenable? refresh,
+  bool debugTools = kDebugMode,
 }) => GoRouter(
   initialLocation: initialLocation,
   refreshListenable: refresh,
   redirect: auth == null
       ? null
-      : (context, state) => authRedirect(auth(), state.uri),
+      : (context, state) =>
+            authRedirect(auth(), state.uri, debugTools: debugTools),
   routes: [
+    if (debugTools)
+      GoRoute(
+        path: componentsPath,
+        builder: (context, state) => TavliGallery(
+          // Otvorena direktnom adresom nema kuda nazad, pa vodi na Plan.
+          onClose: () => context.canPop() ? context.pop() : context.go('/plan'),
+        ),
+      ),
     GoRoute(
       path: '/sign-in',
       builder: (context, state) => const SignInScreen(),
