@@ -205,6 +205,15 @@ void main() {
       expect(find.text('Jaja su uklonjena.'), findsNothing);
     });
 
+    testWidgets('poruka preko ranije uzetog messenger-a', (tester) async {
+      await pumpOpener(tester, (context) {
+        final messenger = ScaffoldMessenger.of(context);
+        showTavliMessageOn(messenger, 'Recept je obrisan.');
+      });
+      await openIt(tester);
+      expect(find.text('Recept je obrisan.'), findsOneWidget);
+    });
+
     testWidgets('nova poruka zamenjuje staru', (tester) async {
       var n = 0;
       await pumpOpener(
@@ -246,6 +255,29 @@ void main() {
       await tester.pumpAndSettle();
       expect(log, ['ukloni']);
       expect(find.byType(TavliSheet), findsNothing);
+    });
+
+    testWidgets('isključena stavka se ne bira', (tester) async {
+      final log = <String>[];
+      await pumpOpener(
+        tester,
+        (context) => showTavliActionMenu(
+          context,
+          actions: [
+            TavliMenuAction(
+              'Poništi',
+              enabled: false,
+              onSelected: () => log.add('poništi'),
+            ),
+            ...actions(log),
+          ],
+        ),
+      );
+      await openIt(tester);
+      await tester.tap(find.text('Poništi'));
+      await tester.pumpAndSettle();
+      expect(log, isEmpty);
+      expect(find.byType(TavliSheet), findsOneWidget);
     });
 
     testWidgets('iOS: sistemski akcioni list sa „Otkaži“', (tester) async {

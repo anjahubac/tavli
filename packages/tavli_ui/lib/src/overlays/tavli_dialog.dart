@@ -88,7 +88,7 @@ class TavliDialog<T> extends StatelessWidget {
       ),
       insetPadding: const EdgeInsets.all(TavliSpacing.large),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: const BoxConstraints(maxWidth: TavliWidth.dialog),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
           child: Column(

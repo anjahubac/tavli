@@ -155,7 +155,7 @@ void main() {
         recipes: [sampleRecipe('large', 'Sarma')],
         settings: {'theme_mode': mode},
       );
-      await tester.enterText(find.byType(SearchBar), 'Sarma');
+      await tester.enterText(find.byType(TavliSearchField), 'Sarma');
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });

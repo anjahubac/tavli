@@ -261,7 +261,7 @@ void main() {
     final row = await app.db.select(app.db.recipes).getSingle();
     expect(row.imagePath, path);
     expect(row.source, 'photo');
-    expect(find.widgetWithText(AppBar, 'Bakina pita'), findsOneWidget);
+    expect(recipeHeading('Bakina pita'), findsOneWidget);
   });
 
   testTavli('slikanje kamerom kad postoji kamera', (tester) async {

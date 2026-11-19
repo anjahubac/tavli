@@ -23,6 +23,7 @@ import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/keep_screen_on.dart';
 import 'package:tavli/features/recipes/photo_picker.dart';
+import 'package:tavli/features/recipes/recipe_detail_screen.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
@@ -289,6 +290,18 @@ Finder textField(String label) => find.byElementPredicate((e) {
   if (widget.decoration?.labelText == label) return true;
   return e.findAncestorWidgetOfExactType<TavliTextField>()?.label == label;
 });
+
+/// Naslov otvorenog recepta (veliki naslov na ekranu recepta).
+Finder recipeHeading(String title) => find.descendant(
+  of: find.byType(RecipeDetailScreen),
+  matching: find.text(title),
+);
+
+/// `TavliIconButton` po opisu. Njegov oblačić je iz material_ui, pa ga
+/// `find.byTooltip` ne vidi.
+Finder iconButton(String label) => find.byWidgetPredicate(
+  (w) => w is TavliIconButton && w.semanticLabel == label,
+);
 
 /// Dugme (bilo koje Material dugme) sa datim tekstom.
 Finder button(String text) => find.ancestor(

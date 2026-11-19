@@ -71,12 +71,14 @@ class TavliTextField extends StatelessWidget {
     this.inputFormatters,
     this.autofocus = false,
     this.obscureText = false,
+    this.minLines = 1,
     this.maxLines = 1,
     this.autofillHints,
     this.focusNode,
     this.autocorrect = true,
     this.isCode = false,
-  }) : assert(controller == null || initialValue == null);
+  }) : assert(controller == null || initialValue == null),
+       assert(minLines <= maxLines);
 
   /// Naziv iznad polja, npr. „Naziv recepta“.
   final String? label;
@@ -99,6 +101,9 @@ class TavliTextField extends StatelessWidget {
 
   /// Više redova za duži tekst (npr. napomena); polje raste do toliko.
   final int maxLines;
+
+  /// Koliko redova polje ima i kad je prazno (npr. koraci pripreme).
+  final int minLines;
   final Iterable<String>? autofillHints;
   final FocusNode? focusNode;
 
@@ -124,7 +129,7 @@ class TavliTextField extends StatelessWidget {
       inputFormatters: inputFormatters,
       autofocus: autofocus,
       obscureText: obscureText,
-      minLines: 1,
+      minLines: obscureText ? 1 : minLines,
       maxLines: obscureText ? 1 : maxLines,
       autofillHints: autofillHints,
       style: isCode
