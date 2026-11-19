@@ -1,6 +1,6 @@
 # Implementation plan: Windows application and release validation
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: implementation approved; T001 contract accepted on 2026-11-19.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 4 / Dev 3
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
@@ -12,6 +12,7 @@
 - `lib/features/recipes/keep_screen_on.dart`
 - `lib/ai/key_store.dart`
 - `.github/workflows/`
+- `specs/028-windows-support/contracts/windows-platform-contract.md`
 
 Items marked new/proposed/external do not exist at baseline. Verify exact existing
 files and consumers before editing; new files remain in current feature/domain/
@@ -20,6 +21,11 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 ## Contract and data plan
 
 New target must preserve secure session/key storage, account/environment isolation and file/outbox semantics. Windows is not currently supported merely because Flutter supports it.
+
+The target adds no business-data or wire-format change, drift schema change,
+Supabase change or migration. `msix` is the only planned dependency addition,
+as a development-only packaging tool needed to create the installable Windows
+artifact required by FR-102. Runtime plugin versions remain those already locked.
 
 Producer dependencies: [012](../012-security-baseline/spec.md), [013](../013-testing-strategy/spec.md)
 
@@ -44,6 +50,26 @@ If no schema change is needed, explicitly record that decision in the slice PR.
    logic/parsing and ownership review. Keep phase boundaries in tasks.md.
 4. Integrate consumers after producer merge, preserving offline/replay and previous
    UI/quantity behavior. Run relevant 012/013 gates and update real evidence.
+
+## Accepted Windows delivery decisions
+
+- **Target**: Windows 10+ x64; Flutter-generated Windows runner from the pinned
+  3.50.0 SDK, branded as Tavli. ARM64 is not claimed by this slice.
+- **CI**: standard GitHub-hosted `windows-latest` for this public repository,
+  Flutter 3.50.0, dependency restore,
+  analysis/tests as applicable and a release Windows build. CI compilation is
+  not native-dialog or real-device evidence.
+- **Packaging**: MSIX for install/uninstall testing. Local test signing is not a
+  public trust claim. Trusted public signing and distribution belong to spec
+  033; no Store work or publication is part of this feature.
+- **Authentication**: preserve the current six-digit email OTP flow. There is no
+  native callback registration to add until a future OAuth provider is accepted.
+- **Fallbacks**: file selection only (no desktop camera), cancel without error,
+  fail-closed secure storage with sanitized Serbian feedback, wake-lock release
+  on inactive/background/dispose, and the existing drift cache path.
+- **Manual hardware**: Windows install/start, OTP sign-in, restart offline,
+  picker select/cancel, storage denial, wake-lock lifecycle, resize/scaling,
+  keyboard and uninstall are recorded against the tested SHA.
 
 ## Constitution check (3.0.0)
 

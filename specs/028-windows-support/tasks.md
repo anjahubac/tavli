@@ -6,7 +6,7 @@ proposed reviewers: Dev 3 (choose a different human from the implementer).
 Paths and contracts are in plan.md; finalize exact filenames and remaining
 implementation/test/review estimates before Ready.
 
-- [ ] T001 Resolve blocking questions in spec.md, agree typed contract/migration needs and acceptance fixtures. Owner Dev 4; reviewer Dev 3; depends on producer specs in plan.md; evidence: accepted decision/contract links.
+- [x] T001 Resolve blocking questions in spec.md, agree typed contract/migration needs and acceptance fixtures. Owner Dev 4; reviewer Dev 3; depends on producer specs in plan.md; evidence: accepted decisions in spec.md and `contracts/windows-platform-contract.md`; product-owner acceptance 2026-11-19, independent human review remains required before merge.
 - [ ] T002 [US1] D4-020 / FR-001, phase 4: inspect existing evidence and add missing failing behavior/acceptance cases for **Add and validate the Windows target** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
 - [ ] T003 [US1] D4-020 / FR-001, phase 4: **Add and validate the Windows target** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T002; evidence: spec scenarios, applicable checks and reviewed PR.
 - [ ] T004 [US1] D4-021 / FR-002, phase 4: inspect existing evidence and add missing failing behavior/acceptance cases for **Build Windows in CI** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
