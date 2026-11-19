@@ -24,3 +24,29 @@ class GallerySection extends StatelessWidget {
     );
   }
 }
+
+/// Mali prigušeni opis iznad primera u odeljku galerije.
+class GalleryLabeled extends StatelessWidget {
+  const GalleryLabeled(this.label, this.child, {super.key});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: t.labelMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: TavliSpacing.small),
+        child,
+      ],
+    );
+  }
+}
