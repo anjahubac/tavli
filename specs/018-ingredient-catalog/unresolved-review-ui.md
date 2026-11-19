@@ -42,6 +42,13 @@ quantities with copies built as `Ingredient(...)`, and saves nothing until
 fields once `Ingredient` has them, and a link made here has to say what is stored
 when the recipe is not in the library.
 
+The sheet's present rule is that it saves nothing until "Dodaj u nabavku" (the doc
+comment on `showIngredientReview` and the test "pregled ne čuva ništa" say so). This
+proposal changes that rule for one thing only: confirming a link writes it at once,
+whether or not anything is added to shopping. Quantities, the home-stock marks and the
+shopping addition keep the old rule, and the existing test needs a case that separates
+the two.
+
 ## Approaches considered
 
 | # | Approach | Trade-off |
@@ -75,7 +82,11 @@ only while its `matchedKey` equals `ingredientKey(name)`):
   lookups of the same text in every recipe of that household.
 - **Where the link is stored.** If the recipe is in the library (`recipeId` is set) the
   link is saved on the recipe. Otherwise it exists only in the snapshot passed to the
-  shopping addition.
+  shopping addition. The AI preview (`ai_preview.dart`) opens the sheet without a
+  `recipeId`, before the recipe is saved: if the person saves it afterwards, the draft
+  recipe must carry `foodId`, `matchedKey` and `linkSource` of the links made in the
+  sheet, or they are lost. How the draft carries them is an implementation decision
+  for T013 and needs a test.
 - **Nova namirnica.** A small form with the name prefilled from the ingredient, a
   category and a base unit. It creates a household food and links the ingredient to it,
   with the same scope switch for the alias. It never writes to the shared catalog.
@@ -95,13 +106,15 @@ only while its `matchedKey` equals `ingredientKey(name)`):
   (when it is in the library), the household food or alias when chosen, and their
   outbox entries. Either all of it is saved or none of it is; the outbox never holds
   an alias without the link it was made with, or the other way around.
-- **Newer recipe edits win.** The write compares the recipe row and the ingredient
-  (its name and any existing link) with what the sheet read when it opened. If the
+- **Newer recipe edits win.** The write compares the stored recipe (`recipes.updatedAt`)
+  and the ingredient (its name and any existing link) with what the sheet read when it
+  opened. For that, `showIngredientReview` has to receive the recipe's `updatedAt`
+  together with `recipeId`, so its signature changes. If the
   recipe was changed meanwhile, nothing is written, the row stays as it was and the
   person sees "Recept je u međuvremenu izmenjen" with a way to reload the sheet. A
   link is never written over a newer edit.
 - **After confirmation.** Closing the sheet does not undo it. For the rest of the
-  sheet's life the row offers "Opozovi", which is another single transaction that
+  sheet's life the row offers "Poništi", which is another single transaction that
   removes exactly what that confirmation wrote, if it is still unchanged; otherwise
   it does nothing and says so. Later changes go through Correcting a link.
 - **Repeating** a confirmation is idempotent: the same link and alias, no duplicates.
@@ -131,11 +144,11 @@ this slice, for review by a Serbian-speaking reviewer before Ready:
 | Confirm button | Poveži |
 | Cancel button | Otkaži |
 | Household switch | Zapamti i za druge recepte u domaćinstvu |
-| Household switch help | Naziv „{naziv}” će se u svim receptima vašeg domaćinstva prepoznavati kao {namirnica}. |
+| Household switch help | Naziv „{naziv}” će se u svim receptima tvog domaćinstva prepoznavati kao {namirnica}. |
 | Food form fields | Naziv; Kategorija; Osnovna jedinica |
 | Food form button | Sačuvaj |
 | Linked confirmation | Povezano: {namirnica} |
-| Undo | Opozovi |
+| Undo | Poništi (the word the shopping messages already use) |
 | Change / remove link | Promeni vezu; Ukloni vezu |
 | Save failed | Nije uspelo. Pokušaj ponovo. |
 | Recipe changed meanwhile | Recept je u međuvremenu izmenjen. Učitaj ga ponovo i pokušaj opet. |
@@ -161,9 +174,13 @@ and the loading, empty, error and offline states.
 
 ## Tests required
 
-Widget tests with fakes: each of the three row states; choosing a food writes one
-alias and links the ingredient; cancel writes nothing; repeating the choice creates no
-duplicate; offline choice is queued; a renamed ingredient stops being linked; no overflow
+Widget tests with fakes: both row states (linked, unresolved); choosing a food links
+the ingredient and writes an alias only with the household switch on; cancel writes
+nothing; confirming writes the link even if nothing is added to shopping; the link,
+the optional alias and their outbox entries are saved together or not at all; a recipe
+edited after the sheet opened is not overwritten; "Poništi" removes exactly what the
+confirmation wrote; a link made in the AI preview survives saving the recipe;
+repeating the choice creates no duplicate; offline choice is queued; a renamed ingredient stops being linked; no overflow
 at 2× text on 320 dp; the picker works by keyboard. Repository tests for the alias and
 household food writes belong to D1-007 and D1-005.
 
