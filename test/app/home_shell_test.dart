@@ -53,6 +53,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testTavli('tekst 2×: prazna Ostava ima manju sliku, naslov je vidljiv', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(tester, size: const Size(320, 640), location: '/pantry');
+    await tester.pump(const Duration(seconds: 1));
+    expect(
+      tester.getSize(find.byType(FittedBox)).height,
+      lessThanOrEqualTo(88),
+    );
+    final title = tester.getRect(find.text('Još nema unetih namirnica'));
+    expect(title.top, lessThan(640 / 2));
+    expect(tester.takeException(), isNull);
+  });
+
   testTavli('širok ekran (macOS): bočni meni', (tester) async {
     await pumpTavli(tester, size: wide);
 

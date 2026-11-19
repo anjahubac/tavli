@@ -158,31 +158,39 @@ class AccountHeader extends ConsumerWidget {
     final a = auth.account;
     final text = Theme.of(context).textTheme;
     final name = a.displayName ?? '';
+    final stacked = MediaQuery.textScalerOf(context).scale(16) > 20;
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(name, style: text.titleLarge),
+        Text(a.email, style: text.bodyMedium),
+        const SizedBox(height: 4),
+        Text('${a.householdName} · ${a.roleLabel}', style: text.bodySmall),
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: [
-              InitialsAvatar(name: name),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
+          // Sa velikim tekstom avatar ide iznad, da ime i adresa dobiju
+          // celu širinu i ne lome se usred reči.
+          child: stacked
+              ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: text.titleLarge),
-                    Text(a.email, style: text.bodyMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${a.householdName} · ${a.roleLabel}',
-                      style: text.bodySmall,
-                    ),
+                    InitialsAvatar(name: name),
+                    const SizedBox(height: 12),
+                    details,
+                  ],
+                )
+              : Row(
+                  children: [
+                    InitialsAvatar(name: name),
+                    const SizedBox(width: 16),
+                    Expanded(child: details),
                   ],
                 ),
-              ),
-            ],
-          ),
         ),
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
