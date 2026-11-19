@@ -8,6 +8,7 @@ import 'package:tavli/ai/chain_config.dart';
 import 'package:tavli/ai/chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/ai/meal_plan_ai.dart';
+import 'package:tavli/ai/meal_plan_prompts.dart' show snackHint;
 import 'package:tavli/ai/model_status_store.dart';
 import 'package:tavli/domain/meal_plan.dart';
 import 'package:tavli/domain/plan_calendar.dart';
@@ -169,6 +170,20 @@ void main() {
         '2026-11-03/dinner',
       ]);
     });
+
+    test('užine idu između obroka, redom u danu', () {
+      final r = PlanRequest(
+        range: DateRange(monday, monday),
+        mealTypes: MealType.values.toSet(),
+      );
+      expect(r.slots.map((s) => s.type.name), [
+        'breakfast',
+        'morningSnack',
+        'lunch',
+        'afternoonSnack',
+        'dinner',
+      ]);
+    });
   });
 
   group('strogo čitanje rasporeda', () {
@@ -228,6 +243,36 @@ void main() {
           meal('2026-11-03', type: 'dinner'),
         ]),
         throwsFormatException,
+      );
+      expect(
+        () => parse([
+          meal('2026-11-02'),
+          meal('2026-11-03'),
+          meal('2026-11-03', type: 'afternoonSnack'),
+        ]),
+        throwsFormatException,
+        reason: 'užina koja nije tražena',
+      );
+    });
+
+    test('tražena užina se prihvata', () {
+      final withSnack = PlanRequest(
+        range: DateRange(monday, monday),
+        mealTypes: const {MealType.lunch, MealType.morningSnack},
+      ).slots;
+      final r = parseOutline(
+        {
+          'meals': [
+            meal('2026-11-02', type: 'morningSnack', title: 'Jogurt i voće'),
+            meal('2026-11-02'),
+          ],
+        },
+        slots: withSnack,
+        library: const {},
+      );
+      expect(
+        r[MealSlot(monday, MealType.morningSnack)]!.title,
+        'Jogurt i voće',
       );
     });
 
@@ -429,6 +474,27 @@ void main() {
       await ai.propose(weekRequest(usePantry: false, pantry: ['pirinač']));
       expect(client.requests.first.prompt, isNot(contains('pirinač')));
     });
+
+    test(
+      'upit nabraja sve vrste obroka; opis užine samo kad je tražena',
+      () async {
+        await ai.propose(weekRequest());
+        final plain = client.requests.first.prompt;
+        expect(plain, contains('"morningSnack" | "lunch" | "afternoonSnack"'));
+        expect(plain, isNot(contains(snackHint)));
+
+        client.requests.clear();
+        await ai.propose(
+          weekRequest(types: const {MealType.lunch, MealType.afternoonSnack}),
+        );
+        final withSnack = client.requests.first;
+        expect(withSnack.prompt, contains(snackHint));
+        expect(slotsIn(withSnack).map((s) => s['meal']).toSet(), {
+          'lunch',
+          'afternoonSnack',
+        });
+      },
+    );
 
     test('loš raspored se pita još jednom (ruter), pa uspeva', () async {
       var first = true;

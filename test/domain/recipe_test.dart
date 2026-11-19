@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/domain/recipe.dart';
 
+// Blagi čitač sačuvanih recepata; stroga provera AI odgovora je u
+// test/ai/ai_response_validator_test.dart.
 Recipe parse(Map<String, dynamic> json) => Recipe.fromAiJson(
   json,
   id: 'r1',

@@ -13,6 +13,10 @@
 - `lib/ai/ai_router.dart`
 - `lib/domain/`
 - `test/ai/`
+- #34 slice: new `lib/ai/ai_response_validator.dart`, `lib/ai/ai_units.dart`,
+  `test/ai/ai_response_validator_test.dart`; changed `lib/ai/ai_errors.dart`
+  and `lib/features/settings/ai_error_text.dart` (invalid-output message).
+  No schema, sync or migration change.
 
 Items marked new/proposed/external do not exist at baseline. Verify exact existing
 files and consumers before editing; new files remain in current feature/domain/

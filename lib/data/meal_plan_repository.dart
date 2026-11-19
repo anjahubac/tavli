@@ -72,10 +72,9 @@ class MealPlanRepository {
           .map((r) => r == null ? null : _planFromRow(r));
 
   /// Obroci plana, hronološki.
-  Stream<List<PlannedMeal>> watchMeals(String planId) =>
-      _entriesQuery(planId)
-          .watch()
-          .map((rows) => rows.map(_mealFromRow).toList()..sort(_bySlot));
+  Stream<List<PlannedMeal>> watchMeals(String planId) => _entriesQuery(planId)
+      .watch()
+      .map((rows) => [for (final r in rows) ?_mealFromRow(r)]..sort(_bySlot));
 
   /// Nazivi potvrđene zalihe domaćinstva (za predlog plana; samo čitanje).
   Future<List<String>> confirmedPantryNames() async => [
@@ -123,7 +122,7 @@ class MealPlanRepository {
         }
         planId = base.planId;
         for (final e in await _entriesQuery(planId).get()) {
-          existing[_slotOf(e)] = e;
+          if (_slotOf(e) case final slot?) existing[slot] = e;
         }
       }
 
@@ -318,10 +317,14 @@ class MealPlanRepository {
       (t) => t.planId.equals(planId) & t.householdId.equals(_scope.householdId),
     );
 
-  static MealSlot _slotOf(MealPlanEntryRow e) => MealSlot(
-    CivilDate.fromWire(e.date),
-    MealType.tryParse(e.mealType) ?? MealType.lunch,
-  );
+  /// Mesto obroka; null za vrstu obroka koju ova verzija ne zna (npr. iz
+  /// novije aplikacije). Takav obrok se ne prikazuje i ne menja, umesto da
+  /// se pogrešno pokaže kao ručak. Nabavka ga namerno i dalje računa: obrok
+  /// postoji u domaćinstvu, samo ga ova verzija ne ume da prikaže.
+  static MealSlot? _slotOf(MealPlanEntryRow e) {
+    final type = MealType.tryParse(e.mealType);
+    return type == null ? null : MealSlot(CivilDate.fromWire(e.date), type);
+  }
 
   static int _bySlot(PlannedMeal a, PlannedMeal b) {
     final s = a.slot.compareTo(b.slot);
@@ -347,7 +350,9 @@ class MealPlanRepository {
     return end.isBefore(start) ? start : end;
   }
 
-  static PlannedMeal _mealFromRow(MealPlanEntryRow e) {
+  static PlannedMeal? _mealFromRow(MealPlanEntryRow e) {
+    final slot = _slotOf(e);
+    if (slot == null) return null;
     RecipeSnapshot? snapshot;
     final json = e.recipeSnapshotJson;
     if (json != null) {
@@ -362,7 +367,7 @@ class MealPlanRepository {
     return PlannedMeal(
       id: e.id,
       planId: e.planId,
-      slot: _slotOf(e),
+      slot: slot,
       servings: e.servings ?? snapshot?.baseServings ?? 2,
       snapshot: snapshot,
       recipeId: e.recipeId,
