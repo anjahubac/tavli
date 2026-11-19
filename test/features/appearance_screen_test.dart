@@ -62,11 +62,17 @@ void main() {
     expect(t.colorScheme.primary, TavliPalette.borovnicaDark.primary);
   });
 
-  testTavli('Kao sistem prati tamni sistem', (tester) async {
+  testTavli('Sistem prati tamni sistem', (tester) async {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
     await pumpTavli(tester, settings: {'theme_mode': 'system'});
     expect(appTheme(tester).brightness, Brightness.dark);
+  });
+
+  testTavli('telefon: natpisi režima staju u jedan red', (tester) async {
+    await pumpTavli(tester, location: '/profile/appearance');
+    final line = tester.getSize(find.text('Svetla')).height;
+    expect(tester.getSize(find.text('Sistem')).height, line);
   });
 
   testTavli('širok ekran: sve tri teme i režimi su vidljivi', (tester) async {
@@ -77,7 +83,7 @@ void main() {
       'Borovnica',
       'Svetla',
       'Tamna',
-      'Kao sistem',
+      'Sistem',
     ]) {
       expect(find.text(name), findsOneWidget);
     }
