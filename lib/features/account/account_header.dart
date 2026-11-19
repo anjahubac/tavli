@@ -64,22 +64,66 @@ class InitialsAvatar extends StatelessWidget {
   }
 }
 
-/// Avatar gore desno na svakom tabu; otvara Profil i podešavanja.
+/// Avatar prijavljenog člana, ili ikonica dok ime nije poznato.
+Widget _profileAvatar(WidgetRef ref, double radius) {
+  final auth = ref.watch(authControllerProvider);
+  final name = auth is SignedIn ? auth.account.displayName ?? '' : '';
+  return name.trim().isEmpty
+      ? Icon(Icons.account_circle_outlined, size: radius * 2)
+      : InitialsAvatar(name: name, radius: radius);
+}
+
+/// Avatar gore desno na svakom tabu (telefon); otvara Profil i podešavanja.
 class ProfileButton extends ConsumerWidget {
   const ProfileButton({super.key});
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+    padding: const EdgeInsets.only(right: 8),
+    child: IconButton(
+      tooltip: 'Profil i podešavanja',
+      onPressed: () => context.push('/profile'),
+      icon: _profileAvatar(ref, 16),
+    ),
+  );
+}
+
+/// Profil na dnu bočnog menija (širok ekran): avatar i „Profil“, pored
+/// avatara kad je meni proširen, ispod njega kad je uzan.
+class ProfileRailItem extends ConsumerWidget {
+  const ProfileRailItem({super.key, required this.extended});
+
+  final bool extended;
+
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authControllerProvider);
-    final name = auth is SignedIn ? auth.account.displayName ?? '' : '';
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: IconButton(
-        tooltip: 'Profil i podešavanja',
-        onPressed: () => context.push('/profile'),
-        icon: name.trim().isEmpty
-            ? const Icon(Icons.account_circle_outlined)
-            : InitialsAvatar(name: name, radius: 16),
+    final theme = Theme.of(context);
+    final avatar = _profileAvatar(ref, 15);
+    const label = Text('Profil');
+    return Semantics(
+      button: true,
+      label: 'Profil i podešavanja',
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.push('/profile'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: DefaultTextStyle.merge(
+            style: extended
+                ? theme.textTheme.labelLarge
+                : theme.textTheme.labelMedium,
+            child: extended
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [avatar, const SizedBox(width: 12), label],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [avatar, const SizedBox(height: 4), label],
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -113,33 +157,40 @@ class AccountHeader extends ConsumerWidget {
     if (auth is! SignedIn) return const SizedBox.shrink();
     final a = auth.account;
     final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     final name = a.displayName ?? '';
+    final stacked = MediaQuery.textScalerOf(context).scale(16) > 20;
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(name, style: text.titleLarge),
+        Text(a.email, style: text.bodyMedium),
+        const SizedBox(height: 4),
+        Text('${a.householdName} · ${a.roleLabel}', style: text.bodySmall),
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: [
-              InitialsAvatar(name: name),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
+          // Sa velikim tekstom avatar ide iznad, da ime i adresa dobiju
+          // celu širinu i ne lome se usred reči.
+          child: stacked
+              ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: text.titleLarge),
-                    Text(a.email, style: text.bodyMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${a.householdName} · ${a.roleLabel}',
-                      style: text.bodySmall,
-                    ),
+                    InitialsAvatar(name: name),
+                    const SizedBox(height: 12),
+                    details,
+                  ],
+                )
+              : Row(
+                  children: [
+                    InitialsAvatar(name: name),
+                    const SizedBox(width: 16),
+                    Expanded(child: details),
                   ],
                 ),
-              ),
-            ],
-          ),
         ),
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -159,12 +210,41 @@ class AccountHeader extends ConsumerWidget {
           title: const Text('Odjavi se'),
           onTap: () => _signOut(context, ref),
         ),
-        ListTile(
-          leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
-          title: Text('Obriši nalog', style: TextStyle(color: scheme.error)),
-          onTap: () => _deleteAccount(context, ref),
-        ),
       ],
+    );
+  }
+}
+
+/// Dno "Profila": nepovratno brisanje naloga, odvojeno od svakodnevnih
+/// radnji (odjava, izmena imena) da se ne dodirne slučajno.
+class DeleteAccountSection extends ConsumerWidget {
+  const DeleteAccountSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    if (auth is! SignedIn) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Text(
+              'Brisanje naloga',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
+            title: Text('Obriši nalog', style: TextStyle(color: scheme.error)),
+            subtitle: const Text('Trajno briše nalog i sve podatke'),
+            onTap: () => _deleteAccount(context, ref),
+          ),
+        ],
+      ),
     );
   }
 }

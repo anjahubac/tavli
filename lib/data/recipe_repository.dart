@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../account/auth_controller.dart';
 import '../domain/ids.dart';
 import '../domain/recipe.dart';
+import '../domain/recipe_labels.dart';
 import '../domain/recipe_version.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
@@ -67,6 +68,12 @@ class RecipeRepository {
   });
 
   /// Menja recept i čuva prethodno stanje kao verziju.
+  ///
+  /// Oznake se uzimaju iz baze u trenutku čuvanja, ne iz [next]: forma i
+  /// AI predlog nose oznake od trenutka kad su otvoreni, a one su se možda
+  /// u međuvremenu promenile. Jedino AI izmena sme da donese nove oznake,
+  /// i to samo kada ih ima, a u bazi nisu oznake korisnika. Oznake inače
+  /// menja samo [setLabels].
   Future<void> update(
     Recipe next, {
     required ChangeKind kind,
@@ -75,12 +82,39 @@ class RecipeRepository {
   }) => _db.transaction(() async {
     final current = await get(next.id);
     if (current == null) throw StateError('Recept ${next.id} ne postoji');
+    final aiMayLabel =
+        kind == ChangeKind.ai &&
+        !current.labels.isUserSet &&
+        !next.labels.isEmpty;
+    final labels = aiMayLabel ? next.labels : current.labels;
     await _addVersion(current, kind, instruction, changedBy);
-    await _replace(next);
+    await _replace(next.copyWith(labels: labels));
     if (next.imagePath case final p? when p != current.imagePath) {
       await _writer.photoUpload(p);
     }
   });
+
+  /// Oznake koje je korisnik izabrao na receptu. Nisu nova verzija recepta.
+  Future<void> setLabels(String id, RecipeLabels labels) => _db.transaction(
+    () async {
+      final updated =
+          await (_db.update(_db.recipes)..where(
+                (t) =>
+                    t.id.equals(id) & t.householdId.equals(_scope.householdId),
+              ))
+              .write(
+                RecipesCompanion(
+                  mealTypesJson: Value(_mealsJson(labels)),
+                  weight: Value(labels.weight),
+                  dishKind: Value(labels.dishKind),
+                  labelsSource: Value(labels.source),
+                  updatedAt: Value(_clock()),
+                ),
+              );
+      if (updated == 0) throw StateError('Recept $id ne postoji');
+      await _writer.upsert(_recipe, id);
+    },
+  );
 
   /// Od najnovije ka najstarijoj. Pokvareni zapisi se preskaču.
   Stream<List<RecipeVersion>> watchVersions(String recipeId) =>
@@ -112,7 +146,9 @@ class RecipeRepository {
     final versions = await _versions(recipeId);
     if (versions.isEmpty) return false;
     final last = versions.first;
-    await _replace(last.recipe);
+    // Oznake nisu deo istorije: vraćanje verzije čuva trenutne.
+    final current = await get(recipeId);
+    await _replace(last.recipe.copyWith(labels: current?.labels));
     await (_db.delete(
       _db.recipeVersions,
     )..where((t) => t.id.equals(last.id))).go();
@@ -131,7 +167,11 @@ class RecipeRepository {
             .getSingle();
     final version = _versionFromRow(row);
     if (version == null) throw StateError('Verzija $versionId je pokvarena');
-    await update(version.recipe, kind: ChangeKind.restore);
+    final current = await get(version.recipeId);
+    await update(
+      version.recipe.copyWith(labels: current?.labels),
+      kind: ChangeKind.restore,
+    );
   });
 
   /// Briše recept, njegove verzije, ocene i slike (i na serveru).
@@ -276,7 +316,32 @@ class RecipeRepository {
     createdAt: r.createdAt,
     updatedAt: _clock(),
     householdId: Value(_scope.householdId),
+    mealTypesJson: Value(_mealsJson(r.labels)),
+    weight: Value(r.labels.weight),
+    dishKind: Value(r.labels.dishKind),
+    labelsSource: Value(r.labels.source),
   );
+
+  static String? _mealsJson(RecipeLabels l) =>
+      l.meals == null ? null : jsonEncode(l.meals);
+
+  static RecipeLabels _labelsFromRow(RecipeRow row) {
+    List<String>? meals;
+    try {
+      final decoded = row.mealTypesJson == null
+          ? null
+          : jsonDecode(row.mealTypesJson!);
+      if (decoded is List) meals = [for (final m in decoded) '$m'];
+    } on FormatException {
+      meals = null;
+    }
+    return RecipeLabels(
+      meals: meals,
+      weight: row.weight,
+      dishKind: row.dishKind,
+      source: row.labelsSource,
+    );
+  }
 
   static Recipe? _fromRowOrNull(RecipeRow? row) =>
       row == null ? null : _fromRow(row);
@@ -297,6 +362,7 @@ class RecipeRepository {
     imagePath: row.imagePath,
     answeredBy: row.answeredBy,
     createdAt: row.createdAt,
+    labels: _labelsFromRow(row),
   );
 
   static RecipeVersion? _versionFromRow(RecipeVersionRow row) {

@@ -16,7 +16,7 @@ class ProfileScreen extends StatelessWidget {
         // Otvoren direktnom adresom nema kuda nazad, pa vodi na Plan.
         leading: BackButton(
           onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/plan'),
+              context.canPop() ? context.pop() : context.go(homeLocation),
         ),
       ),
       body: ListView(
@@ -54,6 +54,7 @@ class ProfileScreen extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push(componentsPath),
             ),
+          const DeleteAccountSection(),
         ],
       ),
     );

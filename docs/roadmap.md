@@ -13,8 +13,8 @@ future directions; completed acceptance history remains intact.
 shopping, including snapshots, source contributions and supply allocation.
 Its full UX/pantry/preferences/cooking acceptance is unfinished.
 
-Current navigation has four tabs (Plan, Nabavka, Recepti, Ostava); profile is
-behind the avatar. Home is not implemented; pantry has repository/receipt
+Navigation has five tabs (Plan, Nabavka, Početna, Recepti, Ostava); profile is
+behind the avatar. Home (`/home`) is the default but still empty; pantry has repository/receipt
 support but placeholder UI. drift is version 5. Catalog, member invitations,
 tracker, prices, voice, cookbooks and Windows are not implemented here.
 This is code evidence, not a declaration of production QA or successful tests.
