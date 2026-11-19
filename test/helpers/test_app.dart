@@ -26,6 +26,7 @@ import 'package:tavli/features/recipes/photo_picker.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import 'fake_adapter.dart';
 import 'fake_backend.dart';
@@ -279,6 +280,15 @@ Future<void> tapButton(WidgetTester tester, String text) async {
   await tester.tap(button(text));
   await tester.pumpAndSettle();
 }
+
+/// Polje za unos sa datim nazivom: Material `labelText` ili naziv iznad
+/// `TavliTextField`.
+Finder textField(String label) => find.byElementPredicate((e) {
+  final widget = e.widget;
+  if (widget is! TextField) return false;
+  if (widget.decoration?.labelText == label) return true;
+  return e.findAncestorWidgetOfExactType<TavliTextField>()?.label == label;
+});
 
 /// Dugme (bilo koje Material dugme) sa datim tekstom.
 Finder button(String text) => find.ancestor(

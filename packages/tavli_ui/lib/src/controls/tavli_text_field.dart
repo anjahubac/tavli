@@ -73,6 +73,9 @@ class TavliTextField extends StatelessWidget {
     this.obscureText = false,
     this.maxLines = 1,
     this.autofillHints,
+    this.focusNode,
+    this.autocorrect = true,
+    this.isCode = false,
   }) : assert(controller == null || initialValue == null);
 
   /// Naziv iznad polja, npr. „Naziv recepta“.
@@ -97,10 +100,20 @@ class TavliTextField extends StatelessWidget {
   /// Više redova za duži tekst (npr. napomena); polje raste do toliko.
   final int maxLines;
   final Iterable<String>? autofillHints;
+  final FocusNode? focusNode;
+
+  /// `false` za e-poštu, kodove i nazive koje ne treba ispravljati.
+  final bool autocorrect;
+
+  /// Jednokratni kod iz poruke: veće cifre sa razmakom između njih.
+  final bool isCode;
 
   @override
   Widget build(BuildContext context) {
+    final style = _textStyle(context, enabled: enabled);
     final field = TextFormField(
+      focusNode: focusNode,
+      autocorrect: autocorrect,
       controller: controller,
       initialValue: initialValue,
       onChanged: onChanged,
@@ -114,7 +127,14 @@ class TavliTextField extends StatelessWidget {
       minLines: 1,
       maxLines: obscureText ? 1 : maxLines,
       autofillHints: autofillHints,
-      style: _textStyle(context, enabled: enabled),
+      style: isCode
+          ? style?.copyWith(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 8,
+              height: 1.2,
+            )
+          : style,
       decoration: _decoration(
         context,
         hint: hint,

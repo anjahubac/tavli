@@ -35,14 +35,11 @@ void main() {
   }
 
   Future<void> signInWithCode(WidgetTester tester, String email) async {
-    await tester.enterText(find.widgetWithText(TextField, 'E-pošta'), email);
+    await tester.enterText(textField('E-pošta'), email);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Kod iz poruke'),
-      FakeServer.code,
-    );
+    await tester.enterText(textField('Kod iz poruke'), FakeServer.code);
     await tester.pumpAndSettle();
   }
 
