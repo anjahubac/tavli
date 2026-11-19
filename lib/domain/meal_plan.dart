@@ -6,10 +6,13 @@ import 'plan_calendar.dart';
 import 'shopping_demand.dart' show maxServings, minServings;
 import 'shopping_source.dart';
 
-/// Vrste obroka, redom kojim idu u danu. `name` je vrednost u bazi.
+/// Vrste obroka, redom kojim idu u danu. `name` je vrednost u bazi; indeks se
+/// nikad ne čuva, pa se redosled sme menjati.
 enum MealType {
   breakfast('Doručak'),
+  morningSnack('Užina pre podne'),
   lunch('Ručak'),
+  afternoonSnack('Užina posle podne'),
   dinner('Večera');
 
   const MealType(this.label);

@@ -383,6 +383,105 @@ void main() {
     expect(titles.where((t) => t == 'Sarma'), hasLength(1));
   });
 
+  group('užine', () {
+    /// Jedan dan: užina pre podne (nov recept "Jogurt i voće") i ručak "r1".
+    PlanDraft snackDraft() {
+      final request = PlanRequest(
+        range: DateRange(monday, monday),
+        mealTypes: const {MealType.lunch, MealType.morningSnack},
+      );
+      return PlanDraft(
+        request: request,
+        proposals: {
+          MealSlot(monday, MealType.morningSnack): const SlotProposal(
+            title: 'Jogurt i voće',
+            draftRecipeKey: 'jogurt i voće',
+          ),
+          MealSlot(monday, MealType.lunch): const SlotProposal(
+            title: 'Pasulj',
+            libraryRecipeId: 'r1',
+          ),
+        },
+        libraryRecipes: {'r1': snapshot('Pasulj')},
+        newRecipes: {
+          'jogurt i voće': const RecipeSnapshot(
+            title: 'Jogurt i voće',
+            baseServings: 2,
+            ingredients: [Ingredient(name: 'jogurt', quantity: 1, unit: 'l')],
+          ),
+        },
+      );
+    }
+
+    test('plan sa užinom: čuva se, ide redom u danu i ulazi u '
+        'nabavku', () async {
+      final id = await repo.approve(snackDraft());
+
+      final plan = (await repo.watchPlans().first).single;
+      expect(plan.mealTypes, {MealType.morningSnack, MealType.lunch});
+      final meals = await repo.watchMeals(id).first;
+      expect(meals.map((m) => m.slot.type), [
+        MealType.morningSnack,
+        MealType.lunch,
+      ]);
+      final rows = await db.select(db.mealPlanEntries).get();
+      expect(rows.map((r) => r.mealType).toSet(), {'morningSnack', 'lunch'});
+
+      final items = await db.select(db.shoppingItems).get();
+      expect(items.map((i) => i.name), contains('jogurt'));
+    });
+
+    test('zaključana užina i zaključan ručak se ne predlažu '
+        'ponovo', () async {
+      final id = await repo.approve(snackDraft());
+      final meals = await repo.watchMeals(id).first;
+      final plan = (await repo.watchPlans().first).single;
+
+      expect(regenerableSlots(plan, meals, monday), hasLength(2));
+      for (final m in meals) {
+        await repo.setLocked(m.id, locked: true);
+      }
+      final locked = await repo.watchMeals(id).first;
+      expect(regenerableSlots(plan, locked, monday), isEmpty);
+    });
+
+    test('obrok nepoznate vrste (iz novije aplikacije) se ne prikazuje '
+        'kao ručak', () async {
+      final id = await repo.approve(draft(days: 1));
+      await db
+          .into(db.mealPlanEntries)
+          .insert(
+            MealPlanEntriesCompanion.insert(
+              id: 'future-meal',
+              planId: id,
+              date: monday.toWire(),
+              mealType: 'brunch',
+              householdId: const Value('home-one'),
+            ),
+          );
+
+      final meals = await repo.watchMeals(id).first;
+      expect(meals.map((m) => m.id), isNot(contains('future-meal')));
+      expect(meals.single.slot, MealSlot(monday, MealType.lunch));
+    });
+  });
+
+  test('redosled obroka za raspodelu zalihe prati dan; nepoznato je '
+      'poslednje', () {
+    expect(
+      [
+        'dinner',
+        'afternoonSnack',
+        'lunch',
+        'morningSnack',
+        'breakfast',
+      ].map(mealOrder),
+      [4, 3, 2, 1, 0],
+    );
+    expect(mealOrder('brunch'), unplannedMealOrder);
+    expect(unplannedMealOrder, greaterThan(mealOrder('dinner')));
+  });
+
   group('izmene obroka', () {
     late String planId;
     late List<PlannedMeal> meals;
