@@ -1,6 +1,7 @@
 -- TRELLO-37: oznake recepta. Član domaćinstva postavlja i čita oznake; drugo
--- domaćinstvo ih ne menja; nepoznata vrednost i prazna lista se odbijaju;
--- postojeći recept bez oznaka ostaje ispravan.
+-- domaćinstvo ih ne menja; nepoznata vrednost, prazna lista i ponovljen obrok
+-- se odbijaju; izmena bez izvora oznaka ih ne briše; AI oznake ne zamenjuju
+-- oznake korisnika; postojeći recept bez oznaka ostaje ispravan.
 begin;
 select * from no_plan();
 
@@ -27,13 +28,30 @@ select throws_ok($$update public.recipes set dish_kind = 'roast' where id = 'ra'
 select throws_ok($$update public.recipes set meal_types = array['brunch'] where id = 'ra'$$, '23514', null, 'nepoznat obrok se odbija');
 select throws_ok($$update public.recipes set meal_types = array[]::text[] where id = 'ra'$$, '23514', null, 'prazna lista obroka se odbija');
 select throws_ok($$update public.recipes set labels_source = 'robot' where id = 'ra'$$, '23514', null, 'nepoznat izvor se odbija');
+select throws_ok($$update public.recipes set meal_types = array['lunch', 'lunch'] where id = 'ra'$$, '23514', null, 'ponovljen obrok se odbija');
+select throws_ok($$update public.recipes set meal_types = array['breakfast', 'snack', 'lunch', 'dinner', 'snack'] where id = 'ra'$$, '23514', null, 'više od četiri obroka se odbija');
+
+-- Izmena bez izvora oznaka (stari klijent ili red za slanje pre oznaka)
+-- menja recept, a oznake ostaju.
+select is(
+  tests.affected($$update public.recipes set title = 'Prebranac', meal_types = null, weight = null, dish_kind = null, labels_source = null where id = 'ra'$$),
+  1::bigint, 'izmena bez oznaka prolazi');
+select is((select title from public.recipes where id = 'ra'), 'Prebranac', 'naslov je promenjen');
+select is((select meal_types from public.recipes where id = 'ra'), array['lunch', 'dinner'], 'obroci su ostali');
+select is((select labels_source from public.recipes where id = 'ra'), 'user', 'izvor je ostao');
+
+-- AI oznake ne zamenjuju oznake korisnika; nove oznake korisnika da.
+update public.recipes set weight = 'light', labels_source = 'ai' where id = 'ra';
+select is((select weight from public.recipes where id = 'ra'), 'hearty', 'AI ne menja oznake korisnika');
+update public.recipes set weight = 'medium', labels_source = 'user' where id = 'ra';
+select is((select weight from public.recipes where id = 'ra'), 'medium', 'korisnik menja svoje oznake');
 
 -- B ne menja A-ove oznake.
 select tests.authenticate_as(:'ub');
 select is(tests.affected($$update public.recipes set weight = 'light' where id = 'ra'$$), 0::bigint, 'B ne menja oznake od A');
 
 select tests.clear_auth();
-select is((select weight from public.recipes where id = 'ra'), 'hearty', 'oznake od A su ostale iste');
+select is((select weight from public.recipes where id = 'ra'), 'medium', 'oznake od A su ostale iste');
 
 select * from finish();
 rollback;

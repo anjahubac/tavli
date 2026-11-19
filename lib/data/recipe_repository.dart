@@ -68,6 +68,12 @@ class RecipeRepository {
   });
 
   /// Menja recept i čuva prethodno stanje kao verziju.
+  ///
+  /// Oznake se uzimaju iz baze u trenutku čuvanja, ne iz [next]: forma i
+  /// AI predlog nose oznake od trenutka kad su otvoreni, a one su se možda
+  /// u međuvremenu promenile. Jedino AI izmena sme da donese nove oznake,
+  /// i to samo kada ih ima, a u bazi nisu oznake korisnika. Oznake inače
+  /// menja samo [setLabels].
   Future<void> update(
     Recipe next, {
     required ChangeKind kind,
@@ -76,8 +82,13 @@ class RecipeRepository {
   }) => _db.transaction(() async {
     final current = await get(next.id);
     if (current == null) throw StateError('Recept ${next.id} ne postoji');
+    final aiMayLabel =
+        kind == ChangeKind.ai &&
+        !current.labels.isUserSet &&
+        !next.labels.isEmpty;
+    final labels = aiMayLabel ? next.labels : current.labels;
     await _addVersion(current, kind, instruction, changedBy);
-    await _replace(next);
+    await _replace(next.copyWith(labels: labels));
     if (next.imagePath case final p? when p != current.imagePath) {
       await _writer.photoUpload(p);
     }

@@ -171,6 +171,72 @@ void main() {
 
       expect((await repo.get('a'))!.labels, aiLabels);
     });
+
+    test('ručna izmena iz zastarele forme ne vraća stare oznake', () async {
+      await repo.create(recipe('a').copyWith(labels: aiLabels));
+      // Forma je otvorena pre nego što je korisnik promenio oznake.
+      final staleForm = (await repo.get('a'))!;
+      final user = RecipeLabels.byUser(meals: {MealSuitability.dinner});
+      await repo.setLabels('a', user);
+
+      await repo.update(
+        staleForm.copyWith(title: 'Sarma od zelja'),
+        kind: ChangeKind.manual,
+      );
+
+      final saved = (await repo.get('a'))!;
+      expect(saved.title, 'Sarma od zelja');
+      expect(saved.labels, user);
+    });
+
+    test('zastareo AI predlog ne menja novije oznake korisnika', () async {
+      await repo.create(recipe('a').copyWith(labels: aiLabels));
+      // AI je radio na receptu sa starim oznakama i vratio svoje.
+      final proposal = (await repo.get('a'))!.copyWith(
+        title: 'Posna sarma',
+        labels: RecipeLabels(
+          meals: const ['dinner'],
+          weight: 'light',
+          source: LabelsSource.ai.name,
+        ),
+      );
+      final user = RecipeLabels.byUser(
+        meals: {MealSuitability.lunch},
+        weight: DishWeight.medium,
+      );
+      await repo.setLabels('a', user);
+
+      await repo.update(proposal, kind: ChangeKind.ai);
+
+      final saved = (await repo.get('a'))!;
+      expect(saved.title, 'Posna sarma');
+      expect(saved.labels, user);
+    });
+
+    test(
+      'AI izmena donosi nove oznake kad korisnik nije postavio svoje',
+      () async {
+        await repo.create(recipe('a').copyWith(labels: aiLabels));
+        final fresh = RecipeLabels(
+          meals: const ['dinner'],
+          weight: 'light',
+          source: LabelsSource.ai.name,
+        );
+
+        await repo.update(
+          (await repo.get('a'))!.copyWith(labels: fresh),
+          kind: ChangeKind.ai,
+        );
+        expect((await repo.get('a'))!.labels, fresh);
+
+        // AI odgovor bez oznaka ne briše postojeće.
+        await repo.update(
+          (await repo.get('a'))!.copyWith(labels: RecipeLabels.none),
+          kind: ChangeKind.ai,
+        );
+        expect((await repo.get('a'))!.labels, fresh);
+      },
+    );
   });
 
   test('vraćanje starije verzije čuva trenutno stanje', () async {

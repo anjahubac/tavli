@@ -105,6 +105,13 @@ Refining a recipe with AI (`RecipeAI.refine`) may change labels only when
 `labels_source` is not `user`. Restoring an older version keeps the current
 labels; labels are not part of version history.
 
+Saving any other recipe edit (`RecipeRepository.update`) takes the labels
+**from the database at save time**, not from the edited recipe, because a form
+or an AI proposal carries the labels from when it was opened. Only an AI edit
+may bring new labels, and only when it has some and the stored labels are not
+the user's. So a stale form never restores old labels and a stale AI proposal
+never replaces newer user labels; only **Izmeni oznake** changes them.
+
 ## Data
 
 ### Local (drift, Dev 1 coordinates the version)
@@ -120,23 +127,31 @@ unchanged, so an older client cannot erase a label added by a newer one.
 
 ### Server (new migration file, never an edit of an applied one)
 
-```sql
-alter table public.recipes
-  add column meal_types text[] check (
-    meal_types is null or (
-      cardinality(meal_types) between 1 and 4
-      and meal_types <@ array['breakfast', 'snack', 'lunch', 'dinner'])),
-  add column weight text check (weight in ('light', 'medium', 'hearty')),
-  add column dish_kind text check (dish_kind in
-    ('soup', 'cooked', 'baked_fried', 'pasta', 'salad', 'pie_pizza_sandwich',
-     'eggs_breakfast', 'cold', 'sweet')),
-  add column labels_source text check (labels_source in ('ai', 'user'));
-```
+`supabase/migrations/20261118120000_recipe_labels.sql` adds the four nullable
+columns with checks: `meal_types` holds 1–4 known values **without
+duplicates** (through the immutable `private.recipe_meal_types_valid`, since a
+check cannot contain a subquery), `weight`, `dish_kind` and `labels_source`
+are closed lists.
+
+A `before update` trigger (`private.keep_recipe_labels`) protects stored
+labels:
+
+- an update without `labels_source` keeps the stored labels. This covers an
+  edit queued by a build before labels (uploaded by the new build after the
+  drift upgrade, when the local row still has no labels), a device that has
+  not yet downloaded labels set elsewhere, and old clients;
+- an update with source `ai` never replaces labels whose source is `user`.
+
+Labels therefore cannot be cleared by an edit; the user always saves them
+with source `user`.
 
 RLS policies and the table-level grant on `public.recipes` already cover new
-columns; no new grant. `delete_account_data` is unchanged (whole rows). A
-pgTAP test checks that a member can set labels, that an unknown value is
-rejected, and that another household still cannot update the row.
+columns; no new grant. `delete_account_data` is unchanged (whole rows). The
+pgTAP test `supabase/tests/08_recipe_labels_test.sql` checks that a member can
+set labels; that unknown values, an empty list, a repeated meal and more than
+four meals are rejected; that an edit without a source keeps the labels; that
+AI labels do not replace user labels while new user labels do; and that
+another household still cannot update the row.
 
 `RecipeEntity` (`lib/sync/entities.dart`, Dev 1) maps the four columns both
 ways. Shopping snapshots (`shopping_source.dart`) do not change.
@@ -145,7 +160,10 @@ ways. Shopping snapshots (`shopping_source.dart`) do not change.
 
 | Case | Result |
 | --- | --- |
-| Old client edits a labelled recipe | Its upsert sends no label columns; PostgREST updates only sent columns, so labels stay. Covered by a fake-backend test. |
+| Old client edits a labelled recipe | Its upsert sends no label columns; PostgREST updates only sent columns, so labels stay. |
+| Edit queued before the upgrade, uploaded by the new build | The local row has no labels yet, so the upload sends `labels_source = null`; the trigger keeps the server labels, and the next download brings them to the device. pgTAP covers it. |
+| Device that has not downloaded labels yet edits the recipe | Same as above. |
+| Stale form or stale AI proposal saved locally | `RecipeRepository.update` keeps the stored labels (repository tests); the server trigger also refuses AI over user labels. |
 | Old client downloads a labelled recipe | Extra columns are ignored. |
 | New client before the migration is deployed | Upload would fail on unknown columns, so the migration ships in the same PR as the client mapping; CI applies it on merge to `dev`, and the release deploys migrations before the app. |
 | Newer value unknown to this client | Shown as unknown, stored and sent back unchanged. |
