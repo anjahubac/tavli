@@ -3,6 +3,7 @@
 /// Aplikacija uvozi samo ovaj fajl; sve iz `src/` je unutrašnje.
 library;
 
+export 'src/gallery/tavli_gallery.dart';
 export 'src/motion/motion.dart';
 export 'src/platform.dart';
 export 'src/theme/tavli_colors.dart';
