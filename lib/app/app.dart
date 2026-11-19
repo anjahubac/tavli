@@ -98,6 +98,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
         theme: theme,
         darkTheme: darkTheme,
         themeMode: mode,
+        builder: _textScaling,
         home: Scaffold(
           body: widget.intro ? const IntroScreen() : const SizedBox.expand(),
         ),
@@ -111,10 +112,16 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       darkTheme: darkTheme,
       themeMode: mode,
       routerConfig: _router,
+      builder: _textScaling,
       scaffoldMessengerKey: _messenger,
     );
   }
 }
+
+/// Veliki naslovi rastu sporije od običnog teksta kad je u sistemu
+/// uključen veći tekst.
+Widget _textScaling(BuildContext context, Widget? child) =>
+    TavliTextScaling(child: child ?? const SizedBox.shrink());
 
 class _Refresh extends ChangeNotifier {
   void ping() => notifyListeners();
