@@ -1,4 +1,5 @@
 import '../domain/recipe.dart';
+import '../domain/recipe_labels.dart';
 
 /// Stroga provera AI odgovora po ugovoru `recipe.v1` i
 /// `recipe-summary.v1` (specs/014-ai-response-contracts/contracts/).
@@ -109,7 +110,33 @@ List<String> aiSteps(Object? v) {
   return steps;
 }
 
-/// Ceo recept iz AI odgovora (`recipe.v1`, R1–R10). Odgovor
+/// L1–L3: oznake su blage i nikad ne odbijaju recept. Nepoznata vrednost
+/// postaje prazna; izvor je `ai` samo ako je bar jedna oznaka poznata.
+RecipeLabels aiLabels(Map<String, dynamic> json) {
+  final rawMeals = json['meals'];
+  final meals = <MealSuitability>{
+    if (rawMeals is List)
+      for (final m in rawMeals) ?MealSuitability.tryParse(m),
+  };
+  final weight = DishWeight.tryParse(json['weight']);
+  final dishKind = DishKind.tryParse(json['dishKind']);
+  if (meals.isEmpty && weight == null && dishKind == null) {
+    return RecipeLabels.none;
+  }
+  return RecipeLabels(
+    meals: meals.isEmpty
+        ? null
+        : [
+            for (final m in MealSuitability.values)
+              if (meals.contains(m)) m.wire,
+          ],
+    weight: weight?.wire,
+    dishKind: dishKind?.wire,
+    source: LabelsSource.ai.name,
+  );
+}
+
+/// Ceo recept iz AI odgovora (`recipe.v1`, R1–R10, L1–L3). Odgovor
 /// `{"error": "not_a_recipe"}` (R11) obrađuje pozivalac pre ovoga.
 Recipe recipeFromAiResponse(
   Map<String, dynamic> json, {
@@ -127,4 +154,5 @@ Recipe recipeFromAiResponse(
   source: source,
   createdAt: createdAt,
   imagePath: imagePath,
+  labels: aiLabels(json),
 );

@@ -64,6 +64,9 @@ class EmptyStateBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Sa velikim tekstom slika je manja, da naslov i objašnjenje stanu
+    // na ekran bez skrolovanja.
+    final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -72,8 +75,14 @@ class EmptyStateBody extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              art,
-              const SizedBox(height: 20),
+              if (largeText)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 88),
+                  child: FittedBox(fit: BoxFit.scaleDown, child: art),
+                )
+              else
+                art,
+              SizedBox(height: largeText ? 12 : 20),
               Text(
                 title,
                 style: theme.textTheme.headlineSmall,

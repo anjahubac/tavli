@@ -3,10 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' show PathMetric;
 
 import 'package:material_ui/material_ui.dart';
-
-import '../theme/tavli_colors.dart';
-import '../theme/tavli_status_colors.dart';
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 /// Polje za štikliranje sastojka: kvačica se iscrtava.
 class AnimatedCheckmark extends StatelessWidget {

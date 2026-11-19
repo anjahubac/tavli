@@ -70,6 +70,85 @@ void main() {
     expect(row.updatedAt.toUtc(), DateTime.utc(2026, 10, 30, 12));
   });
 
+  test(
+    'oznake recepta idu tamo i nazad; neoznačen recept šalje null',
+    () async {
+      await roundTrip(
+        const RecipeEntity(),
+        RecipesCompanion.insert(
+          id: 'r2',
+          title: 'Pasulj',
+          servings: 4,
+          source: 'ai',
+          ingredientsJson: '[]',
+          stepsJson: '[]',
+          createdAt: t,
+          updatedAt: t,
+          householdId: const Value('h1'),
+          mealTypesJson: const Value('["lunch","dinner"]'),
+          weight: const Value('hearty'),
+          dishKind: const Value('cooked'),
+          labelsSource: const Value('user'),
+        ),
+        'r2',
+        (r) {
+          expect(r['meal_types'], ['lunch', 'dinner']);
+          expect(r['weight'], 'hearty');
+          expect(r['dish_kind'], 'cooked');
+          expect(r['labels_source'], 'user');
+        },
+      );
+      await roundTrip(
+        const RecipeEntity(),
+        RecipesCompanion.insert(
+          id: 'r3',
+          title: 'Stari recept',
+          servings: 2,
+          source: 'manual',
+          ingredientsJson: '[]',
+          stepsJson: '[]',
+          createdAt: t,
+          updatedAt: t,
+          householdId: const Value('h1'),
+        ),
+        'r3',
+        (r) {
+          expect(r['meal_types'], isNull);
+          expect(r['weight'], isNull);
+          expect(r['dish_kind'], isNull);
+          expect(r['labels_source'], isNull);
+        },
+      );
+    },
+  );
+
+  test('nepoznata vrsta jela sa novijeg servera se čuva i vraća '
+      'nepromenjena', () async {
+    const entity = RecipeEntity();
+    await entity.write(db, {
+      'id': 'r4',
+      'household_id': 'h1',
+      'title': 'Brunch tanjir',
+      'servings': 2,
+      'prep_minutes': null,
+      'source': 'ai',
+      'ingredients': <Object?>[],
+      'steps': <Object?>[],
+      'image_path': null,
+      'answered_by': null,
+      'created_at': '2026-12-01T10:00:00Z',
+      'meal_types': ['brunch'],
+      'dish_kind': 'bowl',
+      'weight': null,
+      'labels_source': 'ai',
+    });
+
+    final row = (await entity.read(db, 'r4'))!;
+    final remote = entity.toRemote(row);
+    expect(remote['meal_types'], ['brunch']);
+    expect(remote['dish_kind'], 'bowl');
+  });
+
   test('verzija recepta', () async {
     await roundTrip(
       const RecipeVersionEntity(),

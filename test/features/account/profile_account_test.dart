@@ -77,6 +77,19 @@ void main() {
     });
   }
 
+  testTavli('tekst 2×: avatar iznad imena, ime dobija celu širinu', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(tester, location: '/profile', size: const Size(320, 900));
+    final avatar = tester.getRect(find.text('AP'));
+    final name = tester.getRect(find.text('Ana Petrović'));
+    expect(name.top, greaterThan(avatar.bottom));
+    expect(name.left, lessThan(avatar.right));
+    expect(tester.takeException(), isNull);
+  });
+
   group('stanje čuvanja', () {
     testTavli('sve sačuvano posle pokretanja', (tester) async {
       await pumpTavli(tester, location: '/profile');

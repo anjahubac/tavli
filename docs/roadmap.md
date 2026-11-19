@@ -13,8 +13,8 @@ future directions; completed acceptance history remains intact.
 shopping, including snapshots, source contributions and supply allocation.
 Its full UX/pantry/preferences/cooking acceptance is unfinished.
 
-Current navigation has four tabs (Plan, Nabavka, Recepti, Ostava); profile is
-behind the avatar. Home is not implemented; pantry has repository/receipt
+Navigation has five tabs (Plan, Nabavka, Početna, Recepti, Ostava); profile is
+behind the avatar. Home (`/home`) is the default but still empty; pantry has repository/receipt
 support but placeholder UI. drift is version 5. Catalog, member invitations,
 tracker, prices, voice, cookbooks and Windows are not implemented here.
 This is code evidence, not a declaration of production QA or successful tests.
@@ -29,8 +29,8 @@ This is code evidence, not a declaration of production QA or successful tests.
    preferences and Home/cooking can proceed against approved contracts.
 3. Catalog consumers: shopping/pantry, nutrition per portion, allergies/favorites,
    plan inputs and realtime invalidation (009), preserving the existing ledger.
-4. Extensions: prices/QR spike, cookbook RAG, personal tracker, voice, Windows,
-   calorie strip and store-ready website links. Split large work and review
+4. Extensions: prices/QR spike, cookbook RAG, personal tracker, voice, Windows
+   and Linux desktop support, calorie strip and store-ready website links. Split large work and review
    remaining effort by person/phase; counts are not capacity estimates.
 5. Cycle: opt-in device-only data, approved hints and local indicator.
 6. Nutritionist import: reviewed image/text then PDF/alternatives/repeats;

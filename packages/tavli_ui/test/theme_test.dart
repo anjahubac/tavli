@@ -1,15 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:tavli/app/theme/app_theme.dart';
-import 'package:tavli/app/theme/tavli_colors.dart';
-import 'package:tavli/app/theme/tavli_palette.dart';
-import 'package:tavli/app/theme/tavli_status_colors.dart';
-import 'package:tavli/domain/theme_choice.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 void main() {
-  for (final theme in TavliTheme.values) {
+  for (final theme in TavliMotif.values) {
     for (final brightness in Brightness.values) {
-      test('${theme.label} ${brightness.name}: tokeni u ThemeData', () {
+      test('${theme.name} ${brightness.name}: tokeni u ThemeData', () {
         final p = TavliPalette.of(theme, brightness);
         final t = buildTavliTheme(theme, brightness);
         final c = t.colorScheme;
@@ -32,7 +28,10 @@ void main() {
         expect(x.tints, p.tints);
         expect(x.line, p.line);
 
-        expect(t.textTheme.headlineSmall?.fontFamily, tavliFontFamily);
+        expect(
+          t.textTheme.headlineSmall?.fontFamily,
+          'packages/tavli_ui/PlusJakartaSans',
+        );
         expect(t.textTheme.headlineSmall?.fontWeight, FontWeight.w700);
         expect(t.textTheme.headlineSmall?.letterSpacing, lessThan(0));
         expect(t.cardTheme.elevation, 0);
@@ -47,7 +46,7 @@ void main() {
   }
 
   test('svih šest paleta ima čitljiv tekst, dugmad i okvire', () {
-    for (final theme in TavliTheme.values) {
+    for (final theme in TavliMotif.values) {
       for (final brightness in Brightness.values) {
         final p = TavliPalette.of(theme, brightness);
         for (final bg in [p.surface, p.bg]) {
@@ -87,7 +86,7 @@ void main() {
       final expected = brightness == Brightness.light
           ? TavliStatusColors.light
           : TavliStatusColors.dark;
-      for (final theme in TavliTheme.values) {
+      for (final theme in TavliMotif.values) {
         final status = buildTavliTheme(
           theme,
           brightness,
@@ -107,14 +106,14 @@ void main() {
 
   test('palete se razlikuju po temi i osvetljenosti', () {
     final primaries = {
-      for (final theme in TavliTheme.values)
+      for (final theme in TavliMotif.values)
         for (final b in Brightness.values) TavliPalette.of(theme, b).primary,
     };
     expect(primaries, hasLength(6));
   });
 
   testWidgets('svih 6 tema se iscrtava bez grešaka', (tester) async {
-    for (final theme in TavliTheme.values) {
+    for (final theme in TavliMotif.values) {
       for (final b in Brightness.values) {
         await tester.pumpWidget(
           MaterialApp(

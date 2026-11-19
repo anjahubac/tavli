@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 const _light = Color(0xFFFFF1B8);
 

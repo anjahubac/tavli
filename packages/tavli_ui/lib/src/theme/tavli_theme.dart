@@ -1,16 +1,17 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../domain/theme_choice.dart';
+import '../tokens.dart';
 import 'tavli_colors.dart';
+import 'tavli_motif.dart';
 import 'tavli_palette.dart';
 import 'tavli_status_colors.dart';
 
-/// Ugrađen font (assets/fonts).
-const tavliFontFamily = 'PlusJakartaSans';
+/// Ugrađen font (assets/fonts u paketu tavli_ui).
+const tavliFontFamily = 'packages/tavli_ui/PlusJakartaSans';
 
 /// [ThemeData] za temu i osvetljenost: [ColorScheme] je sastavljen ručno od
 /// odobrenih tokena (ne `fromSeed`), ostali tokeni su u [TavliColors].
-ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
+ThemeData buildTavliTheme(TavliMotif theme, Brightness brightness) {
   final p = TavliPalette.of(theme, brightness);
   final dark = brightness == Brightness.dark;
   final other = TavliPalette.of(
@@ -114,7 +115,7 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(TavliRadius.card),
         side: lineSide,
       ),
     ),
@@ -135,7 +136,9 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(64, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(TavliRadius.button),
+        ),
         textStyle: textTheme.labelLarge?.copyWith(
           fontSize: 16,
           fontWeight: FontWeight.w700,
@@ -147,13 +150,17 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
         minimumSize: const Size(64, 48),
         foregroundColor: p.text,
         side: BorderSide(color: p.boxLine),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(TavliRadius.field),
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(TavliRadius.compact),
+        ),
       ),
     ),
     searchBarTheme: SearchBarThemeData(
@@ -162,7 +169,9 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
       surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
       side: WidgetStatePropertyAll(lineSide),
       shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(TavliRadius.field),
+        ),
       ),
       constraints: const BoxConstraints(minHeight: 50),
       padding: const WidgetStatePropertyAll(
@@ -179,15 +188,15 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
       filled: true,
       fillColor: p.surface,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(TavliRadius.field),
         borderSide: lineSide,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(TavliRadius.field),
         borderSide: lineSide,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(TavliRadius.field),
         borderSide: BorderSide(color: p.primary, width: 2),
       ),
     ),
@@ -231,27 +240,35 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
         fontSize: 15,
         fontWeight: FontWeight.w700,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(TavliRadius.card),
+      ),
     ),
     dividerTheme: DividerThemeData(color: p.line, thickness: 1, space: 1),
     listTileTheme: ListTileThemeData(
       iconColor: p.muted,
       selectedColor: p.onContainer,
       selectedTileColor: p.container,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(TavliRadius.field),
+      ),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: p.surface,
       surfaceTintColor: Colors.transparent,
       dragHandleColor: p.boxLine,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(TavliRadius.sheet),
+        ),
       ),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: p.surface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(TavliRadius.sheet),
+      ),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: p.primary,
@@ -259,7 +276,9 @@ ThemeData buildTavliTheme(TavliTheme theme, Brightness brightness) {
       circularTrackColor: p.container,
     ),
     checkboxTheme: CheckboxThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(TavliRadius.checkbox),
+      ),
       side: BorderSide(color: p.boxLine, width: 2),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(

@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../app/animations/spoon_refresh.dart';
 import '../../app/tab_app_bar.dart';
-import '../../app/theme/tavli_colors.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import 'add_recipe_sheet.dart';

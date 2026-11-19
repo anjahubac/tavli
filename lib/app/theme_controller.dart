@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
-import '../../data/settings_repository.dart';
-import '../../domain/theme_choice.dart';
-import '../../providers.dart';
+import '../data/settings_repository.dart';
+import '../domain/theme_choice.dart';
+import '../providers.dart';
 
 final settingsRepositoryProvider = Provider<SettingsRepository>(
   (ref) => SettingsRepository(ref.watch(databaseProvider)),
@@ -58,3 +59,12 @@ class ThemeController extends Notifier<ThemeChoice> {
 final themeControllerProvider = NotifierProvider<ThemeController, ThemeChoice>(
   ThemeController.new,
 );
+
+/// Izbor korisnika (domen) preslikan na motiv iz biblioteke.
+extension TavliThemeMotif on TavliTheme {
+  TavliMotif get motif => switch (this) {
+    TavliTheme.bosiljak => TavliMotif.bosiljak,
+    TavliTheme.safran => TavliMotif.safran,
+    TavliTheme.borovnica => TavliMotif.borovnica,
+  };
+}

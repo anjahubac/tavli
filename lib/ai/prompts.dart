@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../domain/recipe.dart';
+import '../domain/recipe_labels.dart';
 import 'ai_units.dart';
 
 final _recipeSchema =
@@ -18,8 +19,19 @@ final _recipeSchema =
       "note": string | null      // npr. "sitno iseckan", up to 200 characters
     }
   ],
-  "steps": [string]          // preparation only, no numbering, no greetings
-}''';
+  "steps": [string],         // preparation only, no numbering, no greetings
+  "meals": [one of ${jsonEncode([for (final m in MealSuitability.values) m.wire])}],
+                             // meals the dish suits, one or more
+  "weight": one of ${jsonEncode([for (final w in DishWeight.values) w.wire])},
+  "dishKind": one of ${jsonEncode([for (final k in DishKind.values) k.wire])}
+}
+weight: light = small and easy (salad, yoghurt, toast); medium = a normal
+meal; hearty = a filling main meal (pasulj, sarma, roast).
+dishKind: soup = čorba or supa; cooked = stew or cooked dish (pasulj, gulaš,
+sarma, rižoto); baked_fried = from the oven, grill or pan (musaka, piletina,
+ćevapi, riba); pasta; salad; pie_pizza_sandwich = gibanica, pica, tost;
+eggs_breakfast = kajgana, omlet, kaša; cold = spreads or a cold platter;
+sweet = desserts and sweet dishes.''';
 
 final recipeSystemPrompt = '''
 You are the cooking assistant inside "Tavli", a recipe and shopping list app.

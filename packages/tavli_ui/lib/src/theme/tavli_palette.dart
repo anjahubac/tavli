@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../domain/theme_choice.dart';
+import 'tavli_motif.dart';
 
 /// Boje jedne teme u jednoj osvetljenosti (odobreni dizajn).
 class TavliPalette {
@@ -44,14 +44,14 @@ class TavliPalette {
   /// Pozadine pločica recepata bez slike.
   final List<Color> tints;
 
-  static TavliPalette of(TavliTheme theme, Brightness brightness) =>
+  static TavliPalette of(TavliMotif theme, Brightness brightness) =>
       switch ((theme, brightness)) {
-        (TavliTheme.bosiljak, Brightness.light) => bosiljakLight,
-        (TavliTheme.bosiljak, Brightness.dark) => bosiljakDark,
-        (TavliTheme.safran, Brightness.light) => safranLight,
-        (TavliTheme.safran, Brightness.dark) => safranDark,
-        (TavliTheme.borovnica, Brightness.light) => borovnicaLight,
-        (TavliTheme.borovnica, Brightness.dark) => borovnicaDark,
+        (TavliMotif.bosiljak, Brightness.light) => bosiljakLight,
+        (TavliMotif.bosiljak, Brightness.dark) => bosiljakDark,
+        (TavliMotif.safran, Brightness.light) => safranLight,
+        (TavliMotif.safran, Brightness.dark) => safranDark,
+        (TavliMotif.borovnica, Brightness.light) => borovnicaLight,
+        (TavliMotif.borovnica, Brightness.dark) => borovnicaDark,
       };
 
   static const bosiljakLight = TavliPalette(
