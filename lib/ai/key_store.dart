@@ -76,7 +76,7 @@ abstract interface class KeyStore {
   Future<void> clear();
 }
 
-/// Greška sistemskog skladišta (Keychain/Keystore). [code] je sistemski kod
+/// Greška sistemskog bezbednog skladišta. [code] je sistemski kod
 /// (npr. -25293 kad je pristup odbijen), bez sadržaja zapisa.
 class SecretStorageException implements Exception {
   const SecretStorageException(this.code);
@@ -94,7 +94,7 @@ abstract interface class SecretStorage {
   Future<void> delete(String key);
 }
 
-/// Keychain (iOS, macOS) i Keystore (Android).
+/// Sistemsko bezbedno skladište: Keychain, Keystore ili Windows implementacija.
 class KeychainSecretStorage implements SecretStorage {
   const KeychainSecretStorage();
 
@@ -123,7 +123,7 @@ class KeychainSecretStorage implements SecretStorage {
   }
 }
 
-/// Ključevi u Keychain-u (iOS, macOS) i Keystore-u (Android), kao jedna
+/// Ključevi u sistemskom bezbednom skladištu, kao jedna
 /// JSON lista. Stari zapisi `api_key_<servis>` prelaze u listu pri čitanju.
 class SecureKeyStore implements KeyStore {
   SecureKeyStore({
@@ -270,7 +270,7 @@ class InMemoryKeyStore implements KeyStore {
   Future<void> clear() async => _keys.clear();
 }
 
-/// Odakle je ključ: korisnikov (Keychain/Keystore) ili ugrađen u Tavli.
+/// Odakle je ključ: korisnikov (bezbedno skladište) ili ugrađen u Tavli.
 enum KeyOrigin { user, builtIn }
 
 class ApiCredential {

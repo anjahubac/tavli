@@ -8,7 +8,7 @@ import '../domain/account.dart';
 import 'supabase_client.dart';
 
 /// Prijavljena sesija. [json] je ceo zapis sesije (tokeni) koji se čuva
-/// samo u Keychain-u/Keystore-u (`SessionStore`); nikad u bazi ili logu.
+/// samo u sistemskom bezbednom skladištu (`SessionStore`); nikad u bazi ili logu.
 class AuthSession {
   const AuthSession({
     required this.userId,

@@ -13,7 +13,7 @@ writing them here does not configure GitHub branch protection.
 | drift schema | version bump, upgrade/fresh-cache test, generated output | pending-outbox/account-switch regression |
 | SQL/RLS/storage | local `supabase db reset`, `supabase test db` | two accounts, ownership, allowed/denied reads/writes, deletion |
 | Edge Function | fake provider/auth/limits tests, local function checks | local authenticated integration, no hosted test calls |
-| Dependency/platform | separate PR, plan justification, affected platform build | Android/iOS/macOS as applicable; Windows only after target exists |
+| Dependency/platform | separate PR, plan justification, affected platform build | Android/iOS/macOS/Windows as applicable |
 | Release | full suite, macOS debug smoke build, local backend tests, UX evidence | tested dev artifact, production approval, compatibility/rollback notes |
 
 Before each commit, run `dart format lib test scripts` when Dart changed; the
@@ -36,8 +36,9 @@ Current `.github/workflows/check.yml` runs format/analyze and full Flutter tests
 `pr-conventions.yml` checks names and PR titles; `deploy-supabase.yml` deploys
 on supported `dev`/`main` changes. The docs job added with 011 validates active
 Markdown/registry consistency; the separate scripts job runs every script
-regression test (`scripts/test_*.py`). macOS, SQL/pgTAP and future Windows checks are
-not silently claimed to be current CI jobs: each needs a dedicated setup task.
+regression test (`scripts/test_*.py`). The Windows job builds and retains an x64
+release bundle. macOS and SQL/pgTAP checks are not silently claimed to be current
+CI jobs: each needs a dedicated setup task.
 
 Dev 3 records actual repository plan/ruleset availability and required checks
 before enabling restrictions. Require independent review and green checks on
@@ -68,7 +69,8 @@ cannot require hidden data resets to succeed. For additive schema changes,
 document older-client support and forward recovery; do not propose rolling
 back applied SQL blindly. Any destructive repair needs its own reviewed plan
 and explicit authorization. Store links and QR codes remain unavailable until
-real distribution URLs are supplied; Windows is planned until its build is proven.
+real distribution URLs are supplied. A green Windows build is not public signing
+or distribution evidence.
 
 ## Security evidence
 

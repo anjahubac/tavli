@@ -9,6 +9,7 @@ analyzer:
     - ios/**
     - macos/**
     - "**/*.g.dart"
+    - windows/**
   language:
     strict-casts: true
     strict-inference: true

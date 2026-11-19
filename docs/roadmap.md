@@ -16,7 +16,8 @@ Its full UX/pantry/preferences/cooking acceptance is unfinished.
 Current navigation has four tabs (Plan, Nabavka, Recepti, Ostava); profile is
 behind the avatar. Home is not implemented; pantry has repository/receipt
 support but placeholder UI. drift is version 5. Catalog, member invitations,
-tracker, prices, voice, cookbooks and Windows are not implemented here.
+tracker, prices, voice and cookbooks are not implemented here. Windows has a
+target and build lane, while public distribution remains separate release work.
 This is code evidence, not a declaration of production QA or successful tests.
 
 ## Next deliveries
@@ -29,7 +30,7 @@ This is code evidence, not a declaration of production QA or successful tests.
    preferences and Home/cooking can proceed against approved contracts.
 3. Catalog consumers: shopping/pantry, nutrition per portion, allergies/favorites,
    plan inputs and realtime invalidation (009), preserving the existing ledger.
-4. Extensions: prices/QR spike, cookbook RAG, personal tracker, voice, Windows,
+4. Extensions: prices/QR spike, cookbook RAG, personal tracker, voice,
    calorie strip and store-ready website links. Split large work and review
    remaining effort by person/phase; counts are not capacity estimates.
 5. Cycle: opt-in device-only data, approved hints and local indicator.
@@ -49,8 +50,8 @@ In progress, In review, Integrated and Released, with blockers recorded separate
 
 Before parallel work: agree producer contracts, reserve spec numbers, verify
 reviewer GitHub identities and protect dev/main where the account plan supports
-it. Local SQL/Edge automation, macOS smoke and future Windows CI are dedicated
-infrastructure tasks; this documentation does not silently enable those jobs.
+it. Local SQL/Edge automation and macOS smoke are dedicated infrastructure
+tasks; the Windows build job does not replace real-machine acceptance.
 No deployment, credential change or Trello reassignment is part of this revision.
 
 ## Security track (012)

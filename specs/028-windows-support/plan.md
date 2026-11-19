@@ -25,7 +25,7 @@ New target must preserve secure session/key storage, account/environment isolati
 The target adds no business-data or wire-format change, drift schema change,
 Supabase change or migration. `msix` is the only planned dependency addition,
 as a development-only packaging tool needed to create the installable Windows
-artifact required by FR-102. Runtime plugin versions remain those already locked.
+artifact required by FR-001. Runtime plugin versions remain those already locked.
 
 Producer dependencies: [012](../012-security-baseline/spec.md), [013](../013-testing-strategy/spec.md)
 
