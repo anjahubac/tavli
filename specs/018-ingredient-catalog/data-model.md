@@ -37,7 +37,7 @@ ingredient units, density and conversions (D1-010, depends on 017), nutrition
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | `uuid` primary key | Immutable, never derived from the name (#30). |
+| `id` | `text` primary key, `char_length(id) between 1 and 64` | Immutable, never derived from the name (#30). Same type and check as every other table, plus a check that it is a UUID string (the contract requires one). See decision D7. |
 | `household_id` | `uuid` null, references `households` on delete cascade | `null` = shared reviewed catalog; set = household-owned custom food. |
 | `slug` | `text` not null | Readable identifier, separate from `id`. Uniqueness scope is decision D3. |
 | `name` | `text` not null, non-empty | Canonical display name. |
@@ -45,15 +45,15 @@ ingredient units, density and conversions (D1-010, depends on 017), nutrition
 | `base_unit` | `text` not null, check in (`piece`, `gram`, `milliliter`) | Wire values are decision D6. |
 | `source` | `text` null | Provenance of a shared entry (FR-105). |
 | `reviewed_at` | `timestamptz` null | Shared rows are promoted only after review (FR-101). |
-| `withdrawn_at` | `timestamptz` null | A shared entry is withdrawn by setting this, never by deleting the row (see Withdrawing a shared entry). |
+| `withdrawn_at` | `timestamptz` null, `check (withdrawn_at is null or household_id is null)` | A shared entry is withdrawn by setting this, never by deleting the row (see Withdrawing a shared entry). A household deletes its own food instead, with the usual tombstone. |
 | `created_at`, `updated_at`, `updated_by` | as other tables | `updated_by default auth.uid()`. |
 
 ### `food_aliases`
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | `uuid` primary key | |
-| `food_id` | `uuid` not null, references `foods` on delete cascade | |
+| `id` | `text` primary key, same checks as `foods.id` | |
+| `food_id` | `text` not null, references `foods` on delete cascade | A single foreign key: the composite `(id, household_id)` pattern of other tables cannot express a shared (null household) food. |
 | `household_id` | `uuid` null, references `households` on delete cascade | `null` = shared alias; set = household confirmation or override. |
 | `alias` | `text` not null | As entered or reviewed; the original ingredient text is never rewritten. |
 | `alias_normalized` | `text` not null | Output of the one normalization function (decision D4). |
@@ -63,6 +63,12 @@ Uniqueness: one row per (`household_id` or shared, `alias_normalized`), so a
 household override and a shared alias may coexist and the household one wins (#30).
 Two equally authoritative visible mappings that disagree resolve to `Unresolved`,
 which the matcher handles; the table only has to keep both rows.
+
+Uniqueness for shared rows needs care: PostgreSQL treats NULLs as distinct, so a
+plain `unique (household_id, alias_normalized)` would allow two identical shared
+aliases. Use `unique nulls not distinct` (the local stack is PostgreSQL 17,
+`supabase/config.toml`) or two partial unique indexes, on `food_aliases
+(household_id, alias_normalized)` and on `foods (household_id, slug)` alike.
 
 Consistency: a shared alias must point to a shared food; a household alias may
 point to a shared food or to a food of the same household. A foreign key cannot
@@ -80,8 +86,10 @@ say "either", so this is enforced by a trigger and covered by a test (decision D
   every insert and update of `food_aliases`. Updating `name`, `slug` or
   `category` of a food never rewrites aliases or recipe text. Deleting a
   household food removes its aliases (cascade) and the household's links to it
-  stop resolving; deleting a shared food is not allowed while any alias or
-  recipe link may reference it (see below), so shared entries are withdrawn.
+  stop resolving. Shared foods are never deleted once released: recipe links
+  live in JSON, which the database cannot check, so a foreign key cannot protect
+  them. Clients have no DELETE right on shared rows, and migrations withdraw
+  instead of deleting (see below).
 - **Name normalization.** `alias_normalized` is the existing `ingredientKey`
   unchanged (decision D4). Inflected forms are reviewed aliases; there is no
   stemming and no diacritic stripping in this slice.
@@ -95,9 +103,15 @@ say "either", so this is enforced by a trigger and covered by a test (decision D
 A shared entry that turns out to be wrong is withdrawn: `withdrawn_at` is set
 and the row stays, so its id keeps meaning the same thing and clients can learn
 about the change through ordinary incremental download. A hard delete would
-leave offline caches with a row nobody tells them to drop.
+leave offline caches with a row nobody tells them to drop. The existing
+`deletions` tombstone table cannot carry it either: it requires either a
+household or a user owner (`check ((household_id is null) <> (user_id is null))`),
+and a shared row has neither.
 
-- Clients download shared rows with a cursor on `updated_at`; a row with
+- Clients download shared rows with a cursor on `updated_at` (the existing
+  downloader pulls per entity by `updated_at` and `id`, so the foods stream
+  would carry shared rows and the household's own rows together under RLS).
+  Withdrawing must bump `updated_at`, or the cursor never sees it. A row with
   `withdrawn_at` set replaces the cached one. The matcher ignores withdrawn
   foods and aliases that point to them.
 - A recipe link to a withdrawn food is not rewritten. Consumers treat it like an
@@ -147,6 +161,17 @@ and the recipe labels slice (#54) also need one.
 - Allowed-case controls next to every denial.
 - drift upgrade from the previous version and fresh-install test.
 - Outbox and account-switch regression for household rows.
+- Ownership trigger (D8): an update of `id` or `household_id` on a food, and of
+  `id`, `food_id` or `household_id` on an alias, is rejected, with an allowed
+  update of `name` as the control.
+- Withdrawal (D9): withdrawing sets `updated_at`, the downloader receives the
+  row, the matcher ignores it, and the server rejects a new household alias
+  that points to it; `withdrawn_at` on a household food is rejected.
+- Uniqueness: two identical shared aliases and two identical shared slugs are
+  rejected, while the same alias in a household and in the shared catalog may
+  coexist.
+- Both directions of the rollout: a new client against a server without the
+  tables, and an old client against a server with them.
 - A downstream query test that matches on the stored `alias_normalized` value
   (quality gate for stored value formats).
 
@@ -154,13 +179,13 @@ and the recipe labels slice (#54) also need one.
 
 | ID | Question | Proposal | Needed from |
 | --- | --- | --- | --- |
-| D1 | One `foods` table with nullable `household_id`, or separate shared and household tables | One table: one foreign key target and one matcher query. Costs two partial unique indexes. | Dev 4, Dev 3 |
+| D1 | One `foods` table with nullable `household_id`, or separate shared and household tables | One table: one foreign key target and one matcher query. Uniqueness of shared rows needs `nulls not distinct` or two partial unique indexes. | Dev 4, Dev 3 |
 | D2 | How to enforce alias and food consistency | Trigger, since a foreign key cannot express it | Dev 3 |
 | D3 | Slug uniqueness scope and rename behavior | Unique among shared rows and within one household; the id never changes on rename | Dev 4 |
 | D4 | Normalization function and where it runs | The existing `ingredientKey`, unchanged, so stored `alias_normalized` equals what the client already computes; covered by shared fixtures. Inflections are reviewed aliases. | Dev 2, Dev 4 |
 | D5 | Category vocabulary | Reuse the current ingredient categories unchanged | Dev 4 |
 | D6 | Wire values for `base_unit` | `piece`, `gram`, `milliliter`, final once 017 settles unit terms | Dev 4 |
-| D7 | UUID generation and validation boundary | Client generates UUID for household rows, server validates format | Dev 4 |
+| D7 | Id type, generation and validation boundary | `text` ids like every other table, with a UUID-format check; the client generates the UUID string for household rows, migrations for shared rows, the server validates the format | Dev 4 |
 | D8 | Immutable ownership | Trigger blocks changing `id` and `household_id`; promotion creates a new shared row | Dev 3, Dev 4 |
 | D9 | Withdrawn shared entries | `withdrawn_at` tombstone instead of delete; clients drop it on the next download | Dev 3, Dev 4 |
 
