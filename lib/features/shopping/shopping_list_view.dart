@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -189,7 +190,8 @@ class CategoryHeader extends StatelessWidget {
   }
 }
 
-/// Jedna stavka: dodir štiklira odmah; "i" pokazuje za koje obroke je.
+/// Jedna stavka: dodir štiklira odmah; dugi pritisak pokazuje za koje
+/// obroke je (čitač ekrana: radnja „Za koje obroke“).
 class ShoppingItemTile extends ConsumerWidget {
   const ShoppingItemTile({
     super.key,
@@ -243,7 +245,10 @@ class ShoppingItemTile extends ConsumerWidget {
         );
     }
 
-    return ListTile(
+    final showSources = item.isManual
+        ? null
+        : () => unawaited(showItemSources(context, ref, item));
+    final tile = ListTile(
       contentPadding: EdgeInsets.zero,
       minTileHeight: 56,
       leading: Checkbox(
@@ -268,12 +273,16 @@ class ShoppingItemTile extends ConsumerWidget {
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () => unawaited(delete()),
                   ))
-          : IconButton(
-              tooltip: 'Za koje obroke',
-              icon: const Icon(Icons.info_outline),
-              onPressed: () => unawaited(showItemSources(context, ref, item)),
-            ),
+          : null,
       onTap: received ? null : toggle,
+      onLongPress: showSources,
+    );
+    if (showSources == null) return tile;
+    return Semantics(
+      customSemanticsActions: {
+        const CustomSemanticsAction(label: 'Za koje obroke'): showSources,
+      },
+      child: tile,
     );
   }
 }

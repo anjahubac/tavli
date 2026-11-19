@@ -280,13 +280,18 @@ void main() {
 
   testTavli('stavka pokazuje za koje obroke je', (tester) async {
     await pumpShopping(tester);
-    await tapIn(
-      tester,
-      find.descendant(
-        of: tileOf('krompir'),
-        matching: find.byTooltip('Za koje obroke'),
-      ),
+    expect(find.byTooltip('Za koje obroke'), findsNothing);
+    final semantics = tester.widget<Semantics>(
+      find
+          .ancestor(of: tileOf('krompir'), matching: find.byType(Semantics))
+          .first,
     );
+    expect(
+      semantics.properties.customSemanticsActions!.keys.single.label,
+      'Za koje obroke',
+    );
+    await tester.longPress(tileOf('krompir'));
+    await tester.pumpAndSettle();
     expect(find.text('Potrebno za:'), findsOneWidget);
     expect(find.text('Ručak 2.11.'), findsOneWidget);
     expect(
@@ -527,7 +532,9 @@ void main() {
     expect(find.text('Recepti u nabavci'), findsOneWidget);
     expect(find.text('4 porcije · 2 sastojka za kupovinu'), findsOneWidget);
     await tapIn(tester, tileOf('patlidžan'));
-    await tapIn(tester, find.byTooltip('Za koje obroke').first);
+    await tester.ensureVisible(tileOf('mleko'));
+    await tester.longPress(tileOf('mleko'));
+    await tester.pumpAndSettle();
     expect(find.text('Recept · 4 porcije'), findsOneWidget);
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
