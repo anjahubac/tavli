@@ -143,7 +143,7 @@ unawaited futures and context-after-await are errors).
   file; prefer `Provider`/`Notifier`; inject fakes via `ProviderScope(overrides:)`.
 - Routes are declared in `lib/app/router.dart`; tabs come from the `tabs` list.
 - Domain classes are immutable, pure Dart, no Flutter imports.
-- AI-facing parsing throws `FormatException` on schema mismatch (router retries once).
+- AI-facing parsing throws `FormatException` on schema mismatch (the router asks the same model once to repair it).
 - Errors shown to the user go through `aiErrorText` or an equivalent Serbian mapping.
 - Inject time (`DateTime Function() clock`) where behaviour depends on it.
 - Keep generated `lib/data/database.g.dart` committed and in sync.

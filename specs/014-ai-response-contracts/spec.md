@@ -43,7 +43,8 @@ Untrusted AI output is a versioned draft. No persistent writes until schema/doma
 
 ## Exact UI copy carried forward
 
-“Proveri predlog”, “AI je vratio neispravan odgovor.”.
+“Proveri predlog”, “AI je vratio neispravan odgovor.”, “AI nije vratio ispravan
+odgovor ni posle ispravke. Pokušaj ponovo.”, “Pokušaj ponovo” (recipe chat).
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 

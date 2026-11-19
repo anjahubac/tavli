@@ -174,7 +174,16 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
                 if (pending != null) _Bubble(text: pending),
                 if (_busy) AiBusy('AI menja recept…', onCancel: _cancel),
                 if (_error case final error?)
-                  AiErrorBox(error, actions: const []),
+                  AiErrorBox(
+                    error,
+                    actions: [
+                      // Uputstvo je ostalo u polju, pa se šalje isto.
+                      TextButton(
+                        onPressed: canSend ? () => _send(recipe) : null,
+                        child: const Text('Pokušaj ponovo'),
+                      ),
+                    ],
+                  ),
                 if (proposal != null)
                   Card(
                     child: Padding(

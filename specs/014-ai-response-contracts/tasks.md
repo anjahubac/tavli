@@ -14,8 +14,15 @@ implementation/test/review estimates before Ready.
   Evidence (#34): every contract fixture runs through the validator in
   `test/ai/ai_response_validator_test.dart`; router and photo-screen tests cover
   rejection without saving.
-- [ ] T006 [US1] D2-010 / FR-003, phase 2: inspect existing evidence and add missing failing behavior/acceptance cases for **Repair invalid AI responses with bounded retries** at the tiers required by 013. Owner Dev 2; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T007 [US1] D2-010 / FR-003, phase 2: **Repair invalid AI responses with bounded retries** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 2; reviewer independent domain consumer; depends T006; evidence: spec scenarios, applicable checks and reviewed PR.
+- [x] T006 [US1] D2-010 / FR-003, phase 2: inspect existing evidence and add missing failing behavior/acceptance cases for **Repair invalid AI responses with bounded retries** at the tiers required by 013. Owner Dev 2; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
+- [x] T007 [US1] D2-010 / FR-003, phase 2: **Repair invalid AI responses with bounded retries** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 2; reviewer independent domain consumer; depends T006; evidence: spec scenarios, applicable checks and reviewed PR.
+  Evidence (TRELLO-42): before the change the router repeated the same prompt
+  without an error description and walked the whole chain on bad output
+  (`test/ai/ai_router_test.dart`, old "dva puta neispravan JSON" case). Now
+  contract rules F1–F6; router tests cover the repair request, rule
+  description, wrong type, long answer, stop after a failed repair, retry on
+  the next model, empty answer and network error during repair; widget tests
+  cover the photo screen and the chat retry button.
 - [ ] T008 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 2; reviewer Dev 1; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
 
 ## Sequencing and effort

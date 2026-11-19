@@ -6,6 +6,7 @@ import 'chain_config.dart';
 import 'chat_client.dart';
 import 'key_store.dart';
 import 'model_status_store.dart';
+import 'repair_prompt.dart';
 
 class AIResult<T> {
   const AIResult(
@@ -37,6 +38,7 @@ class AIRouter {
     DateTime Function()? clock,
     this.minuteCooldown = const Duration(seconds: 60),
     this.unknownDailyCooldown = const Duration(hours: 1),
+    this.invalidOutputCooldown = const Duration(minutes: 10),
   }) : _clock = clock ?? DateTime.now;
 
   /// Funkcija, ne vrednost: korisnik može da promeni lanac dok app radi.
@@ -48,8 +50,13 @@ class AIRouter {
   final Duration minuteCooldown;
   final Duration unknownDailyCooldown;
 
+  /// Koliko se preskače model čiji ni popravljen odgovor nije prošao, da
+  /// „Pokušaj ponovo“ pita sledeći model umesto istog. Samo u memoriji.
+  final Duration invalidOutputCooldown;
+
   final _invalidKeys = <String>{};
   final _unavailableModels = <String>{};
+  final _invalidOutputUntil = <String, DateTime>{};
 
   static String _keySlot(ApiCredential c) => '${c.provider.name}#${c.slot}';
   static String _modelSlot(ModelSpec m, ApiCredential c) =>
@@ -67,9 +74,11 @@ class AIRouter {
     _unavailableModels.removeWhere((k) => k.endsWith('#user:$keyId'));
   }
 
-  /// [parse] baca [FormatException] kada JSON ne odgovara šemi; tada se
-  /// isti model pita još jednom, pa se ide dalje. Ostale greške iz
-  /// [parse] (npr. "slika nije recept") prekidaju lanac i stižu do UI-a.
+  /// [parse] baca [FormatException] kada JSON ne odgovara šemi; tada isti
+  /// model jednom dobija svoj odgovor i opis greške da ga popravi. Ako ni
+  /// popravka ne prođe, lanac staje (korisnik vidi poruku i „Pokušaj
+  /// ponovo“), a taj model se kratko preskače. Ostale greške iz [parse]
+  /// (npr. "slika nije recept") prekidaju lanac i stižu do UI-a.
   Future<AIResult<T>> run<T>(
     AIRequest request,
     T Function(Map<String, dynamic> json) parse,
@@ -105,6 +114,12 @@ class AIRouter {
           log('preskočen: pauziran do $blockedUntil');
           continue;
         }
+        final invalidUntil = _invalidOutputUntil[_modelSlot(m, c)];
+        if (invalidUntil != null && invalidUntil.isAfter(_clock())) {
+          invalidOutput = true;
+          log('preskočen: neispravan odgovor, pauza do $invalidUntil');
+          continue;
+        }
 
         try {
           final value = await _attempt(m, request, c, parse);
@@ -130,6 +145,14 @@ class AIRouter {
           _unavailableModels.add(_modelSlot(m, c));
           log('model ne postoji: ${e.message}');
         } on AIError catch (e) {
+          if (e is InvalidOutputError && e.repairFailed) {
+            final until = _clock().add(invalidOutputCooldown);
+            _invalidOutputUntil[_modelSlot(m, c)] = until;
+            log('neispravan odgovor i posle popravke: ${e.message}');
+            // Drugi neuspeh: poruka korisniku, bez prolaska kroz ceo lanac.
+            throw AllModelsExhausted(attempts, invalidOutput: true);
+          }
+          // Prazan odgovor (bez popravke) ide na sledeći model kao i ranije.
           if (e is InvalidOutputError) invalidOutput = true;
           // Mreža ili loš odgovor ne zavise od ključa: odmah sledeći model.
           log(e.toString());
@@ -151,23 +174,40 @@ class AIRouter {
     ApiCredential credential,
     T Function(Map<String, dynamic>) parse,
   ) async {
-    for (var i = 0; ; i++) {
+    Future<String> send(AIRequest r) async {
       await status.recordRequest(
         m,
         _clock(),
         origin: credential.origin,
         keyId: credential.keyId,
       );
-      final raw = await client.complete(m, request, apiKey: credential.value);
-      try {
-        return parse(decodeJsonObject(raw));
-      } on FormatException catch (e) {
-        if (i >= 1) throw InvalidOutputError(e.message);
-        // JSON sa pogrešnim tipovima pada na cast-u u parse funkciji.
-        // ignore: avoid_catching_errors
-      } on TypeError catch (e) {
-        if (i >= 1) throw InvalidOutputError(e.toString());
-      }
+      return client.complete(m, r, apiKey: credential.value);
+    }
+
+    final raw = await send(request);
+    final Object problem;
+    try {
+      return parse(decodeJsonObject(raw));
+    } on FormatException catch (e) {
+      problem = e;
+      // JSON sa pogrešnim tipovima pada na cast-u u parse funkciji.
+      // ignore: avoid_catching_errors
+    } on TypeError catch (e) {
+      problem = e;
+    }
+
+    // Jedna popravka: isti model dobija svoj odgovor i opis greške.
+    final fixed = await send(
+      repairRequest(request, raw, repairProblem(problem)),
+    );
+    try {
+      return parse(decodeJsonObject(fixed));
+    } on FormatException catch (e) {
+      throw InvalidOutputError(e.message, repairFailed: true);
+      // Isto kao gore: pogrešan tip polja posle popravke.
+      // ignore: avoid_catching_errors
+    } on TypeError catch (e) {
+      throw InvalidOutputError(e.toString(), repairFailed: true);
     }
   }
 

@@ -82,11 +82,40 @@ void main() {
 
     await send(tester, 'posno');
 
-    expect(find.text('AI je vratio neispravan odgovor.'), findsOneWidget);
+    expect(find.text(invalidAnswer), findsOneWidget);
     expect(find.text('Predlog izmene'), findsNothing);
     expect(await app.titles(), ['Sarma']);
     final saved = await app.db.select(app.db.recipes).getSingle();
     expect(saved.stepsJson, contains('Umotati.'));
+  });
+
+  testTavli('Pokušaj ponovo šalje isto uputstvo i daje predlog', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [sampleRecipe('a', 'Sarma')],
+      ai: [
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+        aiAnswer(recipeJson('Posna sarma')),
+      ],
+    );
+
+    await send(tester, 'posno');
+    expect(find.text(invalidAnswer), findsOneWidget);
+
+    await tapButton(tester, 'Pokušaj ponovo');
+
+    expect(find.text(invalidAnswer), findsNothing);
+    expect(find.text('Predlog izmene'), findsOneWidget);
+    expect(app.adapter.requests, hasLength(3));
+    expect(
+      app.adapter.requests.last.data.toString(),
+      contains('posno'),
+      reason: 'isto uputstvo',
+    );
   });
 
   testTavli('Odbaci ne menja recept i vraća tekst u polje', (tester) async {

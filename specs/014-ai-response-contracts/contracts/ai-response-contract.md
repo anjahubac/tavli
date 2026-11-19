@@ -59,6 +59,17 @@ if validation also moves server-side.
 | C7 | This contract covers shape only. Semantic plan rules applied after a valid response (meal-slot rules #39, allergens #43, candidate filtering #45) are a separate step and may re-request a single slot; they never relax these rules. |
 | C6 | The version (`recipe.v1`, …) is known by the client from the prompt it sent; the model does not return it. |
 
+### Repair (FR-003, TRELLO-42)
+
+| ID | Rule |
+| --- | --- |
+| F1 | A rejected response gets exactly one repair request to the **same model and key**: the original system prompt, prompt and images, plus the model's previous answer and a description of the failed rule. The request keeps the `system`/`prompt`/`images` shape, so it also works through the planned gateway as the same task. |
+| F2 | The description comes from `lib/ai/repair_prompt.dart`: a rule ID becomes a sentence (`R6` → "every quantity must be a number from 0.001 to 100000 …"); other parser messages pass as they are, with a short detail such as a missing slot. It contains only app text and the model's own answer, never user data from other requests. |
+| F3 | The previous answer is echoed only up to 12 000 characters; a longer one is left out, because a cut JSON would mislead the model, and only the description is sent. |
+| F4 | If the repaired answer is rejected too, the router stops instead of trying the rest of the chain, and the user sees “AI nije vratio ispravan odgovor ni posle ispravke. Pokušaj ponovo.” with a retry action. That model and key are skipped for 10 minutes (in memory only), so the retry asks the next model. |
+| F5 | An empty answer, network error, limit or timeout is not a format error: no repair, the router moves on as before. A network error during the repair also moves on. |
+| F6 | Both calls count as requests (model status now, gateway quota later). Repair never runs more than once per model attempt. |
+
 Field classes: **strict** fields drive calculation or placement and reject on a
 bad value; **fallback** fields are display-only or closed lists where a bad
 value is harmless, so it is replaced by a safe value; **open** fields accept any
@@ -176,9 +187,11 @@ Rejection leaves local data, outbox and plan unchanged.
   the model is asked for exactly what the validator accepts. A rejection's
   `FormatException` message is the rule ID only (for example `R2`), never
   response content.
-- When every model's response is rejected, `AllModelsExhausted.invalidOutput`
-  is set and the user sees “AI je vratio neispravan odgovor.” instead of the
-  missing-keys message.
+- When a repaired response is rejected too (F4), `AllModelsExhausted.invalidOutput`
+  is set and the user sees “AI nije vratio ispravan odgovor ni posle ispravke.
+  Pokušaj ponovo.” instead of the missing-keys or limits message. Before
+  TRELLO-42 the router asked the same prompt again without a description and
+  then tried every model in the chain.
 - No migration and no sync change: accepted values are a subset of what the
   existing columns and snapshots already store.
 - Existing data: the local development database had no recipes or plans on

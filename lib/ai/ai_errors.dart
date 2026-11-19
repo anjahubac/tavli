@@ -40,7 +40,11 @@ class TransientError extends AIError {
 
 /// Odgovor ne odgovara očekivanoj JSON šemi.
 class InvalidOutputError extends AIError {
-  const InvalidOutputError(super.message);
+  const InvalidOutputError(super.message, {this.repairFailed = false});
+
+  /// Ni odgovor posle popravke nije prošao proveru; router tada staje
+  /// umesto da ide kroz ceo lanac (FR-003).
+  final bool repairFailed;
 }
 
 /// Ostale 4xx greške (npr. model ne podržava neki parametar).
