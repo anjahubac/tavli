@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../controls/tavli_button.dart';
+import '../controls/tavli_choice.dart';
 import '../platform.dart';
 import '../shell/tavli_action_bar.dart';
 import '../shell/tavli_app_bar.dart';
@@ -72,10 +74,10 @@ class TavliShellGallerySections extends StatelessWidget {
               TavliPageHeader(
                 title: 'Recepti',
                 actions: [
-                  FilledButton.icon(
+                  TavliButton.primary(
                     onPressed: () {},
-                    icon: const Icon(Icons.add),
-                    label: const Text('Dodaj recept'),
+                    icon: Icons.add,
+                    label: 'Dodaj recept',
                   ),
                 ],
               ),
@@ -199,8 +201,8 @@ class _PlanActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TavliActionBar(
     actions: [
-      OutlinedButton(onPressed: () {}, child: const Text('Ponovo predloži')),
-      FilledButton(onPressed: () {}, child: const Text('Otvori nabavku')),
+      TavliButton.secondary(onPressed: () {}, label: 'Ponovo predloži'),
+      TavliButton.primary(onPressed: () {}, label: 'Otvori nabavku'),
     ],
   );
 }
@@ -242,17 +244,13 @@ class _TabContent extends StatelessWidget {
         ),
         if (tab == 0) ...[
           const SizedBox(height: TavliSpacing.medium),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('Nedelja')),
-                ButtonSegment(value: true, label: Text('Mesec')),
-              ],
-              selected: {month},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => onMonth(s.first),
-            ),
+          TavliChoice<bool>.segmented(
+            options: const [
+              TavliOption(false, 'Nedelja'),
+              TavliOption(true, 'Mesec'),
+            ],
+            selected: month,
+            onChanged: onMonth,
           ),
         ],
         for (var i = 0; i < cards; i++)
@@ -349,14 +347,18 @@ class _DesktopPreviewState extends State<_DesktopPreview> {
     final tab = _tab;
     final actions = switch (tab) {
       0 => [
-        OutlinedButton(onPressed: () {}, child: const Text('Ponovo predloži')),
-        FilledButton(onPressed: () {}, child: const Text('Otvori nabavku')),
+        TavliButtonRow(
+          children: [
+            TavliButton.secondary(onPressed: () {}, label: 'Ponovo predloži'),
+            TavliButton.primary(onPressed: () {}, label: 'Otvori nabavku'),
+          ],
+        ),
       ],
       3 => [
-        FilledButton.icon(
+        TavliButton.primary(
           onPressed: () {},
-          icon: const Icon(Icons.add),
-          label: const Text('Dodaj recept'),
+          icon: Icons.add,
+          label: 'Dodaj recept',
         ),
       ],
       _ => <Widget>[],

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../controls/tavli_button.dart';
 import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 
@@ -17,51 +18,23 @@ import '../tokens.dart';
 class TavliActionBar extends StatelessWidget {
   const TavliActionBar({super.key, required this.actions});
 
-  final List<Widget> actions;
+  final List<TavliButton> actions;
 
   @override
   Widget build(BuildContext context) {
     final x = TavliColors.of(context);
-    final theme = Theme.of(context);
-    final inBar = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(0, 56)),
-      padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 12),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: x.bg,
+        border: Border(top: BorderSide(color: x.line)),
       ),
-      textStyle: WidgetStatePropertyAll(
-        theme.textTheme.labelLarge?.copyWith(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: TavliSpacing.large,
+          vertical: TavliSpacing.small,
         ),
-      ),
-    );
-    return Theme(
-      data: theme.copyWith(
-        filledButtonTheme: FilledButtonThemeData(
-          style: inBar.merge(theme.filledButtonTheme.style),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: inBar.merge(theme.outlinedButtonTheme.style),
-        ),
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: x.bg,
-          border: Border(top: BorderSide(color: x.line)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: TavliSpacing.large,
-            vertical: TavliSpacing.small,
-          ),
-          child: Row(
-            children: [
-              for (final (i, a) in actions.indexed) ...[
-                if (i > 0) const SizedBox(width: 10),
-                Expanded(child: a),
-              ],
-            ],
-          ),
+        child: TavliButtonScope.actionBar(
+          child: TavliButtonRow(expand: true, children: actions),
         ),
       ),
     );

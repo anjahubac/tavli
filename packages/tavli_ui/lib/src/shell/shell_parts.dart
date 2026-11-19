@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../content/tavli_media.dart';
 import '../platform.dart';
 import '../theme/tavli_colors.dart';
 
@@ -16,9 +17,6 @@ Color shellSurface(BuildContext context) {
 bool isDesktop(BuildContext context) => TavliPlatform.of(context).isDesktop;
 
 /// Krug sa inicijalima korisnika (gornja traka i bočna navigacija).
-///
-/// Samostalna komponenta avatara stiže sa karticama i listama; ovde je samo
-/// ono što kostur traži.
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({super.key, required this.initials, required this.size});
 
@@ -26,35 +24,6 @@ class ProfileAvatar extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-    final fontSize = switch (size) {
-      >= 40 => 14.0,
-      >= 36 => 13.0,
-      _ => 12.0,
-    };
-    return SizedBox.square(
-      dimension: size,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: c.primaryContainer,
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: MediaQuery.withNoTextScaling(
-            child: Text(
-              initials,
-              maxLines: 1,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: c.onPrimaryContainer,
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                height: 1,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      TavliAvatar(initials: initials, size: size);
 }

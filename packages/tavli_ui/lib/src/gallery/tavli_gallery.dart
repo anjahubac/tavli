@@ -6,6 +6,8 @@ import '../theme/tavli_motif.dart';
 import '../theme/tavli_status_colors.dart';
 import '../theme/tavli_theme.dart';
 import '../tokens.dart';
+import 'content_sections.dart';
+import 'controls_sections.dart';
 import 'gallery_section.dart';
 import 'shell_sections.dart';
 
@@ -197,7 +199,8 @@ class _Controls extends StatelessWidget {
 }
 
 /// Sadržaj galerije bez prekidača: osnova (boje, tekst, mere, tema na
-/// Material elementima) i komponente kostura ekrana.
+/// Material elementima), komponente kostura ekrana, kontrole (dugmad,
+/// polja i izbori) i sadržaj (kartice, liste, napomene, stanja).
 ///
 /// Svaka nova komponenta iz biblioteke dobija svoj odeljak ovde.
 class TavliGallerySections extends StatelessWidget {
@@ -207,7 +210,12 @@ class TavliGallerySections extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [TavliFoundationGallerySections(), TavliShellGallerySections()],
+      children: [
+        TavliFoundationGallerySections(),
+        TavliShellGallerySections(),
+        TavliControlsGallerySections(),
+        TavliContentGallerySections(),
+      ],
     );
   }
 }
