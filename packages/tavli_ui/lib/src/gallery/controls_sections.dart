@@ -1,11 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../content/tavli_list.dart';
 import '../controls/tavli_button.dart';
 import '../controls/tavli_choice.dart';
 import '../controls/tavli_icon_button.dart';
 import '../controls/tavli_rows.dart';
 import '../controls/tavli_text_field.dart';
-import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 import 'gallery_section.dart';
 
@@ -24,7 +24,7 @@ class TavliControlsGallerySections extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Labeled(
+              GalleryLabeled(
                 'Glavno · 56',
                 Wrap(
                   spacing: TavliSpacing.small,
@@ -44,7 +44,7 @@ class TavliControlsGallerySections extends StatelessWidget {
                 ),
               ),
               gap,
-              _Labeled(
+              GalleryLabeled(
                 'Sporedno · 48',
                 Wrap(
                   spacing: TavliSpacing.small,
@@ -64,7 +64,7 @@ class TavliControlsGallerySections extends StatelessWidget {
                 ),
               ),
               gap,
-              _Labeled(
+              GalleryLabeled(
                 'Tekstualno i za brisanje · 48',
                 Wrap(
                   spacing: TavliSpacing.small,
@@ -85,7 +85,7 @@ class TavliControlsGallerySections extends StatelessWidget {
                 ),
               ),
               gap,
-              _Labeled(
+              GalleryLabeled(
                 'U istom redu: iste visine (56)',
                 TavliButtonRow(
                   expand: true,
@@ -96,7 +96,7 @@ class TavliControlsGallerySections extends StatelessWidget {
                 ),
               ),
               gap,
-              _Labeled(
+              GalleryLabeled(
                 'Sa ikonicom (opis je obavezan)',
                 Wrap(
                   children: [
@@ -157,31 +157,6 @@ class TavliControlsGallerySections extends StatelessWidget {
   }
 }
 
-class _Labeled extends StatelessWidget {
-  const _Labeled(this.label, this.child);
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          label,
-          style: t.labelMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: TavliSpacing.small),
-        child,
-      ],
-    );
-  }
-}
-
 class _ChoicesDemo extends StatefulWidget {
   const _ChoicesDemo();
 
@@ -202,7 +177,7 @@ class _ChoicesDemoState extends State<_ChoicesDemo> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Labeled(
+        GalleryLabeled(
           'Segmentno · fiksne širine',
           TavliChoice<bool>.segmented(
             options: const [
@@ -223,7 +198,7 @@ class _ChoicesDemoState extends State<_ChoicesDemo> {
           onChanged: (v) => setState(() => _shopping = v),
         ),
         gap,
-        _Labeled(
+        GalleryLabeled(
           'Čipovi za filter',
           TavliChoice<int>.chips(
             options: const [
@@ -254,24 +229,11 @@ class _RowsDemoState extends State<_RowsDemo> {
 
   @override
   Widget build(BuildContext context) {
-    final x = TavliColors.of(context);
-    final divider = Divider(height: 1, color: x.line);
-    Widget group(List<Widget> rows) => DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(TavliRadius.field),
-        border: Border.all(color: x.line),
-      ),
-      child: Column(
-        children: [
-          for (final (i, r) in rows.indexed) ...[if (i > 0) divider, r],
-        ],
-      ),
-    );
+    Widget group(List<Widget> rows) => TavliListGroup(children: rows);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Labeled(
+        GalleryLabeled(
           'Sa štikliranjem · kupljeno precrtano',
           group([
             for (final e in _bought.entries)
@@ -289,7 +251,7 @@ class _RowsDemoState extends State<_RowsDemo> {
           ]),
         ),
         const SizedBox(height: TavliSpacing.medium),
-        _Labeled(
+        GalleryLabeled(
           'Sa prekidačem',
           group([
             TavliSwitchRow(
