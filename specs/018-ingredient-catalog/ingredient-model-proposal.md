@@ -51,9 +51,12 @@ abstract interface class FoodMatcher {
 
 Resolve the active household from the authenticated application context at
 lookup start. A lookup may use shared reference data plus data visible to that
-household. A confirmed household alias takes priority over a shared alias.
-If equally authoritative visible mappings disagree, return `Unresolved` until
-the user confirms the intended food. Discard an in-flight result if the
+household. A confirmed household alias takes priority over a shared alias, and
+so does the canonical name of a confirmed household-owned food: both outrank
+shared matches. If mappings of the same priority point to different food IDs,
+return `Unresolved` until the user confirms the intended food. A household
+alias that points to a shared food does not change who owns that food's
+canonical name. Discard an in-flight result if the
 household changes or access is revoked. The server independently enforces
 authorization. Overrides affect future lookups in that household and do not
 rewrite references already confirmed and saved.
@@ -64,6 +67,17 @@ active scope. The mere existence of a food in the catalog is insufficient.
 Fuzzy or AI suggestions may return `Proposed` for a visible existing identity.
 A suggestion to create a new food stays unresolved until a separate creation
 flow accepts it. Lookup does not persist aliases or accept suggestions.
+
+`FoodLookupScope` holds only the active `householdId` in version 1. Whether
+the data came from an offline snapshot is a property of the data source, not
+of the scope. The caller or service validates the active context itself and
+discards a stale result after a household or access change.
+
+### Name normalization
+
+Lookup keys use the existing `ingredientKey` unchanged, including for
+`alias_normalized`. Inflected forms (`jaja`, `jaje`) are reviewed aliases. This
+slice adds no stemming and no diacritic stripping.
 
 ### Offline, errors and cancellation
 
@@ -81,20 +95,28 @@ match result. Error and cancellation never write data.
 An ingredient the matcher resolved carries two optional, additive fields beside
 its original `name`: `foodId` (the UUID of the matched food) and `matchedKey`
 (the value of `ingredientKey(name)` when it was resolved; the function is in
-`lib/domain/shopping_sync.dart`). `matchedKey` is required whenever `foodId` is
-present. A link is **valid** only while `ingredientKey(name)` still equals
+`lib/domain/shopping_sync.dart`). `matchedKey` and a third field, `linkSource` (`matched` when the matcher set
+the link, `confirmed` when a person did), are required whenever `foodId` is
+present, so preserving an explicit confirmation is part of the contract. A link is **valid** only while `ingredientKey(name)` still equals
 `matchedKey`. If the name is edited, the link stops being valid by itself:
 consumers ignore it, the original text is untouched and the ingredient can be
-resolved again. No ingredient identifier is needed. Whether the matcher or a
-person set the link is a proposed third field, `linkSource` (`matched` or
-`confirmed`); see the decisions below.
+resolved again. No ingredient identifier is needed.
 
 Backfill recognizes prior work by this link: an ingredient with a valid link is
 skipped. Repeating the same backfill against unchanged input and catalog
 evidence leaves the same links and creates no duplicate aliases or proposals.
-Backfill never overwrites a `confirmed` link or a newer user edit. Unresolved
+Backfill never overwrites a `confirmed` link or a newer user edit. When a
+backfill result is applied, the recipe and ingredient must be checked again:
+if either changed since it was read, the result is discarded and read again.
+`matchedKey` detects a changed name, but not a changed recipe. Approved plan
+snapshots that already exist are never changed by backfill. Unresolved
 ingredients carry no link and may be retried when evidence or the contract
 version changes.
+
+The first implementation slice is an alias and canonical-name matcher over the
+local catalog. It does not complete the matching requirement: AI-assisted
+proposals through the gateway, fuzzy candidates and creating new foods remain
+open work and are tracked in the 018 tasks.
 
 `piece`, `gram` and `milliliter` are proposed domain units, not new UI copy or
 a settled wire representation. Aliases, conversions, nutritional data and
@@ -121,7 +143,12 @@ These examples are proposed acceptance fixtures, not passing test results.
 | The same backfill runs twice after a user confirms a correction | One link remains, and the confirmation wins. |
 | A confirmed food is renamed | Its UUID stays the same; existing ingredient text is not rewritten. |
 | An ingredient is renamed after it was matched | The link is no longer valid because `matchedKey` differs from `ingredientKey(name)`; the original text is kept, consumers ignore the link and the ingredient can be resolved again. |
-| A build without the link fields saves the recipe | The two fields are dropped. Backfill resolves the ingredient again; a `confirmed` link has to be confirmed again by a person. |
+| Household A has its own food `mleko`; the shared catalog also has `mleko` | A resolves to its own food, household B to the shared one. |
+| Two confirmed household entries of the same priority name different foods | `Unresolved` until the user confirms one. |
+| Household A adds an alias to a shared food | The alias applies in A only and does not change who owns the canonical name of that food. |
+| A backfill result is applied after the recipe was edited | The result is discarded and read again; the edit and any `confirmed` link stay. |
+| A backfill touches a recipe that is already in an approved plan snapshot | The snapshot is unchanged. |
+| A build without the link fields saves the recipe | The link fields are dropped. This is a compatibility limitation, not a recovery path: backfill cannot be assumed to restore a lost `confirmed` mapping. |
 
 ## Compatibility, failure and privacy
 
@@ -132,9 +159,11 @@ data. It must preserve pending outbox entries and original ingredient text,
 and test offline replay and two-account isolation. The ingredient link is
 additive JSON on the existing embedded ingredient. Today `Ingredient.fromJson`
 ignores unknown fields and `toJson` omits them, so a build that does not know
-`foodId` and `matchedKey` drops them when it saves a recipe. Team builds update
-together; if a build outside the team can write recipes, this needs a decision
-before rollout. There is no schema or outbox change in this proposal. Ingredient text can be user data: no raw text
+`foodId` and `matchedKey` drops them when it saves a recipe. Mixed-version
+writes and pending outbox entries created by an older build are an explicit
+rollout gate: it is not enough that team builds update together, and backfill
+must not be treated as a way to restore a confirmation an old build dropped.
+There is no schema or outbox change in this proposal. Ingredient text can be user data: no raw text
 or request content should be logged; any AI use requires its own reviewed
 consent, privacy and gateway contract.
 
@@ -150,10 +179,15 @@ consent, privacy and gateway contract.
   cancellation, offline and error outcomes; no AI proposal is a trusted match.
 - Dev 1 and Dev 4: coordinate unit terminology with the unresolved 017
   conversion decisions. No conversion assumptions are finalized here.
-- Dev 1 and Dev 4: confirm that the link lives on the embedded ingredient
-  (`foodId`, `matchedKey`, and whether `linkSource` is needed) and not in a
-  separate table. The alternative adds a synced table and a join whenever a
-  plan snapshot is made.
+- Link on the embedded ingredient (`foodId`, `matchedKey`, `linkSource`) and
+  not in a separate table: Dev 4 supports this from the consumer side
+  (2026-11-18). This is not an approval of the schema or access-rule decisions
+  of the data model proposal, which keeps its own reviews.
+- Version 1 of `FoodLookupScope` is `householdId` only; `ingredientKey` is
+  reused unchanged; a household food's canonical name has the priority of a
+  confirmed household alias (Dev 4, 2026-11-18).
+- Open: a rollout plan for mixed-version writes and old outbox entries before
+  any persisted link is shipped.
 
 Owners, decision dates, accepted examples and the producing PR must be recorded
 when decisions are actually made. This proposal does not mark T001 or D1-001
