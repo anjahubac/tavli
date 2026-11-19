@@ -77,8 +77,8 @@ class _Screen extends StatelessWidget {
         Expanded(child: content),
         TavliActionBar(
           actions: [
-            OutlinedButton(onPressed: () {}, child: const Text('Ponovo')),
-            FilledButton(onPressed: () {}, child: const Text('Nabavka')),
+            TavliButton.secondary(onPressed: () {}, label: 'Ponovo'),
+            TavliButton.primary(onPressed: () {}, label: 'Nabavka'),
           ],
         ),
         nav,
@@ -269,7 +269,7 @@ void main() {
         TavliPageHeader(
           title: 'Recepti',
           actions: [
-            FilledButton(onPressed: () {}, child: const Text('Dodaj recept')),
+            TavliButton.primary(onPressed: () {}, label: 'Dodaj recept'),
           ],
         ),
         platform: TavliPlatform.windows,
@@ -312,14 +312,8 @@ void main() {
           alignment: Alignment.bottomCenter,
           child: TavliActionBar(
             actions: [
-              OutlinedButton(
-                onPressed: () {},
-                child: const Text('Ponovo predloži'),
-              ),
-              FilledButton(
-                onPressed: () {},
-                child: const Text('Otvori nabavku'),
-              ),
+              TavliButton.secondary(onPressed: () {}, label: 'Ponovo predloži'),
+              TavliButton.primary(onPressed: () {}, label: 'Otvori nabavku'),
             ],
           ),
         ),
