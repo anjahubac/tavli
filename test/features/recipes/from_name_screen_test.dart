@@ -100,4 +100,23 @@ void main() {
       isTrue,
     );
   });
+
+  testTavli('320 px, tekst 2×: brojač porcija prelazi ispod natpisa', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(
+      tester,
+      size: const Size(320, 900),
+      location: '/recipes/new/name',
+    );
+    final label = tester.getRect(find.text('Broj porcija'));
+    final plus = tester.getRect(find.byTooltip('Više porcija'));
+    expect(plus.top, greaterThanOrEqualTo(label.bottom));
+    await tester.tap(find.byTooltip('Više porcija'));
+    await tester.pump();
+    expect(find.text('3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

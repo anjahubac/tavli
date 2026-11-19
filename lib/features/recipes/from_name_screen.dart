@@ -105,26 +105,33 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 16),
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Expanded(child: Text('Broj porcija')),
-                    IconButton(
-                      tooltip: 'Manje porcija',
-                      onPressed: _servings > 1
-                          ? () => setState(() => _servings--)
-                          : null,
-                      icon: const Icon(Icons.remove),
-                    ),
-                    Text(
-                      '$_servings',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    IconButton(
-                      tooltip: 'Više porcija',
-                      onPressed: _servings < 20
-                          ? () => setState(() => _servings++)
-                          : null,
-                      icon: const Icon(Icons.add),
+                    const Text('Broj porcija'),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Manje porcija',
+                          onPressed: _servings > 1
+                              ? () => setState(() => _servings--)
+                              : null,
+                          icon: const Icon(Icons.remove),
+                        ),
+                        Text(
+                          '$_servings',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        IconButton(
+                          tooltip: 'Više porcija',
+                          onPressed: _servings < 20
+                              ? () => setState(() => _servings++)
+                              : null,
+                          icon: const Icon(Icons.add),
+                        ),
+                      ],
                     ),
                   ],
                 ),
