@@ -83,8 +83,7 @@ motion components; do not redesign screens or extract a package incidentally.
 
 ## PR #49 review corrections — 2026-11-19
 
-Scope: D4-004 / FR-005 and FR-101, on the existing
-`fix/shopping-empty-plan-recipe` branch updated with `origin/dev`. Anja owns the
+Scope: D4-004 / FR-005 and FR-101. Anja owns the
 slice; Uroš is the requested independent reviewer. No catalog producer contract
 or schema change is needed for this presentation/state correction.
 
@@ -110,14 +109,3 @@ account scope, outbox writes, quantities and identifiers remain unchanged. No
 migration, dependency or generated output is required. Tests use synthetic local
 data and fake backends; no hosted service is contacted. Human review and the
 remaining canonical task acceptance are still required before delivery Done.
-
-Local validation on the correction working tree based on merge `ee1e2f8`:
-`scripts/check.sh` passed (format unchanged, no analyzer issues); all 659 tests
-passed with `flutter test`; `flutter build macos --debug` succeeded without a
-secrets file. The 34 targeted shopping/recipe tests cover error/retry, delayed
-loading, stable/manual/account-reset selection, undo/restore/open timeouts,
-320/400/1200 px at 2× text, dark theme, reduced motion and keyboard activation.
-The empty-state integration test now waits for async initialization instead of
-assuming a fixed number of frames; its content and navigation assertions remain.
-Documentation and whitespace checks passed. These are local results, not new CI
-or human-review evidence for the pushed PR head.
