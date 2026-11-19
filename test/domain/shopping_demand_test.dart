@@ -80,7 +80,13 @@ void main() {
         factor: 1,
       ));
       expect(normalizeUnit('kašika'), normalizeUnit('KAŠIKA'));
-      expect(normalizeUnit('kašika') == normalizeUnit('kasika'), isFalse);
+      // Oblici iz zajedničkog rečnika (lib/ai/ai_units.dart) su ista jedinica.
+      expect(normalizeUnit('kašika'), normalizeUnit('kasika'));
+      expect(normalizeUnit('kašike'), normalizeUnit('kašika'));
+      expect(normalizeUnit('dag'), normalizeUnit('dkg'));
+      expect(normalizeUnit('litar'), normalizeUnit('l'));
+      expect(normalizeUnit('komada'), normalizeUnit('kom'));
+      expect(normalizeUnit('gr'), normalizeUnit('g'));
       expect(normalizeUnit(null), (group: 'unit:', base: '', factor: 1));
     });
   });

@@ -1,3 +1,4 @@
+import '../ai/ai_units.dart';
 import 'recipe.dart';
 import 'shopping_sync.dart';
 
@@ -27,42 +28,32 @@ typedef NormalizedUnit = ({String group, String base, int factor});
 
 const _units = <String, NormalizedUnit>{
   'g': (group: 'mass', base: 'g', factor: 1),
-  'gr': (group: 'mass', base: 'g', factor: 1),
   'dkg': (group: 'mass', base: 'g', factor: 10),
   'kg': (group: 'mass', base: 'g', factor: 1000),
   'ml': (group: 'volume', base: 'ml', factor: 1),
   'dl': (group: 'volume', base: 'ml', factor: 100),
   'l': (group: 'volume', base: 'ml', factor: 1000),
   'kom': (group: 'count:kom', base: 'kom', factor: 1),
-  'kom.': (group: 'count:kom', base: 'kom', factor: 1),
 };
 
 /// Predložene podrazumevane zapremine; uobičajene mere su približne.
 const _kitchenVolume = <String, int>{
   'čaša': 200,
-  'čaše': 200,
-  'casa': 200,
-  'case': 200,
   'šolja': 250,
-  'šolje': 250,
-  'solja': 250,
-  'solje': 250,
   'kašika': 15,
-  'kašike': 15,
-  'kasika': 15,
-  'kasike': 15,
   'kašičica': 5,
-  'kašičice': 5,
-  'kasicica': 5,
-  'kasicice': 5,
 };
 
 String _unitText(String? unit) =>
     (unit ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
+/// Jedinica se prepoznaje preko zajedničkog rečnika (`canonicalUnit`), pa
+/// "gr", "dag", "kasika" i "čaše" imaju isti ključ kao i njihov kanonski
+/// oblik. Nepoznata jedinica ostaje svoja grupa, tačno kako je napisana.
+///
 /// Kuhinjske mere su isključene dok se ne obezbedi verzionisanje podataka.
 NormalizedUnit normalizeUnit(String? unit, {bool kitchenMeasures = false}) {
-  final u = _unitText(unit);
+  final u = canonicalUnit(unit) ?? _unitText(unit);
   final kitchenFactor = kitchenMeasures ? _kitchenVolume[u] : null;
   if (kitchenFactor != null) {
     return (group: 'volume', base: 'ml', factor: kitchenFactor);
@@ -182,7 +173,7 @@ List<DemandLine> demandFor(DemandSource source) {
           (prev?.approximate ?? false) ||
           (known &&
               source.kitchenMeasures &&
-              _kitchenVolume.containsKey(_unitText(i.unit))),
+              _kitchenVolume.containsKey(canonicalUnit(i.unit))),
     );
   }
   return merged.values.toList();
