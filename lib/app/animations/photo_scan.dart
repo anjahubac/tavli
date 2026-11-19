@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 /// Fotografija recepta: dok AI čita, preko nje prelazi linija skeniranja;
 /// prepoznati sastojci zatim iskaču jedan po jedan kao čipovi.

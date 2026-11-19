@@ -2,24 +2,22 @@ import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../app/animations/egg_timer.dart';
 import '../../app/animations/empty_fridge.dart';
 import '../../app/animations/ingredient_check.dart';
 import '../../app/animations/intro_motif.dart';
-import '../../app/animations/motion.dart';
 import '../../app/animations/photo_scan.dart';
 import '../../app/animations/plate_drop.dart';
 import '../../app/animations/shopping_bag.dart';
 import '../../app/animations/simmering_pot.dart';
 import '../../app/animations/spoon_refresh.dart';
-import '../../app/theme/tavli_status_colors.dart';
 import '../../data/database.dart';
 import '../../data/shopping_repository.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
-import '../../domain/theme_choice.dart';
 import '../../sync/synced_writer.dart';
 
 /// Nazivi animacija u galeriji, redom.
@@ -44,7 +42,7 @@ class AnimationsGalleryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final demos = <Widget>[
-      for (final t in TavliTheme.values) IntroMotif(motif: t, size: 200),
+      for (final t in TavliMotif.values) IntroMotif(motif: t, size: 200),
       const _PhotoScanDemo(),
       const SimmeringPot(),
       const _CheckDemo(),

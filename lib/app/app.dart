@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
 import '../domain/theme_choice.dart';
@@ -10,8 +11,7 @@ import '../features/account/sync_banner.dart';
 import '../providers.dart';
 import 'animations/intro_overlay.dart';
 import 'router.dart';
-import 'theme/app_theme.dart';
-import 'theme/theme_controller.dart';
+import 'theme_controller.dart';
 
 class TavliApp extends ConsumerStatefulWidget {
   const TavliApp({
@@ -83,8 +83,8 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       authControllerProvider.select((s) => s is Starting),
     );
     final choice = ref.watch(themeControllerProvider);
-    final theme = buildTavliTheme(choice.theme, Brightness.light);
-    final darkTheme = buildTavliTheme(choice.theme, Brightness.dark);
+    final theme = buildTavliTheme(choice.theme.motif, Brightness.light);
+    final darkTheme = buildTavliTheme(choice.theme.motif, Brightness.dark);
     final mode = switch (choice.mode) {
       AppThemeMode.light => ThemeMode.light,
       AppThemeMode.dark => ThemeMode.dark,
@@ -98,6 +98,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
         theme: theme,
         darkTheme: darkTheme,
         themeMode: mode,
+        builder: _textScaling,
         home: Scaffold(
           body: widget.intro ? const IntroScreen() : const SizedBox.expand(),
         ),
@@ -111,10 +112,16 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       darkTheme: darkTheme,
       themeMode: mode,
       routerConfig: _router,
+      builder: _textScaling,
       scaffoldMessengerKey: _messenger,
     );
   }
 }
+
+/// Veliki naslovi rastu sporije od običnog teksta kad je u sistemu
+/// uključen veći tekst.
+Widget _textScaling(BuildContext context, Widget? child) =>
+    TavliTextScaling(child: child ?? const SizedBox.shrink());
 
 class _Refresh extends ChangeNotifier {
   void ping() => notifyListeners();

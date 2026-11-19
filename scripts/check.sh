@@ -8,9 +8,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "==> dart format (check)"
-scripts/with-sdk-env.sh dart format --output=none --set-exit-if-changed lib test scripts
+scripts/with-sdk-env.sh dart format --output=none --set-exit-if-changed lib test scripts packages
 
-echo "==> flutter analyze"
+echo "==> flutter analyze (aplikacija i packages/)"
 scripts/with-sdk-env.sh flutter analyze
 
 echo "OK"

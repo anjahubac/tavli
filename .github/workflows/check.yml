@@ -28,6 +28,9 @@ jobs:
       - run: flutter pub get
       - run: scripts/check.sh
       - run: flutter test
+      - name: flutter test (packages/tavli_ui)
+        working-directory: packages/tavli_ui
+        run: flutter test
 
   docs:
     name: docs
