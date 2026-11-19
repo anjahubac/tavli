@@ -75,6 +75,7 @@ void main() {
     expect(povrce, lessThan(zacini));
     expect(find.text('• 0,5 kg kupus'), findsOneWidget);
     expect(find.text('Napravio: Gemini Pro'), findsOneWidget);
+    expect(find.text('Priprema'), findsOneWidget);
     expect(find.text('1.'), findsOneWidget);
     expect(find.text('Umotati.'), findsOneWidget);
   });
@@ -95,10 +96,36 @@ void main() {
       ],
     );
 
+    expect(find.text('Priprema'), findsOneWidget);
     expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+    expect(find.text('• paradajz'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
     expect(find.text('1 porcija'), findsOneWidget);
   });
+
+  for (final (label, size) in [('telefon', phone), ('širok ekran', wide)]) {
+    testTavli('recept bez koraka: $label, tekst 2× i smanjeno kretanje', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpTavli(
+        tester,
+        size: size,
+        location: '/recipes/a',
+        recipes: [sampleRecipe('a', 'Sarma').copyWith(steps: [])],
+      );
+
+      expect(find.text('Sastojci'), findsOneWidget);
+      expect(find.text('Priprema'), findsOneWidget);
+      expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+    });
+  }
 
   testTavli('širok ekran: lista i recept jedno pored drugog', (tester) async {
     await pumpTavli(
