@@ -154,7 +154,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 5);
+    expect(db.schemaVersion, 6);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
@@ -323,5 +323,41 @@ void main() {
     addTearDown(again.close);
     expect((await again.select(again.shoppingLists).get()).single.id, 'l1');
     expect(await again.select(again.shoppingSources).get(), isEmpty);
+  });
+
+  test('migracija 5 → 6 dodaje oznake recepta, a postojeći recepti ostaju '
+      'neoznačeni; ponovljena migracija ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v6-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    await first.customStatement(
+      'INSERT INTO recipes (id, title, servings, source, ingredients_json, '
+      "steps_json, created_at, updated_at) VALUES ('r1', 'Sarma', 4, "
+      "'manual', '[]', '[]', 1, 2)",
+    );
+    // Vraćamo bazu na v5 bez kolona oznaka.
+    for (final c in [
+      'meal_types_json',
+      'weight',
+      'dish_kind',
+      'labels_source',
+    ]) {
+      await first.customStatement('ALTER TABLE recipes DROP COLUMN $c');
+    }
+    await first.customStatement('PRAGMA user_version = 5');
+    await first.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    final row = (await upgraded.select(upgraded.recipes).get()).single;
+    expect(row.id, 'r1');
+    expect(row.mealTypesJson, isNull);
+    expect(row.labelsSource, isNull);
+    await upgraded.customStatement('PRAGMA user_version = 5');
+    await upgraded.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.recipes).get()).single.title, 'Sarma');
   });
 }

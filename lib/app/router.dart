@@ -6,6 +6,7 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../account/auth_controller.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
+import '../features/home/home_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
 import '../features/planning/plan_setup_screen.dart';
@@ -23,11 +24,15 @@ import 'animations/empty_fridge.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
+/// Glavni ekran: Početna, srednji tab (021 FR-002).
+const homeLocation = '/home';
+
 /// Galerija komponenti (Profil > Komponente); postoji samo u debug verziji.
 const componentsPath = '/components';
 
 /// Kuda vodi stanje prijave: bez naloga samo "Prijava", bez imena samo
-/// korak sa imenom (FR-001). Tražena adresa se pamti u `from`.
+/// korak sa imenom (FR-001). Tražena adresa se pamti u `from`; Početna
+/// ([homeLocation]) je podrazumevana pa se ne pamti.
 /// Uz [debugTools] galerija komponenti se otvara i bez prijave.
 String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
   final path = uri.path;
@@ -35,7 +40,7 @@ String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
   final from = uri.queryParameters['from'];
   String withFrom(String target) {
     final back = path.startsWith('/sign-in') ? from : uri.toString();
-    return back == null || back == '/plan'
+    return back == null || back == homeLocation
         ? target
         : Uri(path: target, queryParameters: {'from': back}).toString();
   }
@@ -45,7 +50,7 @@ String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
     SignedOut() ||
     CodeSent() => path == '/sign-in' ? null : withFrom('/sign-in'),
     NeedsName() => path == '/sign-in/name' ? null : withFrom('/sign-in/name'),
-    SignedIn() => path.startsWith('/sign-in') ? (from ?? '/plan') : null,
+    SignedIn() => path.startsWith('/sign-in') ? (from ?? homeLocation) : null,
   };
 }
 
@@ -53,7 +58,7 @@ String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
 /// test). [auth] daje trenutno stanje prijave, [refresh] javlja promene.
 /// [debugTools] uključuje ekrane za razvoj; u verziji za objavu ih nema.
 GoRouter createRouter({
-  String initialLocation = '/plan',
+  String initialLocation = homeLocation,
   AuthState Function()? auth,
   Listenable? refresh,
   bool debugTools = kDebugMode,
@@ -140,6 +145,14 @@ GoRouter createRouter({
         StatefulShellBranch(
           routes: [
             GoRoute(
+              path: homeLocation,
+              builder: (context, state) => const HomeScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
               path: '/recipes',
               builder: (context, state) => const RecipesScreen(),
               routes: [
@@ -220,6 +233,18 @@ const tabs = [
     Icons.shopping_basket_outlined,
     Icons.shopping_basket,
   ),
+  TabSpec(homeLocation, 'Početna', Icons.home_outlined, Icons.home),
   TabSpec('/recipes', 'Recepti', Icons.menu_book_outlined, Icons.menu_book),
   TabSpec('/pantry', 'Ostava', Icons.kitchen_outlined, Icons.kitchen),
 ];
+
+/// Bočni meni (širok ekran): Početna na vrhu, ostali tabovi istim redom kao
+/// dole. Vrednosti su indeksi u [tabs], odnosno grane rutera.
+final List<int> railBranchOrder = () {
+  final home = tabs.indexWhere((t) => t.path == homeLocation);
+  return [
+    home,
+    for (var i = 0; i < tabs.length; i++)
+      if (i != home) i,
+  ];
+}();
