@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:tavli/app/theme/tavli_palette.dart';
-import 'package:tavli/app/theme/theme_controller.dart';
+import 'package:tavli/app/theme_controller.dart';
 import 'package:tavli/data/settings_repository.dart';
-import 'package:tavli/domain/theme_choice.dart';
 import 'package:tavli/providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/controlled_settings.dart';
 import '../helpers/test_app.dart';
@@ -173,11 +172,11 @@ void main() {
         expect(
           t.colorScheme.primary,
           TavliPalette.of(
-            TavliTheme.values.byName(palette),
+            TavliMotif.values.byName(palette),
             t.brightness,
           ).primary,
         );
-        expect(t.textTheme.bodyMedium?.fontFamily, 'PlusJakartaSans');
+        expect(t.textTheme.bodyMedium?.fontFamily, tavliFontFamily);
         expect(tester.takeException(), isNull);
       });
     }

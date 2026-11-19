@@ -46,7 +46,7 @@ lib/
   main.dart               ProviderScope + TavliApp
   providers.dart          Riverpod wiring (db, key store, chain config, router, RecipeAI, MealPlanAI)
   app/                    MaterialApp, go_router config, responsive HomeShell, placeholders
-    theme/                  palettes, TavliColors extension, buildTavliTheme, ThemeController
+    theme_controller.dart   ThemeController (saved theme choice → TavliMotif)
     animations/             reduced-motion aware CustomPainter animations (MotionBuilder)
   ai/                     AI layer
     ai_models.dart          AIProvider, ModelSpec, AIRequest, AIImage, TaskKind
@@ -69,6 +69,10 @@ lib/
   domain/                 pure Dart models (Recipe, Ingredient, Account, ids)
   features/<feature>/     screens, widgets and feature providers
                           (recipes/, planning/, shopping/, settings/, account/)
+packages/tavli_ui/        local UI package (pub workspace member): palettes, buildTavliTheme,
+                          TavliColors, tokens (TavliSpacing, TavliRadius, TavliMotion),
+                          TavliPlatform, MotionBuilder, Plus Jakarta Sans font.
+                          The app imports only package:tavli_ui/tavli_ui.dart, never src/.
 supabase/                 config.toml, migrations/ (schema, RLS, grants, storage),
                           tests/ (pgTAP: `supabase test db`), functions/delete-account/, templates/
 test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio,

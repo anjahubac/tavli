@@ -22,6 +22,10 @@ environment:
   sdk: ^3.13.7
   flutter: ">=3.50.0"
 
+# Lokalni paketi u istom repou; jedan `flutter pub get` i jedan pubspec.lock.
+workspace:
+  - packages/tavli_ui
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -32,6 +36,9 @@ dependencies:
   flutter:
     sdk: flutter
   material_ui: ^1.9.0
+  # Tema, tokeni i komponente (packages/tavli_ui).
+  tavli_ui:
+    path: packages/tavli_ui
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -73,19 +80,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Plus Jakarta Sans (SIL OFL, assets/fonts/OFL.txt), ugrađen da radi bez mreže.
-  fonts:
-    - family: PlusJakartaSans
-      fonts:
-        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
-        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
-          weight: 800
+  # Font Plus Jakarta Sans je u paketu tavli_ui.
 
   # To add assets to your application, add an assets section, like this:
   # assets:

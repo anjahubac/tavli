@@ -59,3 +59,4 @@ secrets.*.json
 
 # Per-developer Xcode signing (Team ID)
 macos/Runner/Configs/Local.xcconfig
+/packages/*/build/

@@ -1,10 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-
-import '../../domain/theme_choice.dart';
-import '../theme/tavli_colors.dart';
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 /// Motiv teme u krugu: grančica bosiljka sa listovima koji padaju, cvet
 /// šafrana koji se otvara ili borovnice koje upadaju u činiju.
@@ -12,13 +9,13 @@ class IntroMotif extends StatelessWidget {
   const IntroMotif({super.key, this.motif, this.size = 280});
 
   /// null: motiv aktivne teme.
-  final TavliTheme? motif;
+  final TavliMotif? motif;
   final double size;
 
-  static String labelFor(TavliTheme motif) => switch (motif) {
-    TavliTheme.bosiljak => 'Grančica bosiljka',
-    TavliTheme.safran => 'Cvet šafrana',
-    TavliTheme.borovnica => 'Borovnice padaju u činiju',
+  static String labelFor(TavliMotif motif) => switch (motif) {
+    TavliMotif.bosiljak => 'Grančica bosiljka',
+    TavliMotif.safran => 'Cvet šafrana',
+    TavliMotif.borovnica => 'Borovnice padaju u činiju',
   };
 
   @override
@@ -26,9 +23,9 @@ class IntroMotif extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final m = motif ?? TavliColors.of(context).motif;
     final (duration, rest) = switch (m) {
-      TavliTheme.bosiljak => (const Duration(seconds: 7), 0.3),
-      TavliTheme.safran => (const Duration(seconds: 5), 0.6),
-      TavliTheme.borovnica => (const Duration(seconds: 4), 0.7),
+      TavliMotif.bosiljak => (const Duration(seconds: 7), 0.3),
+      TavliMotif.safran => (const Duration(seconds: 5), 0.6),
+      TavliMotif.borovnica => (const Duration(seconds: 4), 0.7),
     };
     return ClipOval(
       child: ColoredBox(
@@ -40,9 +37,9 @@ class IntroMotif extends StatelessWidget {
             size: size,
             label: labelFor(m),
             painter: switch (m) {
-              TavliTheme.bosiljak => BasilPainter(t, still: still),
-              TavliTheme.safran => SaffronPainter(t, still: still),
-              TavliTheme.borovnica => BlueberryPainter(
+              TavliMotif.bosiljak => BasilPainter(t, still: still),
+              TavliMotif.safran => SaffronPainter(t, still: still),
+              TavliMotif.borovnica => BlueberryPainter(
                 t,
                 still: still,
                 bowl: colors.surface,

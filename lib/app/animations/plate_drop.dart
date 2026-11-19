@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 /// Plan obroka: recept dodat u dan sleti na tanjir u kalendaru.
 /// Igra jednom; završna slika je recept na tanjiru.
