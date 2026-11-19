@@ -84,8 +84,21 @@ void showTavliMessage(
   String message, {
   String? actionLabel,
   VoidCallback? onAction,
+}) => showTavliMessageOn(
+  ScaffoldMessenger.of(context),
+  message,
+  actionLabel: actionLabel,
+  onAction: onAction,
+);
+
+/// Isto što i [showTavliMessage], preko [messenger] uzetog ranije: za
+/// poruku posle radnje koja zatvara ekran (npr. brisanje recepta).
+void showTavliMessageOn(
+  ScaffoldMessengerState messenger,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
 }) {
-  final messenger = ScaffoldMessenger.of(context);
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/recipe.dart';
 import '../../domain/shopping_source.dart';
@@ -9,8 +10,6 @@ import 'keep_screen_on.dart';
 import 'recipe_providers.dart';
 import 'recipe_view.dart';
 import 'versions_sheet.dart';
-
-enum _MenuAction { undo, versions, delete }
 
 /// Detalji recepta. [embedded] je desni deo podeljenog prikaza (bez "nazad").
 class RecipeDetailScreen extends ConsumerWidget {
@@ -30,19 +29,23 @@ class RecipeDetailScreen extends ConsumerWidget {
         .when(
           loading: () => Scaffold(
             appBar: AppBar(automaticallyImplyLeading: !embedded),
-            body: const Center(child: CircularProgressIndicator()),
+            body: const TavliLoading(),
           ),
           error: (_, _) => Scaffold(
             appBar: AppBar(automaticallyImplyLeading: !embedded),
-            body: const Center(child: Text('Recept nije učitan.')),
+            body: const TavliEmptyState(
+              icon: Icons.error_outline,
+              title: 'Recept nije učitan.',
+            ),
           ),
           data: (recipe) => recipe == null
               ? Scaffold(
                   appBar: AppBar(automaticallyImplyLeading: !embedded),
-                  body: Center(
-                    child: Text(
-                      embedded ? 'Izaberi recept' : 'Recept više ne postoji.',
-                    ),
+                  body: TavliEmptyState(
+                    icon: Icons.menu_book_outlined,
+                    title: embedded
+                        ? 'Izaberi recept'
+                        : 'Recept više ne postoji.',
                   ),
                 )
               : _Detail(recipe: recipe, embedded: embedded),
@@ -57,31 +60,20 @@ class _Detail extends ConsumerWidget {
   final bool embedded;
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
     final repo = ref.read(recipeRepositoryProvider);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Obrisati „${recipe.title}“?'),
-        content: const Text('Brišu se i prethodne verzije i slika.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Otkaži'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Obriši'),
-          ),
-        ],
-      ),
+    final confirmed = await showTavliConfirm(
+      context,
+      title: 'Obrisati „${recipe.title}“?',
+      message: 'Brišu se i prethodne verzije i slika.',
+      confirmLabel: 'Obriši',
+      destructive: true,
     );
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
+    // Poruka ide preko roditelja: ovaj ekran nestaje čim se recept obriše.
+    final messenger = ScaffoldMessenger.of(context);
     context.go('/recipes');
     await repo.delete(recipe.id);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Recept je obrisan.')));
+    showTavliMessageOn(messenger, 'Recept je obrisan.');
   }
 
   @override
@@ -94,36 +86,31 @@ class _Detail extends ConsumerWidget {
         title: Text(recipe.title),
         actions: [
           const KeepScreenOnButton(),
-          IconButton(
-            tooltip: 'Izmeni sa AI',
-            icon: const Icon(Icons.auto_awesome_outlined),
+          TavliIconButton(
+            semanticLabel: 'Izmeni sa AI',
+            icon: Icons.auto_awesome_outlined,
             onPressed: () => context.go('/recipes/${recipe.id}/chat'),
           ),
-          IconButton(
-            tooltip: 'Izmeni',
-            icon: const Icon(Icons.edit_outlined),
+          TavliIconButton(
+            semanticLabel: 'Izmeni',
+            icon: Icons.edit_outlined,
             onPressed: () => context.go('/recipes/${recipe.id}/edit'),
           ),
-          PopupMenuButton<_MenuAction>(
-            tooltip: 'Još opcija',
-            onSelected: (action) => switch (action) {
-              _MenuAction.undo => undoLastChange(context, ref, recipe.id),
-              _MenuAction.versions => showVersionsSheet(context, recipe.id),
-              _MenuAction.delete => _delete(context, ref),
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: _MenuAction.undo,
+          TavliMenuButton(
+            actions: [
+              TavliMenuAction(
+                'Poništi poslednju izmenu',
                 enabled: hasVersions,
-                child: const Text('Poništi poslednju izmenu'),
+                onSelected: () => undoLastChange(context, ref, recipe.id),
               ),
-              const PopupMenuItem(
-                value: _MenuAction.versions,
-                child: Text('Prethodne verzije'),
+              TavliMenuAction(
+                'Prethodne verzije',
+                onSelected: () => showVersionsSheet(context, recipe.id),
               ),
-              const PopupMenuItem(
-                value: _MenuAction.delete,
-                child: Text('Obriši recept'),
+              TavliMenuAction(
+                'Obriši recept',
+                isDestructive: true,
+                onSelected: () => _delete(context, ref),
               ),
             ],
           ),
@@ -134,18 +121,18 @@ class _Detail extends ConsumerWidget {
           children: [
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: FilledButton.tonalIcon(
+              child: TavliButton.secondary(
+                label: 'Proveri sastojke',
+                icon: Icons.checklist,
                 onPressed: () => showIngredientReview(
                   context,
                   snapshot: RecipeSnapshot.fromRecipe(recipe),
                   originKey: 'recipe:${recipe.id}',
                   recipeId: recipe.id,
                 ),
-                icon: const Icon(Icons.checklist),
-                label: const Text('Proveri sastojke'),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: TavliSpacing.large),
             RecipeView(recipe),
           ],
         ),

@@ -1,10 +1,17 @@
 import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import 'recipe_photo.dart';
+
+/// Visina slike recepta iznad sadržaja.
+const _photoHeight = 220.0;
+
+/// Najveća širina sadržaja recepta, da redovi ostanu čitljivi.
+const _readableWidth = 720.0;
 
 /// Sadržaj recepta: slika, porcije, sastojci po kategorijama, koraci.
 /// Koristi se u detaljima, pregledu AI recepta i predlogu izmene.
@@ -37,58 +44,52 @@ class RecipeView extends StatelessWidget {
       children: [
         if (bytes != null)
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(TavliRadius.field),
             child: Image.memory(
               bytes,
-              height: 220,
+              height: _photoHeight,
               width: double.infinity,
               fit: BoxFit.cover,
               semanticLabel: 'Slika recepta',
             ),
           )
         else if (path != null)
-          RecipePhoto(path, height: 220),
-        if (bytes != null || path != null) const SizedBox(height: 16),
+          RecipePhoto(path, height: _photoHeight),
+        if (bytes != null || path != null)
+          const SizedBox(height: TavliSpacing.large),
         if (showTitle) ...[
           Text(recipe.title, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
+          const SizedBox(height: TavliSpacing.small),
         ],
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: TavliSpacing.large,
+          runSpacing: TavliSpacing.small,
           children: [
-            Chip(
-              avatar: const Icon(Icons.people_outline, size: 18),
-              label: Text(servingsLabel(recipe.servings)),
-            ),
+            _Fact(Icons.people_outline, servingsLabel(recipe.servings)),
             if (recipe.prepMinutes != null)
-              Chip(
-                avatar: const Icon(Icons.timer_outlined, size: 18),
-                label: Text('${recipe.prepMinutes} min'),
-              ),
+              _Fact(Icons.timer_outlined, '${recipe.prepMinutes} min'),
           ],
         ),
-        const SizedBox(height: 16),
-        Text('Sastojci', style: theme.textTheme.titleMedium),
+        const SizedBox(height: TavliSpacing.medium),
+        const TavliSectionHeader(
+          'Sastojci',
+          style: TavliSectionHeaderStyle.bold,
+        ),
         for (final (category, items) in groupByCategory(
           recipe.ingredients,
         )) ...[
-          const SizedBox(height: 12),
-          Text(
-            category,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.primary,
-            ),
-          ),
+          TavliSectionHeader(category),
           for (final i in items)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(bottom: TavliSpacing.small),
               child: Text('• ${ingredientLine(i)}'),
             ),
         ],
-        const SizedBox(height: 20),
-        Text('Priprema', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const SizedBox(height: TavliSpacing.medium),
+        const TavliSectionHeader(
+          'Priprema',
+          style: TavliSectionHeaderStyle.bold,
+        ),
         if (recipe.steps.isEmpty)
           Text(
             'Koraci pripreme nisu uneti.',
@@ -99,17 +100,15 @@ class RecipeView extends StatelessWidget {
         else
           for (final (n, step) in recipe.steps.indexed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: TavliSpacing.small),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: TavliSpacing.small,
                 children: [
-                  SizedBox(
-                    width: 28,
-                    child: Text(
-                      '${n + 1}.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  Text(
+                    '${n + 1}.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   Expanded(child: Text(step)),
@@ -117,7 +116,7 @@ class RecipeView extends StatelessWidget {
               ),
             ),
         if (origin != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: TavliSpacing.medium),
           Text(origin, style: theme.textTheme.bodySmall),
         ],
       ],
@@ -134,16 +133,37 @@ class ReadableScroll extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(TavliSpacing.large),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: _readableWidth),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: children,
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Podatak o receptu sa ikonicom: porcije, vreme pripreme.
+class _Fact extends StatelessWidget {
+  const _Fact(this.icon, this.text);
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: TavliSpacing.small,
+      children: [
+        Icon(icon, color: muted),
+        Text(text, style: TextStyle(color: muted)),
+      ],
     );
   }
 }

@@ -90,7 +90,7 @@ void main() {
       recipes: [sampleRecipe('a', 'Sarma')],
     );
 
-    await tester.tap(find.byTooltip('Izmeni'));
+    await tester.tap(iconButton('Izmeni'));
     await tester.pumpAndSettle();
     expect(find.text('Izmeni recept'), findsOneWidget);
     await tester.enterText(field('Naziv'), 'Posna sarma');
@@ -103,7 +103,7 @@ void main() {
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Još opcija'));
+    await tester.tap(iconButton('Još opcija'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Prethodne verzije'));
     await tester.pumpAndSettle();
@@ -116,7 +116,7 @@ void main() {
       location: '/recipes/a',
       recipes: [sampleRecipe('a', 'Sarma')],
     );
-    await tester.tap(find.byTooltip('Izmeni'));
+    await tester.tap(iconButton('Izmeni'));
     await tester.pumpAndSettle();
     await tester.enterText(field('Naziv'), 'Nešto drugo');
     await tester.pump();
@@ -144,7 +144,7 @@ void main() {
       recipes: [sampleRecipe('a', 'Sarma')],
     );
 
-    await tester.tap(find.byTooltip('Još opcija'));
+    await tester.tap(iconButton('Još opcija'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Obriši recept'));
     await tester.pumpAndSettle();
@@ -154,7 +154,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(await app.titles(), ['Sarma']);
 
-    await tester.tap(find.byTooltip('Još opcija'));
+    await tester.tap(iconButton('Još opcija'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Obriši recept'));
     await tester.pumpAndSettle();

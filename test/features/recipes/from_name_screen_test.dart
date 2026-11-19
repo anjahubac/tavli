@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -101,9 +102,16 @@ void main() {
     await tapButton(tester, 'Napravi recept');
     await tapButton(tester, 'Sačuvaj');
 
-    expect(find.byType(SearchBar), findsOneWidget);
+    expect(find.byType(TavliSearchField), findsOneWidget);
     expect(
-      tester.widget<ListTile>(find.widgetWithText(ListTile, 'Musaka')).selected,
+      tester
+          .widget<TavliCard>(
+            find.ancestor(
+              of: find.text('Musaka'),
+              matching: find.byType(TavliCard),
+            ),
+          )
+          .selected,
       isTrue,
     );
   });

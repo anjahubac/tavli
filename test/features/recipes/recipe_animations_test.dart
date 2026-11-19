@@ -85,7 +85,7 @@ void main() {
     final boxes = tester
         .widgetList<ColoredBox>(
           find.descendant(
-            of: find.byType(Card),
+            of: find.byType(TavliCard),
             matching: find.byType(ColoredBox),
           ),
         )

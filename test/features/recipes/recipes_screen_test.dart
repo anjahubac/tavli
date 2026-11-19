@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -34,25 +35,27 @@ void main() {
       ],
     );
 
-    final titles = tester
-        .widgetList<ListTile>(find.byType(ListTile))
-        .map((t) => (t.title! as Text).data)
-        .toList();
-    expect(titles, ['Šargarepa čorba', 'Sarma', 'Pasulj']);
+    final titles = [
+      'Šargarepa čorba',
+      'Sarma',
+      'Pasulj',
+    ].map((t) => tester.getTopLeft(find.text(t)).dy).toList();
+    final sorted = [...titles]..sort();
+    expect(titles, sorted, reason: 'najnoviji recept je prvi');
     expect(find.text('4 porcije · 45 min'), findsNWidgets(3));
 
-    await tester.enterText(find.byType(SearchBar), 'sar');
+    await tester.enterText(find.byType(TavliSearchField), 'sar');
     await tester.pumpAndSettle();
     expect(find.text('Sarma'), findsOneWidget);
     expect(find.text('Šargarepa čorba'), findsOneWidget);
     expect(find.text('Pasulj'), findsNothing);
 
-    await tester.enterText(find.byType(SearchBar), 'čorb');
+    await tester.enterText(find.byType(TavliSearchField), 'čorb');
     await tester.pumpAndSettle();
     expect(find.text('Šargarepa čorba'), findsOneWidget);
     expect(find.text('Sarma'), findsNothing);
 
-    await tester.enterText(find.byType(SearchBar), 'musaka');
+    await tester.enterText(find.byType(TavliSearchField), 'musaka');
     await tester.pumpAndSettle();
     expect(find.text('Nema recepata za „musaka“.'), findsOneWidget);
   });
@@ -66,12 +69,12 @@ void main() {
     await tester.tap(find.text('Sarma'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SearchBar), findsNothing);
+    expect(find.byType(TavliSearchField), findsNothing);
     expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
     expect(find.byType(BackButton), findsOneWidget);
     // Kategorije redom prodavnice, količina sa zarezom.
-    final povrce = tester.getTopLeft(find.text('voće i povrće')).dy;
-    final zacini = tester.getTopLeft(find.text('začini i sosovi')).dy;
+    final povrce = tester.getTopLeft(find.text('VOĆE I POVRĆE')).dy;
+    final zacini = tester.getTopLeft(find.text('ZAČINI I SOSOVI')).dy;
     expect(povrce, lessThan(zacini));
     expect(find.text('• 0,5 kg kupus'), findsOneWidget);
     expect(find.text('Napravio: Gemini Pro'), findsOneWidget);
@@ -100,7 +103,9 @@ void main() {
     expect(find.text('1 porcija'), findsOneWidget);
   });
 
-  testTavli('širok ekran: lista i recept jedno pored drugog', (tester) async {
+  testTavli('širok ekran: mreža, pa lista i recept jedno pored drugog', (
+    tester,
+  ) async {
     await pumpTavli(
       tester,
       size: wide,
@@ -109,18 +114,21 @@ void main() {
         sampleRecipe('b', 'Sarma', createdAt: DateTime(2026, 2)),
       ],
     );
-    expect(find.text('Izaberi recept'), findsOneWidget);
+    // Bez izabranog recepta: mreža kartica sa slikom na vrhu.
+    expect(find.byType(TavliCardGrid), findsOneWidget);
+    expect(find.byType(TavliFloatingButton), findsNothing);
+    expect(button('Dodaj recept'), findsOneWidget);
 
     await tester.tap(find.text('Sarma'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SearchBar), findsOneWidget);
+    expect(find.byType(TavliSearchField), findsOneWidget);
     expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
     expect(find.text('Pasulj'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
-    final tile = tester.widget<ListTile>(
-      find.widgetWithText(ListTile, 'Sarma'),
+    final card = tester.widget<TavliCard>(
+      find.ancestor(of: find.text('Sarma'), matching: find.byType(TavliCard)),
     );
-    expect(tile.selected, isTrue);
+    expect(card.selected, isTrue);
   });
 }

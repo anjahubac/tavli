@@ -290,6 +290,12 @@ Finder textField(String label) => find.byElementPredicate((e) {
   return e.findAncestorWidgetOfExactType<TavliTextField>()?.label == label;
 });
 
+/// `TavliIconButton` po opisu. Njegov oblačić je iz material_ui, pa ga
+/// `find.byTooltip` ne vidi.
+Finder iconButton(String label) => find.byWidgetPredicate(
+  (w) => w is TavliIconButton && w.semanticLabel == label,
+);
+
 /// Dugme (bilo koje Material dugme) sa datim tekstom.
 Finder button(String text) => find.ancestor(
   of: find.text(text),

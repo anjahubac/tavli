@@ -29,6 +29,7 @@ class TavliCard extends StatelessWidget {
     this.variant = TavliCardVariant.plain,
     this.onTap,
     this.padding,
+    this.selected = false,
   });
 
   final Widget child;
@@ -39,6 +40,10 @@ class TavliCard extends StatelessWidget {
 
   /// Unutrašnji razmak; podrazumevano 14 (kompaktna 8).
   final EdgeInsetsGeometry? padding;
+
+  /// Izabrana kartica (npr. recept otvoren pored liste): ivica 2 px u boji
+  /// teme, a čitač ekrana kaže da je izabrana.
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -80,15 +85,18 @@ class TavliCard extends StatelessWidget {
         ],
       );
     }
-    return Material(
+    final card = Material(
       color: color,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: border),
+        side: selected
+            ? BorderSide(color: c.primary, width: 2)
+            : BorderSide(color: border),
       ),
       clipBehavior: Clip.antiAlias,
       child: onTap == null ? content : InkWell(onTap: onTap, child: content),
     );
+    return selected ? Semantics(selected: true, child: card) : card;
   }
 }
 
@@ -113,6 +121,58 @@ class TavliCardRow extends StatelessWidget {
         spacing: spacing,
         children: [for (final c in children) Expanded(child: c)],
       ),
+    );
+  }
+}
+
+/// Mreža kartica: [columns] kolona jednake širine, kartice u istom redu iste
+/// visine. Recepti: tri kolone na računaru, jedna na telefonu; nedeljni plan
+/// na računaru: sedam kolona kompaktnih kartica.
+///
+/// Gradi redove tek kad se prikažu, pa se koristi umesto `ListView`. Poslednji
+/// red koji nije pun ostavlja prazna mesta, da kartice ostanu iste širine.
+class TavliCardGrid extends StatelessWidget {
+  const TavliCardGrid({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.columns = 1,
+    this.spacing = TavliSpacing.medium,
+    this.padding,
+    this.physics,
+    this.shrinkWrap = false,
+  }) : assert(columns > 0);
+
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final int columns;
+
+  /// Razmak između kartica, vodoravno i uspravno.
+  final double spacing;
+  final EdgeInsetsGeometry? padding;
+  final ScrollPhysics? physics;
+  final bool shrinkWrap;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = (itemCount / columns).ceil();
+    return ListView.separated(
+      padding: padding,
+      physics: physics,
+      shrinkWrap: shrinkWrap,
+      itemCount: rows,
+      separatorBuilder: (_, _) => SizedBox(height: spacing),
+      itemBuilder: (context, row) {
+        if (columns == 1) return itemBuilder(context, row);
+        final start = row * columns;
+        return TavliCardRow(
+          spacing: spacing,
+          children: [
+            for (var i = start; i < start + columns; i++)
+              i < itemCount ? itemBuilder(context, i) : const SizedBox(),
+          ],
+        );
+      },
     );
   }
 }

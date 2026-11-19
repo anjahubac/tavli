@@ -43,15 +43,18 @@ class TavliListGroup extends StatelessWidget {
   }
 }
 
-/// Razdelnik: 1 px, boja ivice iz teme.
+/// Razdelnik: 1 px, boja ivice iz teme. [vertical] ga uspravlja (između
+/// liste i detalja na računaru).
 class TavliDivider extends StatelessWidget {
-  const TavliDivider({super.key, this.color});
+  const TavliDivider({super.key, this.color, this.vertical = false});
 
   final Color? color;
+  final bool vertical;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 1,
+    width: vertical ? 1 : null,
+    height: vertical ? null : 1,
     child: ColoredBox(color: color ?? TavliColors.of(context).line),
   );
 }

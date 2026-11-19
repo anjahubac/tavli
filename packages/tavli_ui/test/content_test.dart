@@ -114,6 +114,100 @@ void main() {
     });
   });
 
+  group('TavliCardGrid', () {
+    testWidgets('tri kolone jednake širine, isti red iste visine', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        SizedBox(
+          width: 620,
+          height: 700,
+          child: TavliCardGrid(
+            columns: 3,
+            itemCount: 4,
+            itemBuilder: (context, i) => TavliCard(
+              key: ValueKey(i),
+              child: Text(i == 1 ? 'Piletina sa povrćem iz rerne' : 'R$i'),
+            ),
+          ),
+        ),
+        size: const Size(800, 800),
+      );
+      Size sizeOf(int i) => tester.getSize(find.byKey(ValueKey(i)));
+      expect(sizeOf(0).height, sizeOf(1).height);
+      expect(sizeOf(1).height, sizeOf(2).height);
+      expect(sizeOf(0).width, sizeOf(3).width);
+      // Četvrta kartica je sama u drugom redu, levo.
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey(3))).dx,
+        tester.getTopLeft(find.byKey(const ValueKey(0))).dx,
+      );
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey(3))).dy,
+        greaterThan(tester.getBottomLeft(find.byKey(const ValueKey(0))).dy),
+      );
+    });
+
+    testWidgets('jedna kolona je obična lista', (tester) async {
+      await pump(
+        tester,
+        SizedBox(
+          width: 360,
+          height: 400,
+          child: TavliCardGrid(
+            itemCount: 2,
+            itemBuilder: (context, i) => TavliCard(child: Text('R$i')),
+          ),
+        ),
+      );
+      expect(find.byType(TavliCardRow), findsNothing);
+      expect(find.byType(TavliCard), findsNWidgets(2));
+    });
+  });
+
+  testWidgets('izabrana kartica: ivica 2 px i oznaka za čitač ekrana', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pump(
+      tester,
+      TavliCard(selected: true, onTap: () {}, child: const Text('Sarma')),
+    );
+    final shape =
+        tester
+                .widget<Material>(
+                  find
+                      .descendant(
+                        of: find.byType(TavliCard),
+                        matching: find.byType(Material),
+                      )
+                      .first,
+                )
+                .shape!
+            as RoundedRectangleBorder;
+    expect(shape.side.width, 2);
+    expect(
+      tester.getSemantics(find.text('Sarma')),
+      isSemantics(isSelected: true),
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('uspravni razdelnik je širok 1 px', (tester) async {
+    await pump(
+      tester,
+      const SizedBox(
+        height: 100,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [TavliDivider(vertical: true)],
+        ),
+      ),
+    );
+    expect(tester.getSize(find.byType(TavliDivider)), const Size(1, 100));
+  });
+
   group('TavliListRow', () {
     testWidgets('red bez količine prikazuje samo naziv', (tester) async {
       await pump(
@@ -384,6 +478,7 @@ void main() {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TavliThumbnail.row(key: ValueKey('row')),
+              TavliThumbnail.cardTop(key: ValueKey('top')),
               TavliThumbnail.banner(key: ValueKey('banner')),
               TavliAvatar(key: ValueKey('avatar'), initials: 'AH'),
               TavliTag.cooked(key: ValueKey('tag')),
@@ -414,6 +509,35 @@ void main() {
         ),
       );
       expect(clip.borderRadius, BorderRadius.circular(14));
+      expect(
+        tester.getSize(find.byKey(const ValueKey('top'))),
+        const Size(300, 120),
+      );
+      expect(
+        tester
+            .widget<ClipRRect>(
+              find.descendant(
+                of: find.byKey(const ValueKey('top')),
+                matching: find.byType(ClipRRect),
+              ),
+            )
+            .borderRadius,
+        BorderRadius.zero,
+      );
+    });
+
+    testWidgets('sličica prikazuje datu fotografiju', (tester) async {
+      await pump(
+        tester,
+        const TavliThumbnail.row(
+          photo: ColoredBox(key: ValueKey('photo'), color: Color(0xFF000000)),
+        ),
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('photo'))),
+        const Size(56, 56),
+      );
+      expect(find.byIcon(Icons.restaurant_rounded), findsNothing);
     });
 
     testWidgets('avatar je 36 na iOS-u', (tester) async {

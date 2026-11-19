@@ -15,6 +15,7 @@ class TavliMenuAction {
     required this.onSelected,
     this.icon,
     this.isDestructive = false,
+    this.enabled = true,
   });
 
   final String label;
@@ -23,6 +24,9 @@ class TavliMenuAction {
 
   /// „Ukloni“, „Obriši“: crveno.
   final bool isDestructive;
+
+  /// Isključena stavka se vidi prigušeno i ne može da se izabere.
+  final bool enabled;
 }
 
 /// Meni akcija:
@@ -64,6 +68,7 @@ Future<void> showTavliActionMenu(
         for (final (i, a) in actions.indexed)
           PopupMenuItem<int>(
             value: i,
+            enabled: a.enabled,
             height: 40,
             child: _MenuLabel(action: a),
           ),
@@ -79,8 +84,11 @@ Future<void> showTavliActionMenu(
           for (final a in actions)
             CupertinoActionSheetAction(
               isDestructiveAction: a.isDestructive,
-              onPressed: () => Navigator.of(context).pop(a),
-              child: Text(a.label),
+              onPressed: a.enabled ? () => Navigator.of(context).pop(a) : () {},
+              child: Opacity(
+                opacity: a.enabled ? 1 : 0.38,
+                child: Text(a.label),
+              ),
             ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -123,7 +131,7 @@ class TavliActionList extends StatelessWidget {
       children: [
         for (final a in actions)
           InkWell(
-            onTap: () => onSelected(a),
+            onTap: a.enabled ? () => onSelected(a) : null,
             borderRadius: BorderRadius.circular(TavliRadius.field),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 52),
@@ -152,7 +160,11 @@ class _MenuLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final color = action.isDestructive ? c.error : c.onSurface;
+    final color = !action.enabled
+        ? c.onSurface.withValues(alpha: 0.38)
+        : action.isDestructive
+        ? c.error
+        : c.onSurface;
     final icon = action.icon;
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -161,7 +173,9 @@ class _MenuLabel extends StatelessWidget {
           Icon(
             icon,
             size: large ? 22 : 20,
-            color: action.isDestructive ? c.error : c.onSurfaceVariant,
+            color: !action.enabled || action.isDestructive
+                ? color
+                : c.onSurfaceVariant,
           ),
           SizedBox(width: large ? 14 : 10),
         ],
