@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/router.dart';
 import '../account/account_header.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -44,6 +45,14 @@ class ProfileScreen extends StatelessWidget {
               subtitle: const Text('Pregled animacija (samo za razvoj)'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.go('/profile/animations'),
+            ),
+          if (kDebugMode)
+            ListTile(
+              leading: const Icon(Icons.widgets_outlined),
+              title: const Text('Komponente'),
+              subtitle: const Text('Galerija UI biblioteke (samo za razvoj)'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(componentsPath),
             ),
         ],
       ),

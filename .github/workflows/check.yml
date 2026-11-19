@@ -30,7 +30,16 @@ jobs:
       - run: flutter test
       - name: flutter test (packages/tavli_ui)
         working-directory: packages/tavli_ui
+        # Uključuje testove izgleda (slike); porede se samo na Linuxu.
         run: flutter test
+      - name: razlike u slikama izgleda
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: packages/tavli_ui/test/failures/
+          if-no-files-found: ignore
+          retention-days: 7
 
   docs:
     name: docs
