@@ -6,6 +6,8 @@ import '../theme/tavli_motif.dart';
 import '../theme/tavli_status_colors.dart';
 import '../theme/tavli_theme.dart';
 import '../tokens.dart';
+import 'gallery_section.dart';
+import 'shell_sections.dart';
 
 /// Naziv teme kako ga vidi korisnik.
 String tavliMotifLabel(TavliMotif motif) => switch (motif) {
@@ -194,8 +196,8 @@ class _Controls extends StatelessWidget {
   }
 }
 
-/// Sadržaj galerije bez prekidača: boje, tekst, mere i tema na Material
-/// elementima. Koriste ga i testovi izgleda (slike).
+/// Sadržaj galerije bez prekidača: osnova (boje, tekst, mere, tema na
+/// Material elementima) i komponente kostura ekrana.
 ///
 /// Svaka nova komponenta iz biblioteke dobija svoj odeljak ovde.
 class TavliGallerySections extends StatelessWidget {
@@ -205,34 +207,29 @@ class TavliGallerySections extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _Section(title: 'Boje', child: _Colors()),
-        _Section(title: 'Tekst', child: _Typography()),
-        _Section(title: 'Razmaci i radijusi', child: _Tokens()),
-        _Section(title: 'Tema na Material elementima', child: _Material()),
-      ],
+      children: [TavliFoundationGallerySections(), TavliShellGallerySections()],
     );
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
+/// Osnova biblioteke u galeriji: boje, tekst, mere i tema na Material
+/// elementima. Nije deo javnog ulaza; koriste je testovi izgleda.
+class TavliFoundationGallerySections extends StatelessWidget {
+  const TavliFoundationGallerySections({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: TavliSpacing.large),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: TavliSpacing.medium),
-          child,
-        ],
-      ),
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GallerySection(title: 'Boje', child: _Colors()),
+        GallerySection(title: 'Tekst', child: _Typography()),
+        GallerySection(title: 'Razmaci i radijusi', child: _Tokens()),
+        GallerySection(
+          title: 'Tema na Material elementima',
+          child: _Material(),
+        ),
+      ],
     );
   }
 }
