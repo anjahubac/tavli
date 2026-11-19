@@ -13,7 +13,7 @@ enum TavliTheme {
 enum AppThemeMode {
   light('Svetla'),
   dark('Tamna'),
-  system('Kao sistem');
+  system('Sistem');
 
   const AppThemeMode(this.label);
 
