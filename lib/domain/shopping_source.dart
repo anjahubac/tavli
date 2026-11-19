@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'meal_plan.dart' show MealType;
 import 'plan_calendar.dart';
 import 'recipe.dart';
 import 'shopping_demand.dart';
@@ -90,13 +91,13 @@ class RecipeSnapshot {
   };
 }
 
-/// Redosled vrsta obroka u danu (za raspodelu zalihe).
-int mealOrder(String mealType) => switch (mealType) {
-  'breakfast' => 0,
-  'lunch' => 1,
-  'dinner' => 2,
-  _ => 3,
-};
+/// Redosled samostalne pripreme i nepoznate vrste obroka: posle svih obroka
+/// u danu.
+final unplannedMealOrder = MealType.values.length;
+
+/// Redosled vrsta obroka u danu (za raspodelu zalihe), isti kao [MealType].
+int mealOrder(String mealType) =>
+    MealType.tryParse(mealType)?.index ?? unplannedMealOrder;
 
 /// Obrok ili priprema za koju je stavka nabavke: prikazuje se uz stavku, a
 /// pri kupovini se zamrzava u poreklu kupovine.

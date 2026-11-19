@@ -12,62 +12,10 @@ import '../domain/shopping_sync.dart';
 import '../domain/supply_allocation.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
+import 'shopping_models.dart';
+import 'shopping_totals.dart';
 
-/// Zbir jedne namirnice u celom planu (mesec): samo za čitanje. Radnje idu
-/// na nedeljne stavke iz [itemIds]; mesečna lista se ne čuva.
-class PlanTotal {
-  const PlanTotal({
-    required this.ingredient,
-    required this.unitGroup,
-    required this.name,
-    required this.category,
-    required this.baseUnit,
-    required this.openMicros,
-    required this.boughtMicros,
-    required this.hasUnknown,
-    required this.itemIds,
-    required this.listIds,
-  });
-
-  final String ingredient;
-  final String unitGroup;
-  final String name;
-  final String category;
-  final String baseUnit;
-
-  /// Preostalo za kupovinu i već kupljeno, u milionitim delovima [baseUnit].
-  final int openMicros;
-  final int boughtMicros;
-
-  /// Neka otvorena stavka nema poznatu količinu (traži proveru).
-  final bool hasUnknown;
-  final List<String> itemIds;
-  final List<String> listIds;
-}
-
-/// Stavka nedeljne liste plana sa početkom te nedelje.
-class PlanShoppingItem {
-  const PlanShoppingItem({required this.weekStart, required this.item});
-
-  final CivilDate weekStart;
-  final ShoppingItemRow item;
-}
-
-/// Samostalna priprema recepta u nabavci: zamrznut recept sa sastojcima
-/// koje osoba nema (ostale je označila sa "imam") i porcije.
-class RecipePreparation {
-  const RecipePreparation({
-    required this.id,
-    required this.snapshot,
-    required this.servings,
-    this.recipeId,
-  });
-
-  final String id;
-  final RecipeSnapshot snapshot;
-  final int servings;
-  final String? recipeId;
-}
+export 'shopping_models.dart';
 
 /// Kupovina domaćinstva; svaka izmena ima outbox u istoj transakciji.
 class ShoppingRepository {
@@ -679,7 +627,9 @@ class ShoppingRepository {
       result.add((
         DemandOrder(
           date: date?.toWire(),
-          mealOrder: entry == null ? 3 : mealOrder(entry.mealType),
+          mealOrder: entry == null
+              ? unplannedMealOrder
+              : mealOrder(entry.mealType),
         ),
         ItemSource(
           title: snapshot.title,
@@ -862,37 +812,8 @@ class ShoppingRepository {
   }
 
   /// Zbir stavki po namirnici i grupi jedinica (za prikaz celog plana).
-  static List<PlanTotal> totalsOf(List<ShoppingItemRow> items) {
-    final groups = <(String, String), List<ShoppingItemRow>>{};
-    for (final i in items) {
-      final unit = normalizeUnit(i.unit);
-      final group = i.quantity == null ? unknownGroup : unit.group;
-      groups.putIfAbsent((ingredientKey(i.name), group), () => []).add(i);
-    }
-    int micros(ShoppingItemRow i) => i.quantity == null
-        ? 0
-        : toMicros(i.quantity!) * normalizeUnit(i.unit).factor;
-    return [
-      for (final MapEntry(key: (ingredient, group), value: rows)
-          in groups.entries)
-        PlanTotal(
-          ingredient: ingredient,
-          unitGroup: group,
-          name: rows.first.name,
-          category: rows.first.category,
-          baseUnit: normalizeUnit(rows.first.unit).base,
-          openMicros: rows
-              .where((r) => !r.isBought)
-              .fold(0, (sum, r) => sum + micros(r)),
-          boughtMicros: rows
-              .where((r) => r.isBought)
-              .fold(0, (sum, r) => sum + micros(r)),
-          hasUnknown: rows.any((r) => !r.isBought && r.quantity == null),
-          itemIds: [for (final r in rows) r.id],
-          listIds: {for (final r in rows) r.listId}.toList(),
-        ),
-    ];
-  }
+  static List<PlanTotal> totalsOf(List<ShoppingItemRow> items) =>
+      shoppingTotalsOf(items);
 
   /// Briše izvor i njegovu decu (deca pre roditelja, i u outbox-u).
   Future<void> _deleteSource(String sourceId) async {
