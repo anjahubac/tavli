@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
@@ -248,6 +249,25 @@ void main() {
     expect(find.text('patlidžan'), findsOneWidget);
     expect(find.text('Kupljeno · 1'), findsOneWidget);
   });
+
+  // Prijavljeno na macOS-u (trekped): posle „Po receptu“ nije moglo nazad
+  // na „Po planu“. Klik trekpedom na macOS-u stiže kao miš.
+  for (final size in [phone, wide]) {
+    for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
+      testTavli('prekidač „Po planu“ / „Po receptu“ deset puta tamo i nazad '
+          '(${kind.name}, ${size.width} px)', (tester) async {
+        await pumpShopping(tester, size: size);
+        for (var i = 0; i < 10; i++) {
+          await tester.tap(find.text('Po receptu'), kind: kind);
+          await tester.pumpAndSettle();
+          expect(find.text('Ceo plan'), findsNothing, reason: 'po receptu $i');
+          await tester.tap(find.text('Po planu'), kind: kind);
+          await tester.pumpAndSettle();
+          expect(find.text('Ceo plan'), findsOneWidget, reason: 'po planu $i');
+        }
+      });
+    }
+  }
 
   for (final size in [const Size(320, 700), wide]) {
     testTavli('${size.width} px, tekst 2×: bez preliva', (tester) async {
