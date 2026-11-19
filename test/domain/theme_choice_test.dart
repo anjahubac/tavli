@@ -16,7 +16,7 @@ void main() {
     expect(AppThemeMode.values.map((m) => m.label), [
       'Svetla',
       'Tamna',
-      'Kao sistem',
+      'Sistem',
     ]);
   });
 
