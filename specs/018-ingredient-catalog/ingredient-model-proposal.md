@@ -34,6 +34,10 @@ final class FoodIdentity {
   final FoodBaseUnit baseUnit;
 }
 
+final class FoodLookupScope {
+  final String householdId; // the active household; nothing else in version 1
+}
+
 sealed class FoodMatchResult {}
 final class Matched extends FoodMatchResult { final FoodIdentity food; }
 final class Unresolved extends FoodMatchResult {}
@@ -56,14 +60,15 @@ so does the canonical name of a confirmed household-owned food: both outrank
 shared matches. If mappings of the same priority point to different food IDs,
 return `Unresolved` until the user confirms the intended food. A household
 alias that points to a shared food does not change who owns that food's
-canonical name. Discard an in-flight result if the
-household changes or access is revoked. The server independently enforces
-authorization. Overrides affect future lookups in that household and do not
-rewrite references already confirmed and saved.
+canonical name. Discard an in-flight result if the household changes or access
+is revoked. The server independently enforces authorization. Overrides affect
+future lookups in that household and do not rewrite references already
+confirmed and saved.
 
 `Matched` means there is evidence that the input refers to the returned food:
 a unique reviewed canonical name or alias, or an explicit confirmation in the
-active scope. The mere existence of a food in the catalog is insufficient.
+active scope. The mere existence of a food in the catalog is insufficient, and a
+food that the shared catalog has withdrawn is never returned as `Matched`.
 Fuzzy or AI suggestions may return `Proposed` for a visible existing identity.
 A suggestion to create a new food stays unresolved until a separate creation
 flow accepts it. Lookup does not persist aliases or accept suggestions.
@@ -92,14 +97,31 @@ match result. Error and cancellation never write data.
 
 ### Link stored on a recipe ingredient
 
-An ingredient the matcher resolved carries two optional, additive fields beside
-its original `name`: `foodId` (the UUID of the matched food) and `matchedKey`
-(the value of `ingredientKey(name)` when it was resolved; the function is in
-`lib/domain/shopping_sync.dart`). `matchedKey` and a third field, `linkSource` (`matched` when the matcher set
-the link, `confirmed` when a person did), are required whenever `foodId` is
-present, so preserving an explicit confirmation is part of the contract. A link is **valid** only while `ingredientKey(name)` still equals
-`matchedKey`. If the name is edited, the link stops being valid by itself:
-consumers ignore it, the original text is untouched and the ingredient can be
+An ingredient the matcher resolved carries additive fields beside its original
+`name`. The following Dart-like type specifies intent, not compiled code:
+
+```dart
+enum LinkSource { matched, confirmed }
+
+final class IngredientLink {
+  final String foodId;        // FoodIdentity.id
+  final String matchedKey;    // ingredientKey(name) when the link was made
+  final LinkSource linkSource; // who set it: the matcher or a person
+}
+```
+
+`foodId` is the UUID of the matched food, and `matchedKey` is the value of
+`ingredientKey(name)` when it was resolved (the function is in
+`lib/domain/shopping_sync.dart`). `matchedKey` and `linkSource` are required
+whenever `foodId` is present, so preserving an explicit confirmation is part of
+the contract.
+
+A link is **valid** only while `ingredientKey(name)` still equals `matchedKey`
+and the food it points to has not been withdrawn from the shared catalog (the
+catalog withdraws an entry instead of deleting it; see the data model
+proposal). If the name is edited, or the food is withdrawn, the link stops
+being valid by itself: consumers ignore it, treat the ingredient like an
+unresolved one, the original text is untouched and the ingredient can be
 resolved again. No ingredient identifier is needed.
 
 Backfill recognizes prior work by this link: an ingredient with a valid link is
@@ -146,6 +168,7 @@ These examples are proposed acceptance fixtures, not passing test results.
 | Household A has its own food `mleko`; the shared catalog also has `mleko` | A resolves to its own food, household B to the shared one. |
 | Two confirmed household entries of the same priority name different foods | `Unresolved` until the user confirms one. |
 | Household A adds an alias to a shared food | The alias applies in A only and does not change who owns the canonical name of that food. |
+| The food an ingredient is linked to is withdrawn from the shared catalog | The link is ignored and the ingredient is treated as unresolved; the original text is kept and it can be resolved again. |
 | A backfill result is applied after the recipe was edited | The result is discarded and read again; the edit and any `confirmed` link stay. |
 | A backfill touches a recipe that is already in an approved plan snapshot | The snapshot is unchanged. |
 | A build without the link fields saves the recipe | The link fields are dropped. This is a compatibility limitation, not a recovery path: backfill cannot be assumed to restore a lost `confirmed` mapping. |
@@ -155,17 +178,19 @@ These examples are proposed acceptance fixtures, not passing test results.
 Existing recipe JSON and approved snapshots remain readable; absence of a food
 identity is valid. A later implementation must define additive serialization,
 old/new client behavior, migration and rollback before it changes persisted
-data. It must preserve pending outbox entries and original ingredient text,
-and test offline replay and two-account isolation. The ingredient link is
-additive JSON on the existing embedded ingredient. Today `Ingredient.fromJson`
-ignores unknown fields and `toJson` omits them, so a build that does not know
-`foodId` and `matchedKey` drops them when it saves a recipe. Mixed-version
+data. It must preserve pending outbox entries and original ingredient text, and
+test offline replay and two-account isolation. The ingredient link is additive
+JSON on the existing embedded ingredient. Today `Ingredient.fromJson` ignores
+unknown fields and `toJson` omits them, so a build that does not know `foodId`,
+`matchedKey` and `linkSource` drops them when it saves a recipe. Mixed-version
 writes and pending outbox entries created by an older build are an explicit
 rollout gate: it is not enough that team builds update together, and backfill
 must not be treated as a way to restore a confirmation an old build dropped.
-There is no schema or outbox change in this proposal. Ingredient text can be user data: no raw text
-or request content should be logged; any AI use requires its own reviewed
-consent, privacy and gateway contract.
+There is no schema or outbox change in this proposal.
+
+Ingredient text can be user data: no raw text or request content should be
+logged; any AI use requires its own reviewed consent, privacy and gateway
+contract.
 
 ## Decisions required before implementation
 
