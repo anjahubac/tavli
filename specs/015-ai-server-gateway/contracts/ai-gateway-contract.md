@@ -4,6 +4,9 @@
 is implemented yet. Revised 2026-11-19 after Dev 4 review: atomic quota
 reservation with minute, concurrency and shared limits; quota and platform
 `401` handling in `AIRouter`; per-model deadlines shared by gateway and client.
+Second revision: quota pauses scoped to account and request kind, shared count
+kept after account deletion, client timeout before the gateway answers, and
+how the chain reaches `openai/default`.
 **Author**: Dev 2 | **Reviewer**: Dev 4 (TRELLO-36: request and error format)
 **Date**: 2026-11-17 | **Builds on**: [spike-photo-timing.md](../spike-photo-timing.md)
 (decision A), [AI response contract](../../014-ai-response-contracts/contracts/ai-response-contract.md)
@@ -90,8 +93,9 @@ or a provider endpoint (spec 015 SC-001).
 | 400 | `{"error": "bad_request"}` | `BadRequestError`, next model | existing message |
 | 401 | any body (see Gateway errors in `AIRouter`) | `GatewayAuthError`: refresh session once and retry; then skip the gateway | “Sesija je istekla. Prijavi se ponovo.” (006 copy) |
 | 413 | `{"error": "too_large"}` | `BadRequestError`, stop | existing message |
-| 429 | `{"error": "quota_exceeded", "retryAfterSeconds": n}` | `GatewayQuotaError`: skip every gateway model until `n`; user keys continue | “Limit je trenutno potrošen. Pokušaj malo kasnije.” |
-| 429 | `{"error": "busy", "retryAfterSeconds": n}` | `GatewayQuotaError` (too many calls at once); same handling | same as above |
+| 429 | `{"error": "quota_exceeded", "limit": "daily", "kind": "vision" or "text", "retryAfterSeconds": n}` | `GatewayQuotaError`: pause the gateway for this account and kind until `n`; user keys continue | “Limit je trenutno potrošen. Pokušaj malo kasnije.” |
+| 429 | `{"error": "quota_exceeded", "limit": "minute" or "global", "retryAfterSeconds": n}` | `GatewayQuotaError`: pause the gateway for this account, both kinds, until `n`; user keys continue | same as above |
+| 429 | `{"error": "busy", "retryAfterSeconds": n}` | `GatewayQuotaError` (too many calls at once): same as `minute` | same as above |
 | 429 | `{"error": "provider_rate_limited", "retryAfterSeconds": n?}` | `RateLimitError` for this model, next model | — |
 | 502 | `{"error": "provider_error"}` | `TransientError`, next model | — |
 | 503 | `{"error": "model_unavailable"}` | `ModelNotFoundError`, next model | — |
@@ -110,12 +114,20 @@ that model and tries the next) and every `AuthError` as a bad key. Both are
 wrong for the gateway, so the client slice adds two `AIError` subtypes that
 only the gateway path throws:
 
-- `GatewayQuotaError(retryAfter)`: the router pauses the built-in origin as a
-  whole (every model with `KeyOrigin.builtIn`) until `retryAfter`, stored in
-  the model status store so a new request does not retry it. It does not pause
-  any user key. The loop continues, so models with a user key (BYOK) are still
-  tried; if none exists, `AllModelsExhausted.nextAvailableAt` reports the
-  quota reset.
+- `GatewayQuotaError(retryAfter, kind?)`: the router pauses the gateway (every
+  model with `KeyOrigin.builtIn`) until `retryAfter`, keyed by the **signed-in
+  account id** and the **request kind** (`vision` or `text`, from
+  `AIRequest.kind`). A `daily` limit carries the kind from the body and pauses
+  only that kind, so a used-up photo limit does not block text recipes or
+  plans; `minute`, `global` and `busy` pause both kinds. The pause is
+  device-local and survives an app restart, but it never applies to another
+  account signed in on the same device, and signing out does not clear it for
+  the account that hit it. Today's `ModelStatuses` table is per device and per
+  model, so the client slice stores these pauses separately (account id, kind,
+  until) with its own drift migration and test; per-model cooldowns stay where
+  they are. It does not pause any user key. The loop continues, so models with
+  a user key (BYOK) are still tried; if none exists,
+  `AllModelsExhausted.nextAvailableAt` reports the quota reset.
 - `GatewayAuthError`: Supabase can reject the token with `401` before the
   function runs, with a platform body instead of
   `{"error": "unauthorized"}` ([auth headers](https://supabase.com/docs/guides/functions/auth-headers)),
@@ -127,6 +139,27 @@ only the gateway path throws:
 Existing per-model handling (`provider_rate_limited`, `model_unavailable`,
 timeouts) is unchanged.
 
+### Model chain and `openai/default`
+
+The client slice adds `openai/default` to `ChainConfig.defaults` as the
+**last** model of both chains (vision and text, `supportsVision: true`,
+timeout 60 s). It has only a built-in (gateway) credential: the app has no
+OpenAI client and no user key field for it (D3). Putting it last keeps the
+existing rule that a user's own key goes first: for each model the router
+tries the user key before the built-in one, so a user key on an earlier model
+is always used before the paid model.
+
+- **OpenAI-only deployment** (production with only `OPENAI_API_KEY`): the free
+  built-in models answer `503 model_unavailable`. That check is in step 3,
+  before the reservation, so it costs no quota and no provider call. The
+  router already remembers `ModelNotFoundError` per model and credential for
+  the rest of the app session, so only the first request after start walks
+  the chain; later requests go straight to `openai/default`.
+- **`tavli-dev` with free keys only**: `openai/default` answers `503` once and
+  is skipped; the free models work as today.
+- A newly set or removed provider secret is picked up on the next app start,
+  because availability is remembered per session.
+
 ### Deadlines
 
 Each allowlisted model has one timeout, the same value on both sides: the
@@ -137,6 +170,15 @@ first, and the router never starts a fallback while the gateway's attempt is
 still running. With the current models the longest wait is 60 + 15 = 75 s,
 under the 150 s Edge Function limit measured in the spike. Changing a model's
 timeout changes `ChainConfig` and the gateway allowlist in the same PR.
+
+If the client still times out first (a slow network or a stalled upload), it
+treats the call as `TransientError(isTimeout: true)` and moves to the next
+model, as today; it does not retry the same model. The gateway call keeps
+running until its own deadline: it has already reserved its quota row, so it
+counts as one call, and it releases the row when it finishes (or the 90 s
+expiry applies). Its answer is discarded, never shown or saved. The
+abandoned call and the next model's call can be in flight together, which is
+why the per-user in-flight limit is 2 and not 1.
 
 ## Limits (Q1 proposal)
 
@@ -165,9 +207,9 @@ Every limit is checked and consumed in one database transaction before the
 provider call, so parallel requests cannot all pass the check and then all
 spend:
 
-- Table `ai_calls`: `id`, `user_id`, `kind` (`vision` or `text`),
-  `started_at`, `finished_at` (null while in flight). One row per provider
-  call; no prompt, model output or model name.
+- Table `ai_calls`: `id`, `user_id` (nullable, see account deletion),
+  `kind` (`vision` or `text`), `started_at`, `finished_at` (null while in
+  flight). One row per provider call; no prompt, model output or model name.
 - `ai_reserve(user_id, kind)`, `security definer`, executable by
   `service_role` only. It takes a transaction-scoped advisory lock, counts the
   user's rows started in the last minute, today (UTC) for that kind and still
@@ -184,10 +226,19 @@ spend:
 - Rows older than 2 days are deleted by the reservation function itself; no
   scheduled job is needed.
 
+**Account deletion.** `delete_account_data` does not delete the account's
+`ai_calls` rows; it sets their `user_id` to `null` (the foreign key is
+`on delete set null`). The rows then hold no personal data (kind and times
+only), still count toward the shared daily limit, and disappear with the
+normal 2-day cleanup. Deleting an account therefore cannot reset the shared
+count. A new account gets fresh per-user limits; that is accepted, because the
+shared limit still bounds the total cost.
+
 `authenticated` gets no access to the table or the functions. They are created
-in a later slice with RLS enabled, explicit grants, a pgTAP test (two accounts,
-each limit, parallel reservations past the limit, expired in-flight row) and
-deletion through `delete_account_data`.
+in a later slice with RLS enabled, explicit grants and a pgTAP test: two
+accounts, each limit, parallel reservations past the limit, an expired
+in-flight row, and account deletion keeping the shared count while removing
+the user id.
 
 ## Secrets (set manually, never in the repo or chat)
 
@@ -212,7 +263,8 @@ app release. Emergency stop: remove the provider's secret (its models return
 
 The gateway never logs tokens, prompts, images, model output or keys. It may
 log the task, model, status and duration. `ai_calls` holds only user id, kind
-and start/finish times, and is deleted after 2 days.
+and start/finish times, loses the user id when the account is deleted, and is
+deleted after 2 days.
 
 ## Client changes (later slice)
 
@@ -221,7 +273,9 @@ and start/finish times, and is deleted after 2 days.
   path. `ChainConfig`, user model order, per-model cooldowns and the 014
   validator are unchanged.
 - `GatewayQuotaError` and `GatewayAuthError` with the router handling in
-  Gateway errors in `AIRouter`, and the gateway deadline from Deadlines.
+  Gateway errors in `AIRouter`, the per-account, per-kind pause store, the
+  gateway deadline from Deadlines, and `openai/default` as the last model in
+  `ChainConfig.defaults`.
 - Cutover (FR-104): built-in keys are removed from `BuiltInKeys`,
   `secrets.example.json` and the build; a check proves the built app contains
   no provider key.
