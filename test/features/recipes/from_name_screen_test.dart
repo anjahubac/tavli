@@ -16,16 +16,10 @@ void main() {
       isFalse,
     );
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'sarma',
-    );
+    await tester.enterText(textField('Naziv jela'), 'sarma');
     await tester.pump();
     await tester.tap(find.byTooltip('Više porcija'));
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Želje (nije obavezno)'),
-      'bez luka',
-    );
+    await tester.enterText(textField('Želje (nije obavezno)'), 'bez luka');
     await tapButton(tester, 'Napravi recept');
 
     final prompt = app.adapter.requests.single.data.toString();
@@ -50,17 +44,14 @@ void main() {
       location: '/recipes/new/name',
       ai: [aiAnswer(recipeJson('Sarma'))],
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'sarma',
-    );
+    await tester.enterText(textField('Naziv jela'), 'sarma');
     await tester.pump();
     await tapButton(tester, 'Napravi recept');
 
     await tapButton(tester, 'Odbaci');
 
     expect(await app.titles(), isEmpty);
-    expect(find.widgetWithText(TextField, 'Naziv jela'), findsOneWidget);
+    expect(textField('Naziv jela'), findsOneWidget);
     expect(find.text('sarma'), findsOneWidget);
   });
 
@@ -70,10 +61,7 @@ void main() {
       location: '/recipes/new/name',
       ai: [(401, '{"error":"bad key"}', {})],
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'sarma',
-    );
+    await tester.enterText(textField('Naziv jela'), 'sarma');
     await tester.pump();
     await tapButton(tester, 'Napravi recept');
 
@@ -94,10 +82,7 @@ void main() {
       location: '/recipes/new/name',
       ai: [aiAnswer(recipeJson('Musaka'))],
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'musaka',
-    );
+    await tester.enterText(textField('Naziv jela'), 'musaka');
     await tester.pump();
     await tapButton(tester, 'Napravi recept');
     await tapButton(tester, 'Sačuvaj');

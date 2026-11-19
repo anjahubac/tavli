@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/recipe.dart';
 import '../../providers.dart';
@@ -96,15 +97,12 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
             )
           : ReadableScroll(
               children: [
-                TextField(
+                TavliTextField(
+                  label: 'Naziv jela',
+                  hint: 'npr. sarma, musaka, palačinke',
                   controller: _name,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Naziv jela',
-                    hintText: 'npr. sarma, musaka, palačinke',
-                  ),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -131,15 +129,11 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                TavliTextField(
+                  label: 'Želje (nije obavezno)',
+                  hint: 'npr. bez luka, posno',
                   controller: _wishes,
-                  minLines: 1,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Želje (nije obavezno)',
-                    hintText: 'npr. bez luka, posno',
-                  ),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(

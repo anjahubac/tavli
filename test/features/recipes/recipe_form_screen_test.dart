@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../helpers/test_app.dart';
 
 void main() {
-  Finder field(String label) => find.widgetWithText(TextField, label);
+  Finder field(String label) => textField(label);
 
   Future<void> addIngredient(
     WidgetTester tester, {
@@ -25,6 +25,28 @@ void main() {
     await tester.tap(find.descendant(of: dialog, matching: button('Sačuvaj')));
     await tester.pumpAndSettle();
   }
+
+  testTavli('telefon: porcije i minuti stoje jedno pored drugog', (
+    tester,
+  ) async {
+    await pumpTavli(tester, location: '/recipes/new/manual');
+    final servings = tester.getTopLeft(find.text('Broj porcija'));
+    final prep = tester.getTopLeft(find.text('Vreme pripreme (min)'));
+    expect(prep.dy, servings.dy);
+    expect(tester.takeException(), isNull);
+  });
+
+  testTavli('tekst 2×: polja jedno ispod drugog, nazivi se ne seku', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(tester, location: '/recipes/new/manual');
+    final servings = tester.getRect(find.text('Broj porcija'));
+    final prep = tester.getRect(find.text('Vreme pripreme (min)'));
+    expect(prep.top, greaterThan(servings.bottom));
+    expect(tester.takeException(), isNull);
+  });
 
   testTavli('bez naziva i sastojaka ništa se ne čuva', (tester) async {
     final app = await pumpTavli(tester, location: '/recipes/new/manual');
