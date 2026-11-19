@@ -32,7 +32,7 @@ The counts do not describe an active team catalog or prove correctness of the
 remaining mappings.
 
 The [portion-calculation fixture](fixtures/recipe_nutrition_test.dart.txt)
-holds nine synthetic test cases for a per-portion calculation. It is stored as
+holds ten synthetic test cases for a per-portion calculation. It is stored as
 text and is not run by the team test suite: the nutrition modules it exercises
 do not exist in team `dev`, so these cases are specifications of expected
 results for whoever implements the calculation, not passing tests.
@@ -46,7 +46,7 @@ All fixture values are synthetic. Two manually checkable examples are:
 The fixture also checks that missing data is excluded and counted as incomplete,
 not treated as zero. It does not establish that actual food matches, densities,
 brands, sources or individual results are accurate. Its modules do not exist
-on team `dev` at baseline `928d655b`.
+on current team `dev`.
 
 The step-free shopping journey is covered by team tests on `dev` (PR #40).
 They do not by themselves establish the complete team flow from saving a
@@ -74,7 +74,8 @@ as verified. The stored fixture does not satisfy that gate.
   rather than copying either historical seed blindly.
 - Agree how consumers represent coverage, approximate conversions and missing
   data. Team acceptance includes a seven-of-eight ingredient case; the stored
-  fixture specifies the earlier prototype's behavior, not that team case.
+  fixture has a synthetic version of it, which still has to be repeated against
+  the accepted Tavli catalog.
 - Keep attributed reference values separate from private member diaries and
   targets. Tracking is off by default according to [spec 023](spec.md); this
   research does not implement tracking, consent, storage or access control.
