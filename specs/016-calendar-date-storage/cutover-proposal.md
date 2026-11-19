@@ -8,8 +8,7 @@ owners reviewing migration and sync behavior.
 
 ## Existing representation
 
-At team `dev` commit `928d655b32035d752332763840cc5c4b0e281697`, the intended
-calendar-day columns are:
+On team `dev` as of 18 Nov 2026, the intended calendar-day columns are:
 
 | Logical value | Server column / type | Local drift column |
 | --- | --- | --- |
@@ -18,9 +17,10 @@ calendar-day columns are:
 | Shopping period | `shopping_lists.period_start`, `period_end`: nullable `timestamptz`, both present or both absent | `periodStart`, `periodEnd`: nullable `DateTime` |
 
 The repository creates intended calendar values as UTC midnight using
-`CivilDate.toWire()`. The sync entity sends UTC timestamps, while its existing
-reader parses input and converts to local time; consumers interpret calendar
-fields using `CivilDate.fromWire()`. Local schema version is 5 at this baseline.
+`CivilDate.toWire()`. The sync entity sends UTC timestamps; since #42 its
+reader also accepts date-only values (see Compatibility evidence), and
+consumers interpret calendar fields using `CivilDate.fromWire()`. Local schema
+version is 5 at this baseline.
 `created_at` and other event times are instants and are outside this change.
 Pantry expiry is excluded pending its separate product decision.
 
@@ -30,45 +30,39 @@ Changing a type alone does not prove existing historical values all followed
 the intended UTC-midnight convention. The source time zone of exceptional
 legacy timestamps may not be recoverable from the timestamp alone.
 
-## Reproducible compatibility evidence
+## Compatibility evidence
 
-The attached [synthetic fixture](fixtures/civil_date_wire.dart.txt) exercises
-the actual team sync entities with both timestamp and date-only input, year
-boundaries, DST dates and null shopping periods. It is a manually invoked
-future-compatibility check and is not included in the normal test suite.
-From a checkout at the baseline above, with Flutter 3.50.0 and dependencies
-already installed:
+The [synthetic fixture](fixtures/civil_date_wire.dart.txt) exercises the team
+sync entities with both timestamp and date-only input, year boundaries, DST
+dates, null shopping periods and invalid calendar input (nine cases). It is a
+manually invoked check and is not part of the normal test suite.
+
+Before the reader change in #42 (merged 18 Nov 2026), five of the nine cases
+failed under `Europe/Belgrade`: for example `2026-12-31` was read as
+`2026-12-30`, and an invalid date was normalized instead of rejected. The
+inputs were synthetic. The server columns still use timestamps, so this never
+showed that hosted rows return date-only values or that existing dates are
+wrong.
+
+On current `dev`, which includes #42, all nine cases pass under both
+`Europe/Belgrade` and `America/Los_Angeles`. To reproduce, from a `dev`
+checkout with dependencies installed:
 
 ```sh
 cp specs/016-calendar-date-storage/fixtures/civil_date_wire.dart.txt /tmp/tavli-civil-date-wire-test.dart
 TZ=Europe/Belgrade flutter test --no-pub /tmp/tavli-civil-date-wire-test.dart --reporter expanded
+TZ=America/Los_Angeles flutter test --no-pub /tmp/tavli-civil-date-wire-test.dart --reporter expanded
 ```
 
-Observed on the baseline: 4 cases pass and 5 fail. In particular, input
-`2026-12-31` is read as `2026-12-30`; a timestamp representing midnight UTC
-retains its expected day. The invalid date-only input is also normalized
-instead of rejected. These are synthetic inputs; the current server columns
-still use timestamps, so this does not establish that existing hosted rows
-currently return date-only values or that all current dates are incorrect.
+#42 also asserts exact UTC-midnight storage after a Drift round trip for plan
+dates and shopping periods.
 
-An uncommitted prototype in a separate local checkout based on the earlier
-`207c94c` baseline recognizes date-only input before the existing timestamp
-reader. With its own Flutter 3.47.9 dependencies, the same nine fixture cases
-passed separately in `Europe/Belgrade` and `America/Los_Angeles`. That evidence
-is not a test of this PR, the current 3.50.0 application, a server migration,
-offline replay or two-device synchronization. The prototype has not been
-integrated or accepted.
+The fixture already assumes one reading of legacy timestamps: the UTC day of
+the instant (for example `2027-01-01T00:00:00+01:00` is `2026-12-31`). Step 1
+below still has to agree what legacy values mean, so until then this is an
+assumption of the fixture, not a decision.
 
-## Reader verification on the team branch
-
-The same fixture passed all nine cases under both `Europe/Belgrade` and
-`America/Los_Angeles` with Flutter 3.50.0 on
-[#42 at ff4bc8d](https://github.com/anjahubac/tavli/pull/42/commits/ff4bc8d75f292bbfb7f595d0267e7d494ca33a63).
-It covers all five date fields, timestamp offsets, the year boundary,
-daylight-saving dates, null shopping periods and invalid calendar input.
-To reproduce, copy the fixture as above and run it from that PR's checkout
-with each time zone. The reader PR also asserts exact UTC-midnight storage
-after a Drift round trip for plan dates and shopping periods.
+## What is still unverified
 
 The fixture verifies reading only. Before converting columns, rehearse on a
 disposable database with synthetic records. Include two legacy shopping lists
@@ -110,11 +104,11 @@ writes still require local integration tests after the cutover is agreed.
    non-midnight values. Define a privacy-preserving, non-production validation
    of conversion collisions and ambiguous records; do not infer original device
    zones from timestamps.
-2. Specify and test a compatible reader on the current team baseline for both
-   old timestamps and valid date-only values, preserving event timestamps.
-   Include old cache upgrades, real drift serialization, DST and the supported
-   client/platform matrix. This prepares a client; it does not authorize a
-   server type change.
+2. A compatible reader for both old timestamps and valid date-only values is in
+   `dev` (#42), preserving event timestamps. Still to cover: old cache
+   upgrades, the supported client/platform matrix, and the cases above on
+   real stored data. This prepares a client; it does not authorize a server
+   type change.
 3. Agree a server/client cutover that covers already-installed and offline
    clients. Verify how queued old writes, interrupted sync, retries, concurrent
    edits, account/household switching and downgrade are handled. Existing
@@ -138,8 +132,20 @@ to any shared environment, the schema coordinator must confirm that it has no
 data to preserve and that no supported clients have pending writes. A local
 reset does not settle the handling of installed clients or offline caches.
 
-The compatibility reader is being verified in #42, including equality with
-the UTC-midnight values used for shopping week lookups. The server-side slice
+Status (18 Nov 2026): the schema coordinator replied that she cannot confirm
+that `tavli-dev` has no affected calendar data without checking it. If the
+check shows nothing to keep, the fresh-database option replaces the migration
+path for `tavli-dev`. The check, to be run by someone with access to that
+project:
+
+- row counts of `meal_plans`, `meal_plan_entries` and `shopping_lists`, and
+  whether any of them belong to people who need the data;
+- whether any installed client can still hold queued writes in its outbox
+  (the team builds that were used against `tavli-dev`);
+- the same counts for any other shared environment before it is reset.
+
+The compatibility reader is merged (#42), including equality with the
+UTC-midnight values used for shopping week lookups. The server-side slice
 still needs tests for all five date fields, timestamp fields that must stay
 instants, and shopping ordering and uniqueness. Use the existing requirement
 to add a new migration to the chain instead of editing an applied migration.
