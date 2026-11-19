@@ -1,3 +1,5 @@
+import 'recipe_labels.dart';
+
 enum RecipeSource { photo, ai, manual }
 
 /// `summary` = naziv i sastojci (dovoljno za plan i listu za kupovinu),
@@ -67,6 +69,7 @@ class Recipe {
     this.prepMinutes,
     this.imagePath,
     this.answeredBy,
+    this.labels = RecipeLabels.none,
   });
 
   final String id;
@@ -81,6 +84,9 @@ class Recipe {
   /// Oznaka modela koji je napravio ili poslednji izmenio recept.
   final String? answeredBy;
   final DateTime createdAt;
+
+  /// Obrok, težina i vrsta jela. Nisu deo istorije verzija.
+  final RecipeLabels labels;
 
   DetailLevel get detailLevel =>
       steps.isEmpty ? DetailLevel.summary : DetailLevel.full;
@@ -135,6 +141,7 @@ class Recipe {
     List<String>? steps,
     String? imagePath,
     String? answeredBy,
+    RecipeLabels? labels,
   }) => Recipe(
     id: id,
     title: title ?? this.title,
@@ -146,6 +153,7 @@ class Recipe {
     imagePath: imagePath ?? this.imagePath,
     answeredBy: answeredBy ?? this.answeredBy,
     createdAt: createdAt,
+    labels: labels ?? this.labels,
   );
 
   /// Ceo recept za čuvanje (npr. prethodne verzije u bazi).

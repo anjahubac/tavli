@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/app/router.dart';
 import 'package:tavli/domain/account.dart';
+import 'package:tavli/features/account/account_header.dart';
 
 import '../helpers/test_app.dart';
 
@@ -39,6 +40,8 @@ void main() {
       const TextSelection(baseOffset: 0, extentOffset: 7),
     );
     expect(boxes, hasLength(1));
+    // Natpis raste najviše do 1,5×, da navigacija ostane niska.
+    expect(label.textScaler.scale(10), 15);
     await tester.tap(
       find.descendant(
         of: find.byType(NavigationBar),
@@ -50,6 +53,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testTavli('tekst 2×: prazna Ostava ima manju sliku, naslov je vidljiv', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(tester, size: const Size(320, 640), location: '/pantry');
+    await tester.pump(const Duration(seconds: 1));
+    expect(
+      tester.getSize(find.byType(FittedBox)).height,
+      lessThanOrEqualTo(88),
+    );
+    final title = tester.getRect(find.text('Još nema unetih namirnica'));
+    expect(title.top, lessThan(640 / 2));
+    expect(tester.takeException(), isNull);
+  });
+
   testTavli('širok ekran (macOS): bočni meni', (tester) async {
     await pumpTavli(tester, size: wide);
 
@@ -57,12 +76,10 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testTavli('četiri taba redom: Plan, Nabavka, Recepti, Ostava', (
-    tester,
-  ) async {
+  testTavli('pet tabova redom, Početna u sredini', (tester) async {
     await pumpTavli(tester, size: const Size(390, 844), location: '/plan');
 
-    expect(labels(tester), ['Plan', 'Nabavka', 'Recepti', 'Ostava']);
+    expect(labels(tester), ['Plan', 'Nabavka', 'Početna', 'Recepti', 'Ostava']);
     expect(currentTab(tester), 'Plan');
     // Gore je naziv aplikacije, ne naziv taba.
     expect(find.widgetWithText(AppBar, 'Tavli'), findsOneWidget);
@@ -73,13 +90,137 @@ void main() {
     expect(currentTab(tester), 'Nabavka');
   });
 
-  for (final size in [const Size(390, 844), wide]) {
-    testTavli(
-      'avatar otvara Profil, nazad vraća na tab (${size.width.toInt()} px)',
-      (tester) async {
-        await pumpTavli(tester, size: size, location: '/pantry');
+  testTavli('bočni meni: Početna na vrhu, svaka stavka otvara svoj tab', (
+    tester,
+  ) async {
+    await pumpTavli(tester, size: wide, location: '/plan');
 
-        await tester.tap(find.byTooltip('Profil i podešavanja'));
+    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
+    expect(
+      [for (final d in rail.destinations) (d.label as Text).data],
+      ['Početna', 'Plan', 'Nabavka', 'Recepti', 'Ostava'],
+    );
+    expect(rail.selectedIndex, 1);
+    for (final (index, label) in [
+      'Početna',
+      'Plan',
+      'Nabavka',
+      'Recepti',
+      'Ostava',
+    ].indexed) {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationRail),
+          matching: find.text(label),
+        ),
+      );
+      // Početna i Nabavka imaju animacije u petlji, pa bez pumpAndSettle.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(currentTab(tester), label);
+      expect(
+        tester
+            .widget<NavigationRail>(find.byType(NavigationRail))
+            .selectedIndex,
+        index,
+      );
+    }
+  });
+
+  testTavli('Početna je podrazumevani tab i za sada je prazna', (tester) async {
+    await pumpTavli(tester, location: homeLocation, settle: false);
+    // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(currentTab(tester), 'Početna');
+    expect(find.widgetWithText(AppBar, 'Tavli'), findsOneWidget);
+    expect(find.byTooltip('Profil i podešavanja'), findsOneWidget);
+    expect(find.text('Ovde će biti današnji obroci'), findsOneWidget);
+    expect(
+      find.text('Uskoro: šta se danas kuva i šta treba da uradiš.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testTavli('320 px, tekst 2×: pet tabova bez prelivanja', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(
+      tester,
+      size: const Size(320, 900),
+      location: homeLocation,
+      settle: false,
+    );
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.takeException(), isNull);
+    final label = tester.renderObject<RenderParagraph>(
+      find.text('Početna').last,
+    );
+    final boxes = label.getBoxesForSelection(
+      const TextSelection(baseOffset: 0, extentOffset: 7),
+    );
+    expect(boxes, hasLength(1));
+    for (final tab in tabs) {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.byIcon(tab.icon),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(currentTab(tester), tab.label);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testTavli('telefon: avatar gore desno otvara Profil, nazad vraća na tab', (
+    tester,
+  ) async {
+    await pumpTavli(tester, size: const Size(390, 844), location: '/pantry');
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byTooltip('Profil i podešavanja'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byTooltip('Profil i podešavanja'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
+    expect(find.text('Odjavi se'), findsOneWidget);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(currentTab(tester), 'Ostava');
+  });
+
+  for (final width in [800.0, 1200.0]) {
+    testTavli(
+      'širok ekran (${width.toInt()} px): Profil je na dnu bočnog menija, '
+      'avatar se ne ponavlja gore',
+      (tester) async {
+        await pumpTavli(tester, size: Size(width, 800), location: '/pantry');
+
+        expect(find.byTooltip('Profil i podešavanja'), findsNothing);
+        final railProfile = find.descendant(
+          of: find.byType(NavigationRail),
+          matching: find.byType(ProfileRailItem),
+        );
+        expect(railProfile, findsOneWidget);
+        expect(
+          find.descendant(of: railProfile, matching: find.text('Profil')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: railProfile, matching: find.text('AP')),
+          findsOneWidget,
+        );
+        // Avatar postoji samo jednom na ekranu.
+        expect(find.byType(InitialsAvatar), findsOneWidget);
+
+        await tester.tap(railProfile);
         await tester.pumpAndSettle();
         expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
         expect(find.text('Odjavi se'), findsOneWidget);
@@ -91,29 +232,52 @@ void main() {
     );
   }
 
-  testTavli('direktna adresa /profile: nazad vodi na Plan', (tester) async {
+  testTavli('direktna adresa /profile: nazad vodi na Početnu', (tester) async {
     await pumpTavli(tester, location: '/profile');
     await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-    expect(currentTab(tester), 'Plan');
+    // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(currentTab(tester), 'Početna');
   });
 
-  test('posle prijave bez tražene adrese otvara se Plan', () {
-    const signedIn = SignedIn(
-      Account(
-        userId: 'u1',
-        email: 'ana@tavli.test',
-        householdId: 'h1',
-        householdName: 'Kod Ane',
-        role: 'owner',
-        displayName: 'Ana',
-      ),
-    );
-    expect(authRedirect(signedIn, Uri.parse('/sign-in')), '/plan');
+  test('posle prijave bez tražene adrese otvara se Početna', () {
+    const signedIn = SignedIn(_account);
+    expect(authRedirect(signedIn, Uri.parse('/sign-in')), '/home');
+    expect(authRedirect(signedIn, Uri.parse('/sign-in/name')), '/home');
     expect(
       authRedirect(signedIn, Uri.parse('/sign-in?from=%2Frecipes')),
       '/recipes',
     );
-    expect(authRedirect(const SignedOut(), Uri.parse('/plan')), '/sign-in');
+    expect(authRedirect(signedIn, Uri.parse('/sign-in?from=%2Fplan')), '/plan');
+    expect(authRedirect(signedIn, Uri.parse('/home')), isNull);
+  });
+
+  test('odjavljen: Početna se ne pamti, druge adrese se pamte', () {
+    expect(authRedirect(const SignedOut(), Uri.parse('/home')), '/sign-in');
+    expect(
+      authRedirect(const SignedOut(), Uri.parse('/plan')),
+      '/sign-in?from=%2Fplan',
+    );
+    expect(
+      authRedirect(const SignedOut(), Uri.parse('/recipes/r1')),
+      '/sign-in?from=%2Frecipes%2Fr1',
+    );
+    expect(
+      authRedirect(
+        const NeedsName(_account),
+        Uri.parse('/sign-in?from=%2Fplan'),
+      ),
+      '/sign-in/name?from=%2Fplan',
+    );
   });
 }
+
+const _account = Account(
+  userId: 'u1',
+  email: 'ana@tavli.test',
+  householdId: 'h1',
+  householdName: 'Kod Ane',
+  role: 'owner',
+  displayName: 'Ana',
+);

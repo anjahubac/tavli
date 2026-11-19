@@ -5,6 +5,7 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
+import '../../domain/recipe_labels.dart';
 import 'recipe_photo.dart';
 
 /// Visina slike recepta iznad sadržaja.
@@ -21,6 +22,7 @@ class RecipeView extends StatelessWidget {
     super.key,
     this.photoBytes,
     this.showTitle = false,
+    this.onEditLabels,
   });
 
   final Recipe recipe;
@@ -28,6 +30,9 @@ class RecipeView extends StatelessWidget {
   /// Slika koja još nije sačuvana (pregled recepta iz slike).
   final Uint8List? photoBytes;
   final bool showTitle;
+
+  /// Dugme „Izmeni oznake“; null = oznake se samo prikazuju.
+  final VoidCallback? onEditLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +75,8 @@ class RecipeView extends StatelessWidget {
               _Fact(Icons.timer_outlined, '${recipe.prepMinutes} min'),
           ],
         ),
+        const SizedBox(height: TavliSpacing.medium),
+        _Labels(recipe.labels, onEdit: onEditLabels),
         const SizedBox(height: TavliSpacing.medium),
         const TavliSectionHeader(
           'Sastojci',
@@ -124,6 +131,71 @@ class RecipeView extends StatelessWidget {
   }
 }
 
+/// Oznake recepta; nepoznata oznaka piše „Nije označeno“.
+class _Labels extends StatelessWidget {
+  const _Labels(this.labels, {this.onEdit});
+
+  final RecipeLabels labels;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const unknown = 'Nije označeno';
+    final meals = labels.mealSet;
+    Widget row(String name, String value) => Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$name: ',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(
+              text: value,
+              style: value == unknown
+                  ? TextStyle(color: theme.colorScheme.onSurfaceVariant)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Wrap: uz uvećan tekst dugme prelazi u novi red umesto preliva.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          children: [
+            Text('Oznake', style: theme.textTheme.titleMedium),
+            if (onEdit != null)
+              TextButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Izmeni oznake'),
+              ),
+          ],
+        ),
+        row(
+          'Obrok',
+          meals.isEmpty
+              ? unknown
+              : [
+                  for (final m in MealSuitability.values)
+                    if (meals.contains(m)) m.label,
+                ].join(', '),
+        ),
+        row('Težina', labels.weightValue?.label ?? unknown),
+        row('Vrsta jela', labels.dishKindValue?.label ?? unknown),
+      ],
+    );
+  }
+}
+
 /// Sadržaj ekrana ograničen na čitljivu širinu i sa skrolovanjem.
 class ReadableScroll extends StatelessWidget {
   const ReadableScroll({super.key, required this.children});
@@ -162,7 +234,10 @@ class _Fact extends StatelessWidget {
       spacing: TavliSpacing.small,
       children: [
         Icon(icon, color: muted),
-        Text(text, style: TextStyle(color: muted)),
+        // Na uskom ekranu sa krupnim tekstom tekst prelazi u novi red.
+        Flexible(
+          child: Text(text, style: TextStyle(color: muted)),
+        ),
       ],
     );
   }

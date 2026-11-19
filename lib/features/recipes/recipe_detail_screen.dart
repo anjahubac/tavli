@@ -7,6 +7,7 @@ import '../../domain/recipe.dart';
 import '../../domain/shopping_source.dart';
 import 'ingredient_review_sheet.dart';
 import 'keep_screen_on.dart';
+import 'recipe_labels_sheet.dart';
 import 'recipe_providers.dart';
 import 'recipe_view.dart';
 import 'versions_sheet.dart';
@@ -63,6 +64,14 @@ class _Detail extends ConsumerWidget {
     context.go('/recipes');
     await repo.delete(recipe.id);
     showTavliMessageOn(messenger, 'Recept je obrisan.');
+  }
+
+  Future<void> _editLabels(BuildContext context, WidgetRef ref) async {
+    final next = await showRecipeLabelsSheet(context, recipe.labels);
+    if (next == null) return;
+    await ref.read(recipeRepositoryProvider).setLabels(recipe.id, next);
+    if (!context.mounted) return;
+    showTavliMessageOn(ScaffoldMessenger.of(context), 'Oznake su sačuvane.');
   }
 
   @override
@@ -127,7 +136,7 @@ class _Detail extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: TavliSpacing.large),
-            RecipeView(recipe),
+            RecipeView(recipe, onEditLabels: () => _editLabels(context, ref)),
           ],
         ),
       ),

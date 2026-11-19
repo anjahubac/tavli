@@ -18,10 +18,12 @@ void main() {
     matching: find.text(label),
   );
 
-  // Profil je iznad tabova: nazad vodi na Plan, avatar ga ponovo otvara.
+  // Profil je iznad tabova: nazad vodi na Početnu, avatar ga ponovo otvara.
+  // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
   Future<void> leaveProfile(WidgetTester tester) async {
     await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
   }
 
   Future<void> openProfile(WidgetTester tester) async {
