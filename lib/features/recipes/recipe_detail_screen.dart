@@ -83,14 +83,8 @@ class _Detail extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: !embedded,
-        title: Text(recipe.title),
         actions: [
           const KeepScreenOnButton(),
-          TavliIconButton(
-            semanticLabel: 'Izmeni sa AI',
-            icon: Icons.auto_awesome_outlined,
-            onPressed: () => context.go('/recipes/${recipe.id}/chat'),
-          ),
           TavliIconButton(
             semanticLabel: 'Izmeni',
             icon: Icons.edit_outlined,
@@ -98,6 +92,10 @@ class _Detail extends ConsumerWidget {
           ),
           TavliMenuButton(
             actions: [
+              TavliMenuAction(
+                'Izmeni sa AI',
+                onSelected: () => context.go('/recipes/${recipe.id}/chat'),
+              ),
               TavliMenuAction(
                 'Poništi poslednju izmenu',
                 enabled: hasVersions,
@@ -119,6 +117,14 @@ class _Detail extends ConsumerWidget {
       body: KeepScreenOnScope(
         child: ReadableScroll(
           children: [
+            Semantics(
+              header: true,
+              child: Text(
+                recipe.title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+            const SizedBox(height: TavliSpacing.medium),
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TavliButton.secondary(

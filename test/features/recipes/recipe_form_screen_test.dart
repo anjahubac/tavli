@@ -81,7 +81,7 @@ void main() {
     expect(row.prepMinutes, 10);
     expect(row.source, 'manual');
     expect(row.stepsJson, '["Umutiti jaja.","Peći."]');
-    expect(find.widgetWithText(AppBar, 'Kajgana'), findsOneWidget);
+    expect(recipeHeading('Kajgana'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
   });
 
@@ -95,7 +95,7 @@ void main() {
 
     final row = await app.db.select(app.db.recipes).getSingle();
     expect(row.stepsJson, '[]');
-    expect(find.widgetWithText(AppBar, 'Užina'), findsOneWidget);
+    expect(recipeHeading('Užina'), findsOneWidget);
     await tapButton(tester, 'Proveri sastojke');
     await tapButton(tester, 'Dodaj u nabavku (1)');
 
@@ -156,7 +156,7 @@ void main() {
     await tester.tap(find.text('Odbaci'));
     await tester.pumpAndSettle();
     expect(find.text('Izmeni recept'), findsNothing);
-    expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
+    expect(recipeHeading('Sarma'), findsOneWidget);
   });
 
   testTavli('brisanje uz potvrdu', (tester) async {

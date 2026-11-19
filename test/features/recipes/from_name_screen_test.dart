@@ -35,7 +35,7 @@ void main() {
 
     expect(await app.titles(), ['Sarma']);
     expect(find.text('Recept je sačuvan.'), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
+    expect(recipeHeading('Sarma'), findsOneWidget);
   });
 
   testTavli('odbacivanje ne čuva ništa', (tester) async {

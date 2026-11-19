@@ -70,7 +70,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TavliSearchField), findsNothing);
-    expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
+    expect(recipeHeading('Sarma'), findsOneWidget);
     expect(find.byType(BackButton), findsOneWidget);
     // Kategorije redom prodavnice, količina sa zarezom.
     final povrce = tester.getTopLeft(find.text('VOĆE I POVRĆE')).dy;
@@ -123,12 +123,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TavliSearchField), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
+    expect(recipeHeading('Sarma'), findsOneWidget);
     expect(find.text('Pasulj'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
     final card = tester.widget<TavliCard>(
       find.ancestor(of: find.text('Sarma'), matching: find.byType(TavliCard)),
     );
     expect(card.selected, isTrue);
+  });
+
+  testTavli('detalj: veliki naslov, AI izmena je u meniju', (tester) async {
+    await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
+    );
+    final title = tester.widget<Text>(find.text('Sarma'));
+    expect(
+      title.style?.fontSize,
+      Theme.of(tester.element(find.text('Sarma')))
+          .textTheme
+          .headlineSmall
+          ?.fontSize,
+    );
+    expect(iconButton('Izmeni sa AI'), findsNothing);
+    await tester.tap(iconButton('Još opcija'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Izmeni sa AI'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, 'Šta da promenim?'), findsOneWidget);
   });
 }
