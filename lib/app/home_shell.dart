@@ -104,19 +104,24 @@ class HomeShell extends StatelessWidget {
                         removeBottom: true,
                         child: navigation,
                       ),
+                      // Natpis taba raste sa tekstom samo do 1,5×, da
+                      // navigacija ne pojede ekran pri najvećem tekstu.
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: ExcludeSemantics(
-                          child: Text(
-                            tabs[shell.currentIndex].label,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimaryContainer,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                        child: MediaQuery.withClampedTextScaling(
+                          maxScaleFactor: 1.5,
+                          child: ExcludeSemantics(
+                            child: Text(
+                              tabs[shell.currentIndex].label,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
                           ),
                         ),
                       ),

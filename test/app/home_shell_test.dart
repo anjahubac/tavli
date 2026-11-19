@@ -40,6 +40,8 @@ void main() {
       const TextSelection(baseOffset: 0, extentOffset: 7),
     );
     expect(boxes, hasLength(1));
+    // Natpis raste najviše do 1,5×, da navigacija ostane niska.
+    expect(label.textScaler.scale(10), 15);
     await tester.tap(
       find.descendant(
         of: find.byType(NavigationBar),

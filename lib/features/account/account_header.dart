@@ -157,7 +157,6 @@ class AccountHeader extends ConsumerWidget {
     if (auth is! SignedIn) return const SizedBox.shrink();
     final a = auth.account;
     final text = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
     final name = a.displayName ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -203,12 +202,41 @@ class AccountHeader extends ConsumerWidget {
           title: const Text('Odjavi se'),
           onTap: () => _signOut(context, ref),
         ),
-        ListTile(
-          leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
-          title: Text('Obriši nalog', style: TextStyle(color: scheme.error)),
-          onTap: () => _deleteAccount(context, ref),
-        ),
       ],
+    );
+  }
+}
+
+/// Dno "Profila": nepovratno brisanje naloga, odvojeno od svakodnevnih
+/// radnji (odjava, izmena imena) da se ne dodirne slučajno.
+class DeleteAccountSection extends ConsumerWidget {
+  const DeleteAccountSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    if (auth is! SignedIn) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Text(
+              'Brisanje naloga',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
+            title: Text('Obriši nalog', style: TextStyle(color: scheme.error)),
+            subtitle: const Text('Trajno briše nalog i sve podatke'),
+            onTap: () => _deleteAccount(context, ref),
+          ),
+        ],
+      ),
     );
   }
 }
