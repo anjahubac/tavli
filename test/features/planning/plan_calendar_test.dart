@@ -9,6 +9,7 @@ import 'package:tavli/domain/meal_plan.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
+import 'package:tavli/features/planning/plan_calendar.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
@@ -117,6 +118,54 @@ Future<void> tapText(WidgetTester tester, String text) async {
 }
 
 void main() {
+  testWidgets('kalendar meseca: dan sa pet obroka ima pet oznaka', (
+    tester,
+  ) async {
+    final day = CivilDate(2026, 11, 3);
+    final plan = MealPlan(
+      id: 'p1',
+      range: week,
+      mealTypes: MealType.values.toSet(),
+      defaultServings: 2,
+      usePantry: false,
+      createdAt: DateTime.utc(2026, 11),
+    );
+    final meals = [
+      for (final t in MealType.values)
+        PlannedMeal(
+          id: t.name,
+          planId: 'p1',
+          slot: MealSlot(day, t),
+          servings: 2,
+        ),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlanMonthCalendar(
+            plan: plan,
+            meals: meals,
+            selected: CivilDate(2026, 11, 2),
+            today: CivilDate(2026, 11, 2),
+            onSelect: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    final dots = find.descendant(
+      of: find
+          .ancestor(of: find.text('3'), matching: find.byType(Column))
+          .first,
+      matching: find.byWidgetPredicate(
+        (w) =>
+            w is Container &&
+            w.decoration is BoxDecoration &&
+            (w.decoration! as BoxDecoration).shape == BoxShape.circle,
+      ),
+    );
+    expect(dots, findsNWidgets(5));
+  });
   testTavli('telefon: nedelja je lista dana; danas je istaknut; obrok '
       'otvara recept iz plana', (tester) async {
     await pumpPlan(tester);

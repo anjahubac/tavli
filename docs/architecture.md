@@ -111,8 +111,10 @@ exception; do not add it to the generic sync/export pipeline.
 ## 4. Existing planning and shopping invariants
 
 `MealPlanAI` and planning feature providers generate in-session drafts. Approval
-persists through `MealPlanRepository`. The current `MealType` has breakfast,
-lunch and dinner; the target adds two snacks and a list-based representation.
+persists through `MealPlanRepository`. `MealType` has breakfast, morning
+snack, lunch, afternoon snack and dinner in day order; a plan stores the chosen
+types as a list and each meal as its own entry, and an entry with a type this
+client does not know is skipped instead of shown as lunch.
 `CivilDate` already represents calendar days in domain code, while persisted
 calendar columns still need the planned server `date` migration.
 

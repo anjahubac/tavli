@@ -166,6 +166,65 @@ void main() {
     );
   });
 
+  test('datum bez vremena sa servera čuva isti kalendarski dan', () async {
+    const entity = MealPlanEntity();
+    await entity.write(db, {
+      'id': 'date-only',
+      'start_date': '2026-12-31',
+      'end_date': '2027-01-06',
+      'meal_types': ['lunch'],
+      'created_at': '2026-12-01T10:00:00Z',
+      'household_id': 'h1',
+    });
+
+    final row = await db.select(db.mealPlans).getSingle();
+    expect(row.startDate.toUtc(), DateTime.utc(2026, 12, 31));
+    expect(row.endDate.toUtc(), DateTime.utc(2027, 1, 6));
+  });
+
+  test(
+    'datumi perioda nedeljnog spiska čuvaju granice kalendarskog dana',
+    () async {
+      const entity = ShoppingListEntity();
+      await entity.write(db, {
+        'id': 'week-date-only',
+        'name': 'Nedelja 53',
+        'meal_plan_id': null,
+        'week': 53,
+        'period_start': '2026-12-28',
+        'period_end': '2027-01-03',
+        'created_at': '2026-12-01T10:00:00Z',
+      });
+
+      final row = await db.select(db.shoppingLists).getSingle();
+      expect(row.periodStart!.toUtc(), DateTime.utc(2026, 12, 28));
+      expect(row.periodEnd!.toUtc(), DateTime.utc(2027, 1, 3));
+    },
+  );
+
+  test('vremenska oznaka sa vremenskom zonom ostaje isti trenutak', () async {
+    const entity = RecipeEntity();
+    await entity.write(db, {
+      'id': 'offset-time',
+      'household_id': 'h1',
+      'title': 'Sarma',
+      'servings': 2,
+      'prep_minutes': null,
+      'source': 'manual',
+      'ingredients': [],
+      'steps': [],
+      'image_path': null,
+      'answered_by': null,
+      'created_at': '2026-12-31T01:30:00+02:00',
+    });
+
+    final row = await entity.read(db, 'offset-time');
+    expect(
+      entity.toRemote(row as RecipeRow)['created_at'],
+      '2026-12-30T23:30:00.000Z',
+    );
+  });
+
   test('ocena i profil ukusa pripadaju osobi', () async {
     await roundTrip(
       const RatingEntity(),

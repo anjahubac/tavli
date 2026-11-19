@@ -9,6 +9,7 @@ writing them here does not configure GitHub branch protection.
 | Documentation/Spec Kit only | `python3 scripts/check-docs.py`, `git diff --check` | documentation CI; no app tests invented for prose |
 | Dart/UI/domain | `scripts/check.sh`, affected tests | full `flutter test` in CI; phone/wide matrix for UI |
 | Shared data/AI/router | failing behavioral tests then implementation; full suite before PR | reviewer verifies failure/offline/cancellation/undo boundaries |
+| Stored/wire value format (sync entities, dates, units) | assert the stored value and one downstream query that matches on that exact value (for example the week-list lookup) | reviewer confirms old-format input is covered |
 | drift schema | version bump, upgrade/fresh-cache test, generated output | pending-outbox/account-switch regression |
 | SQL/RLS/storage | local `supabase db reset`, `supabase test db` | two accounts, ownership, allowed/denied reads/writes, deletion |
 | Edge Function | fake provider/auth/limits tests, local function checks | local authenticated integration, no hosted test calls |

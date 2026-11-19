@@ -23,6 +23,10 @@ Preserve existing shopping sources/contributions/allocations, integer micros and
 
 Producer dependencies: [017](../017-kitchen-unit-conversion/spec.md), [018](../018-ingredient-catalog/spec.md)
 
+The [shopping split baseline](split-evidence.md) records existing ownership,
+test evidence and candidate boundaries for review. It is not approval of the
+split or evidence that D1-004 is implemented.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,

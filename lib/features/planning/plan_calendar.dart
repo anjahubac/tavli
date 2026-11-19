@@ -81,7 +81,11 @@ class PlanMonthCalendar extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (var i = 0; i < count && i < 3; i++)
+                    for (
+                      var i = 0;
+                      i < count && i < MealType.values.length;
+                      i++
+                    )
                       Container(
                         width: 5,
                         height: 5,

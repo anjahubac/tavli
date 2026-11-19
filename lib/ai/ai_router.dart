@@ -76,6 +76,7 @@ class AIRouter {
   ) async {
     final chain = config().chainFor(request.kind);
     final attempts = <AttemptLog>[];
+    var invalidOutput = false;
 
     for (final m in chain) {
       final credentials = await keys.credentialsFor(m.provider);
@@ -129,6 +130,7 @@ class AIRouter {
           _unavailableModels.add(_modelSlot(m, c));
           log('model ne postoji: ${e.message}');
         } on AIError catch (e) {
+          if (e is InvalidOutputError) invalidOutput = true;
           // Mreža ili loš odgovor ne zavise od ključa: odmah sledeći model.
           log(e.toString());
           break;
@@ -139,6 +141,7 @@ class AIRouter {
     throw AllModelsExhausted(
       attempts,
       nextAvailableAt: await _earliestUnblock(chain),
+      invalidOutput: invalidOutput,
     );
   }
 

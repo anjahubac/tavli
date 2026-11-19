@@ -22,6 +22,10 @@ Use integer micros and explicit conversion provenance. Phase-1 general measures 
 
 Producer dependencies: [013](../013-testing-strategy/spec.md)
 
+The [measure contract proposal](measure-contract-proposal.md) records baseline
+behavior, a reproducible synthetic gap and decisions for review. It is not an
+accepted contract or evidence that T001 has been completed.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,
