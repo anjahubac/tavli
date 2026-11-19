@@ -6,6 +6,7 @@ import '../../domain/recipe.dart';
 import '../../domain/shopping_source.dart';
 import 'ingredient_review_sheet.dart';
 import 'keep_screen_on.dart';
+import 'recipe_labels_sheet.dart';
 import 'recipe_providers.dart';
 import 'recipe_view.dart';
 import 'versions_sheet.dart';
@@ -84,6 +85,16 @@ class _Detail extends ConsumerWidget {
       ..showSnackBar(const SnackBar(content: Text('Recept je obrisan.')));
   }
 
+  Future<void> _editLabels(BuildContext context, WidgetRef ref) async {
+    final next = await showRecipeLabelsSheet(context, recipe.labels);
+    if (next == null) return;
+    await ref.read(recipeRepositoryProvider).setLabels(recipe.id, next);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Oznake su sačuvane.')));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasVersions =
@@ -146,7 +157,7 @@ class _Detail extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            RecipeView(recipe),
+            RecipeView(recipe, onEditLabels: () => _editLabels(context, ref)),
           ],
         ),
       ),

@@ -134,6 +134,48 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _mealTypesJsonMeta = const VerificationMeta(
+    'mealTypesJson',
+  );
+  @override
+  late final GeneratedColumn<String> mealTypesJson = GeneratedColumn<String>(
+    'meal_types_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _weightMeta = const VerificationMeta('weight');
+  @override
+  late final GeneratedColumn<String> weight = GeneratedColumn<String>(
+    'weight',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dishKindMeta = const VerificationMeta(
+    'dishKind',
+  );
+  @override
+  late final GeneratedColumn<String> dishKind = GeneratedColumn<String>(
+    'dish_kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _labelsSourceMeta = const VerificationMeta(
+    'labelsSource',
+  );
+  @override
+  late final GeneratedColumn<String> labelsSource = GeneratedColumn<String>(
+    'labels_source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -148,6 +190,10 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
     createdAt,
     updatedAt,
     householdId,
+    mealTypesJson,
+    weight,
+    dishKind,
+    labelsSource,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -255,6 +301,36 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         ),
       );
     }
+    if (data.containsKey('meal_types_json')) {
+      context.handle(
+        _mealTypesJsonMeta,
+        mealTypesJson.isAcceptableOrUnknown(
+          data['meal_types_json']!,
+          _mealTypesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('weight')) {
+      context.handle(
+        _weightMeta,
+        weight.isAcceptableOrUnknown(data['weight']!, _weightMeta),
+      );
+    }
+    if (data.containsKey('dish_kind')) {
+      context.handle(
+        _dishKindMeta,
+        dishKind.isAcceptableOrUnknown(data['dish_kind']!, _dishKindMeta),
+      );
+    }
+    if (data.containsKey('labels_source')) {
+      context.handle(
+        _labelsSourceMeta,
+        labelsSource.isAcceptableOrUnknown(
+          data['labels_source']!,
+          _labelsSourceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -312,6 +388,22 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         DriftSqlType.string,
         data['${effectivePrefix}household_id'],
       ),
+      mealTypesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meal_types_json'],
+      ),
+      weight: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}weight'],
+      ),
+      dishKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dish_kind'],
+      ),
+      labelsSource: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}labels_source'],
+      ),
     );
   }
 
@@ -334,6 +426,13 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? householdId;
+
+  /// Oznake recepta (v6). Sirove vrednosti sa servera: JSON lista obroka,
+  /// težina, vrsta jela i ko ih je postavio (`ai`/`user`); null = nepoznato.
+  final String? mealTypesJson;
+  final String? weight;
+  final String? dishKind;
+  final String? labelsSource;
   const RecipeRow({
     required this.id,
     required this.title,
@@ -347,6 +446,10 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     required this.createdAt,
     required this.updatedAt,
     this.householdId,
+    this.mealTypesJson,
+    this.weight,
+    this.dishKind,
+    this.labelsSource,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -370,6 +473,18 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || householdId != null) {
       map['household_id'] = Variable<String>(householdId);
+    }
+    if (!nullToAbsent || mealTypesJson != null) {
+      map['meal_types_json'] = Variable<String>(mealTypesJson);
+    }
+    if (!nullToAbsent || weight != null) {
+      map['weight'] = Variable<String>(weight);
+    }
+    if (!nullToAbsent || dishKind != null) {
+      map['dish_kind'] = Variable<String>(dishKind);
+    }
+    if (!nullToAbsent || labelsSource != null) {
+      map['labels_source'] = Variable<String>(labelsSource);
     }
     return map;
   }
@@ -396,6 +511,18 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       householdId: householdId == null && nullToAbsent
           ? const Value.absent()
           : Value(householdId),
+      mealTypesJson: mealTypesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mealTypesJson),
+      weight: weight == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weight),
+      dishKind: dishKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dishKind),
+      labelsSource: labelsSource == null && nullToAbsent
+          ? const Value.absent()
+          : Value(labelsSource),
     );
   }
 
@@ -417,6 +544,10 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       householdId: serializer.fromJson<String?>(json['householdId']),
+      mealTypesJson: serializer.fromJson<String?>(json['mealTypesJson']),
+      weight: serializer.fromJson<String?>(json['weight']),
+      dishKind: serializer.fromJson<String?>(json['dishKind']),
+      labelsSource: serializer.fromJson<String?>(json['labelsSource']),
     );
   }
   @override
@@ -435,6 +566,10 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'householdId': serializer.toJson<String?>(householdId),
+      'mealTypesJson': serializer.toJson<String?>(mealTypesJson),
+      'weight': serializer.toJson<String?>(weight),
+      'dishKind': serializer.toJson<String?>(dishKind),
+      'labelsSource': serializer.toJson<String?>(labelsSource),
     };
   }
 
@@ -451,6 +586,10 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<String?> householdId = const Value.absent(),
+    Value<String?> mealTypesJson = const Value.absent(),
+    Value<String?> weight = const Value.absent(),
+    Value<String?> dishKind = const Value.absent(),
+    Value<String?> labelsSource = const Value.absent(),
   }) => RecipeRow(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -464,6 +603,12 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     householdId: householdId.present ? householdId.value : this.householdId,
+    mealTypesJson: mealTypesJson.present
+        ? mealTypesJson.value
+        : this.mealTypesJson,
+    weight: weight.present ? weight.value : this.weight,
+    dishKind: dishKind.present ? dishKind.value : this.dishKind,
+    labelsSource: labelsSource.present ? labelsSource.value : this.labelsSource,
   );
   RecipeRow copyWithCompanion(RecipesCompanion data) {
     return RecipeRow(
@@ -487,6 +632,14 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       householdId: data.householdId.present
           ? data.householdId.value
           : this.householdId,
+      mealTypesJson: data.mealTypesJson.present
+          ? data.mealTypesJson.value
+          : this.mealTypesJson,
+      weight: data.weight.present ? data.weight.value : this.weight,
+      dishKind: data.dishKind.present ? data.dishKind.value : this.dishKind,
+      labelsSource: data.labelsSource.present
+          ? data.labelsSource.value
+          : this.labelsSource,
     );
   }
 
@@ -504,7 +657,11 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           ..write('answeredBy: $answeredBy, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('householdId: $householdId')
+          ..write('householdId: $householdId, ')
+          ..write('mealTypesJson: $mealTypesJson, ')
+          ..write('weight: $weight, ')
+          ..write('dishKind: $dishKind, ')
+          ..write('labelsSource: $labelsSource')
           ..write(')'))
         .toString();
   }
@@ -523,6 +680,10 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     createdAt,
     updatedAt,
     householdId,
+    mealTypesJson,
+    weight,
+    dishKind,
+    labelsSource,
   );
   @override
   bool operator ==(Object other) =>
@@ -539,7 +700,11 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           other.answeredBy == this.answeredBy &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.householdId == this.householdId);
+          other.householdId == this.householdId &&
+          other.mealTypesJson == this.mealTypesJson &&
+          other.weight == this.weight &&
+          other.dishKind == this.dishKind &&
+          other.labelsSource == this.labelsSource);
 }
 
 class RecipesCompanion extends UpdateCompanion<RecipeRow> {
@@ -555,6 +720,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<String?> householdId;
+  final Value<String?> mealTypesJson;
+  final Value<String?> weight;
+  final Value<String?> dishKind;
+  final Value<String?> labelsSource;
   final Value<int> rowid;
   const RecipesCompanion({
     this.id = const Value.absent(),
@@ -569,6 +738,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.householdId = const Value.absent(),
+    this.mealTypesJson = const Value.absent(),
+    this.weight = const Value.absent(),
+    this.dishKind = const Value.absent(),
+    this.labelsSource = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RecipesCompanion.insert({
@@ -584,6 +757,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     required DateTime createdAt,
     required DateTime updatedAt,
     this.householdId = const Value.absent(),
+    this.mealTypesJson = const Value.absent(),
+    this.weight = const Value.absent(),
+    this.dishKind = const Value.absent(),
+    this.labelsSource = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -606,6 +783,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? householdId,
+    Expression<String>? mealTypesJson,
+    Expression<String>? weight,
+    Expression<String>? dishKind,
+    Expression<String>? labelsSource,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -621,6 +802,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (householdId != null) 'household_id': householdId,
+      if (mealTypesJson != null) 'meal_types_json': mealTypesJson,
+      if (weight != null) 'weight': weight,
+      if (dishKind != null) 'dish_kind': dishKind,
+      if (labelsSource != null) 'labels_source': labelsSource,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -638,6 +823,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<String?>? householdId,
+    Value<String?>? mealTypesJson,
+    Value<String?>? weight,
+    Value<String?>? dishKind,
+    Value<String?>? labelsSource,
     Value<int>? rowid,
   }) {
     return RecipesCompanion(
@@ -653,6 +842,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       householdId: householdId ?? this.householdId,
+      mealTypesJson: mealTypesJson ?? this.mealTypesJson,
+      weight: weight ?? this.weight,
+      dishKind: dishKind ?? this.dishKind,
+      labelsSource: labelsSource ?? this.labelsSource,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -696,6 +889,18 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     if (householdId.present) {
       map['household_id'] = Variable<String>(householdId.value);
     }
+    if (mealTypesJson.present) {
+      map['meal_types_json'] = Variable<String>(mealTypesJson.value);
+    }
+    if (weight.present) {
+      map['weight'] = Variable<String>(weight.value);
+    }
+    if (dishKind.present) {
+      map['dish_kind'] = Variable<String>(dishKind.value);
+    }
+    if (labelsSource.present) {
+      map['labels_source'] = Variable<String>(labelsSource.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -717,6 +922,10 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('householdId: $householdId, ')
+          ..write('mealTypesJson: $mealTypesJson, ')
+          ..write('weight: $weight, ')
+          ..write('dishKind: $dishKind, ')
+          ..write('labelsSource: $labelsSource, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9255,6 +9464,10 @@ typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<String?> householdId,
+  Value<String?> mealTypesJson,
+  Value<String?> weight,
+  Value<String?> dishKind,
+  Value<String?> labelsSource,
   Value<int> rowid,
 });
 typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
@@ -9270,6 +9483,10 @@ typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<String?> householdId,
+  Value<String?> mealTypesJson,
+  Value<String?> weight,
+  Value<String?> dishKind,
+  Value<String?> labelsSource,
   Value<int> rowid,
 });
 
@@ -9401,6 +9618,26 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<String> get householdId => $composableBuilder(
     column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mealTypesJson => $composableBuilder(
+    column: $table.mealTypesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get weight => $composableBuilder(
+    column: $table.weight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dishKind => $composableBuilder(
+    column: $table.dishKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get labelsSource => $composableBuilder(
+    column: $table.labelsSource,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9548,6 +9785,26 @@ class $$RecipesTableOrderingComposer
     column: $table.householdId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get mealTypesJson => $composableBuilder(
+    column: $table.mealTypesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get weight => $composableBuilder(
+    column: $table.weight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dishKind => $composableBuilder(
+    column: $table.dishKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get labelsSource => $composableBuilder(
+    column: $table.labelsSource,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RecipesTableAnnotationComposer
@@ -9600,6 +9857,22 @@ class $$RecipesTableAnnotationComposer
 
   GeneratedColumn<String> get householdId => $composableBuilder(
     column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mealTypesJson => $composableBuilder(
+    column: $table.mealTypesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get weight =>
+      $composableBuilder(column: $table.weight, builder: (column) => column);
+
+  GeneratedColumn<String> get dishKind =>
+      $composableBuilder(column: $table.dishKind, builder: (column) => column);
+
+  GeneratedColumn<String> get labelsSource => $composableBuilder(
+    column: $table.labelsSource,
     builder: (column) => column,
   );
 
@@ -9723,6 +9996,10 @@ class $$RecipesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> householdId = const Value.absent(),
+                Value<String?> mealTypesJson = const Value.absent(),
+                Value<String?> weight = const Value.absent(),
+                Value<String?> dishKind = const Value.absent(),
+                Value<String?> labelsSource = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecipesCompanion(
                 id: id,
@@ -9737,6 +10014,10 @@ class $$RecipesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 householdId: householdId,
+                mealTypesJson: mealTypesJson,
+                weight: weight,
+                dishKind: dishKind,
+                labelsSource: labelsSource,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9753,6 +10034,10 @@ class $$RecipesTableTableManager
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<String?> householdId = const Value.absent(),
+                Value<String?> mealTypesJson = const Value.absent(),
+                Value<String?> weight = const Value.absent(),
+                Value<String?> dishKind = const Value.absent(),
+                Value<String?> labelsSource = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecipesCompanion.insert(
                 id: id,
@@ -9767,6 +10052,10 @@ class $$RecipesTableTableManager
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 householdId: householdId,
+                mealTypesJson: mealTypesJson,
+                weight: weight,
+                dishKind: dishKind,
+                labelsSource: labelsSource,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
