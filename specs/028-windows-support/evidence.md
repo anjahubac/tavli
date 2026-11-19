@@ -1,7 +1,9 @@
 # Windows validation evidence
 
-**Branch**: `028-windows-support`  
-**Machine**: Windows 11 25H2, x64  
+**Branch**: `028-windows-support`
+
+**Machine**: Windows 11 25H2, x64
+
 **Date**: 2026-11-19
 
 This record distinguishes local implementation evidence from hosted CI,
