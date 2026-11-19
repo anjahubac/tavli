@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/src/gallery/tavli_gallery.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 /// Testovi izgleda (slike) prave se i porede samo na Linuxu, kao u CI-ju,
@@ -38,7 +39,7 @@ void main() {
                   color: theme.scaffoldBackgroundColor,
                   child: const Padding(
                     padding: EdgeInsets.all(TavliSpacing.large),
-                    child: TavliGallerySections(),
+                    child: TavliFoundationGallerySections(),
                   ),
                 ),
               ),
