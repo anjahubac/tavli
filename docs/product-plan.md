@@ -86,7 +86,7 @@ operations. See [full spec index](../specs/README.md) and
 | WINDOWS | Dev 4 | Plugin audit | Secure store, deep links/auth, file picker, wake lock, CI/hardware |
 | CYCLE | Dev 3, Dev 2 hints, Dev 4 indicator | Preferences/hint boundary | Consent, stale rules, six source-proposal questions |
 | PLAN-IMPORT | Dev 2; Dev 1/3/4 consumers | Slots/catalog/nutrition | Ten source-proposal questions, crop/retention, exact quantities/alternatives |
-| UI-PACKAGE | Dev 4; deferred | Current UI standard | Explicit team start, six source questions and verified external repo access |
+| UI-PACKAGE | Dev 4; started 2026-11-19 | Design canvas and UI standard | Local `packages/tavli_ui` in this repository; icon set source |
 
 ## Decisions still required
 
@@ -106,8 +106,8 @@ Retrieve them or clarify explicit requirements before the affected feature start
    GitHub ruleset availability and four reviewers' verified GitHub handles.
 
 Word/Excel/share-sheet import and Apple Health/Health Connect are later additions,
-not silent expansion of the 87 imported tickets. The external `tavli_ui` package
-waits for team agreement; consistent components apply now in existing folders.
+not silent expansion of the 87 imported tickets. The UI library lives in this
+repository as the local `packages/tavli_ui` package (team decision 2026-11-19).
 
 ## Cross-cutting security work — added after source review
 
