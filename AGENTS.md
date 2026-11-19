@@ -26,10 +26,11 @@ existing comments are mostly Serbian — match the surrounding file.
 
 Read [docs/product-design.md](docs/product-design.md),
 [docs/product-plan.md](docs/product-plan.md) and the active spec before planning.
-Current `dev` has Plan, Nabavka, Recepti, Ostava; Plan is the initial tab. Planning
-and linked/standalone shopping code exist, while 010 acceptance remains partial.
-The latest target adds central/default Početna: Plan, Nabavka, Početna, Recepti,
-Ostava. Pantry stays simple: no expiry dates or “use first” UI, optional quantity.
+Tabs: Plan, Nabavka, Početna, Recepti, Ostava; empty Početna (`/home`) is the
+default. Planning and linked/standalone shopping code exist, while 010
+acceptance remains partial.
+Početna content (today's meals, notices) is still planned. Pantry stays simple:
+no expiry dates or “use first” UI, optional quantity.
 The gateway, food catalog, household invitations, nutrition diary, voice,
 cookbooks and Windows remain planned. Read the
 [010 overlay](specs/010-plan-and-shopping/current-direction.md) for superseded

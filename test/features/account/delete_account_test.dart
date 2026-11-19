@@ -25,6 +25,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testTavli('brisanje je na dnu profila, odvojeno od odjave', (tester) async {
+    await pumpTavli(tester, location: '/profile');
+    await tester.ensureVisible(find.text('Obriši nalog'));
+    final signOut = tester.getRect(find.text('Odjavi se'));
+    final settings = tester.getRect(find.text('AI ključevi'));
+    final delete = tester.getRect(find.text('Obriši nalog'));
+    expect(delete.top, greaterThan(settings.bottom));
+    expect(delete.top - signOut.bottom, greaterThan(100));
+    expect(find.text('Brisanje naloga'), findsOneWidget);
+  });
+
   testTavli('dijalog: tekst, crveno dugme, "Odustani" ne menja ništa', (
     tester,
   ) async {

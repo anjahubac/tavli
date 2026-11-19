@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app/router.dart' show homeLocation;
 import '../account/account_header.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -15,7 +16,7 @@ class ProfileScreen extends StatelessWidget {
         // Otvoren direktnom adresom nema kuda nazad, pa vodi na Plan.
         leading: BackButton(
           onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/plan'),
+              context.canPop() ? context.pop() : context.go(homeLocation),
         ),
       ),
       body: ListView(
@@ -45,6 +46,7 @@ class ProfileScreen extends StatelessWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.go('/profile/animations'),
             ),
+          const DeleteAccountSection(),
         ],
       ),
     );
