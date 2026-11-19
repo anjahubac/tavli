@@ -85,8 +85,10 @@ class Recipe {
   DetailLevel get detailLevel =>
       steps.isEmpty ? DetailLevel.summary : DetailLevel.full;
 
-  /// Pravi recept iz AI odgovora. Baca [FormatException] kad odgovor
-  /// ne odgovara šemi, pa router može da pita ponovo.
+  /// Blago čita recept u obliku [toAiJson]: sačuvane verzije ([Recipe.fromJson])
+  /// i stare zapise (prihvata "0,5" i "1/2", porcije podrazumevano 2).
+  /// Baca [FormatException] samo bez naziva ili sastojaka. Novi AI
+  /// odgovori idu kroz strogu proveru (`lib/ai/ai_response_validator.dart`).
   factory Recipe.fromAiJson(
     Map<String, dynamic> json, {
     required String id,

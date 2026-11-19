@@ -62,12 +62,19 @@ class AttemptLog {
 }
 
 class AllModelsExhausted implements Exception {
-  const AllModelsExhausted(this.attempts, {this.nextAvailableAt});
+  const AllModelsExhausted(
+    this.attempts, {
+    this.nextAvailableAt,
+    this.invalidOutput = false,
+  });
 
   final List<AttemptLog> attempts;
 
   /// Najraniji trenutak kada neki pauziran model ponovo postaje dostupan.
   final DateTime? nextAvailableAt;
+
+  /// Bar jedan model je odgovorio, ali odgovor nije prošao proveru.
+  final bool invalidOutput;
 
   @override
   String toString() =>

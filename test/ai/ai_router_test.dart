@@ -249,6 +249,38 @@ void main() {
     expect(client.calls, ['gemini/pro', 'gemini/pro', 'groq/text']);
   });
 
+  test('svi modeli vrate neispravan odgovor -> označeno', () async {
+    client.script(geminiPro, ['{"x": 1}', '{"x": 2}']);
+    client.script(groqText, ['{"x": 3}', 'nije json']);
+    client.script(geminiFlash, [const AuthError('bad key')]);
+
+    await expectLater(
+      router.run(textRequest, parseValue),
+      throwsA(
+        isA<AllModelsExhausted>()
+            .having((e) => e.invalidOutput, 'invalidOutput', isTrue)
+            .having((e) => e.nextAvailableAt, 'nextAvailableAt', isNull),
+      ),
+    );
+  });
+
+  test('bez ijednog odgovora nije označeno kao neispravan odgovor', () async {
+    client.script(geminiPro, [const AuthError('bad key')]);
+    client.script(groqText, [const AuthError('bad key')]);
+    client.script(geminiFlash, [const AuthError('bad key')]);
+
+    await expectLater(
+      router.run(textRequest, parseValue),
+      throwsA(
+        isA<AllModelsExhausted>().having(
+          (e) => e.invalidOutput,
+          'invalidOutput',
+          isFalse,
+        ),
+      ),
+    );
+  });
+
   test('zadatak sa slikom koristi samo lanac za slike', () async {
     client.script(geminiPro, [const RateLimitError('limit')]);
     client.script(groqVision, [okJson]);

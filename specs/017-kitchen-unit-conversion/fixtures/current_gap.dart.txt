@@ -1,0 +1,43 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/shopping_demand.dart';
+
+void main() {
+  DemandSource source(List<Ingredient> ingredients) => DemandSource(
+    id: 'synthetic',
+    baseServings: 1,
+    servings: 1,
+    ingredients: ingredients,
+  );
+
+  test('two tablespoons and one teaspoon total 35 ml', () {
+    final lines = demandFor(
+      source(const [
+        Ingredient(name: 'ulje', quantity: 2, unit: 'kašika'),
+        Ingredient(name: 'ulje', quantity: 1, unit: 'kašičica'),
+      ]),
+    );
+    expect(lines, hasLength(1));
+    expect(lines.single.baseUnit, 'ml');
+    expect(lines.single.micros, 35 * microsPerUnit);
+  });
+
+  test('unsupported pinch is retained and requires review', () {
+    final line = demandFor(
+      source(const [Ingredient(name: 'so', quantity: 1, unit: 'prstohvat')]),
+    ).single;
+    expect(line.baseUnit, 'prstohvat');
+    expect(line.needsReview, isTrue);
+  });
+
+  test('exact kg and g still total 1500 g', () {
+    final line = demandFor(
+      source(const [
+        Ingredient(name: 'brašno', quantity: 1, unit: 'kg'),
+        Ingredient(name: 'brašno', quantity: 500, unit: 'g'),
+      ]),
+    ).single;
+    expect(line.baseUnit, 'g');
+    expect(line.micros, 1500 * microsPerUnit);
+  });
+}

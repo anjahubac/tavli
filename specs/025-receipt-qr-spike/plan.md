@@ -20,6 +20,10 @@ Time-boxed research first. Synthetic/explicitly permitted samples only; never up
 
 Producer dependencies: [018](../018-ingredient-catalog/spec.md)
 
+Independent [receipt QR research](research.md) records source limitations
+and a separate-checkout synthetic matching experiment. It is not an accepted
+spike decision or evidence that the team catalog or receipt import is shipped.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,

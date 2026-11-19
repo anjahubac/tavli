@@ -1,0 +1,23 @@
+// Offline synthetic-name experiment for the receipt QR research report.
+// No real receipt, QR URL, network access, price or personal data is used.
+import 'dart:io';
+
+import 'package:tavli/domain/food.dart';
+import 'package:tavli/domain/food_catalog_csv.dart';
+
+void main() {
+  final entries = parseCatalogCsv(
+    File('supabase/catalog/foods.csv').readAsStringSync(),
+  );
+  final catalog = FoodCatalog(
+    foods: entries.map((entry) => entry.food),
+    aliases: [
+      for (final entry in entries)
+        for (final alias in entry.aliases)
+          FoodAlias(foodId: entry.food.id, alias: alias),
+    ],
+  );
+  for (final name in ['Jaja', 'Mleko', 'Mleko 2.8% 1L']) {
+    stdout.writeln('$name -> ${catalog.match(name) ?? 'review'}');
+  }
+}

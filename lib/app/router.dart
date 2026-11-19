@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -131,7 +133,12 @@ GoRouter createRouter({
                 ),
                 GoRoute(
                   path: 'new/photo',
-                  builder: (context, state) => const FromPhotoScreen(),
+                  builder: (context, state) => FromPhotoScreen(
+                    initialPhoto: switch (state.extra) {
+                      final Uint8List photo => photo,
+                      _ => null,
+                    },
+                  ),
                 ),
                 GoRoute(
                   path: 'new/manual',
