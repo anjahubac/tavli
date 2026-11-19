@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
@@ -9,7 +13,10 @@ import 'package:tavli/domain/meal_plan.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
+import 'package:tavli/features/planning/planning_providers.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli/features/shopping/shopping_providers.dart';
+import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
 import '../../helpers/test_app.dart';
@@ -67,6 +74,27 @@ Future<String> seedPlan(AppDatabase db, DateRange range) async {
   );
 }
 
+/// Bez plana: samo nabavka po receptu (dve stavke).
+Future<void> seedRecipeOnly(AppDatabase db) async {
+  final scope = await scopeOf(db);
+  await ShoppingRepository(
+    db,
+    scope: scope,
+    writer: SyncedWriter(db, accountId: scope.userId),
+  ).addRecipePreparation(
+    snapshot: const RecipeSnapshot(
+      title: 'Musaka',
+      baseServings: 4,
+      ingredients: [
+        Ingredient(name: 'patlidžan', quantity: 2, unit: 'kom'),
+        Ingredient(name: 'mleko', quantity: 0.5, unit: 'l'),
+      ],
+    ),
+    servings: 4,
+    originKey: 'recipe:musaka',
+  );
+}
+
 Future<TestApp> pumpShopping(
   WidgetTester tester, {
   Size size = phone,
@@ -91,6 +119,149 @@ Future<void> tapIn(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  for (final failPlans in [true, false]) {
+    testTavli('greška ${failPlans ? 'planova' : 'nabavke'} nije prazno stanje; '
+        'ponovni pokušaj učitava podatke', (tester) async {
+      var attempts = 0;
+      await pumpTavli(
+        tester,
+        location: '/shopping',
+        overrides: [
+          mealPlansProvider.overrideWith((ref) {
+            if (failPlans && attempts++ == 0) {
+              return Stream.error(StateError('synthetic failure'));
+            }
+            return Stream.value([]);
+          }),
+          recipeShoppingProvider.overrideWith((ref) {
+            if (!failPlans && attempts++ == 0) {
+              return Stream.error(StateError('synthetic failure'));
+            }
+            return Stream.value([]);
+          }),
+        ],
+      );
+      expect(
+        find.text('Nabavka trenutno ne može da se prikaže.'),
+        findsOneWidget,
+      );
+      expect(find.text('Još nemaš plan'), findsNothing);
+      expect(find.text('Nabavka je prazna'), findsNothing);
+      await tapButton(tester, 'Pokušaj ponovo');
+      expect(find.text('Nabavka je prazna'), findsOneWidget);
+    });
+  }
+
+  testTavli('početni izbor čeka oba učitavanja', (tester) async {
+    final plans = StreamController<List<MealPlan>>();
+    final items = StreamController<List<ShoppingItemRow>>();
+    addTearDown(plans.close);
+    addTearDown(items.close);
+    await pumpTavli(
+      tester,
+      location: '/shopping',
+      settle: false,
+      overrides: [
+        mealPlansProvider.overrideWith((ref) => plans.stream),
+        recipeShoppingProvider.overrideWith((ref) => items.stream),
+      ],
+    );
+    plans.add([]);
+    await tester.pump();
+    expect(find.text('Još nemaš plan'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    items.add([]);
+    await tester.pumpAndSettle();
+    expect(find.text('Nabavka je prazna'), findsOneWidget);
+  });
+
+  for (final failPlanItems in [true, false]) {
+    testTavli(
+      'greška ${failPlanItems ? 'stavki plana' : 'priprema'} ima retry',
+      (tester) async {
+        var attempts = 0;
+        await pumpTavli(
+          tester,
+          location: '/shopping',
+          setup: failPlanItems
+              ? (db) => seedPlan(db, twoWeeks)
+              : seedRecipeOnly,
+          overrides: [
+            if (failPlanItems)
+              planShoppingProvider.overrideWith((ref, planId) {
+                if (attempts++ == 0) {
+                  return Stream.error(StateError('synthetic failure'));
+                }
+                return ref
+                    .watch(shoppingRepositoryProvider)
+                    .watchPlanItems(planId);
+              })
+            else
+              preparationsProvider.overrideWith((ref) {
+                if (attempts++ == 0) {
+                  return Stream.error(StateError('synthetic failure'));
+                }
+                return ref
+                    .watch(shoppingRepositoryProvider)
+                    .watchPreparations();
+              }),
+          ],
+        );
+        expect(
+          find.text('Nabavka trenutno ne može da se prikaže.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('synthetic failure'), findsNothing);
+        await tapButton(tester, 'Pokušaj ponovo');
+        expect(
+          find.text(failPlanItems ? 'krompir' : 'patlidžan'),
+          findsOneWidget,
+        );
+      },
+    );
+  }
+
+  testTavli('početni prikaz ostaje isti kada stigne novi plan', (tester) async {
+    final app = await pumpShopping(tester, setup: seedRecipeOnly);
+    expect(find.text('Recepti u nabavci'), findsOneWidget);
+    await seedPlan(app.db, twoWeeks);
+    await tester.pumpAndSettle();
+    expect(find.text('Recepti u nabavci'), findsOneWidget);
+    await tapIn(tester, find.text('Po planu'));
+    expect(find.text('krompir'), findsOneWidget);
+  });
+
+  testTavli('greška izabranog prikaza po receptu može ponovo da se učita', (
+    tester,
+  ) async {
+    final updates = StreamController<List<ShoppingItemRow>>.broadcast();
+    addTearDown(updates.close);
+    var rows = <ShoppingItemRow>[];
+    await pumpTavli(
+      tester,
+      location: '/shopping',
+      setup: (db) async {
+        await seedRecipeOnly(db);
+        rows = await db.select(db.shoppingItems).get();
+      },
+      overrides: [
+        recipeShoppingProvider.overrideWith((ref) async* {
+          yield rows;
+          yield* updates.stream;
+        }),
+      ],
+    );
+    expect(find.text('patlidžan'), findsOneWidget);
+    updates.addError(StateError('synthetic failure'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Nabavka trenutno ne može da se prikaže.'),
+      findsOneWidget,
+    );
+    await tapButton(tester, 'Pokušaj ponovo');
+    expect(find.text('patlidžan'), findsOneWidget);
+  });
+
   testTavli('iz plana u dva dodira: nabavka tekuće nedelje po kategorijama', (
     tester,
   ) async {
@@ -110,13 +281,18 @@ void main() {
 
   testTavli('stavka pokazuje za koje obroke je', (tester) async {
     await pumpShopping(tester);
-    await tapIn(
-      tester,
-      find.descendant(
-        of: tileOf('krompir'),
-        matching: find.byTooltip('Za koje obroke'),
-      ),
+    expect(find.byTooltip('Za koje obroke'), findsNothing);
+    final semantics = tester.widget<Semantics>(
+      find
+          .ancestor(of: tileOf('krompir'), matching: find.byType(Semantics))
+          .first,
     );
+    expect(
+      semantics.properties.customSemanticsActions!.keys.single.label,
+      'Za koje obroke',
+    );
+    await tester.longPress(tileOf('krompir'));
+    await tester.pumpAndSettle();
     expect(find.text('Potrebno za:'), findsOneWidget);
     expect(find.text('Ručak 2.11.'), findsOneWidget);
     expect(
@@ -168,6 +344,47 @@ void main() {
     expect(find.text('Obrisano: Deterdžent'), findsOneWidget);
   });
 
+  for (final accessible in [false, true]) {
+    testTavli('Poništi i Vrati: pristupačna navigacija $accessible', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          FakeAccessibilityFeatures(accessibleNavigation: accessible);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpShopping(tester);
+      await tapIn(tester, tileOf('krompir'));
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(find.text('Poništi'), accessible ? findsOneWidget : findsNothing);
+      if (accessible) {
+        await tester.tap(find.text('Poništi'));
+        await tester.pumpAndSettle();
+        expect(find.text('Kupljeno · 1'), findsNothing);
+      }
+
+      await tester.enterText(find.byType(TextField), 'Deterdžent');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      await tapIn(
+        tester,
+        find.descendant(
+          of: tileOf('Deterdžent'),
+          matching: find.byTooltip('Obriši'),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(find.text('Vrati'), accessible ? findsOneWidget : findsNothing);
+      if (accessible) {
+        await tester.tap(find.text('Vrati'));
+        await tester.pumpAndSettle();
+        expect(find.text('Deterdžent'), findsOneWidget);
+      }
+    });
+  }
+
   testTavli('ceo plan sabira nedelje; kupovina u njemu se vidi u nedelji', (
     tester,
   ) async {
@@ -203,6 +420,84 @@ void main() {
     expect(find.text('Napravi plan'), findsOneWidget);
   });
 
+  testTavli('bez plana, sa nabavkom po receptu: „Po planu“ kaže šta čeka i '
+      'nema drugog dugmeta', (tester) async {
+    await pumpShopping(tester, setup: seedRecipeOnly);
+    await tapIn(tester, find.text('Po planu'));
+    expect(find.text('Još nemaš plan'), findsOneWidget);
+    expect(
+      find.text('U „Po receptu“ te čeka 2 stavke za kupovinu.'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(FilledButton, 'Napravi plan'), findsOneWidget);
+    expect(find.byType(OutlinedButton), findsNothing);
+    await tapIn(tester, find.text('Po receptu'));
+    expect(find.text('Recepti u nabavci'), findsOneWidget);
+    expect(find.text('patlidžan'), findsOneWidget);
+  });
+
+  for (final size in [const Size(320, 700), const Size(400, 800), wide]) {
+    testTavli('${size.width} px, tekst 2×: „Po planu“ bez plana bez '
+        'preliva', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpShopping(tester, size: size, setup: seedRecipeOnly);
+      await tapIn(tester, find.text('Po planu'));
+      expect(find.text('Napravi plan'), findsOneWidget);
+      for (final text in ['Po planu', 'Po receptu']) {
+        final paragraph = tester.renderObject<RenderParagraph>(find.text(text));
+        final paintedWidth =
+            (paragraph.localToGlobal(Offset(paragraph.size.width, 0)) -
+                    paragraph.localToGlobal(Offset.zero))
+                .distance;
+        expect(
+          paintedWidth,
+          closeTo(paragraph.size.width, 0.01),
+          reason: 'Tekst 2× se ne smanjuje: $text',
+        );
+        expect(paragraph.textScaler.scale(16), 32);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final size in [const Size(320, 700), wide]) {
+    testTavli(
+      '${size.width} px: tamna tema, tekst 2×, bez animacija, tastatura',
+      (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        await pumpTavli(
+          tester,
+          size: size,
+          location: '/shopping',
+          setup: seedRecipeOnly,
+          settings: {'theme_mode': 'dark'},
+        );
+        expect(
+          Theme.of(tester.element(find.text('Po planu'))).brightness,
+          Brightness.dark,
+        );
+        Focus.of(tester.element(find.text('Po planu'))).requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.pumpAndSettle();
+        expect(find.text('Još nemaš plan'), findsOneWidget);
+        Focus.of(tester.element(find.text('Po receptu'))).requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.pumpAndSettle();
+        expect(find.text('Recepti u nabavci'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testTavli('po receptu bez plana: pripreme i njihove stavke; uklanjanje '
       'pripreme čuva kupljeno', (tester) async {
     await pumpShopping(
@@ -233,12 +528,14 @@ void main() {
         );
       },
     );
-    expect(find.text('Još nemaš plan'), findsOneWidget);
-    await tapIn(tester, find.widgetWithText(OutlinedButton, 'Po receptu'));
+    // Bez plana, a sa nabavkom po receptu: odmah se otvara „Po receptu“.
+    expect(find.text('Još nemaš plan'), findsNothing);
     expect(find.text('Recepti u nabavci'), findsOneWidget);
     expect(find.text('4 porcije · 2 sastojka za kupovinu'), findsOneWidget);
     await tapIn(tester, tileOf('patlidžan'));
-    await tapIn(tester, find.byTooltip('Za koje obroke').first);
+    await tester.ensureVisible(tileOf('mleko'));
+    await tester.longPress(tileOf('mleko'));
+    await tester.pumpAndSettle();
     expect(find.text('Recept · 4 porcije'), findsOneWidget);
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();

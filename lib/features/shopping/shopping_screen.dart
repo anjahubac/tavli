@@ -21,15 +21,67 @@ import 'shopping_list_view.dart';
 import 'shopping_providers.dart';
 
 /// Tab Nabavka: po planu (nedelja ili ceo plan) ili po receptu (bez plana).
-class ShoppingScreen extends ConsumerWidget {
+class ShoppingScreen extends ConsumerStatefulWidget {
   const ShoppingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShoppingScreen> createState() => _ShoppingScreenState();
+}
+
+class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
+  @override
+  Widget build(BuildContext context) {
     final view = ref.watch(shoppingViewProvider);
-    final plans = ref.watch(mealPlansProvider).value;
-    final recipeItems = ref.watch(recipeShoppingProvider).value;
-    if (plans != null &&
+    final plansAsync = ref.watch(mealPlansProvider);
+    final recipeAsync = ref.watch(recipeShoppingProvider);
+    final plans = plansAsync.value;
+    final recipeItems = recipeAsync.value;
+    if (view.mode == null) {
+      final failed = plansAsync.hasError || recipeAsync.hasError;
+      if (!failed &&
+          !plansAsync.isLoading &&
+          !recipeAsync.isLoading &&
+          plans != null &&
+          recipeItems != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final currentPlans = ref.read(mealPlansProvider);
+          final currentItems = ref.read(recipeShoppingProvider);
+          if (currentPlans.hasError ||
+              currentItems.hasError ||
+              currentPlans.isLoading ||
+              currentItems.isLoading ||
+              !currentPlans.hasValue ||
+              !currentItems.hasValue) {
+            return;
+          }
+          ref
+              .read(shoppingViewProvider.notifier)
+              .initializeMode(
+                hasPlan: currentPlans.requireValue.isNotEmpty,
+                hasRecipeItems: currentItems.requireValue.isNotEmpty,
+              );
+        });
+      }
+      return Scaffold(
+        appBar: const TabAppBar(),
+        body: SafeArea(
+          child: failed
+              ? _ShoppingLoadError(
+                  onRetry: () {
+                    ref.invalidate(mealPlansProvider);
+                    ref.invalidate(recipeShoppingProvider);
+                  },
+                )
+              : const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    if (!plansAsync.hasError &&
+        !recipeAsync.hasError &&
+        !plansAsync.isLoading &&
+        !recipeAsync.isLoading &&
+        plans != null &&
         plans.isEmpty &&
         recipeItems != null &&
         recipeItems.isEmpty) {
@@ -56,6 +108,8 @@ class ShoppingScreen extends ConsumerWidget {
         ),
       );
     }
+    final largeText = MediaQuery.textScalerOf(context).scale(16) > 16 * 1.3;
+    final mode = view.mode!;
     return Scaffold(
       appBar: const TabAppBar(),
       body: SafeArea(
@@ -67,27 +121,45 @@ class ShoppingScreen extends ConsumerWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: SegmentedButton<ShoppingMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ShoppingMode.plan,
-                        icon: Icon(Icons.calendar_month_outlined),
-                        label: Text('Po planu'),
-                      ),
-                      ButtonSegment(
-                        value: ShoppingMode.recipe,
-                        icon: Icon(Icons.menu_book_outlined),
-                        label: Text('Po receptu'),
-                      ),
-                    ],
-                    selected: {view.mode},
-                    onSelectionChanged: (s) => ref
-                        .read(shoppingViewProvider.notifier)
-                        .setMode(s.single),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) =>
+                        SegmentedButton<ShoppingMode>(
+                          // Na uskom ekranu veliki tekst dobija sopstveni red.
+                          direction: largeText && constraints.maxWidth < 600
+                              ? Axis.vertical
+                              : Axis.horizontal,
+                          showSelectedIcon: !largeText,
+                          segments: [
+                            ButtonSegment(
+                              value: ShoppingMode.plan,
+                              icon: largeText
+                                  ? null
+                                  : const Icon(Icons.calendar_month_outlined),
+                              label: const Text(
+                                'Po planu',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            ButtonSegment(
+                              value: ShoppingMode.recipe,
+                              icon: largeText
+                                  ? null
+                                  : const Icon(Icons.menu_book_outlined),
+                              label: const Text(
+                                'Po receptu',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                          selected: {mode},
+                          onSelectionChanged: (s) => ref
+                              .read(shoppingViewProvider.notifier)
+                              .setMode(s.single),
+                        ),
                   ),
                 ),
                 Expanded(
-                  child: switch (view.mode) {
+                  child: switch (mode) {
                     ShoppingMode.plan => const _PlanShopping(),
                     ShoppingMode.recipe => const _RecipeShopping(),
                   },
@@ -101,6 +173,30 @@ class ShoppingScreen extends ConsumerWidget {
   }
 }
 
+class _ShoppingLoadError extends StatelessWidget {
+  const _ShoppingLoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Nabavka trenutno ne može da se prikaže.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: onRetry, child: const Text('Pokušaj ponovo')),
+        ],
+      ),
+    ),
+  );
+}
+
 class _PlanShopping extends ConsumerWidget {
   const _PlanShopping();
 
@@ -110,7 +206,7 @@ class _PlanShopping extends ConsumerWidget {
     return plans.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) =>
-          const Center(child: Text('Nabavka trenutno ne može da se prikaže.')),
+          _ShoppingLoadError(onRetry: () => ref.invalidate(mealPlansProvider)),
       data: (list) {
         final plan = selectedPlan(
           list,
@@ -124,54 +220,77 @@ class _PlanShopping extends ConsumerWidget {
   }
 }
 
+/// „Po planu“ bez plana. Kad postoji nabavka po receptu, kaže koliko čeka u
+/// tabu „Po receptu“, da ekran ne izgleda kao da nabavke nema.
 class _NoPlan extends ConsumerWidget {
   const _NoPlan();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).colorScheme;
+    final recipeAsync = ref.watch(recipeShoppingProvider);
+    if (recipeAsync.hasError) {
+      return _ShoppingLoadError(
+        onRetry: () => ref.invalidate(recipeShoppingProvider),
+      );
+    }
+    if (recipeAsync.isLoading && !recipeAsync.hasValue) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final recipeItems = recipeAsync.value ?? const <ShoppingItemRow>[];
+    final open = recipeItems.where((i) => !i.isBought).length;
+    final hasRecipe = recipeItems.isNotEmpty;
+    return EmptyStateBody(
+      art: Icon(Icons.calendar_month_outlined, size: 56, color: colors.primary),
+      title: 'Još nemaš plan',
+      body: 'Nabavka po planu nastaje iz sačuvanog plana obroka.',
+      // „Po receptu“ je već tab iznad, pa ovde nema drugog dugmeta.
+      note: hasRecipe ? _RecipeWaiting(open: open) : null,
+      action: FilledButton.icon(
+        onPressed: () => context.go('/plan/new'),
+        icon: const Icon(Icons.add),
+        label: const Text('Napravi plan'),
+      ),
+    );
+  }
+}
+
+class _RecipeWaiting extends StatelessWidget {
+  const _RecipeWaiting({required this.open});
+
+  final int open;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Icon(
-          Icons.calendar_month_outlined,
-          size: 56,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Još nemaš plan',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Nabavka po planu se pravi iz sačuvanog plana. Za jedan recept '
-          'izaberi „Po receptu“.',
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              FilledButton.icon(
-                onPressed: () => context.go('/plan/new'),
-                icon: const Icon(Icons.add),
-                label: const Text('Napravi plan'),
+    final colors = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              Icons.shopping_basket_outlined,
+              color: colors.onSecondaryContainer,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                open > 0
+                    ? 'U „Po receptu“ te čeka ${itemsCount(open)} za kupovinu.'
+                    : 'Sve iz nabavke po receptu je kupljeno.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.onSecondaryContainer,
+                ),
               ),
-              OutlinedButton(
-                onPressed: () => ref
-                    .read(shoppingViewProvider.notifier)
-                    .setMode(ShoppingMode.recipe),
-                child: const Text('Po receptu'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -191,6 +310,11 @@ class _PlanPeriod extends ConsumerWidget {
     final periods = weekPeriods(plan.range);
     final week = selectedWeek(periods, view, today);
     final shopping = ref.watch(planShoppingProvider(plan.id));
+    if (shopping.hasError) {
+      return _ShoppingLoadError(
+        onRetry: () => ref.invalidate(planShoppingProvider(plan.id)),
+      );
+    }
     final all = shopping.value ?? const <PlanShoppingItem>[];
 
     final header = <Widget>[
@@ -373,10 +497,20 @@ class _RecipeShopping extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(recipeShoppingProvider);
-    if (items.isLoading && !items.hasValue) {
+    final preparationsAsync = ref.watch(preparationsProvider);
+    if (items.hasError || preparationsAsync.hasError) {
+      return _ShoppingLoadError(
+        onRetry: () {
+          ref.invalidate(recipeShoppingProvider);
+          ref.invalidate(preparationsProvider);
+        },
+      );
+    }
+    if ((items.isLoading && !items.hasValue) ||
+        (preparationsAsync.isLoading && !preparationsAsync.hasValue)) {
       return const Center(child: CircularProgressIndicator());
     }
-    final preparations = ref.watch(preparationsProvider).value ?? const [];
+    final preparations = preparationsAsync.value ?? const [];
     return ShoppingItemsList(
       header: [
         if (preparations.isNotEmpty) ...[
@@ -443,4 +577,15 @@ String ingredientsCount(int n) {
     return '$n sastojka';
   }
   return '$n sastojaka';
+}
+
+/// "1 stavka", "2 stavke", "5 stavki" (11–14 su "stavki").
+String itemsCount(int n) {
+  final lastTwo = n % 100;
+  final last = n % 10;
+  if (last == 1 && lastTwo != 11) return '$n stavka';
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return '$n stavke';
+  }
+  return '$n stavki';
 }
