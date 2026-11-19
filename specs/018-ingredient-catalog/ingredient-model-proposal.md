@@ -116,7 +116,7 @@ version changes.
 The first implementation slice is an alias and canonical-name matcher over the
 local catalog. It does not complete the matching requirement: AI-assisted
 proposals through the gateway, fuzzy candidates and creating new foods remain
-open work and are tracked in the 018 tasks.
+open work.
 
 `piece`, `gram` and `milliliter` are proposed domain units, not new UI copy or
 a settled wire representation. Aliases, conversions, nutritional data and
