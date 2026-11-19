@@ -153,4 +153,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextField, 'Šta da promenim?'), findsOneWidget);
   });
+
+  testTavli('tablet: recepti u dve kolone', (tester) async {
+    await pumpTavli(
+      tester,
+      size: const Size(820, 1180),
+      recipes: [
+        sampleRecipe('a', 'Sarma', createdAt: DateTime.utc(2026, 11, 2)),
+        sampleRecipe('b', 'Pasulj'),
+      ],
+    );
+    final first = tester.getTopLeft(find.text('Sarma'));
+    final second = tester.getTopLeft(find.text('Pasulj'));
+    expect(second.dy, first.dy);
+    expect(second.dx, greaterThan(first.dx));
+    expect(tester.takeException(), isNull);
+  });
 }

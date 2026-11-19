@@ -260,6 +260,7 @@ class _RecipeList extends StatelessWidget {
     return SpoonRefresh(
       onRefresh: onRefresh,
       child: TavliCardGrid(
+        columns: _listColumns(context),
         physics: const AlwaysScrollableScrollPhysics(),
         spacing: TavliSpacing.small,
         padding: const EdgeInsets.fromLTRB(
@@ -292,6 +293,14 @@ class _RecipeList extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Na tabletu u uspravnom položaju dve kolone kartica, da red ne ide preko
+/// cele širine; uz krupan tekst jedna.
+int _listColumns(BuildContext context) {
+  final width = MediaQuery.sizeOf(context).width;
+  final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
+  return width >= 600 && !largeText ? 2 : 1;
 }
 
 /// Mreža recepata u tri kolone na širokom ekranu.
