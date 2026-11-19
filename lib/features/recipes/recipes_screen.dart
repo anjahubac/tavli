@@ -12,34 +12,32 @@ import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
 import 'recipe_providers.dart';
 
-/// Od ove širine sadržaja recepti su mreža u tri kolone, a izabran recept
-/// stoji pored liste.
-const splitViewMinWidth = 840.0;
+/// Od ove širine sadržaja recepti su mreža u tri kolone sa zaglavljem
+/// (platno, macOS i Windows · Recepti); uže je lista kartica kao na telefonu.
+const _gridMinWidth = 840.0;
 
-/// Širina liste pored izabranog recepta i polja za pretragu u zaglavlju.
-const _listWidth = 360.0;
+/// Polje za pretragu u zaglavlju, kao na platnu.
 const _searchWidth = 300.0;
 
-/// Kolone mreže recepata na računaru.
+/// Kolone mreže recepata na računaru, kao na platnu; kolone su jednake i
+/// rastu sa prozorom.
 const _gridColumns = 3;
 
 /// Prazan prostor ispod liste na telefonu, da plutajuće dugme ne pokrije
 /// poslednji recept.
 const _floatingButtonClearance = 88.0;
 
-/// Tab "Recepti". Telefon: pretraga, lista kartica i plutajuće „Dodaj
-/// recept“. Široko: zaglavlje sa pretragom i „Dodaj recept“, mreža u tri
-/// kolone, a izabran recept pored liste.
+/// Tab "Recepti", po platnu. Telefon: pretraga, lista kartica u jednoj
+/// koloni i plutajuće „Dodaj recept“. Računar: zaglavlje sa pretragom i
+/// „Dodaj recept“ i mreža u tri kolone. Recept se otvara kao ceo ekran.
 class RecipesScreen extends StatelessWidget {
-  const RecipesScreen({super.key, this.selectedId});
-
-  final String? selectedId;
+  const RecipesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= splitViewMinWidth;
+        final wide = constraints.maxWidth >= _gridMinWidth;
         return Scaffold(
           appBar: const TabAppBar(),
           floatingActionButton: wide
@@ -49,34 +47,27 @@ class RecipesScreen extends StatelessWidget {
                   label: 'Dodaj recept',
                   onPressed: () => showAddRecipeSheet(context),
                 ),
-          body: _RecipesBody(selectedId: selectedId, wide: wide),
+          body: _RecipesBody(wide: wide),
         );
       },
     );
   }
 }
 
-/// Ruta `/recipes/:id`: podeljen prikaz na širokom ekranu, inače ceo ekran.
+/// Ruta `/recipes/:id`: recept kao ceo ekran na svim platformama (platno
+/// nema listu i detalj u Receptima).
 class RecipeRoute extends StatelessWidget {
   const RecipeRoute({super.key, required this.id});
 
   final String id;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) =>
-          constraints.maxWidth >= splitViewMinWidth
-          ? RecipesScreen(selectedId: id)
-          : RecipeDetailScreen(id: id),
-    );
-  }
+  Widget build(BuildContext context) => RecipeDetailScreen(id: id);
 }
 
 class _RecipesBody extends ConsumerStatefulWidget {
-  const _RecipesBody({required this.selectedId, required this.wide});
+  const _RecipesBody({required this.wide});
 
-  final String? selectedId;
   final bool wide;
 
   @override
@@ -113,7 +104,6 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   @override
   Widget build(BuildContext context) {
     final query = ref.watch(recipeSearchProvider);
-    final selected = widget.selectedId;
     final content = ref
         .watch(recipesProvider)
         .when(
@@ -139,30 +129,9 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
               );
             }
             if (!widget.wide) {
-              return _RecipeList(
-                recipes,
-                selectedId: selected,
-                onRefresh: _refresh,
-              );
+              return _RecipeList(recipes, onRefresh: _refresh);
             }
-            if (selected == null) return _RecipeGrid(recipes);
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  width: _listWidth,
-                  child: _RecipeList(
-                    recipes,
-                    selectedId: selected,
-                    onRefresh: _refresh,
-                  ),
-                ),
-                const TavliDivider(vertical: true),
-                Expanded(
-                  child: RecipeDetailScreen(id: selected, embedded: true),
-                ),
-              ],
-            );
+            return _RecipeGrid(recipes);
           },
         );
 
@@ -213,12 +182,13 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   }
 }
 
+/// Vreme pa porcije, kao na platnu („75 min · 4 porcije“).
 String _recipeFacts(Recipe recipe) => [
-  servingsLabel(recipe.servings),
   if (recipe.prepMinutes != null) '${recipe.prepMinutes} min',
+  servingsLabel(recipe.servings),
 ].join(' · ');
 
-/// Naziv i porcije sa vremenom, kao na kartici recepta.
+/// Naziv i vreme sa porcijama, kao na kartici recepta.
 class _RecipeTitle extends StatelessWidget {
   const _RecipeTitle(this.recipe);
 
@@ -243,16 +213,11 @@ class _RecipeTitle extends StatelessWidget {
   }
 }
 
-/// Lista kartica sa sličicom (telefon, i lista pored izabranog recepta).
+/// Lista kartica sa sličicom u jednoj koloni (telefon, platno · Recepti).
 class _RecipeList extends StatelessWidget {
-  const _RecipeList(
-    this.recipes, {
-    required this.selectedId,
-    required this.onRefresh,
-  });
+  const _RecipeList(this.recipes, {required this.onRefresh});
 
   final List<Recipe> recipes;
-  final String? selectedId;
   final Future<void> Function() onRefresh;
 
   @override
@@ -260,7 +225,6 @@ class _RecipeList extends StatelessWidget {
     return SpoonRefresh(
       onRefresh: onRefresh,
       child: TavliCardGrid(
-        columns: _listColumns(context),
         physics: const AlwaysScrollableScrollPhysics(),
         spacing: TavliSpacing.small,
         padding: const EdgeInsets.fromLTRB(
@@ -274,7 +238,6 @@ class _RecipeList extends StatelessWidget {
           final recipe = recipes[i];
           final path = recipe.imagePath;
           return TavliCard(
-            selected: recipe.id == selectedId,
             padding: const EdgeInsets.all(TavliSpacing.small),
             onTap: () => context.go('/recipes/${recipe.id}'),
             child: Row(
@@ -293,14 +256,6 @@ class _RecipeList extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Na tabletu u uspravnom položaju dve kolone kartica, da red ne ide preko
-/// cele širine; uz krupan tekst jedna.
-int _listColumns(BuildContext context) {
-  final width = MediaQuery.sizeOf(context).width;
-  final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
-  return width >= 600 && !largeText ? 2 : 1;
 }
 
 /// Mreža recepata u tri kolone na širokom ekranu.

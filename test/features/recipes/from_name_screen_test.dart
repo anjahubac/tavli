@@ -73,7 +73,7 @@ void main() {
     expect(find.text('sarma'), findsOneWidget);
   });
 
-  testTavli('na širokom ekranu sačuvan recept je izabran u listi', (
+  testTavli('na širokom ekranu sačuvan recept se otvara kao ceo ekran', (
     tester,
   ) async {
     await pumpTavli(
@@ -87,18 +87,9 @@ void main() {
     await tapButton(tester, 'Napravi recept');
     await tapButton(tester, 'Sačuvaj');
 
-    expect(find.byType(TavliSearchField), findsOneWidget);
-    expect(
-      tester
-          .widget<TavliCard>(
-            find.ancestor(
-              of: find.text('Musaka'),
-              matching: find.byType(TavliCard),
-            ),
-          )
-          .selected,
-      isTrue,
-    );
+    // Platno nema listu i detalj u Receptima: recept je ceo ekran.
+    expect(recipeHeading('Musaka'), findsOneWidget);
+    expect(find.byType(TavliSearchField), findsNothing);
   });
 
   testTavli('320 px, tekst 2×: brojač porcija prelazi ispod natpisa', (

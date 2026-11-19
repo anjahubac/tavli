@@ -11,28 +11,20 @@ import 'recipe_providers.dart';
 import 'recipe_view.dart';
 import 'versions_sheet.dart';
 
-/// Detalji recepta. [embedded] je desni deo podeljenog prikaza (bez "nazad").
+/// Detalji recepta, kao ceo ekran.
 class RecipeDetailScreen extends ConsumerWidget {
-  const RecipeDetailScreen({
-    super.key,
-    required this.id,
-    this.embedded = false,
-  });
+  const RecipeDetailScreen({super.key, required this.id});
 
   final String id;
-  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref
         .watch(recipeProvider(id))
         .when(
-          loading: () => Scaffold(
-            appBar: AppBar(automaticallyImplyLeading: !embedded),
-            body: const TavliLoading(),
-          ),
+          loading: () => Scaffold(appBar: AppBar(), body: const TavliLoading()),
           error: (_, _) => Scaffold(
-            appBar: AppBar(automaticallyImplyLeading: !embedded),
+            appBar: AppBar(),
             body: const TavliEmptyState(
               icon: Icons.error_outline,
               title: 'Recept nije učitan.',
@@ -40,24 +32,21 @@ class RecipeDetailScreen extends ConsumerWidget {
           ),
           data: (recipe) => recipe == null
               ? Scaffold(
-                  appBar: AppBar(automaticallyImplyLeading: !embedded),
-                  body: TavliEmptyState(
+                  appBar: AppBar(),
+                  body: const TavliEmptyState(
                     icon: Icons.menu_book_outlined,
-                    title: embedded
-                        ? 'Izaberi recept'
-                        : 'Recept više ne postoji.',
+                    title: 'Recept više ne postoji.',
                   ),
                 )
-              : _Detail(recipe: recipe, embedded: embedded),
+              : _Detail(recipe: recipe),
         );
   }
 }
 
 class _Detail extends ConsumerWidget {
-  const _Detail({required this.recipe, required this.embedded});
+  const _Detail({required this.recipe});
 
   final Recipe recipe;
-  final bool embedded;
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     final repo = ref.read(recipeRepositoryProvider);
@@ -82,7 +71,6 @@ class _Detail extends ConsumerWidget {
         ref.watch(recipeVersionsProvider(recipe.id)).value?.isNotEmpty ?? false;
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: !embedded,
         actions: [
           const KeepScreenOnButton(),
           TavliIconButton(

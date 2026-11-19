@@ -42,7 +42,7 @@ void main() {
     ].map((t) => tester.getTopLeft(find.text(t)).dy).toList();
     final sorted = [...titles]..sort();
     expect(titles, sorted, reason: 'najnoviji recept je prvi');
-    expect(find.text('4 porcije · 45 min'), findsNWidgets(3));
+    expect(find.text('45 min · 4 porcije'), findsNWidgets(3));
 
     await tester.enterText(find.byType(TavliSearchField), 'sar');
     await tester.pumpAndSettle();
@@ -130,34 +130,38 @@ void main() {
     });
   }
 
-  testTavli('širok ekran: mreža, pa lista i recept jedno pored drugog', (
-    tester,
-  ) async {
-    await pumpTavli(
-      tester,
-      size: wide,
-      recipes: [
-        sampleRecipe('a', 'Pasulj', createdAt: DateTime(2026)),
-        sampleRecipe('b', 'Sarma', createdAt: DateTime(2026, 2)),
-      ],
-    );
-    // Bez izabranog recepta: mreža kartica sa slikom na vrhu.
-    expect(find.byType(TavliCardGrid), findsOneWidget);
-    expect(find.byType(TavliFloatingButton), findsNothing);
-    expect(button('Dodaj recept'), findsOneWidget);
+  testTavli(
+    'širok ekran: zaglavlje u jednom redu i mreža, recept je ceo ekran',
+    (tester) async {
+      await pumpTavli(
+        tester,
+        size: wide,
+        recipes: [
+          sampleRecipe('a', 'Pasulj', createdAt: DateTime(2026)),
+          sampleRecipe('b', 'Sarma', createdAt: DateTime(2026, 2)),
+        ],
+      );
+      // Platno, macOS · Recepti: naslov, pretraga i „Dodaj recept“ u istom
+      // redu, ispod mreža kartica sa slikom na vrhu.
+      expect(find.byType(TavliCardGrid), findsOneWidget);
+      expect(find.byType(TavliFloatingButton), findsNothing);
+      final title = tester.getCenter(find.text('Recepti').last).dy;
+      expect(tester.getCenter(find.byType(TavliSearchField)).dy, title);
+      expect(tester.getCenter(button('Dodaj recept')).dy, title);
+      final pasulj = tester.getTopLeft(find.text('Pasulj'));
+      final sarma = tester.getTopLeft(find.text('Sarma'));
+      expect(pasulj.dy, sarma.dy, reason: 'kartice su u istom redu mreže');
 
-    await tester.tap(find.text('Sarma'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Sarma'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(TavliSearchField), findsOneWidget);
-    expect(recipeHeading('Sarma'), findsOneWidget);
-    expect(find.text('Pasulj'), findsOneWidget);
-    expect(find.byType(BackButton), findsNothing);
-    final card = tester.widget<TavliCard>(
-      find.ancestor(of: find.text('Sarma'), matching: find.byType(TavliCard)),
-    );
-    expect(card.selected, isTrue);
-  });
+      // Recept se otvara kao ceo ekran, bez liste pored.
+      expect(recipeHeading('Sarma'), findsOneWidget);
+      expect(find.text('Pasulj'), findsNothing);
+      expect(find.byType(TavliSearchField), findsNothing);
+      expect(find.byType(BackButton), findsOneWidget);
+    },
+  );
 
   testTavli('detalj: veliki naslov, AI izmena je u meniju', (tester) async {
     await pumpTavli(
@@ -181,7 +185,7 @@ void main() {
     expect(find.widgetWithText(TextField, 'Šta da promenim?'), findsOneWidget);
   });
 
-  testTavli('tablet: recepti u dve kolone', (tester) async {
+  testTavli('tablet: recepti u jednoj koloni, kao na telefonu', (tester) async {
     await pumpTavli(
       tester,
       size: const Size(820, 1180),
@@ -192,8 +196,8 @@ void main() {
     );
     final first = tester.getTopLeft(find.text('Sarma'));
     final second = tester.getTopLeft(find.text('Pasulj'));
-    expect(second.dy, first.dy);
-    expect(second.dx, greaterThan(first.dx));
+    expect(second.dx, first.dx);
+    expect(second.dy, greaterThan(first.dy));
     expect(tester.takeException(), isNull);
   });
 }
