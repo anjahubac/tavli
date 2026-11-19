@@ -59,8 +59,9 @@ sideload testing and can be replaced by an approved release identity later.
 ## CI and acceptance
 
 The `windows` job in `.github/workflows/check.yml` runs on `windows-latest`,
-pins Flutter 3.50.0, builds the x64 release bundle and retains it for seven days.
-CI intentionally does not publish a test-signed MSIX.
+pins Flutter 3.50.0 and verifies that the x64 release build compiles. The existing
+Ubuntu `check` job owns analysis and the full Flutter test suite, so the Windows
+job does not duplicate them. CI does not upload a bundle or publish an MSIX.
 
 Before merging Windows changes, record evidence for:
 

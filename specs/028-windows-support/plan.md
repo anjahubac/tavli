@@ -56,9 +56,10 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 - **Target**: Windows 10+ x64; Flutter-generated Windows runner from the pinned
   3.50.0 SDK, branded as Tavli. ARM64 is not claimed by this slice.
 - **CI**: standard GitHub-hosted `windows-latest` for this public repository,
-  Flutter 3.50.0, dependency restore,
-  analysis/tests as applicable and a release Windows build. CI compilation is
-  not native-dialog or real-device evidence.
+  Flutter 3.50.0, dependency restore and a release Windows compilation. The
+  existing Ubuntu job owns analysis and the full Flutter test suite. Windows CI
+  does not retain or publish build output and is not native-dialog or real-device
+  evidence.
 - **Packaging**: MSIX for install/uninstall testing. Local test signing is not a
   public trust claim. Trusted public signing and distribution belong to spec
   033; no Store work or publication is part of this feature.

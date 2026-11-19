@@ -74,8 +74,9 @@ existing injectable boundaries:
 - Existing offline/replay and account-switch suites remain the deterministic
   cache/outbox evidence. A Windows restart smoke verifies the native path on the
   same synthetic account without inspecting cache contents or tokens.
-- CI: clean `windows-latest` x64 release build on Flutter 3.50.0 and bounded build
-  artifact retention. CI does not claim native dialog, DPAPI, install or wake-lock proof.
+- CI: clean `windows-latest` x64 release compilation on Flutter 3.50.0. The
+  existing Ubuntu job owns analysis and full tests; Windows CI retains no build
+  artifact and does not claim native dialog, DPAPI, install or wake-lock proof.
 - Manual Windows 10/11: install/start/uninstall, OTP sign-in, offline restart,
   file select/cancel, storage failure, wake-lock foreground/background,
   resize/scaling, keyboard navigation and native dialogs. Record SHA, OS,

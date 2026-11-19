@@ -21,12 +21,11 @@ personal test data.
 | Install/start | `Add-AppxPackage` installed `com.tavli.tavli_1.0.0.0_x64__fxkeb4dgdm144`. Launch through `com.tavli.tavli_fxkeb4dgdm144!tavli` opened a responsive window titled `Tavli`, which then closed normally. |
 | Automated fallback coverage | Test-first runs reproduced missing typed secure-storage handling and background wake-lock release before implementation. The final commit gate passed `flutter analyze` and all 642 Flutter tests, including Windows picker routing, picker cancellation, sanitized storage failures and lifecycle transitions. |
 | Native target commit | `b082f68` (`feat(windows): add desktop target and installer`). |
-| CI configuration commit | `735182e` (`ci(windows): build release bundle`) adds a `windows-latest` release build with Flutter 3.50.0 and seven-day artifact retention. |
+| CI configuration | `735182e` introduced the `windows-latest` release compilation; the current workflow keeps only dependency restore and compilation, with no duplicate tests or uploaded artifact. |
 
 ## Evidence still required before delivery Done
 
-- A hosted GitHub Actions run for the exact reviewed SHA and inspection of its
-  downloaded release bundle.
+- A green hosted GitHub Actions Windows compilation for the exact reviewed SHA.
 - Independent human review and merge into `dev`.
 - OTP sign-in against synthetic/local or approved development configuration,
   followed by offline restart and account-scoped cache/outbox verification.
