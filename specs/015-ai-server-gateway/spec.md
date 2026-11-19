@@ -51,10 +51,11 @@ that UI task becomes Ready. English is used for engineering documents only.
 Producer specs: [012](../012-security-baseline/spec.md), [014](../014-ai-response-contracts/spec.md)
 
 - **Q1** (Dev 2 with reviewer): Concrete quota/size/time budgets, service plan limits, rotation/cutover and key-free artifact verification?
+  Proposed 2026-11-17 in [contracts/ai-gateway-contract.md](contracts/ai-gateway-contract.md); pending review by Dev 4 (TRELLO-36).
 - **Q2** (Dev 2 with reviewer): Does image processing fit synchronous limits or need a queued job? Decide from the spike.
   Spike 2026-11-17: [spike-photo-timing.md](spike-photo-timing.md). One attempt fits (slowest success 15.4 s,
   limit 150 s); the full fallback chain can exceed it. Proposed: synchronous gateway with one model attempt per
-  call, client `AIRouter` keeps fallback. Pending team decision (Trello #35).
+  call, client `AIRouter` keeps fallback. Accepted by the team (option A, TRELLO-35).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
