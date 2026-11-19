@@ -16,5 +16,6 @@ export 'src/theme/tavli_colors.dart';
 export 'src/theme/tavli_motif.dart';
 export 'src/theme/tavli_palette.dart';
 export 'src/theme/tavli_status_colors.dart';
+export 'src/theme/tavli_text_scaling.dart';
 export 'src/theme/tavli_theme.dart';
 export 'src/tokens.dart';
