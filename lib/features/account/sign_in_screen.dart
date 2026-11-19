@@ -24,6 +24,8 @@ class SignInScreen extends ConsumerWidget {
     final notice = switch (auth) {
       SignedOut(reason: SignOutReason.sessionExpired) => sessionExpiredText,
       SignedOut(reason: SignOutReason.accountDeleted) => accountDeletedText,
+      SignedOut(reason: SignOutReason.storageUnavailable) =>
+        storageUnavailableText,
       _ => null,
     };
     return Scaffold(

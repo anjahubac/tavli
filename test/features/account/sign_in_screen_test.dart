@@ -127,6 +127,21 @@ void main() {
     expect(field('E-pošta'), findsOneWidget);
   });
 
+  testTavli('odbijeno čuvanje sesije daje bezbednu poruku', (tester) async {
+    final app = await toCodeStep(tester);
+    app.secrets.deniedWrites.add('auth_session');
+
+    await tester.enterText(field('Kod iz poruke'), FakeServer.code);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Funkcija nije dostupna na ovom uređaju.'),
+      findsOneWidget,
+    );
+    expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+    expect(app.secrets.values, isEmpty);
+  });
+
   testTavli('"Pošalji ponovo" posle 30 s', (tester) async {
     final app = await toCodeStep(tester);
     expect(find.text('Pošalji ponovo za 30 s'), findsOneWidget);

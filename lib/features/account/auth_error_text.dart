@@ -9,10 +9,12 @@ String authErrorText(AuthFailure f) => switch (f) {
   Offline() => 'Nema interneta. Za prijavu je potrebna veza.',
   Unavailable() => 'Prijava trenutno nije dostupna.',
   SessionRevoked() || AccountGone() => sessionExpiredText,
+  SecureStorageUnavailable() => storageUnavailableText,
 };
 
 const sessionExpiredText = 'Sesija je istekla. Prijavi se ponovo.';
 const accountDeletedText = 'Nalog je obrisan.';
+const storageUnavailableText = 'Funkcija nije dostupna na ovom uređaju.';
 
 /// Poruka za neuspelo brisanje naloga.
 String deleteErrorText(DeleteFailure f) => switch (f) {

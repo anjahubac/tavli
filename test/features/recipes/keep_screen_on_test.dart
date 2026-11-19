@@ -80,6 +80,29 @@ void main() {
     expect(app.wakeLock.on, isFalse);
   });
 
+  testTavli('pozadina pušta ekran, povratak ga ponovo drži', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
+    );
+    await tester.tap(toggle());
+    await tester.pumpAndSettle();
+    expect(app.wakeLock.on, isTrue);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pumpAndSettle();
+    expect(app.wakeLock.on, isFalse);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(app.wakeLock.on, isTrue);
+  });
+
   testTavli('zapamćen izbor važi odmah pri otvaranju recepta', (tester) async {
     final app = await pumpTavli(
       tester,

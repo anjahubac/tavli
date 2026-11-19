@@ -35,7 +35,7 @@ class AccountScope {
 /// Ne odgovara nijednom zapisu (niko nije prijavljen).
 const noAccountScope = AccountScope(userId: '', householdId: '');
 
-enum SignOutReason { sessionExpired, accountDeleted }
+enum SignOutReason { sessionExpired, accountDeleted, storageUnavailable }
 
 /// Stanje prijave. `CodeSent` se nikad ne čuva: posle ponovnog otvaranja
 /// aplikacije prikazuje se korak sa e-poštom.
@@ -113,7 +113,7 @@ class AuthController extends Notifier<AuthState> {
     try {
       json = await store.read();
     } on SecretStorageException {
-      _set(const SignedOut());
+      _set(const SignedOut(SignOutReason.storageUnavailable));
       return;
     }
     final uid = json == null ? null : userIdFromSessionJson(json);
@@ -142,11 +142,19 @@ class AuthController extends Notifier<AuthState> {
   Future<void> restoreSession() async {
     if (!ref.mounted) return;
     final store = _store, gateway = _gateway;
-    final json = await store.read();
+    final String? json;
+    try {
+      json = await store.read();
+    } on SecretStorageException {
+      _set(const SignedOut(SignOutReason.storageUnavailable));
+      return;
+    }
     if (json == null) return;
     try {
       final session = await gateway.restore(json);
       if (ref.mounted) await store.write(session.json);
+    } on SecretStorageException {
+      _set(const SignedOut(SignOutReason.storageUnavailable));
     } on Offline {
       // Pokušava se ponovo pri povratku u aplikaciju.
     } on Unavailable {
@@ -171,7 +179,12 @@ class AuthController extends Notifier<AuthState> {
     if (s is! CodeSent) return;
     final store = _store, service = _service;
     final session = await _gateway.verifyCode(s.email, normalizeCode(code));
-    await store.write(session.json);
+    try {
+      await store.write(session.json);
+    } on SecretStorageException {
+      await _gateway.signOutLocal();
+      throw const SecureStorageUnavailable();
+    }
     _set(_signedIn(await service.loadOrFetch(session)));
   }
 
@@ -199,7 +212,11 @@ class AuthController extends Notifier<AuthState> {
   Future<void> _onSessionChanged(AuthSession? session) async {
     if (session == null) return;
     if (state is SignedIn || state is NeedsName) {
-      await _store.write(session.json);
+      try {
+        await _store.write(session.json);
+      } on SecretStorageException {
+        _set(const SignedOut(SignOutReason.storageUnavailable));
+      }
     }
   }
 
