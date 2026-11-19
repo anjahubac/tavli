@@ -9,10 +9,16 @@ String aiErrorText(Object error) => switch (error) {
   ModelNotFoundError() => 'Model nije dostupan za ovaj ključ.',
   InvalidOutputError() => 'AI je vratio neispravan odgovor.',
   BadRequestError(:final message) => 'Zahtev odbijen: $message',
-  // Model je odgovorio, ali ni popravljen odgovor nije prošao proveru.
-  // Pre poruke o limitima: model je radio, problem nije u limitu.
-  AllModelsExhausted(invalidOutput: true) =>
-    'AI nije vratio ispravan odgovor ni posle ispravke. Pokušaj ponovo.',
+  // Ni popravljen odgovor nije prošao. Vreme samo kad „Pokušaj ponovo“
+  // sada nema koji model da pita.
+  AllModelsExhausted(repairFailed: true, :final nextAvailableAt) =>
+    'AI nije vratio ispravan odgovor ni posle ispravke. '
+        '${_retry(nextAvailableAt)}',
+  // Modeli koji su nedavno vratili neispravan odgovor su preskočeni.
+  AllModelsExhausted(invalidOutput: true, :final nextAvailableAt?) =>
+    'AI je nedavno vratio neispravan odgovor. ${_retry(nextAvailableAt)}',
+  AllModelsExhausted(emptyOutput: true, nextAvailableAt: null) =>
+    'AI nije vratio odgovor. Pokušaj ponovo.',
   AllModelsExhausted(:final nextAvailableAt?) =>
     'Svi besplatni limiti su potrošeni. Pokušaj ponovo posle '
         '${_hhmm(nextAvailableAt.toLocal())}.',
@@ -20,6 +26,10 @@ String aiErrorText(Object error) => switch (error) {
   NotARecipeException() => 'Na slici nije pronađen recept.',
   _ => 'Nešto nije u redu: $error',
 };
+
+String _retry(DateTime? at) => at == null
+    ? 'Pokušaj ponovo.'
+    : 'Pokušaj ponovo posle ${_hhmm(at.toLocal())}.';
 
 String _hhmm(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';

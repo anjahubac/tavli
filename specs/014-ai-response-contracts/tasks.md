@@ -19,10 +19,13 @@ implementation/test/review estimates before Ready.
   Evidence (TRELLO-42): before the change the router repeated the same prompt
   without an error description and walked the whole chain on bad output
   (`test/ai/ai_router_test.dart`, old "dva puta neispravan JSON" case). Now
-  contract rules F1–F6; router tests cover the repair request, rule
-  description, wrong type, long answer, stop after a failed repair, retry on
-  the next model, empty answer and network error during repair; widget tests
-  cover the photo screen and the chat retry button.
+  contract rules F1–F7; router tests cover the repair request, rule
+  description, wrong type, long answer, the 40 000-character limit, stop after
+  a failed repair (with and without a free model), retry on the next model,
+  empty answers, network error during repair and cancellation before a call
+  and before the repair; a plan test covers cancellation during an answer;
+  widget tests cover the photo screen and the chat retry resending the failed
+  instruction.
 - [ ] T008 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 2; reviewer Dev 1; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
 
 ## Sequencing and effort

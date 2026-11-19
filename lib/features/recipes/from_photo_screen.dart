@@ -59,6 +59,15 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
   /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
   int _request = 0;
 
+  /// Prekid tekućeg zahteva: router posle njega ne zove model ni popravku.
+  AICancellation? _cancelToken;
+
+  @override
+  void dispose() {
+    _cancelToken?.cancel();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -109,6 +118,8 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
     final photo = _photo;
     if (photo == null) return;
     final request = ++_request;
+    _cancelToken?.cancel();
+    final cancel = _cancelToken = AICancellation();
     setState(() {
       _busy = true;
       _error = null;
@@ -116,7 +127,9 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
       _result = null;
     });
     try {
-      final r = await ref.read(recipeAIProvider).fromImage(AIImage(photo));
+      final r = await ref
+          .read(recipeAIProvider)
+          .fromImage(AIImage(photo), cancel: cancel);
       if (!mounted || request != _request) return;
       setState(() => _result = r.value);
     } on Exception catch (e) {
@@ -132,12 +145,14 @@ class _FromPhotoScreenState extends ConsumerState<FromPhotoScreen> {
 
   /// Prekida čekanje; slika ostaje pa može "Pokušaj ponovo".
   void _cancel() => setState(() {
+    _cancelToken?.cancel();
     _request++;
     _busy = false;
     _error = 'Čitanje je prekinuto.';
   });
 
   void _reset() => setState(() {
+    _cancelToken?.cancel();
     _request++;
     _photo = null;
     _result = null;

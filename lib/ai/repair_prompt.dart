@@ -46,23 +46,32 @@ String repairProblem(Object error) {
   return 'a field has the wrong type.';
 }
 
+/// Najviše znakova u `system` + `prompt` jednog zahteva: granica AI servera
+/// (specs/015-ai-server-gateway/contracts/ai-gateway-contract.md, Limits).
+/// Zahtev za popravku je ne sme preći, pa se prethodni odgovor izostavlja
+/// kad ne staje.
+const maxRequestChars = 40000;
+
 /// Zahtev za popravku: isti sistemski upit i slike, a upit dobija
-/// prethodni odgovor i opis greške.
+/// prethodni odgovor (kad staje) i opis greške.
 AIRequest repairRequest(AIRequest original, String previous, String problem) {
-  final echo = previous.length <= maxRepairEchoLength
-      ? '\nYour previous answer:\n$previous\n'
-      : '';
-  return AIRequest(
-    system: original.system,
-    prompt:
-        '''
+  String prompt(String echo) =>
+      '''
 ${original.prompt}
 
 Your previous answer was rejected by the app's validator.
 Problem: $problem
 $echo
 Return the complete corrected JSON object only, following the schema exactly.
-Keep everything that was already correct.''',
+Keep everything that was already correct.''';
+
+  final withEcho = prompt('\nYour previous answer:\n$previous\n');
+  final fits =
+      previous.length <= maxRepairEchoLength &&
+      original.system.length + withEcho.length <= maxRequestChars;
+  return AIRequest(
+    system: original.system,
+    prompt: fits ? withEcho : prompt(''),
     images: original.images,
     temperature: original.temperature,
   );

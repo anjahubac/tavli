@@ -79,13 +79,18 @@ class AIRouter {
   /// popravka ne prođe, lanac staje (korisnik vidi poruku i „Pokušaj
   /// ponovo“), a taj model se kratko preskače. Ostale greške iz [parse]
   /// (npr. "slika nije recept") prekidaju lanac i stižu do UI-a.
+  ///
+  /// Kad je [cancel] prekinut, router baca [AICancelled] pre sledećeg
+  /// poziva modela, pa ni popravka ne kreće posle „Prekini“.
   Future<AIResult<T>> run<T>(
     AIRequest request,
-    T Function(Map<String, dynamic> json) parse,
-  ) async {
+    T Function(Map<String, dynamic> json) parse, {
+    AICancellation? cancel,
+  }) async {
     final chain = config().chainFor(request.kind);
     final attempts = <AttemptLog>[];
     var invalidOutput = false;
+    var emptyOutput = false;
 
     for (final m in chain) {
       final credentials = await keys.credentialsFor(m.provider);
@@ -122,7 +127,7 @@ class AIRouter {
         }
 
         try {
-          final value = await _attempt(m, request, c, parse);
+          final value = await _attempt(m, request, c, parse, cancel);
           log('uspeh');
           return AIResult(value, m, attempts, origin: c.origin);
         } on RateLimitError catch (e) {
@@ -150,10 +155,16 @@ class AIRouter {
             _invalidOutputUntil[_modelSlot(m, c)] = until;
             log('neispravan odgovor i posle popravke: ${e.message}');
             // Drugi neuspeh: poruka korisniku, bez prolaska kroz ceo lanac.
-            throw AllModelsExhausted(attempts, invalidOutput: true);
+            // Vreme samo kad „Pokušaj ponovo“ sada nema koga da pita.
+            throw AllModelsExhausted(
+              attempts,
+              nextAvailableAt: await _nextAvailable(chain, nullIfUsable: true),
+              invalidOutput: true,
+              repairFailed: true,
+            );
           }
           // Prazan odgovor (bez popravke) ide na sledeći model kao i ranije.
-          if (e is InvalidOutputError) invalidOutput = true;
+          if (e is InvalidOutputError) emptyOutput = true;
           // Mreža ili loš odgovor ne zavise od ključa: odmah sledeći model.
           log(e.toString());
           break;
@@ -163,8 +174,9 @@ class AIRouter {
 
     throw AllModelsExhausted(
       attempts,
-      nextAvailableAt: await _earliestUnblock(chain),
+      nextAvailableAt: await _nextAvailable(chain),
       invalidOutput: invalidOutput,
+      emptyOutput: emptyOutput,
     );
   }
 
@@ -173,8 +185,10 @@ class AIRouter {
     AIRequest request,
     ApiCredential credential,
     T Function(Map<String, dynamic>) parse,
+    AICancellation? cancel,
   ) async {
     Future<String> send(AIRequest r) async {
+      if (cancel?.isCancelled ?? false) throw const AICancelled();
       await status.recordRequest(
         m,
         _clock(),
@@ -185,6 +199,8 @@ class AIRouter {
     }
 
     final raw = await send(request);
+    // Odgovor stigao posle „Prekini“: ne čita se i ne popravlja.
+    if (cancel?.isCancelled ?? false) throw const AICancelled();
     final Object problem;
     try {
       return parse(decodeJsonObject(raw));
@@ -223,21 +239,38 @@ class AIRouter {
     return reset.toLocal();
   }
 
-  Future<DateTime?> _earliestUnblock(List<ModelSpec> chain) async {
+  /// Najraniji trenutak kada neki pauziran model (limit ili neispravan
+  /// odgovor) ponovo može da se pita. Sa [nullIfUsable] vraća null čim
+  /// postoji model koji može odmah, jer tada „Pokušaj ponovo“ radi odmah.
+  Future<DateTime?> _nextAvailable(
+    List<ModelSpec> chain, {
+    bool nullIfUsable = false,
+  }) async {
     final now = _clock();
     DateTime? earliest;
     for (final m in chain) {
       for (final c in await keys.credentialsFor(m.provider)) {
         if (_invalidKeys.contains(_keySlot(c))) continue;
         if (_unavailableModels.contains(_modelSlot(m, c))) continue;
-        final until = await status.blockedUntil(
+        final blocked = await status.blockedUntil(
           m,
           origin: c.origin,
           keyId: c.keyId,
         );
-        if (until != null && until.isAfter(now)) {
-          if (earliest == null || until.isBefore(earliest)) earliest = until;
+        final invalid = _invalidOutputUntil[_modelSlot(m, c)];
+        DateTime? until;
+        for (final t in [blocked, invalid]) {
+          if (t != null &&
+              t.isAfter(now) &&
+              (until == null || t.isAfter(until))) {
+            until = t;
+          }
         }
+        if (until == null) {
+          if (nullIfUsable) return null;
+          continue;
+        }
+        if (earliest == null || until.isBefore(earliest)) earliest = until;
       }
     }
     return earliest;
