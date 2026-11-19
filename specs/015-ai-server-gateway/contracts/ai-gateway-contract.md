@@ -165,9 +165,10 @@ is always used before the paid model.
 Each allowlisted model has one timeout, the same value on both sides: the
 gateway aborts the provider call at that timeout and answers `504 timeout`;
 the client waits that timeout plus 15 s (function start, network, upload of a
-photo) before it gives up and moves on. The gateway therefore always answers
-first, and the router never starts a fallback while the gateway's attempt is
-still running. With the current models the longest wait is 60 + 15 = 75 s,
+photo) before it gives up and moves on. In the normal case the gateway
+answers first, so the router does not start a fallback while the gateway's
+attempt is still running; the client-first case is covered below. With the
+current models the longest wait is 60 + 15 = 75 s,
 under the 150 s Edge Function limit measured in the spike. Changing a model's
 timeout changes `ChainConfig` and the gateway allowlist in the same PR.
 
@@ -270,12 +271,13 @@ deleted after 2 days.
 
 - A built-in credential no longer carries a key; the chat client sends the
   request to `ai-gateway` instead of the provider. User keys keep the direct
-  path. `ChainConfig`, user model order, per-model cooldowns and the 014
-  validator are unchanged.
+  path. User model order, per-model cooldowns and the 014 validator are
+  unchanged. `ChainConfig.defaults` changes in one way: `openai/default` is
+  added as the last model of both default chains (vision and text).
 - `GatewayQuotaError` and `GatewayAuthError` with the router handling in
   Gateway errors in `AIRouter`, the per-account, per-kind pause store, the
-  gateway deadline from Deadlines, and `openai/default` as the last model in
-  `ChainConfig.defaults`.
+  gateway deadline from Deadlines, and `openai/default` in both default
+  chains (see Model chain and `openai/default`).
 - Cutover (FR-104): built-in keys are removed from `BuiltInKeys`,
   `secrets.example.json` and the build; a check proves the built app contains
   no provider key.
