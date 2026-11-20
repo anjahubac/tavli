@@ -62,6 +62,18 @@ void main() {
     expect((state() as SignedOut).reason, isNull);
   });
 
+  test('nedostupan keyring: prijava se ne tretira kao obična odjava', () async {
+    secrets.unavailable = true;
+
+    await ctrl().start();
+
+    expect(state(), isA<SignedOut>());
+    expect(
+      (state() as SignedOut).reason,
+      SignOutReason.secureStorageUnavailable,
+    );
+  });
+
   test('sačuvana sesija i keširan nalog: prijavljen bez mreže', () async {
     final s = backend.auth.sessionFor('ana@mail.com');
     secrets.values[SessionStore.key] = s.json;

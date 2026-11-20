@@ -50,10 +50,6 @@ void main() {
     expect(app.wakeLock.on, isTrue);
     expect(await stored(app), 'true');
     expectStatus(on: true);
-    expect(
-      find.text('Ekran se neće gasiti dok je recept otvoren.'),
-      findsOneWidget,
-    );
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
@@ -63,7 +59,6 @@ void main() {
     expect(app.wakeLock.on, isFalse);
     expect(await stored(app), 'false');
     expectStatus(on: false);
-    expect(find.text('Ekran se gasi kao i obično.'), findsOneWidget);
   });
 
   testTavli('izlazak iz recepta pušta ekran da se ugasi', (tester) async {
@@ -139,5 +134,11 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(app.wakeLock.on, isFalse);
     expect(await stored(app), 'true');
+    expect(
+      find.text(
+        'Sistem nije uspeo da spreči gašenje ekrana. Proveri da li okruženje podržava ovu funkciju.',
+      ),
+      findsOneWidget,
+    );
   });
 }

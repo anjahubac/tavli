@@ -86,15 +86,27 @@ class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   void _apply(bool on) {
     if (on == _held) return;
     _held = on;
-    unawaited(_call(on ? _lock.enable : _lock.disable));
+    unawaited(_call(on ? _lock.enable : _lock.disable, enabling: on));
   }
 
   /// Ako platforma ne podrži zahtev, aplikacija radi dalje.
-  static Future<void> _call(Future<void> Function() action) async {
+  Future<void> _call(Future<void> Function() action, {bool? enabling}) async {
     try {
       await action();
     } on Exception catch (e) {
       if (kDebugMode) debugPrint('Ekran: zahtev nije uspeo ($e)');
+      if (enabling case final on? when mounted) {
+        final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              on
+                  ? 'Sistem nije uspeo da spreči gašenje ekrana. Proveri da li okruženje podržava ovu funkciju.'
+                  : 'Nije uspelo isključivanje zadržavanja ekrana. Ekran može ostati uključen dok se recept ne zatvori.',
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -149,19 +161,7 @@ class KeepScreenOnButton extends ConsumerWidget {
         child: Icon(on ? onIcon : offIcon, key: ValueKey(on)),
       ),
       onPressed: () async {
-        final messenger = ScaffoldMessenger.of(context);
         await ref.read(keepScreenOnProvider.notifier).set(!on);
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                on
-                    ? 'Ekran se gasi kao i obično.'
-                    : 'Ekran se neće gasiti dok je recept otvoren.',
-              ),
-            ),
-          );
       },
     );
   }
