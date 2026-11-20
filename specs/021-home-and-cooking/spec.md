@@ -64,6 +64,14 @@ Producer specs: Existing baseline; no new producer feature required for the firs
 
 - **Q1** (Dev 4 with reviewer): Finalize Home route, shared cooked operation identity/ownership and manual pantry edit interaction before dependent feature integration.
 
+- **Q1 decision (cooked operation, 2026-11-19, Dev 4)**: accepted the
+  [cooked meal contract](contracts/cooked-meal-contract.md): one
+  `CookingRepository` mark/undo operation with a recorded event (meal, actor,
+  servings, snapshot), pantry consumption as a replay-safe ledger, manual pantry
+  count wins over earlier cooking, intake through an actor-only effect. Dev 1 and
+  Dev 3 confirm their parts in the implementing PR. Home route remains as in
+  FR-101; the manual pantry edit sheet copy stays with 022.
+
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
 record decision owner/date, precise typed contract and reviewed acceptance fixtures.

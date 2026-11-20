@@ -22,6 +22,9 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 
 Home is a projection of approved plan data, not another store. Shared cooked/undo operation stays in existing domain/repository boundaries; pantry and intake extend its versioned contract in 022/023.
 
+Cooked/undo operation: [cooked meal contract](contracts/cooked-meal-contract.md)
+(accepted by Dev 4, 2026-11-19). Proposed new file `lib/data/cooking_repository.dart`.
+
 Producer dependencies: Existing baseline; no new producer feature required for the first slice.
 
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
@@ -74,5 +77,5 @@ tests do not contact a network; explicit guarded integration uses local services
 No speculative hosted deployment or publication. Record old-client/snapshot
 compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
-limits from open questions remain release gates. UI checks use current theme/
-motion components; do not redesign screens or extract a package incidentally.
+limits from open questions remain release gates. UI follows the design canvas and the
+UI standard; do not invent layouts or move components into the package incidentally.
