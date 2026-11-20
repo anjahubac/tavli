@@ -25,6 +25,39 @@ Dev 3: Matija (people/household); Dev 4: Anja (everyday UI/platforms).
 This keeps current assignments; it does not establish equal workload.
 Estimate remaining implementation, tests and integration per phase before rebalancing.
 
+## Everyday UX priorities — 2026-11-20
+
+The Claude “Tavli: ekrani po uređajima” canvas is the visual reference for the
+five main destinations. The [product UX decisions](product-design.md) and
+[UI standard](development/ui-standard.md) specify behavior and acceptance.
+
+At `origin/dev` `28fa253`, five-tab navigation and the default `/home` route
+are in place ([#59](https://github.com/anjahubac/tavli/pull/59)). Home and the
+Pantry tab still show placeholders. Plan and both shopping modes exist.
+Shopping now opens “Po receptu” when there are recipe items and no plan
+([#49](https://github.com/anjahubac/tavli/pull/49)) and has switch regression
+coverage ([#70](https://github.com/anjahubac/tavli/pull/70)). The local
+`tavli_ui` package and debug gallery exist
+([#60](https://github.com/anjahubac/tavli/pull/60),
+[#71](https://github.com/anjahubac/tavli/pull/71)). The application still uses
+its existing shell. Linux has a merged GTK scaffold
+([#67](https://github.com/anjahubac/tavli/pull/67)), with its build and device
+evidence tracked separately. Windows remains planned.
+
+1. **Phase 1 — navigation in narrow windows.** Before adopting the gallery
+   shell in the app, preserve the five destinations, auth redirects and deep
+   links across the compact, rail and extended layouts. Prove readable labels
+   at 2× text and preserve selection, focus and screen state on resize.
+2. **Phase 2 — “Kuvaj” → “Skuvano” → “Poništi”.** Deliver one complete Home
+   and cooking journey against the shared operation in
+   [021](../specs/021-home-and-cooking/plan.md). Verify the effect on shopping
+   demand and applicable pantry stock offline and after sync. Integration with
+   pantry and nutrition follows the owning specs and their dependencies.
+
+The remaining calendar, shopping, pantry and recipe interaction details
+follow their existing phases and dependencies. The five-user first-use
+evaluation remains in the [acceptance plan](product-design.md#acceptance).
+
 ## Cross-phase requirements
 
 - Keep ingredients embedded in recipe snapshots with optional `food_id` and
@@ -106,9 +139,10 @@ Retrieve them or clarify explicit requirements before the affected feature start
 6. External requirements: store URLs, Windows hardware, Apple enrollment,
    GitHub ruleset availability and four reviewers' verified GitHub handles.
 
-Word/Excel/share-sheet import and Apple Health/Health Connect are later additions,
-not silent expansion of the 87 imported tickets. The external `tavli_ui` package
-waits for team agreement; consistent components apply now in existing folders.
+Word/Excel/share-sheet import and Apple Health/Health Connect remain later
+additions. Reuse the local `packages/tavli_ui` package and gallery now. Moving
+them to an external repository waits for team agreement under
+[031](../specs/031-external-ui-library/spec.md).
 
 ## Cross-cutting security work — added after source review
 
