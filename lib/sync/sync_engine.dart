@@ -166,13 +166,38 @@ class SyncEngine {
     _db.accounts,
   )..where((t) => t.userId.equals(_scope.userId))).getSingleOrNull();
 
-  var _pulling = false;
+  Future<void>? _pullInFlight;
+  var _membershipCheck = false;
+
+  /// Waits for old-scope work and suspends sync during server reconciliation.
+  Future<T> reconcileMembership<T>(Future<T> Function() action) async {
+    if (_membershipCheck) throw StateError('Membership check in progress');
+    _membershipCheck = true;
+    try {
+      await _inFlight;
+      await _pullInFlight;
+      return await action();
+    } finally {
+      _membershipCheck = false;
+      kick();
+    }
+  }
+
+  Future<void> pull() async {
+    if (_membershipCheck || _pullInFlight != null) return;
+    final pending = _pull();
+    _pullInFlight = pending;
+    try {
+      await pending;
+    } finally {
+      _pullInFlight = null;
+    }
+  }
 
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
-  Future<void> pull() async {
+  Future<void> _pull() async {
     final downloader = _downloader;
-    if (_stopped || downloader == null || _pulling) return;
-    _pulling = true;
+    if (_stopped || downloader == null) return;
     try {
       final first = !((await _account())?.initialDownloadDone ?? false);
       if (first) setPhase(SyncPhase.downloading);
@@ -201,7 +226,6 @@ class SyncEngine {
       // Bez mreže: nastavlja se sledeći put od sačuvane pozicije.
       setPhase(null);
     } finally {
-      _pulling = false;
       if (!_stopped) await refreshStatus();
     }
   }
@@ -220,7 +244,7 @@ class SyncEngine {
 
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
-    if (_stopped) return Future.value();
+    if (_stopped || _membershipCheck) return Future.value();
     if (_running) {
       _again = true;
       return _inFlight ?? Future.value();

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../ai/key_store.dart';
 import '../domain/account.dart';
 import '../providers.dart';
+import '../sync/sync_engine.dart';
 import 'account_api.dart';
 import 'account_service.dart';
 import 'auth_gateway.dart';
@@ -139,20 +140,100 @@ class AuthController extends Notifier<AuthState> {
 
   /// Obnavlja sačuvanu sesiju (start, povratak u aplikaciju). Bez mreže
   /// ostaje prijavljen; odbijena obnova vraća na prijavu.
-  Future<void> restoreSession() async {
+  Future<void> restoreSession({SyncEngine? sync}) async {
     if (!ref.mounted) return;
     final store = _store, gateway = _gateway;
     final json = await store.read();
     if (json == null) return;
     try {
       final session = await gateway.restore(json);
-      if (ref.mounted) await store.write(session.json);
+      if (!ref.mounted) return;
+      await store.write(session.json);
+      if (!ref.mounted || _checkingMembership) return;
+      final initial = state;
+      if (initial is! SignedIn || initial.account.userId != session.userId) {
+        return;
+      }
+      final service = _service;
+      _checkingMembership = true;
+      try {
+        Future<void> reconcile() async {
+          final account = await service.refreshMembership(initial.account);
+          if (!ref.mounted || !identical(state, initial)) return;
+          if (account.householdId != initial.account.householdId) sync?.stop();
+          if (account.householdId != initial.account.householdId ||
+              account.role != initial.account.role ||
+              account.householdName != initial.account.householdName) {
+            _set(_signedIn(account));
+          }
+        }
+
+        await (sync == null
+            ? reconcile()
+            : sync.reconcileMembership(reconcile));
+      } finally {
+        _checkingMembership = false;
+      }
     } on Offline {
       // Pokušava se ponovo pri povratku u aplikaciju.
     } on Unavailable {
       // Isto.
     } on AuthFailure catch (f) {
       if (ref.mounted) await sessionExpired(accountGone: f is AccountGone);
+    }
+  }
+
+  var _checkingMembership = false;
+
+  Future<HouseholdJoinResult> confirmHouseholdJoin({
+    required String token,
+    required String expectedSourceHouseholdId,
+    required JoinRecipeChoice recipeChoice,
+    required bool acknowledgeSourceDeletion,
+    required String operationId,
+    required SyncEngine? sync,
+  }) async {
+    final initial = state;
+    if (initial is! SignedIn || _checkingMembership) {
+      return const HouseholdJoinResult(status: 'unavailable');
+    }
+    if (initial.account.householdId != expectedSourceHouseholdId) {
+      return const HouseholdJoinResult(status: 'stale_source');
+    }
+    final service = _service;
+    _checkingMembership = true;
+    try {
+      await sync?.push();
+      Future<HouseholdJoinResult> confirm() async {
+        if (!ref.mounted || !identical(state, initial)) {
+          return const HouseholdJoinResult(status: 'unavailable');
+        }
+        final result = await service.confirmHouseholdJoin(
+          account: initial.account,
+          token: token,
+          recipeChoice: recipeChoice,
+          acknowledgeSourceDeletion: acknowledgeSourceDeletion,
+          operationId: operationId,
+        );
+        if (result.account != null &&
+            ref.mounted &&
+            identical(state, initial)) {
+          final account = await service.cached(initial.account.userId);
+          if (account != null && ref.mounted && identical(state, initial)) {
+            if (account.householdId != initial.account.householdId) {
+              sync?.stop();
+            }
+            _set(_signedIn(account));
+          }
+        }
+        return result;
+      }
+
+      return await (sync == null
+          ? confirm()
+          : sync.reconcileMembership(confirm));
+    } finally {
+      _checkingMembership = false;
     }
   }
 
