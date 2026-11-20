@@ -279,24 +279,30 @@ class ShoppingRepository {
               .get())
         l.id,
     };
-    final sources = {
-      for (final s
-          in await (_db.select(_db.shoppingSources)..where(
-                (t) =>
-                    t.householdId.equals(_scope.householdId) &
-                    t.kind.equals(ShoppingSourceKind.planEntry.name) &
-                    t.listId.isIn(planLists),
-              ))
-              .get())
-        s.planEntryId!: s,
-    };
+    // Obrok može imati više izvora (npr. drugi uređaj ga je stavio u drugu
+    // nedelju): zadržava se jedan, ostali se brišu na kraju.
+    final allSources =
+        await (_db.select(_db.shoppingSources)..where(
+              (t) =>
+                  t.householdId.equals(_scope.householdId) &
+                  t.kind.equals(ShoppingSourceKind.planEntry.name) &
+                  t.listId.isIn(planLists),
+            ))
+            .get();
+    final sourcesByEntry = <String, List<ShoppingSourceRow>>{};
+    for (final s in allSources) {
+      (sourcesByEntry[s.planEntryId!] ??= []).add(s);
+    }
     final now = _clock().toUtc();
     final kept = <String>{};
     for (final e in entries) {
       final period = periodFor(range, CivilDate.fromWire(e.date));
       if (e.recipeSnapshotJson == null || period == null) continue;
       final listId = await weekList(planId, period);
-      var source = sources[e.id];
+      final candidates = sourcesByEntry[e.id] ?? const <ShoppingSourceRow>[];
+      var source =
+          candidates.where((c) => c.listId == listId).firstOrNull ??
+          candidates.firstOrNull;
       if (source != null && source.listId != listId) {
         // Obrok premešten u drugu nedelju: stari izvor oslobađa zalihu.
         await _deleteSource(source.id);
@@ -332,7 +338,7 @@ class ShoppingRepository {
     }
     // Obrok obrisan ili bez recepta: njegov izvor i neiskorišćena zaliha
     // se oslobađaju; kupljene stavke ostaju.
-    for (final s in sources.values) {
+    for (final s in allSources) {
       if (!kept.contains(s.id)) await _deleteSource(s.id);
     }
     await _reconcile();

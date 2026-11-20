@@ -551,6 +551,40 @@ void main() {
       expect(await db.select(db.supplyAllocations).get(), hasLength(1));
     });
 
+    test('dva izvora istog obroka (npr. sa drugog uređaja) ostaju jedan, '
+        'bez duple potrebe', () async {
+      final end = mon.addDays(13);
+      await plan('p1', mon, end);
+      await entry('e1', mon, ingredients: const [kupus]);
+      await shop.reconcilePlan('p1');
+      final weeks = weekPeriods(DateRange(mon, end));
+      final week1 = await shop.weekList('p1', weeks.first);
+      final week2 = await shop.weekList('p1', weeks.last);
+
+      // Drugi izvor za isti obrok u drugoj nedelji, kao posle preuzimanja.
+      await db
+          .into(db.shoppingSources)
+          .insert(
+            ShoppingSourcesCompanion.insert(
+              id: 'stray',
+              listId: week2,
+              kind: ShoppingSourceKind.planEntry.name,
+              planEntryId: const Value('e1'),
+              createdAt: DateTime.utc(2026, 11),
+              householdId: const Value('home-one'),
+            ),
+          );
+      await shop.reconcilePlan('p1');
+
+      final sources = await (db.select(
+        db.shoppingSources,
+      )..where((t) => t.planEntryId.equals('e1'))).get();
+      expect(sources, hasLength(1));
+      expect(sources.single.listId, week1);
+      expect(await open(week1), ['Kupus 300.0 g']);
+      expect(await open(week2), isEmpty);
+    });
+
     test('ostava 400 g na 300/100/200 hronološki: dve nedelje, kupuje se '
         'samo 200 g u drugoj', () async {
       final end = mon.addDays(13);
