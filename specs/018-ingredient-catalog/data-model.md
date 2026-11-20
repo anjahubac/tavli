@@ -60,18 +60,27 @@ ingredient units, density and conversions (D1-010, depends on 017), nutrition
 | `withdrawn_at` | `timestamptz` null, `check (withdrawn_at is null or household_id is null)` | Withdraws a wrong shared alias without deleting the row (see Correcting an alias). |
 | `created_at`, `updated_at`, `updated_by` | as other tables | |
 
-Uniqueness: one active row per (`household_id` or shared, `alias_normalized`);
-withdrawn shared aliases are excluded from the unique index, so a correction can
-add the replacement under the same key. A
-household override and a shared alias may coexist and the household one wins (#30).
-Two equally authoritative visible mappings that disagree resolve to `Unresolved`,
-which the matcher handles; the table only has to keep both rows.
+Uniqueness of aliases differs by owner:
 
-Uniqueness for shared rows needs care: PostgreSQL treats NULLs as distinct, so a
-plain `unique (household_id, alias_normalized)` would allow two identical shared
-aliases. Use `unique nulls not distinct` (the local stack is PostgreSQL 17,
-`supabase/config.toml`) or two partial unique indexes, on `food_aliases
-(household_id, alias_normalized)` and on `foods (household_id, slug)` alike.
+- **Shared aliases:** one active row per `alias_normalized`. A partial unique
+  index on `food_aliases (alias_normalized) where household_id is null and
+  withdrawn_at is null` enforces it, so a correction can add the replacement
+  under the same key after withdrawing the old row. Only migrations write
+  shared rows, so the index never rejects a client upload.
+- **Household aliases: no unique key**, on the server or in the local cache.
+  Several rows of one household may share an `alias_normalized`. Rows that
+  name the same food count as one mapping. Rows that name different foods are
+  two equally authoritative mappings, and the matcher returns `Unresolved`
+  for that key (#30). This is what makes alias replacement safe without a
+  server transaction (see Correcting an alias).
+
+A household override and a shared alias may coexist, and the household one wins
+(#30).
+
+`foods (household_id, slug)` stays unique per owner. PostgreSQL treats NULLs as
+distinct, so a plain unique constraint would allow two identical shared slugs.
+Use `unique nulls not distinct` (the local stack is PostgreSQL 17,
+`supabase/config.toml`) or two partial unique indexes.
 
 Consistency: a shared alias must point to a shared food; a household alias may
 point to a shared food or to a food of the same household. A foreign key cannot
@@ -137,12 +146,59 @@ through the channels they already use.
 | --- | --- | --- |
 | Shared food withdrawn | Same migration sets `withdrawn_at` on the food and on its shared aliases, bumping `updated_at`. If a reviewed replacement exists, the migration inserts new shared aliases to it. | Incremental download by `updated_at` brings the withdrawn rows and the new aliases. The matcher ignores withdrawn rows. |
 | Shared alias points to the wrong food | Migration sets `withdrawn_at` on that alias and inserts a new shared alias with the same `alias_normalized` to the correct food. | Same as above. Until the next download, the device keeps the old match (accepted staleness, see above). |
-| Household alias points to a withdrawn food | The row stays but stops resolving. The matcher returns `Unresolved` for that wording and the review UI (#57) offers it again. Confirming a new food deletes the old household alias and inserts a new one in one transaction. | The delete goes through the existing `deletions` tombstone, the insert through the outbox and download, like other household rows. |
-| Household changes its own mapping | Same as the previous row: delete plus insert in one local transaction and one outbox batch. | Other devices of the household receive the tombstone and the new row on their next download. A device that has the new row but not yet the tombstone sees two household mappings for one key; the matcher returns `Unresolved` for that key until the tombstone arrives, never the stale food. |
+| Household alias points to a withdrawn food | The row stays but stops resolving. The matcher returns `Unresolved` for that wording and the review UI (#57) offers it again. Confirming a new food replaces the household alias with the protocol below. | The insert arrives through download, the delete through the existing `deletions` tombstone, like other household rows. |
+| Household changes its own mapping | Replacement protocol below. | Same as the previous row. |
 
 Existing recipe links are not rewritten in any case (#30): a link to a withdrawn
 food is treated as unresolved, and a link confirmed under an old household
 mapping stays until the user reviews that ingredient again.
+
+### Replacing a household alias
+
+The server has no multi-row transaction for client writes. The existing
+`Uploader` groups the outbox by entity **and** operation (`_nextBatch()`), so a
+delete and an insert are always separate remote calls, and a connection can drop
+between them. The local transaction does not make them atomic on the server.
+The protocol is therefore built so that every intermediate state is safe on its
+own:
+
+1. **One local transaction:** insert the new household alias, then delete every
+   other household alias of the same household and `alias_normalized`. The
+   outbox therefore holds the upsert **before** the delete(s), and the uploader
+   sends them in that order.
+2. **Interrupted after the insert:** the server holds the old and the new
+   mapping. Other devices see two household mappings to different foods and get
+   `Unresolved` for that key: never the stale food, and never a fallback to the
+   shared alias, because a household mapping still exists. The outbox retries the
+   delete, and the next download brings the tombstone.
+3. **Interrupted before the insert:** nothing has changed on the server.
+4. **Two devices correct the same key offline** (old → B on one, old → C on the
+   other): both inserts are accepted, because household aliases have no unique
+   key, so no outbox row is rejected. Both deletes target the old row; a second
+   delete of a missing row is a no-op. The household ends with B and C, which is
+   `Unresolved`, so the review UI (#57) offers the key again. Confirming one
+   food there runs step 1 again and deletes the other row. The household
+   resolves the conflict; the server does not pick a winner.
+5. **The same food twice** (both devices pick B): two rows, one mapping. The
+   matcher treats them as one result. The next confirmation of that key removes
+   the extra row.
+
+The sending device applies step 1 locally right away, so its own matcher sees
+only the new mapping.
+
+### Local cache staging
+
+The local `FoodAliases` table mirrors the server rule: **no unique index on
+`(household_id, alias_normalized)`**, only the primary key on `id`. The
+`Downloader` applies entity rows before it pulls `deletions`. A replacement can
+therefore arrive before the tombstone of the row it replaces, in the same run or
+in a later one if the app restarts in between. The insert never fails on a
+unique key. Until the tombstone arrives, the cache holds both rows and the
+matcher returns `Unresolved` for that key. After the tombstone, only the new row
+remains. Shared aliases keep their uniqueness in the local cache too
+(`alias_normalized` where `household_id is null` and `withdrawn_at is null`).
+A withdrawn shared row is written in place of the cached row with the same `id`,
+so it never collides with its replacement.
 
 ## Access rules (server)
 
@@ -187,9 +243,27 @@ and the recipe labels slice (#54) also need one.
 - Withdrawal (D9): withdrawing sets `updated_at`, the downloader receives the
   row, the matcher ignores it, and the server rejects a new household alias
   that points to it; `withdrawn_at` on a household food is rejected.
-- Uniqueness: two identical shared aliases and two identical shared slugs are
-  rejected, while the same alias in a household and in the shared catalog may
-  coexist.
+- Uniqueness: two identical active shared aliases and two identical shared
+  slugs are rejected. A withdrawn shared alias and its replacement under the
+  same key are accepted. Two household aliases with the same key are accepted,
+  and so are the same alias in a household and in the shared catalog.
+- Household alias replacement (acceptance fixtures):
+  - **Interrupted between insert and delete:** the server holds the old and new
+    rows. A second device downloads both and the matcher returns `Unresolved`,
+    not the old food and not the shared alias. After the retried delete and the
+    tombstone, it returns the new food.
+  - **Two devices correct the same key offline** to different foods: both
+    uploads succeed and no outbox row is rejected. Both devices then return
+    `Unresolved` for the key. Confirming one food deletes the other row, and
+    every device converges on it.
+  - **Same food from two devices:** two rows resolve to that one food.
+  - Outbox order: the upsert of the new row has a lower `seq` than the delete
+    of the old one.
+- Local cache staging (download fixture): start with the old household alias
+  cached. The download delivers the replacement row first and the old row's
+  tombstone in a later run, with an app restart between them. The insert
+  succeeds, the matcher returns `Unresolved` until the tombstone, then the new
+  food. The sync does not repeat a failing insert.
 - Both directions of the rollout: a new client against a server without the
   tables, and an old client against a server with them.
 - A downstream query test that matches on the stored `alias_normalized` value
@@ -199,7 +273,7 @@ and the recipe labels slice (#54) also need one.
 
 | ID | Question | Proposal | Needed from |
 | --- | --- | --- | --- |
-| D1 | One `foods` table with nullable `household_id`, or separate shared and household tables | One table: one foreign key target and one matcher query. Uniqueness of shared rows needs `nulls not distinct` or two partial unique indexes. | Dev 4, Dev 3 |
+| D1 | One `foods` table with nullable `household_id`, or separate shared and household tables | One table: one foreign key target and one matcher query. Shared slug uniqueness needs `nulls not distinct` or two partial unique indexes. Shared aliases are unique only while active, household aliases are not unique (see Replacing a household alias). | Dev 4, Dev 3 |
 | D2 | How to enforce alias and food consistency | Trigger, since a foreign key cannot express it | Dev 3 |
 | D3 | Slug uniqueness scope and rename behavior | Unique among shared rows and within one household; the id never changes on rename | Dev 4 |
 | D4 | Normalization function and where it runs | The existing `ingredientKey`, unchanged, so stored `alias_normalized` equals what the client already computes; covered by shared fixtures. Inflections are reviewed aliases. | Dev 2, Dev 4 |
@@ -208,7 +282,7 @@ and the recipe labels slice (#54) also need one.
 | D7 | Id type, generation and validation boundary | `text` ids like every other table, with a UUID-format check; the client generates the UUID string for household rows, migrations for shared rows, the server validates the format | Dev 4 |
 | D8 | Immutable ownership | Trigger blocks changing `id` and `household_id`; promotion creates a new shared row | Dev 3, Dev 4 |
 | D9 | Withdrawn shared entries | `withdrawn_at` tombstone instead of delete; clients drop it on the next download | Dev 3, Dev 4 |
-| D10 | Separate ingredient table or the embedded ingredient list | Keep the embedded list (`foodId` and `matchedKey` per ingredient, #30). Plans, allergen checks and shopping run in the client over the local database, and no server function queries ingredients today. Revisit with a separate table only if server-side search or per-ingredient access rules are added, for example when allergen enforcement in plans is implemented. | Dev 3, Dev 4 |
+| D10 | Separate ingredient table or the embedded ingredient list | Keep the embedded list (`foodId`, `matchedKey` and `linkSource` per ingredient, #30). Plans and shopping run in the client over the local database, and no server function queries ingredients today. **Allergen enforcement does not exist yet.** The proposed consumer design runs it in the client over the same local data. Where it runs and the minimum member-data contract it needs (D3-001) still need agreement between Dev 3 and Dev 2. Revisit a separate table only if server-side search, server-side allergen enforcement or per-ingredient access rules are added. | Dev 3, Dev 4; allergen placement Dev 3, Dev 2 |
 
 ## Rollout
 
