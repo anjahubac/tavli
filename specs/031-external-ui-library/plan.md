@@ -1,18 +1,15 @@
-# Implementation plan: External Tavli UI library preparation
+# Implementation plan: Tavli UI component library (local package)
 
-**Status**: the local package and gallery are in dev. External extraction
-remains a scoped proposal pending team agreement.
+**Status**: in progress, card by card (see the delivery order in spec.md).
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 4 / all feature owners
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
 ## Existing boundaries and proposed files
 
-- `packages/tavli_ui/` (existing workspace package and component gallery)
-- `lib/app/theme_controller.dart`
-- `lib/app/animations/`
-- `lib/app/tab_app_bar.dart`
-- `lib/features/ (component inventory)`
-- `external tavli_ui repository (not present)`
+- `packages/tavli_ui/` (new local package: theme, tokens, platform, components, gallery, goldens)
+- `lib/app/theme/` and `lib/app/animations/` (move into the package)
+- `lib/app/tab_app_bar.dart`, `lib/app/home_shell.dart` (replaced by package shell components)
+- `lib/features/` (screens move to library components one per PR)
 
 Items marked new/proposed/external do not exist at baseline. Verify exact existing
 files and consumers before editing; new files remain in current feature/domain/
@@ -20,12 +17,9 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 
 ## Contract and data plan
 
-No business data or Supabase dependencies in reusable visual components. External repository creation and package extraction remain deferred until explicit team start.
+No business data or Supabase dependencies in reusable visual components. The package is a path dependency in this repository with no versioning; tokens and components follow the design canvas as recorded in the UI standard.
 
 Producer dependencies: [021](../021-home-and-cooking/spec.md)
-
-Local shell adoption is coordinated under
-[021 priority delivery](../021-home-and-cooking/plan.md#priority-delivery).
 
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
@@ -77,5 +71,5 @@ tests do not contact a network; explicit guarded integration uses local services
 No speculative hosted deployment or publication. Record old-client/snapshot
 compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
-limits from open questions remain release gates. UI checks use current theme/
-motion components; do not redesign screens or extract a package incidentally.
+limits from open questions remain release gates. UI follows the design canvas and the
+UI standard; do not invent layouts or move components into the package incidentally.

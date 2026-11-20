@@ -120,7 +120,7 @@ operations. See [full spec index](../specs/README.md) and
 | LINUX | Dev 3 (Matija), platform review Dev 4 (Anja) | Flutter GTK scaffold and plugin audit | Ubuntu 24.04 x86_64 smoke, libsecret/keyring, Linux build CI and required-check settings |
 | CYCLE | Dev 3, Dev 2 hints, Dev 4 indicator | Preferences/hint boundary | Consent, stale rules, six source-proposal questions |
 | PLAN-IMPORT | Dev 2; Dev 1/3/4 consumers | Slots/catalog/nutrition | Ten source-proposal questions, crop/retention, exact quantities/alternatives |
-| UI-PACKAGE | Dev 4; deferred | Current UI standard | Explicit team start, six source questions and verified external repo access |
+| UI-PACKAGE | Dev 4; started 2026-11-19 | Design canvas and UI standard | Local `packages/tavli_ui` in this repository; icon set source |
 
 ## Decisions still required
 
@@ -140,9 +140,8 @@ Retrieve them or clarify explicit requirements before the affected feature start
    GitHub ruleset availability and four reviewers' verified GitHub handles.
 
 Word/Excel/share-sheet import and Apple Health/Health Connect remain later
-additions. Reuse the local `packages/tavli_ui` package and gallery now. Moving
-them to an external repository waits for team agreement under
-[031](../specs/031-external-ui-library/spec.md).
+additions. Use the existing local `packages/tavli_ui` package and gallery for
+the rollout described in [031](../specs/031-external-ui-library/spec.md).
 
 ## Cross-cutting security work — added after source review
 

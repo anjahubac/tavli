@@ -78,8 +78,8 @@ tests do not contact a network; explicit guarded integration uses local services
 No speculative hosted deployment or publication. Record old-client/snapshot
 compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
-limits from open questions remain release gates. UI checks use current theme/
-motion components; do not redesign screens or extract a package incidentally.
+limits from open questions remain release gates. Follow the design canvas and
+UI standard when applying the existing theme and motion components.
 
 ## PR #49 review corrections — 2026-11-19
 

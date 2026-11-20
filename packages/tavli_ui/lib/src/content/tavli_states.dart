@@ -28,7 +28,7 @@ class TavliEmptyState extends StatelessWidget {
     final action = this.action;
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
+        constraints: const BoxConstraints(maxWidth: TavliWidth.message),
         child: Padding(
           padding: const EdgeInsets.all(TavliSpacing.large),
           child: Column(
