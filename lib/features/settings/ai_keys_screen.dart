@@ -60,9 +60,11 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     final List<StoredKey> keys;
     try {
       keys = await _ownKeys();
-    } on SecretStorageException catch (e) {
+    } on SecretStorageException {
       if (!mounted) return;
-      setState(() => _loadError = 'kod ${e.code}');
+      setState(
+        () => _loadError = 'Bezbedno skladište nije dostupno. Proveri da li je sistemski keyring pokrenut i otključan.',
+      );
       return;
     } on Exception catch (e) {
       if (!mounted) return;
@@ -108,15 +110,15 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     final provider = _provider;
     if (value.isEmpty || provider == null) return;
     final store = ref.read(keyStoreProvider);
-    if (ref.read(builtInKeysProvider).contains(value) ||
-        (await store.list()).any((k) => k.value == value)) {
-      return _show('Ovaj ključ je već dodat.', error: true);
-    }
     setState(() {
       _busy = true;
       _message = null;
     });
     try {
+      if (ref.read(builtInKeysProvider).contains(value) ||
+          (await store.list()).any((k) => k.value == value)) {
+        return _show('Ovaj ključ je već dodat.', error: true);
+      }
       // Provera preko liste modela ne troši limit za generisanje.
       _KeyStatus status;
       List<ModelAvailability> models = const [];
@@ -151,6 +153,13 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
         error: checkError != null,
       );
       await _load();
+    } on SecretStorageException {
+      if (mounted) {
+        _show(
+          'Bezbedno skladište nije dostupno. Proveri da li je sistemski keyring pokrenut i otključan.',
+          error: true,
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -201,7 +210,16 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
       ),
     );
     if (confirmed != true) return;
-    await ref.read(keyStoreProvider).remove(key.id);
+    try {
+      await ref.read(keyStoreProvider).remove(key.id);
+    } on SecretStorageException {
+      if (!mounted) return;
+      _show(
+        'Bezbedno skladište nije dostupno. Proveri da li je sistemski keyring pokrenut i otključan.',
+        error: true,
+      );
+      return;
+    }
     _status.remove(key.id);
     _models.remove(key.id);
     _show('Ključ je obrisan.');

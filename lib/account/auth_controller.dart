@@ -35,7 +35,7 @@ class AccountScope {
 /// Ne odgovara nijednom zapisu (niko nije prijavljen).
 const noAccountScope = AccountScope(userId: '', householdId: '');
 
-enum SignOutReason { sessionExpired, accountDeleted }
+enum SignOutReason { sessionExpired, accountDeleted, secureStorageUnavailable }
 
 /// Stanje prijave. `CodeSent` se nikad ne čuva: posle ponovnog otvaranja
 /// aplikacije prikazuje se korak sa e-poštom.
@@ -113,7 +113,7 @@ class AuthController extends Notifier<AuthState> {
     try {
       json = await store.read();
     } on SecretStorageException {
-      _set(const SignedOut());
+      _set(const SignedOut(SignOutReason.secureStorageUnavailable));
       return;
     }
     final uid = json == null ? null : userIdFromSessionJson(json);
@@ -132,6 +132,8 @@ class AuthController extends Notifier<AuthState> {
       final session = await gateway.restore(json);
       await store.write(session.json);
       _set(_signedIn(await service.loadOrFetch(session)));
+    } on SecretStorageException {
+      _set(const SignedOut(SignOutReason.secureStorageUnavailable));
     } on AuthFailure {
       _set(const SignedOut());
     }
@@ -142,7 +144,13 @@ class AuthController extends Notifier<AuthState> {
   Future<void> restoreSession() async {
     if (!ref.mounted) return;
     final store = _store, gateway = _gateway;
-    final json = await store.read();
+    final String? json;
+    try {
+      json = await store.read();
+    } on SecretStorageException {
+      _set(const SignedOut(SignOutReason.secureStorageUnavailable));
+      return;
+    }
     if (json == null) return;
     try {
       final session = await gateway.restore(json);
@@ -151,6 +159,8 @@ class AuthController extends Notifier<AuthState> {
       // Pokušava se ponovo pri povratku u aplikaciju.
     } on Unavailable {
       // Isto.
+    } on SecretStorageException {
+      _set(const SignedOut(SignOutReason.secureStorageUnavailable));
     } on AuthFailure catch (f) {
       if (ref.mounted) await sessionExpired(accountGone: f is AccountGone);
     }
@@ -170,8 +180,14 @@ class AuthController extends Notifier<AuthState> {
     final s = state;
     if (s is! CodeSent) return;
     final store = _store, service = _service;
-    final session = await _gateway.verifyCode(s.email, normalizeCode(code));
-    await store.write(session.json);
+    final AuthSession session;
+    try {
+      session = await _gateway.verifyCode(s.email, normalizeCode(code));
+      await store.write(session.json);
+    } on SecretStorageException {
+      _set(const SignedOut(SignOutReason.secureStorageUnavailable));
+      return;
+    }
     _set(_signedIn(await service.loadOrFetch(session)));
   }
 
@@ -199,7 +215,11 @@ class AuthController extends Notifier<AuthState> {
   Future<void> _onSessionChanged(AuthSession? session) async {
     if (session == null) return;
     if (state is SignedIn || state is NeedsName) {
-      await _store.write(session.json);
+      try {
+        await _store.write(session.json);
+      } on SecretStorageException {
+        _set(const SignedOut(SignOutReason.secureStorageUnavailable));
+      }
     }
   }
 

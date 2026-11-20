@@ -13,6 +13,8 @@ String authErrorText(AuthFailure f) => switch (f) {
 
 const sessionExpiredText = 'Sesija je istekla. Prijavi se ponovo.';
 const accountDeletedText = 'Nalog je obrisan.';
+const secureStorageUnavailableText =
+    'Bezbedno skladište sesije nije dostupno. Proveri da li je sistemski keyring pokrenut i otključan, pa pokušaj ponovo.';
 
 /// Poruka za neuspelo brisanje naloga.
 String deleteErrorText(DeleteFailure f) => switch (f) {
