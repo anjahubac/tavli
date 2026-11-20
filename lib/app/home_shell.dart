@@ -21,7 +21,6 @@ final List<TavliDestination> _destinations = [
   for (final t in tabs)
     TavliDestination(
       icon: t.icon,
-      selectedIcon: t.selectedIcon,
       label: t.label,
       home: t.path == homeLocation,
     ),
@@ -249,11 +248,7 @@ class _LargeTextDestination extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        selected ? tab.selectedIcon : tab.icon,
-                        size: 20,
-                        color: foreground,
-                      ),
+                      TavliIcon(tab.icon, size: 20, color: foreground),
                       Text(
                         tab.label,
                         textAlign: TextAlign.center,

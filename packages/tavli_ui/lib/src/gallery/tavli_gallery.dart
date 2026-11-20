@@ -9,6 +9,7 @@ import '../tokens.dart';
 import 'content_sections.dart';
 import 'controls_sections.dart';
 import 'gallery_section.dart';
+import 'icon_sections.dart';
 import 'overlay_sections.dart';
 import 'shell_sections.dart';
 
@@ -214,6 +215,7 @@ class TavliGallerySections extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TavliFoundationGallerySections(),
+        TavliIconGallerySections(),
         TavliShellGallerySections(),
         TavliControlsGallerySections(),
         TavliContentGallerySections(),

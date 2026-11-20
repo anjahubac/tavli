@@ -16,6 +16,7 @@ export 'src/controls/tavli_icon_button.dart';
 export 'src/controls/tavli_rows.dart';
 export 'src/controls/tavli_text_field.dart';
 export 'src/gallery/tavli_gallery.dart' hide TavliFoundationGallerySections;
+export 'src/icons/tavli_icons.dart' hide parseIconShape;
 export 'src/motion/motion.dart';
 export 'src/overlays/tavli_action_menu.dart';
 export 'src/overlays/tavli_dialog.dart';
