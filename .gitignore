@@ -61,6 +61,8 @@ secrets.*.json
 macos/Runner/Configs/Local.xcconfig
 /packages/*/build/
 
-# Local unsupported platform/build output
-/linux/
+# Razlike iz testova izgleda (flutter test pravi ih kada slika ne odgovara).
+**/test/failures/
+
+# Lokalni Android build output
 /android/build/

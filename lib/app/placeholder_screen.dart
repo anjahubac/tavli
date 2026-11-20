@@ -35,50 +35,75 @@ class EmptyStateScreen extends StatelessWidget {
   final Widget? action;
 
   @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: const TabAppBar(),
+    body: EmptyStateBody(art: art, title: title, body: body, action: action),
+  );
+}
+
+/// Sadržaj praznog stanja bez Scaffold-a, za prazan deo ekrana (npr. jedan
+/// prikaz unutar taba): centrirano, najviše 420 px široko, skroluje se.
+class EmptyStateBody extends StatelessWidget {
+  const EmptyStateBody({
+    super.key,
+    required this.art,
+    required this.title,
+    this.body,
+    this.note,
+    this.action,
+  });
+
+  final Widget art;
+  final String title;
+  final String? body;
+
+  /// Dodatni red ispod objašnjenja (npr. šta već čeka na drugom mestu).
+  final Widget? note;
+  final Widget? action;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     // Sa velikim tekstom slika je manja, da naslov i objašnjenje stanu
     // na ekran bez skrolovanja.
     final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
-    return Scaffold(
-      appBar: const TabAppBar(),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (largeText)
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 88),
-                    child: FittedBox(fit: BoxFit.scaleDown, child: art),
-                  )
-                else
-                  art,
-                SizedBox(height: largeText ? 12 : 20),
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (largeText)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 88),
+                  child: FittedBox(fit: BoxFit.scaleDown, child: art),
+                )
+              else
+                art,
+              SizedBox(height: largeText ? 12 : 20),
+              Text(
+                title,
+                style: theme.textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+              if (body case final body?) ...[
+                const SizedBox(height: 8),
                 Text(
-                  title,
-                  style: theme.textTheme.headlineSmall,
+                  body,
                   textAlign: TextAlign.center,
-                ),
-                if (body case final body?) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    body,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                ],
-                if (action case final action?) ...[
-                  const SizedBox(height: 24),
-                  action,
-                ],
+                ),
               ],
-            ),
+              if (note case final note?) ...[const SizedBox(height: 16), note],
+              if (action case final action?) ...[
+                const SizedBox(height: 24),
+                action,
+              ],
+            ],
           ),
         ),
       ),
