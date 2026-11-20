@@ -43,6 +43,10 @@ abstract class _ShoppingBase {
   Future<String> weekList(String planId, WeekPeriod period);
   Future<void> _reconcile();
   Future<void> _deleteContribution(String id);
+  Future<void> _migrateLegacyUnits(
+    List<ShoppingSourceRow> sources,
+    Map<String, ShoppingContributionRow> contributions,
+  );
   List<DemandLine> _demand(
     ShoppingSourceRow s,
     Map<String, MealPlanEntryRow> entries,

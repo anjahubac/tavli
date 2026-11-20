@@ -78,10 +78,10 @@ base, so moved methods stay ordinary instance members and need no new imports:
 
 | File | Lines | Contents |
 | --- | --- | --- |
-| `lib/data/shopping_repository.dart` | 302 | Class, fields, shared base, legacy list and recipe delta, list and week lookup, `totalsOf` |
-| `lib/data/shopping_sources.dart` | 297 | Plan and standalone sources: `reconcilePlan`, `addRecipePreparation`, preparations, `removeSource`, source and contribution deletion, demand |
+| `lib/data/shopping_repository.dart` | 306 | Class, fields, shared base, legacy list and recipe delta, list and week lookup, `totalsOf` |
+| `lib/data/shopping_sources.dart` | 384 | Plan and standalone sources: `reconcilePlan`, `addRecipePreparation`, preparations, `removeSource`, source and contribution deletion, demand, legacy unit migration of closed sources |
 | `lib/data/shopping_items.dart` | 339 | Read/watch of items, manual items, `itemSources`, buy and unbuy, `planTotals` |
-| `lib/data/shopping_reconcile.dart` | 417 | `_reconcile` only |
+| `lib/data/shopping_reconcile.dart` | 418 | `_reconcile` only |
 
 Method bodies are moved without edits. The only code changes are the outbox
 entity names, now library-level constants instead of static class members,

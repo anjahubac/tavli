@@ -31,6 +31,7 @@ mixin _ShoppingReconcile on _ShoppingBase {
         c.id: c,
     };
     final changed = <String>{};
+    await _migrateLegacyUnits(sources, contributions);
     for (final s in sources) {
       if (s.closedAt != null || s.supersededAt != null) continue;
       final existing = {
