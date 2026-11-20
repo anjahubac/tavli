@@ -41,6 +41,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 | [032-website-downloads](032-website-downloads/spec.md) | Dev 4 | Draft; resolve recorded questions before dependent implementation |
 | [033-release-operations](033-release-operations/spec.md) | Dev 3 | Draft; resolve recorded questions before dependent implementation |
 | [034-linux-support](034-linux-support/spec.md) | Matija / Dev 3 | Draft; plan and implementation evidence pending |
+| [035-fasting-holidays](035-fasting-holidays/spec.md) | Dev 2 | Draft; Home entry and RAG decided 2026-11-20, open questions Q1–Q7 |
 
 ## How to use this set
 
@@ -60,7 +61,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 
 ## Number allocation and historical scope
 
-001–034 are allocated. Reserve the next number (currently 035)
+001–035 are allocated. Reserve the next number (currently 036)
 with a small registry PR before parallel creation; local auto-numbering cannot
 prevent collisions across four agents. Existing 001–007 evidence is preserved;
 010 has a dated overlay and its original checkmarks. Never rewrite history to
