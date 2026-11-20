@@ -57,9 +57,22 @@ class TavliShellGallerySections extends StatelessWidget {
           title: 'Kostur ekrana',
           child: desktop ? const _DesktopPreview() : const _PhonePreview(),
         ),
-        const GallerySection(
+        GallerySection(
           title: 'Gornja traka',
-          child: _Framed(child: TavliAppBar(initials: 'AH')),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _Framed(child: TavliAppBar(initials: 'AH')),
+              const SizedBox(height: TavliSpacing.medium),
+              _Framed(
+                child: TavliBackAppBar(
+                  title: 'Izgled',
+                  backLabel: 'Profil',
+                  onBack: () {},
+                ),
+              ),
+            ],
+          ),
         ),
         GallerySection(
           title: 'Zaglavlje ekrana',
@@ -69,6 +82,12 @@ class TavliShellGallerySections extends StatelessWidget {
               const TavliPageHeader(
                 overline: 'Petak, 13. novembar',
                 title: 'Danas',
+              ),
+              const SizedBox(height: TavliSpacing.large),
+              TavliPageHeader(
+                title: 'Izgled',
+                backLabel: 'Profil',
+                onBack: () {},
               ),
               const SizedBox(height: TavliSpacing.large),
               TavliPageHeader(

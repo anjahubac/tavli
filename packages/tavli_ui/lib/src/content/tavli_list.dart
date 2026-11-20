@@ -69,6 +69,8 @@ const double _removeWidth = 96;
 /// - [showChevron]: strelica desno kada dodir otvara detalj.
 /// - [onRemove]: prevlačenje ulevo otkriva crveno dugme „Ukloni“ (96 px);
 ///   čitač ekrana dobija istu akciju.
+/// - [trailing]: radnje desno (npr. „Proveri“ i „Obriši ključ“).
+/// - [destructive]: naziv i ikonica u boji greške („Obriši nalog“).
 class TavliListRow extends StatefulWidget {
   const TavliListRow({
     super.key,
@@ -80,6 +82,8 @@ class TavliListRow extends StatefulWidget {
     this.showChevron = false,
     this.onRemove,
     this.removeLabel = 'Ukloni',
+    this.trailing,
+    this.destructive = false,
   });
 
   final String title;
@@ -94,6 +98,12 @@ class TavliListRow extends StatefulWidget {
   final bool showChevron;
   final VoidCallback? onRemove;
   final String removeLabel;
+
+  /// Dugmad desno od naziva; ne stapaju se sa redom za čitač ekrana.
+  final Widget? trailing;
+
+  /// Nepovratna radnja: naziv i ikonica u [ColorScheme.error].
+  final bool destructive;
 
   @override
   State<TavliListRow> createState() => _TavliListRowState();
@@ -152,6 +162,9 @@ class _TavliListRowState extends State<TavliListRow>
     final quantity = widget.quantity;
     final subtitle = widget.subtitle;
     final hasQuantity = quantity != null && quantity.isNotEmpty;
+    final titleColor = widget.destructive ? c.error : c.onSurface;
+    final leading = widget.leading;
+    final trailing = widget.trailing;
 
     final row = Material(
       color: c.surface,
@@ -174,8 +187,14 @@ class _TavliListRowState extends State<TavliListRow>
             ),
             child: Row(
               children: [
-                if (widget.leading != null) ...[
-                  widget.leading!,
+                if (leading != null) ...[
+                  IconTheme.merge(
+                    data: IconThemeData(
+                      size: 22,
+                      color: widget.destructive ? c.error : c.onSurfaceVariant,
+                    ),
+                    child: leading,
+                  ),
                   const SizedBox(width: 12),
                 ],
                 Expanded(
@@ -188,7 +207,7 @@ class _TavliListRowState extends State<TavliListRow>
                         style: t.bodyLarge?.copyWith(
                           fontSize: 16,
                           height: 1.35,
-                          color: c.onSurface,
+                          color: titleColor,
                         ),
                       ),
                       if (subtitle != null)
@@ -217,6 +236,7 @@ class _TavliListRowState extends State<TavliListRow>
                     ),
                   ),
                 ],
+                if (trailing != null) ...[const SizedBox(width: 4), trailing],
                 if (widget.showChevron) ...[
                   const SizedBox(width: 4),
                   Icon(
@@ -233,6 +253,9 @@ class _TavliListRowState extends State<TavliListRow>
     );
 
     final onRemove = widget.onRemove;
+    // Red sa sopstvenim dugmadima ostaje razdvojen, da čitač ekrana
+    // pročita i dodirne svako dugme posebno.
+    if (trailing != null && onRemove == null) return row;
     if (onRemove == null) return MergeSemantics(child: row);
 
     return MergeSemantics(

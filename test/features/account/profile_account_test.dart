@@ -5,6 +5,8 @@ import 'package:tavli/features/account/account_header.dart';
 import 'package:tavli/sync/sync_engine.dart';
 import 'package:tavli/sync/sync_remote.dart';
 
+import 'package:tavli_ui/tavli_ui.dart';
+
 import '../../helpers/test_app.dart';
 
 void main() {
@@ -33,12 +35,9 @@ void main() {
     final app = await pumpTavli(tester, location: '/profile');
     await tester.tap(find.text('Izmeni ime'));
     await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(TavliDialog<String?>), findsOneWidget);
 
-    final field = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(TextField),
-    );
+    final field = textField('Ime');
     await tester.enterText(field, '   ');
     await tester.pump();
     expect(tester.widget<FilledButton>(button('Sačuvaj')).onPressed, isNull);
@@ -101,13 +100,7 @@ void main() {
       app.backend.server.offline = true;
       await tester.tap(find.text('Izmeni ime'));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
-        ),
-        'Ana',
-      );
+      await tester.enterText(textField('Ime'), 'Ana');
       await tester.tap(button('Sačuvaj'));
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();

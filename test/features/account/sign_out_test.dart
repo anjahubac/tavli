@@ -8,7 +8,7 @@ import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
 
 void main() {
-  const signOutText = 'Odjaviti se? Tvoji podaci ostaju sačuvani u nalogu.';
+  const signOutText = 'Tvoji podaci ostaju sačuvani u nalogu.';
   const waitingText =
       'Neke izmene još nisu poslate. Poslaćemo ih kada se ponovo prijaviš '
       'na ovom uređaju.';
@@ -21,7 +21,7 @@ void main() {
   // Profil je iznad tabova: nazad vodi na Početnu, avatar ga ponovo otvara.
   // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
   Future<void> leaveProfile(WidgetTester tester) async {
-    await tester.tap(find.byType(BackButton));
+    await tester.tap(iconButton('Nazad'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
   }
@@ -48,8 +48,9 @@ void main() {
   testTavli('dijalog: "Odustani" ne menja ništa', (tester) async {
     final app = await pumpTavli(tester, location: '/profile');
     await openSignOut(tester);
+    expect(find.text('Odjaviti se?'), findsOneWidget);
     expect(find.text(signOutText), findsOneWidget);
-    expect(find.text(waitingText), findsNothing);
+    expect(find.textContaining(waitingText), findsNothing);
     await tester.tap(button('Odustani'));
     await tester.pumpAndSettle();
     expect(find.text('Ana Petrović'), findsOneWidget);
@@ -65,7 +66,7 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
     await openSignOut(tester);
-    expect(find.text(waitingText), findsOneWidget);
+    expect(find.textContaining(waitingText), findsOneWidget);
   });
 
   testTavli('odjava: samo sesija se briše; drugi nalog ne vidi ništa; '
@@ -87,13 +88,7 @@ void main() {
     app.backend.server.offline = true;
     await tester.tap(find.text('Izmeni ime'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(TextField),
-      ),
-      'Ana P.',
-    );
+    await tester.enterText(textField('Ime'), 'Ana P.');
     await tester.tap(button('Sačuvaj'));
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
