@@ -4,9 +4,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../../app/animations/motion.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 

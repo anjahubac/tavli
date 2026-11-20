@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../domain/theme_choice.dart';
+import 'tavli_motif.dart';
 
 /// Tokeni teme kojih nema u [ColorScheme].
 class TavliColors extends ThemeExtension<TavliColors> {
@@ -13,7 +13,7 @@ class TavliColors extends ThemeExtension<TavliColors> {
   });
 
   /// Tema čiji motiv crtaju animacije (bosiljak, šafran, borovnice).
-  final TavliTheme motif;
+  final TavliMotif motif;
   final Color bg;
   final Color line;
   final Color boxLine;
@@ -27,7 +27,7 @@ class TavliColors extends ThemeExtension<TavliColors> {
 
   @override
   TavliColors copyWith({
-    TavliTheme? motif,
+    TavliMotif? motif,
     Color? bg,
     Color? line,
     Color? boxLine,

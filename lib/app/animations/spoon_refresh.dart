@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 const _wood = Color(0xFFB07A45);
 const _woodDark = Color(0xFF8A5A2E);

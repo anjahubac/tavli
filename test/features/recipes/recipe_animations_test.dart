@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:tavli/app/theme/tavli_colors.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 

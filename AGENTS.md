@@ -26,10 +26,11 @@ existing comments are mostly Serbian — match the surrounding file.
 
 Read [docs/product-design.md](docs/product-design.md),
 [docs/product-plan.md](docs/product-plan.md) and the active spec before planning.
-Current `dev` has Plan, Nabavka, Recepti, Ostava; Plan is the initial tab. Planning
-and linked/standalone shopping code exist, while 010 acceptance remains partial.
-The latest target adds central/default Početna: Plan, Nabavka, Početna, Recepti,
-Ostava. Pantry stays simple: no expiry dates or “use first” UI, optional quantity.
+Tabs: Plan, Nabavka, Početna, Recepti, Ostava; empty Početna (`/home`) is the
+default. Planning and linked/standalone shopping code exist, while 010
+acceptance remains partial.
+Početna content (today's meals, notices) is still planned. Pantry stays simple:
+no expiry dates or “use first” UI, optional quantity.
 The gateway, food catalog, household invitations, nutrition diary, voice,
 cookbooks and Windows remain planned. Read the
 [010 overlay](specs/010-plan-and-shopping/current-direction.md) for superseded
@@ -46,7 +47,7 @@ lib/
   main.dart               ProviderScope + TavliApp
   providers.dart          Riverpod wiring (db, key store, chain config, router, RecipeAI, MealPlanAI)
   app/                    MaterialApp, go_router config, responsive HomeShell, placeholders
-    theme/                  palettes, TavliColors extension, buildTavliTheme, ThemeController
+    theme_controller.dart   ThemeController (saved theme choice → TavliMotif)
     animations/             reduced-motion aware CustomPainter animations (MotionBuilder)
   ai/                     AI layer
     ai_models.dart          AIProvider, ModelSpec, AIRequest, AIImage, TaskKind
@@ -69,6 +70,10 @@ lib/
   domain/                 pure Dart models (Recipe, Ingredient, Account, ids)
   features/<feature>/     screens, widgets and feature providers
                           (recipes/, planning/, shopping/, settings/, account/)
+packages/tavli_ui/        local UI package (pub workspace member): palettes, buildTavliTheme,
+                          TavliColors, tokens (TavliSpacing, TavliRadius, TavliMotion),
+                          TavliPlatform, MotionBuilder, Plus Jakarta Sans font.
+                          The app imports only package:tavli_ui/tavli_ui.dart, never src/.
 supabase/                 config.toml, migrations/ (schema, RLS, grants, storage),
                           tests/ (pgTAP: `supabase test db`), functions/delete-account/, templates/
 test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio,
@@ -143,7 +148,7 @@ unawaited futures and context-after-await are errors).
   file; prefer `Provider`/`Notifier`; inject fakes via `ProviderScope(overrides:)`.
 - Routes are declared in `lib/app/router.dart`; tabs come from the `tabs` list.
 - Domain classes are immutable, pure Dart, no Flutter imports.
-- AI-facing parsing throws `FormatException` on schema mismatch (router retries once).
+- AI-facing parsing throws `FormatException` on schema mismatch (the router asks the same model once to repair it).
 - Errors shown to the user go through `aiErrorText` or an equivalent Serbian mapping.
 - Inject time (`DateTime Function() clock`) where behaviour depends on it.
 - Keep generated `lib/data/database.g.dart` committed and in sync.

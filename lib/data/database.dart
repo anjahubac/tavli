@@ -26,6 +26,13 @@ class Recipes extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   TextColumn get householdId => text().nullable()();
 
+  /// Oznake recepta (v6). Sirove vrednosti sa servera: JSON lista obroka,
+  /// težina, vrsta jela i ko ih je postavio (`ai`/`user`); null = nepoznato.
+  TextColumn get mealTypesJson => text().nullable()();
+  TextColumn get weight => text().nullable()();
+  TextColumn get dishKind => text().nullable()();
+  TextColumn get labelsSource => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -395,7 +402,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -412,8 +419,35 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) await transaction(() => _migrateToAccounts(m));
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
+      if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
     },
   );
+
+  /// v6: oznake recepta. Postojeći recepti ostaju neoznačeni (null).
+  Future<void> _migrateToRecipeLabels(Migrator m) async {
+    for (final c in [
+      recipes.mealTypesJson,
+      recipes.weight,
+      recipes.dishKind,
+      recipes.labelsSource,
+    ]) {
+      await _addMissingColumn(m, recipes, c);
+    }
+  }
+
+  /// Dodaje kolonu samo ako je nema: tabela napravljena iznova u ranijem
+  /// koraku (v4) već ima sve kolone, a ponovljena migracija ne sme da padne.
+  Future<void> _addMissingColumn(
+    Migrator m,
+    TableInfo<Table, Object?> table,
+    GeneratedColumn c,
+  ) async {
+    final columns = await customSelect(
+      'PRAGMA table_info("${table.actualTableName}")',
+    ).get();
+    if (columns.any((r) => r.read<String>('name') == c.$name)) return;
+    await m.addColumn(table, c);
+  }
 
   /// v5: porcije i odobren recept u planu, nedeljni delovi listi, poreklo
   /// kupovine, prijem u ostavu i tri tabele za izvore, doprinose i

@@ -75,6 +75,7 @@ void main() {
     expect(povrce, lessThan(zacini));
     expect(find.text('• 0,5 kg kupus'), findsOneWidget);
     expect(find.text('Napravio: Gemini Pro'), findsOneWidget);
+    expect(find.text('Priprema'), findsOneWidget);
     expect(find.text('1.'), findsOneWidget);
     expect(find.text('Umotati.'), findsOneWidget);
   });
@@ -95,10 +96,115 @@ void main() {
       ],
     );
 
+    expect(find.text('Priprema'), findsOneWidget);
     expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+    expect(find.text('• paradajz'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
     expect(find.text('1 porcija'), findsOneWidget);
   });
+
+  testTavli('oznake: neoznačen recept, izmena i čuvanje', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
+    );
+
+    expect(find.text('Oznake'), findsOneWidget);
+    expect(
+      find.textContaining('Nije označeno', findRichText: true),
+      findsNWidgets(3),
+    );
+
+    await tester.tap(find.text('Izmeni oznake'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'Ručak'));
+    await tester.tap(find.widgetWithText(FilterChip, 'Večera'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Jak'));
+    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Kuvano jelo'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Kuvano jelo'));
+    await tester.pumpAndSettle();
+    await tapButton(tester, 'Sačuvaj');
+
+    expect(find.text('Oznake su sačuvane.'), findsOneWidget);
+    expect(
+      find.text('Obrok: Ručak, Večera', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.text('Težina: Jak', findRichText: true), findsOneWidget);
+    expect(
+      find.text('Vrsta jela: Kuvano jelo', findRichText: true),
+      findsOneWidget,
+    );
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.labelsSource, 'user');
+    expect(await app.db.select(app.db.recipeVersions).get(), isEmpty);
+  });
+
+  testTavli('oznake: Otkaži ne menja ništa', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
+    );
+    await tester.tap(find.text('Izmeni oznake'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'Ručak'));
+    await tester.pumpAndSettle();
+    await tapButton(tester, 'Otkaži');
+
+    expect(
+      find.textContaining('Nije označeno', findRichText: true),
+      findsNWidgets(3),
+    );
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.labelsSource, isNull);
+  });
+
+  for (final size in [const Size(320, 700), wide]) {
+    testTavli('${size.width} px, tekst 2×: izmena oznaka bez preliva', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpTavli(
+        tester,
+        size: size,
+        location: '/recipes/a',
+        recipes: [sampleRecipe('a', 'Sarma')],
+      );
+      await tester.ensureVisible(find.text('Izmeni oznake'));
+      await tester.tap(find.text('Izmeni oznake'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChoiceChip), findsNWidgets(12));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final (label, size) in [('telefon', phone), ('širok ekran', wide)]) {
+    testTavli('recept bez koraka: $label, tekst 2× i smanjeno kretanje', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpTavli(
+        tester,
+        size: size,
+        location: '/recipes/a',
+        recipes: [sampleRecipe('a', 'Sarma').copyWith(steps: [])],
+      );
+
+      expect(find.text('Sastojci'), findsOneWidget);
+      expect(find.text('Priprema'), findsOneWidget);
+      expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+    });
+  }
 
   testTavli('širok ekran: lista i recept jedno pored drugog', (tester) async {
     await pumpTavli(

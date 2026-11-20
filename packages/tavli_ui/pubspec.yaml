@@ -1,0 +1,35 @@
+name: tavli_ui
+description: "Tavli UI library: theme, tokens and shared components."
+publish_to: 'none'
+version: 0.0.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.7
+  flutter: ">=3.50.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  material_ui: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  # Plus Jakarta Sans (SIL OFL, assets/fonts/OFL.txt), ugrađen da radi bez mreže.
+  # Aplikacija ga dobija kao 'packages/tavli_ui/PlusJakartaSans'.
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800

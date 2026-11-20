@@ -1,12 +1,14 @@
 # Implementation plan: External Tavli UI library preparation
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: the local package and gallery are in dev. External extraction
+remains a scoped proposal pending team agreement.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 4 / all feature owners
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
 ## Existing boundaries and proposed files
 
-- `lib/app/theme/`
+- `packages/tavli_ui/` (existing workspace package and component gallery)
+- `lib/app/theme_controller.dart`
 - `lib/app/animations/`
 - `lib/app/tab_app_bar.dart`
 - `lib/features/ (component inventory)`
@@ -21,6 +23,9 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 No business data or Supabase dependencies in reusable visual components. External repository creation and package extraction remain deferred until explicit team start.
 
 Producer dependencies: [021](../021-home-and-cooking/spec.md)
+
+Local shell adoption is coordinated under
+[021 priority delivery](../021-home-and-cooking/plan.md#priority-delivery).
 
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
