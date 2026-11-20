@@ -949,16 +949,47 @@ class ShoppingRepository {
       }
       await _writer.upsertLast(_contribution, targetId);
       for (final a in allocations) {
+        final moved = a.coversWholeUnknown || a.micros == null
+            ? a.micros
+            : a.micros! * unit.factor;
+        // Cilj već ima raspodelu iz iste zalihe: saberi u nju, jer je
+        // (doprinos, zaliha) jedinstveno.
+        final existing = target == null
+            ? null
+            : await (_db.select(_db.supplyAllocations)..where(
+                    (t) =>
+                        t.contributionId.equals(targetId) &
+                        t.supplyId.equals(a.supplyId),
+                  ))
+                  .getSingleOrNull();
+        if (existing != null) {
+          await (_db.update(
+            _db.supplyAllocations,
+          )..where((t) => t.id.equals(existing.id))).write(
+            SupplyAllocationsCompanion(
+              micros: Value(
+                existing.micros == null && moved == null
+                    ? null
+                    : (existing.micros ?? 0) + (moved ?? 0),
+              ),
+              coversWholeUnknown: Value(
+                existing.coversWholeUnknown || a.coversWholeUnknown,
+              ),
+            ),
+          );
+          await _writer.upsertLast(_allocation, existing.id);
+          await (_db.delete(
+            _db.supplyAllocations,
+          )..where((t) => t.id.equals(a.id))).go();
+          await _writer.delete(_allocation, a.id);
+          continue;
+        }
         await (_db.update(
           _db.supplyAllocations,
         )..where((t) => t.id.equals(a.id))).write(
           SupplyAllocationsCompanion(
             contributionId: Value(targetId),
-            micros: Value(
-              a.coversWholeUnknown || a.micros == null
-                  ? a.micros
-                  : a.micros! * unit.factor,
-            ),
+            micros: Value(moved),
           ),
         );
         await _writer.upsertLast(_allocation, a.id);
