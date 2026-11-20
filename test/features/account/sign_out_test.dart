@@ -18,10 +18,12 @@ void main() {
     matching: find.text(label),
   );
 
-  // Profil je iznad tabova: nazad vodi na Plan, avatar ga ponovo otvara.
+  // Profil je iznad tabova: nazad vodi na Početnu, avatar ga ponovo otvara.
+  // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
   Future<void> leaveProfile(WidgetTester tester) async {
     await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
   }
 
   Future<void> openProfile(WidgetTester tester) async {
@@ -35,14 +37,11 @@ void main() {
   }
 
   Future<void> signInWithCode(WidgetTester tester, String email) async {
-    await tester.enterText(find.widgetWithText(TextField, 'E-pošta'), email);
+    await tester.enterText(textField('E-pošta'), email);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Kod iz poruke'),
-      FakeServer.code,
-    );
+    await tester.enterText(textField('Kod iz poruke'), FakeServer.code);
     await tester.pumpAndSettle();
   }
 

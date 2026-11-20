@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 const _tomato = Color(0xFFE0533D);
 const _carrot = Color(0xFFF08A24);

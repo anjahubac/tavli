@@ -8,6 +8,7 @@ import 'package:tavli/ai/chain_config.dart';
 import 'package:tavli/ai/chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/ai/model_status_store.dart';
+import 'package:tavli/ai/repair_prompt.dart';
 
 const geminiPro = ModelSpec(
   provider: AIProvider.gemini,
@@ -45,6 +46,10 @@ class FakeClient implements ChatClient {
   final scripts = <String, List<Object>>{};
   final calls = <String>[];
   final keysUsed = <String>[];
+  final requests = <AIRequest>[];
+
+  /// Poziva se kad model „odgovori“, npr. da test pritisne „Prekini“.
+  void Function()? onAnswer;
 
   void script(ModelSpec m, List<Object> responses) =>
       scripts[m.key] = [...responses];
@@ -57,11 +62,13 @@ class FakeClient implements ChatClient {
   }) async {
     calls.add(model.key);
     keysUsed.add(apiKey);
+    requests.add(request);
     final queue = scripts[model.key];
     if (queue == null || queue.isEmpty) {
       throw StateError('Nema odgovora za ${model.key}');
     }
     final next = queue.removeAt(0);
+    onAnswer?.call();
     if (next is AIError) throw next;
     return next as String;
   }
@@ -230,29 +237,67 @@ void main() {
     expect(client.calls, ['gemini/pro', 'groq/text', 'groq/text']);
   });
 
-  test('neispravan JSON: jedan ponovni pokušaj na istom modelu', () async {
+  test('neispravan JSON: jedna popravka na istom modelu', () async {
     client.script(geminiPro, ['ovo nije json', '```json\n$okJson\n```']);
 
-    final r = await router.run(textRequest, parseValue);
+    final r = await router.run(visionRequest, parseValue);
 
     expect(r.model, geminiPro);
     expect(client.calls, ['gemini/pro', 'gemini/pro']);
+    final repair = client.requests.last;
+    expect(repair.system, visionRequest.system);
+    expect(repair.prompt, startsWith(visionRequest.prompt));
+    expect(repair.prompt, contains('Your previous answer:\novo nije json'));
+    expect(repair.prompt, contains('Problem: '));
+    expect(repair.images, visionRequest.images, reason: 'ista slika');
+    expect(status.requestsOn(geminiPro, now, keyId: 'gemini'), 2);
   });
 
-  test('dva puta neispravan JSON -> sledeći model', () async {
+  test('popravka dobija opis pravila iz ugovora, ne samo oznaku', () async {
+    client.script(geminiPro, ['{"x": 1}', okJson]);
+
+    await router.run(
+      textRequest,
+      (json) => json.containsKey('x')
+          ? throw const FormatException('R6')
+          : parseValue(json),
+    );
+
+    expect(
+      client.requests.last.prompt,
+      contains('Problem: every "quantity" must be a number'),
+    );
+  });
+
+  test('pogrešan tip polja se popravlja kao i loš JSON', () async {
+    client.script(geminiPro, ['{"value": 1}', okJson]);
+
+    final r = await router.run(textRequest, (json) => json['value'] as String);
+
+    expect(r.value, 'ok');
+    expect(client.requests.last.prompt, contains('wrong type'));
+  });
+
+  test('predugačak odgovor se ne vraća modelu, samo opis greške', () async {
+    final huge = '{"x": "${'a' * 13000}"}';
+    client.script(geminiPro, [huge, okJson]);
+
+    await router.run(textRequest, parseValue);
+
+    expect(client.requests.last.prompt, isNot(contains('previous answer:')));
+    expect(client.requests.last.prompt, contains('Problem: nema value'));
+  });
+
+  test('neuspela popravka zaustavlja lanac, bez ostalih modela', () async {
     client.script(geminiPro, ['{"x": 1}', '{"x": 2}']);
     client.script(groqText, [okJson]);
-
-    final r = await router.run(textRequest, parseValue);
-
-    expect(r.model, groqText);
-    expect(client.calls, ['gemini/pro', 'gemini/pro', 'groq/text']);
-  });
-
-  test('svi modeli vrate neispravan odgovor -> označeno', () async {
-    client.script(geminiPro, ['{"x": 1}', '{"x": 2}']);
-    client.script(groqText, ['{"x": 3}', 'nije json']);
-    client.script(geminiFlash, [const AuthError('bad key')]);
+    // Pauziran model ne sme da pretvori poruku u „limiti su potrošeni“.
+    await status.block(
+      geminiFlash,
+      now.add(const Duration(hours: 1)),
+      'x',
+      keyId: 'gemini',
+    );
 
     await expectLater(
       router.run(textRequest, parseValue),
@@ -262,6 +307,166 @@ void main() {
             .having((e) => e.nextAvailableAt, 'nextAvailableAt', isNull),
       ),
     );
+    expect(client.calls, ['gemini/pro', 'gemini/pro']);
+  });
+
+  test('Pokušaj ponovo posle neuspele popravke pita sledeći model', () async {
+    client.script(geminiPro, ['{"x": 1}', '{"x": 2}', okJson]);
+    client.script(groqText, [okJson]);
+    await expectLater(
+      router.run(textRequest, parseValue),
+      throwsA(isA<AllModelsExhausted>()),
+    );
+
+    final again = await router.run(textRequest, parseValue);
+    expect(again.model, groqText);
+    expect(
+      again.attempts.first.outcome,
+      startsWith('preskočen: neispravan odgovor'),
+    );
+
+    // Posle pauze model se ponovo pita.
+    now = now.add(const Duration(minutes: 11));
+    final later = await router.run(textRequest, parseValue);
+    expect(later.model, geminiPro);
+  });
+
+  test('svi modeli preskočeni zbog lošeg odgovora -> označeno', () async {
+    for (final m in [geminiPro, groqText, geminiFlash]) {
+      client.script(m, ['{"x": 1}', '{"x": 2}']);
+      await expectLater(
+        router.run(textRequest, parseValue),
+        throwsA(isA<AllModelsExhausted>()),
+      );
+    }
+
+    await expectLater(
+      router.run(textRequest, parseValue),
+      throwsA(
+        isA<AllModelsExhausted>().having(
+          (e) => e.invalidOutput,
+          'invalidOutput',
+          isTrue,
+        ),
+      ),
+    );
+    expect(client.calls, hasLength(6), reason: 'četvrti put nema poziva');
+  });
+
+  test('prekid pre zahteva: nijedan poziv modela', () async {
+    client.script(geminiPro, [okJson]);
+    final cancel = AICancellation()..cancel();
+
+    await expectLater(
+      router.run(textRequest, parseValue, cancel: cancel),
+      throwsA(isA<AICancelled>()),
+    );
+    expect(client.calls, isEmpty);
+  });
+
+  test('prekid dok model odgovara: nema popravke ni sledećeg modela', () async {
+    client.script(geminiPro, ['{"x": 1}', okJson]);
+    client.script(groqText, [okJson]);
+    final cancel = AICancellation();
+    client.onAnswer = cancel.cancel;
+
+    await expectLater(
+      router.run(textRequest, parseValue, cancel: cancel),
+      throwsA(isA<AICancelled>()),
+    );
+    expect(client.calls, ['gemini/pro'], reason: 'popravka nije poslata');
+  });
+
+  test(
+    'neuspela popravka sa slobodnim modelom: Pokušaj ponovo radi odmah',
+    () async {
+      client.script(geminiPro, ['{"x": 1}', '{"x": 2}']);
+
+      await expectLater(
+        router.run(textRequest, parseValue),
+        throwsA(
+          isA<AllModelsExhausted>()
+              .having((e) => e.repairFailed, 'repairFailed', isTrue)
+              .having((e) => e.nextAvailableAt, 'nextAvailableAt', isNull),
+        ),
+      );
+    },
+  );
+
+  test('neuspela popravka kad su ostali pauzirani: javlja kada', () async {
+    final groqFree = now.add(const Duration(minutes: 3));
+    await status.block(groqText, groqFree, 'limit', keyId: 'groq');
+    await status.block(
+      geminiFlash,
+      now.add(const Duration(hours: 2)),
+      'x',
+      keyId: 'gemini',
+    );
+    client.script(geminiPro, ['{"x": 1}', '{"x": 2}']);
+
+    await expectLater(
+      router.run(textRequest, parseValue),
+      throwsA(
+        isA<AllModelsExhausted>()
+            .having((e) => e.repairFailed, 'repairFailed', isTrue)
+            .having((e) => e.nextAvailableAt, 'nextAvailableAt', groqFree),
+      ),
+    );
+  });
+
+  test('svi modeli vrate prazan odgovor -> označeno kao prazan', () async {
+    for (final m in [geminiPro, groqText, geminiFlash]) {
+      client.script(m, [const InvalidOutputError('Prazan odgovor modela')]);
+    }
+
+    await expectLater(
+      router.run(textRequest, parseValue),
+      throwsA(
+        isA<AllModelsExhausted>()
+            .having((e) => e.emptyOutput, 'emptyOutput', isTrue)
+            .having((e) => e.repairFailed, 'repairFailed', isFalse)
+            .having((e) => e.invalidOutput, 'invalidOutput', isFalse),
+      ),
+    );
+  });
+
+  test(
+    'zahtev za popravku staje u granicu servera od 40 000 znakova',
+    () async {
+      final big = AIRequest(system: 's' * 2000, prompt: 'p' * 33000);
+      final answer = '{"x": "${'a' * 9000}"}';
+      client.script(geminiPro, [answer, okJson]);
+
+      await router.run(big, parseValue);
+
+      final repair = client.requests.last;
+      expect(
+        repair.system.length + repair.prompt.length,
+        lessThanOrEqualTo(maxRequestChars),
+      );
+      expect(repair.prompt, isNot(contains('previous answer:')));
+      expect(repair.prompt, contains('Problem: nema value'));
+    },
+  );
+
+  test('prazan odgovor ide na sledeći model, bez popravke', () async {
+    client.script(geminiPro, [const InvalidOutputError('Prazan odgovor')]);
+    client.script(groqText, [okJson]);
+
+    final r = await router.run(textRequest, parseValue);
+
+    expect(r.model, groqText);
+    expect(client.calls, ['gemini/pro', 'groq/text']);
+  });
+
+  test('mreža pukne tokom popravke -> sledeći model', () async {
+    client.script(geminiPro, ['{"x": 1}', const TransientError('timeout')]);
+    client.script(groqText, [okJson]);
+
+    final r = await router.run(textRequest, parseValue);
+
+    expect(r.model, groqText);
+    expect(client.calls, ['gemini/pro', 'gemini/pro', 'groq/text']);
   });
 
   test('bez ijednog odgovora nije označeno kao neispravan odgovor', () async {

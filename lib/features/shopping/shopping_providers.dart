@@ -48,17 +48,23 @@ enum ShoppingMode { plan, recipe }
 /// Šta Nabavka prikazuje. Plan se bira u `planViewProvider`, pa Nabavka
 /// otvara isti plan kao Plan tab.
 class ShoppingView {
-  const ShoppingView({
-    this.mode = ShoppingMode.plan,
-    this.weekStart,
-    this.wholePlan = false,
-  });
+  const ShoppingView({this.mode, this.weekStart, this.wholePlan = false});
 
-  final ShoppingMode mode;
+  /// Sačuvan početni ili ručni izbor; null = učitavanje još nije završeno.
+  final ShoppingMode? mode;
 
   /// Izabrana nedelja; null = nedelja sa današnjim danom, inače prva.
   final CivilDate? weekStart;
   final bool wholePlan;
+
+  /// Šta se prikazuje: izbor korisnika, inače „Po receptu“ kad plana nema a
+  /// nabavka po receptu postoji, inače „Po planu“.
+  ShoppingMode effectiveMode({
+    required bool hasPlan,
+    required bool hasRecipeItems,
+  }) =>
+      mode ??
+      (!hasPlan && hasRecipeItems ? ShoppingMode.recipe : ShoppingMode.plan);
 }
 
 class ShoppingViewController extends Notifier<ShoppingView> {
@@ -66,6 +72,13 @@ class ShoppingViewController extends Notifier<ShoppingView> {
   ShoppingView build() {
     ref.watch(accountScopeProvider);
     return const ShoppingView();
+  }
+
+  void initializeMode({required bool hasPlan, required bool hasRecipeItems}) {
+    if (state.mode != null) return;
+    setMode(
+      state.effectiveMode(hasPlan: hasPlan, hasRecipeItems: hasRecipeItems),
+    );
   }
 
   void setMode(ShoppingMode mode) => state = ShoppingView(

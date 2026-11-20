@@ -10,15 +10,14 @@ import 'package:tavli/app/animations/plate_drop.dart';
 import 'package:tavli/app/animations/shopping_bag.dart';
 import 'package:tavli/app/animations/simmering_pot.dart';
 import 'package:tavli/app/animations/spoon_refresh.dart';
-import 'package:tavli/app/theme/app_theme.dart';
-import 'package:tavli/domain/theme_choice.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 /// Widget u aplikaciji sa temom; [still] = sistem traži smanjeno kretanje.
 Future<void> pumpArt(
   WidgetTester tester,
   Widget child, {
   bool still = false,
-  TavliTheme theme = TavliTheme.bosiljak,
+  TavliMotif theme = TavliMotif.bosiljak,
   Brightness brightness = Brightness.light,
 }) => tester.pumpWidget(
   MaterialApp(
@@ -35,9 +34,9 @@ Future<void> pumpArt(
 
 void main() {
   final pieces = <String, Widget>{
-    'Grančica bosiljka': const IntroMotif(motif: TavliTheme.bosiljak),
-    'Cvet šafrana': const IntroMotif(motif: TavliTheme.safran),
-    'Borovnice padaju u činiju': const IntroMotif(motif: TavliTheme.borovnica),
+    'Grančica bosiljka': const IntroMotif(motif: TavliMotif.bosiljak),
+    'Cvet šafrana': const IntroMotif(motif: TavliMotif.safran),
+    'Borovnice padaju u činiju': const IntroMotif(motif: TavliMotif.borovnica),
     'Lonac koji krčka': const SimmeringPot(),
     'Puna kesa za kupovinu': const ShoppingBagFull(),
     'Prazan frižider': const EmptyFridge(),
@@ -67,7 +66,7 @@ void main() {
       });
 
       testWidgets('$label: iscrtava se u svih 6 tema', (tester) async {
-        for (final theme in TavliTheme.values) {
+        for (final theme in TavliMotif.values) {
           for (final b in Brightness.values) {
             await pumpArt(tester, widget, theme: theme, brightness: b);
             await tester.pump(const Duration(milliseconds: 500));
@@ -285,8 +284,8 @@ void main() {
   });
 
   group('uvodni motiv tokom učitavanja', () {
-    for (final theme in TavliTheme.values) {
-      testWidgets('${theme.label}: prikazuje aktivan motiv', (tester) async {
+    for (final theme in TavliMotif.values) {
+      testWidgets('${theme.name}: prikazuje aktivan motiv', (tester) async {
         await pumpArt(tester, const IntroScreen(), theme: theme, still: true);
         expect(find.text('Tavli'), findsOneWidget);
         expect(

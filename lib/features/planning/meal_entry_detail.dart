@@ -81,29 +81,36 @@ class MealEntryDetail extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 12),
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Expanded(child: Text('Broj porcija')),
-            IconButton(
-              tooltip: 'Manje porcija',
-              onPressed: meal.isCooked || meal.servings <= 1
-                  ? null
-                  : () => runMealEdit(
-                      context,
-                      () => repo.changeServings(meal.id, meal.servings - 1),
-                    ),
-              icon: const Icon(Icons.remove),
-            ),
-            Text('${meal.servings}', style: theme.textTheme.titleMedium),
-            IconButton(
-              tooltip: 'Više porcija',
-              onPressed: meal.isCooked || meal.servings >= maxServings
-                  ? null
-                  : () => runMealEdit(
-                      context,
-                      () => repo.changeServings(meal.id, meal.servings + 1),
-                    ),
-              icon: const Icon(Icons.add),
+            const Text('Broj porcija'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Manje porcija',
+                  onPressed: meal.isCooked || meal.servings <= 1
+                      ? null
+                      : () => runMealEdit(
+                          context,
+                          () => repo.changeServings(meal.id, meal.servings - 1),
+                        ),
+                  icon: const Icon(Icons.remove),
+                ),
+                Text('${meal.servings}', style: theme.textTheme.titleMedium),
+                IconButton(
+                  tooltip: 'Više porcija',
+                  onPressed: meal.isCooked || meal.servings >= maxServings
+                      ? null
+                      : () => runMealEdit(
+                          context,
+                          () => repo.changeServings(meal.id, meal.servings + 1),
+                        ),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
             ),
           ],
         ),

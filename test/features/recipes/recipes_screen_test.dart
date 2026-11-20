@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -34,27 +35,79 @@ void main() {
       ],
     );
 
-    final titles = tester
-        .widgetList<ListTile>(find.byType(ListTile))
-        .map((t) => (t.title! as Text).data)
-        .toList();
-    expect(titles, ['Šargarepa čorba', 'Sarma', 'Pasulj']);
-    expect(find.text('4 porcije · 45 min'), findsNWidgets(3));
+    final titles = [
+      'Šargarepa čorba',
+      'Sarma',
+      'Pasulj',
+    ].map((t) => tester.getTopLeft(find.text(t)).dy).toList();
+    final sorted = [...titles]..sort();
+    expect(titles, sorted, reason: 'najnoviji recept je prvi');
+    expect(find.text('45 min · 4 porcije'), findsNWidgets(3));
 
-    await tester.enterText(find.byType(SearchBar), 'sar');
+    await tester.enterText(find.byType(TavliSearchField), 'sar');
     await tester.pumpAndSettle();
     expect(find.text('Sarma'), findsOneWidget);
     expect(find.text('Šargarepa čorba'), findsOneWidget);
     expect(find.text('Pasulj'), findsNothing);
 
-    await tester.enterText(find.byType(SearchBar), 'čorb');
+    await tester.enterText(find.byType(TavliSearchField), 'čorb');
     await tester.pumpAndSettle();
     expect(find.text('Šargarepa čorba'), findsOneWidget);
     expect(find.text('Sarma'), findsNothing);
 
-    await tester.enterText(find.byType(SearchBar), 'musaka');
+    await tester.enterText(find.byType(TavliSearchField), 'musaka');
     await tester.pumpAndSettle();
     expect(find.text('Nema recepata za „musaka“.'), findsOneWidget);
+  });
+
+  testTavli('promena širine čuva pretragu, njen fokus i položaj liste', (
+    tester,
+  ) async {
+    await pumpTavli(
+      tester,
+      size: const Size(719, 680),
+      recipes: [for (var i = 0; i < 20; i++) sampleRecipe('r$i', 'Sarma $i')],
+    );
+    await tester.enterText(find.byType(TavliSearchField), 'Sarma');
+    await tester.pumpAndSettle();
+    final list = find.descendant(
+      of: find.byKey(const PageStorageKey('recipes-list')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.drag(list, const Offset(0, -350));
+    await tester.pumpAndSettle();
+    final pixels = tester.state<ScrollableState>(list).position.pixels;
+    expect(pixels, greaterThan(0));
+
+    // Uz bočni meni sadržaj je širok 639, 918, 743, 943 i 719: lista,
+    // mreža, lista, mreža, lista.
+    for (final (width, grid) in [
+      (720.0, false),
+      (999.0, true),
+      (1000.0, false),
+      (1200.0, true),
+      (719.0, false),
+    ]) {
+      tester.view.physicalSize = Size(width, 680);
+      await tester.pumpAndSettle();
+      expect(currentTab(tester), 'Recepti');
+      final input = tester.widget<EditableText>(find.byType(EditableText));
+      expect(input.controller.text, 'Sarma');
+      expect(input.focusNode.hasFocus, isTrue, reason: 'width: $width');
+      expect(
+        find.byKey(const PageStorageKey('recipes-grid')),
+        grid ? findsOneWidget : findsNothing,
+        reason: 'width: $width',
+      );
+      if (!grid) {
+        expect(
+          tester.state<ScrollableState>(list).position.pixels,
+          closeTo(pixels, 1),
+          reason: 'width: $width',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testTavli('telefon: recept se otvara preko celog ekrana', (tester) async {
@@ -66,15 +119,16 @@ void main() {
     await tester.tap(find.text('Sarma'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(SearchBar), findsNothing);
-    expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
+    expect(find.byType(TavliSearchField), findsNothing);
+    expect(recipeHeading('Sarma'), findsOneWidget);
     expect(find.byType(BackButton), findsOneWidget);
     // Kategorije redom prodavnice, količina sa zarezom.
-    final povrce = tester.getTopLeft(find.text('voće i povrće')).dy;
-    final zacini = tester.getTopLeft(find.text('začini i sosovi')).dy;
+    final povrce = tester.getTopLeft(find.text('VOĆE I POVRĆE')).dy;
+    final zacini = tester.getTopLeft(find.text('ZAČINI I SOSOVI')).dy;
     expect(povrce, lessThan(zacini));
     expect(find.text('• 0,5 kg kupus'), findsOneWidget);
     expect(find.text('Napravio: Gemini Pro'), findsOneWidget);
+    expect(find.text('Priprema'), findsOneWidget);
     expect(find.text('1.'), findsOneWidget);
     expect(find.text('Umotati.'), findsOneWidget);
   });
@@ -95,32 +149,184 @@ void main() {
       ],
     );
 
+    expect(find.text('Priprema'), findsOneWidget);
     expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+    expect(find.text('• paradajz'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
     expect(find.text('1 porcija'), findsOneWidget);
   });
 
-  testTavli('širok ekran: lista i recept jedno pored drugog', (tester) async {
+  testTavli('oznake: neoznačen recept, izmena i čuvanje', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
+    );
+
+    expect(find.text('Oznake'), findsOneWidget);
+    expect(
+      find.textContaining('Nije označeno', findRichText: true),
+      findsNWidgets(3),
+    );
+
+    await tester.tap(find.text('Izmeni oznake'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'Ručak'));
+    await tester.tap(find.widgetWithText(FilterChip, 'Večera'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Jak'));
+    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Kuvano jelo'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Kuvano jelo'));
+    await tester.pumpAndSettle();
+    await tapButton(tester, 'Sačuvaj');
+
+    expect(find.text('Oznake su sačuvane.'), findsOneWidget);
+    expect(
+      find.text('Obrok: Ručak, Večera', findRichText: true),
+      findsOneWidget,
+    );
+    expect(find.text('Težina: Jak', findRichText: true), findsOneWidget);
+    expect(
+      find.text('Vrsta jela: Kuvano jelo', findRichText: true),
+      findsOneWidget,
+    );
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.labelsSource, 'user');
+    expect(await app.db.select(app.db.recipeVersions).get(), isEmpty);
+  });
+
+  testTavli('oznake: Otkaži ne menja ništa', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
+    );
+    await tester.tap(find.text('Izmeni oznake'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilterChip, 'Ručak'));
+    await tester.pumpAndSettle();
+    await tapButton(tester, 'Otkaži');
+
+    expect(
+      find.textContaining('Nije označeno', findRichText: true),
+      findsNWidgets(3),
+    );
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.labelsSource, isNull);
+  });
+
+  for (final size in [const Size(320, 700), wide]) {
+    testTavli('${size.width} px, tekst 2×: izmena oznaka bez preliva', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpTavli(
+        tester,
+        size: size,
+        location: '/recipes/a',
+        recipes: [sampleRecipe('a', 'Sarma')],
+      );
+      await tester.ensureVisible(find.text('Izmeni oznake'));
+      await tester.tap(find.text('Izmeni oznake'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChoiceChip), findsNWidgets(12));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final (label, size) in [('telefon', phone), ('širok ekran', wide)]) {
+    testTavli('recept bez koraka: $label, tekst 2× i smanjeno kretanje', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpTavli(
+        tester,
+        size: size,
+        location: '/recipes/a',
+        recipes: [sampleRecipe('a', 'Sarma').copyWith(steps: [])],
+      );
+
+      expect(find.text('Sastojci'), findsOneWidget);
+      expect(find.text('Priprema'), findsOneWidget);
+      expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+    });
+  }
+
+  testTavli(
+    'širok ekran: zaglavlje u jednom redu i mreža, recept je ceo ekran',
+    (tester) async {
+      await pumpTavli(
+        tester,
+        size: wide,
+        recipes: [
+          sampleRecipe('a', 'Pasulj', createdAt: DateTime(2026)),
+          sampleRecipe('b', 'Sarma', createdAt: DateTime(2026, 2)),
+        ],
+      );
+      // Platno, macOS · Recepti: naslov, pretraga i „Dodaj recept“ u istom
+      // redu, ispod mreža kartica sa slikom na vrhu.
+      expect(find.byType(TavliCardGrid), findsOneWidget);
+      expect(find.byType(TavliFloatingButton), findsNothing);
+      final title = tester.getCenter(find.text('Recepti').last).dy;
+      expect(tester.getCenter(find.byType(TavliSearchField)).dy, title);
+      expect(tester.getCenter(button('Dodaj recept')).dy, title);
+      final pasulj = tester.getTopLeft(find.text('Pasulj'));
+      final sarma = tester.getTopLeft(find.text('Sarma'));
+      expect(pasulj.dy, sarma.dy, reason: 'kartice su u istom redu mreže');
+
+      await tester.tap(find.text('Sarma'));
+      await tester.pumpAndSettle();
+
+      // Recept se otvara kao ceo ekran, bez liste pored.
+      expect(recipeHeading('Sarma'), findsOneWidget);
+      expect(find.text('Pasulj'), findsNothing);
+      expect(find.byType(TavliSearchField), findsNothing);
+      expect(find.byType(BackButton), findsOneWidget);
+    },
+  );
+
+  testTavli('detalj: veliki naslov, AI izmena je u meniju', (tester) async {
     await pumpTavli(
       tester,
-      size: wide,
+      location: '/recipes/a',
+      recipes: [sampleRecipe('a', 'Sarma')],
+    );
+    final title = tester.widget<Text>(find.text('Sarma'));
+    expect(
+      title.style?.fontSize,
+      Theme.of(tester.element(find.text('Sarma')))
+          .textTheme
+          .headlineSmall
+          ?.fontSize,
+    );
+    expect(iconButton('Izmeni sa AI'), findsNothing);
+    await tester.tap(iconButton('Još opcija'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Izmeni sa AI'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, 'Šta da promenim?'), findsOneWidget);
+  });
+
+  testTavli('tablet: recepti u jednoj koloni, kao na telefonu', (tester) async {
+    await pumpTavli(
+      tester,
+      size: const Size(820, 1180),
       recipes: [
-        sampleRecipe('a', 'Pasulj', createdAt: DateTime(2026)),
-        sampleRecipe('b', 'Sarma', createdAt: DateTime(2026, 2)),
+        sampleRecipe('a', 'Sarma', createdAt: DateTime.utc(2026, 11, 2)),
+        sampleRecipe('b', 'Pasulj'),
       ],
     );
-    expect(find.text('Izaberi recept'), findsOneWidget);
-
-    await tester.tap(find.text('Sarma'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(SearchBar), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
-    expect(find.text('Pasulj'), findsOneWidget);
-    expect(find.byType(BackButton), findsNothing);
-    final tile = tester.widget<ListTile>(
-      find.widgetWithText(ListTile, 'Sarma'),
-    );
-    expect(tile.selected, isTrue);
+    final first = tester.getTopLeft(find.text('Sarma'));
+    final second = tester.getTopLeft(find.text('Pasulj'));
+    expect(second.dx, first.dx);
+    expect(second.dy, greaterThan(first.dy));
+    expect(tester.takeException(), isNull);
   });
 }

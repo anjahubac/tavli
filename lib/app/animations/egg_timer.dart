@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
-
-import 'motion.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 const _shell = Color(0xFFF6E6CF);
 const _shellLine = Color(0xFFD9BE98);

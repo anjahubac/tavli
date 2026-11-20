@@ -20,7 +20,11 @@ class RecipeAI {
   final AIRouter _router;
   final DateTime Function() _clock;
 
-  Future<AIResult<Recipe>> fromImage(AIImage image, {String? imagePath}) {
+  Future<AIResult<Recipe>> fromImage(
+    AIImage image, {
+    String? imagePath,
+    AICancellation? cancel,
+  }) {
     return _router
         .run(
           AIRequest(
@@ -35,6 +39,7 @@ class RecipeAI {
             }
             return _build(json, RecipeSource.photo, imagePath: imagePath);
           },
+          cancel: cancel,
         )
         .then(_stampModel);
   }
@@ -43,6 +48,7 @@ class RecipeAI {
     String dishName, {
     int servings = 2,
     String? notes,
+    AICancellation? cancel,
   }) {
     return _router
         .run(
@@ -56,12 +62,17 @@ class RecipeAI {
             temperature: 0.7,
           ),
           (json) => _build(json, RecipeSource.ai),
+          cancel: cancel,
         )
         .then(_stampModel);
   }
 
   /// Vraća novu verziju recepta; id, izvor i slika ostaju isti.
-  Future<AIResult<Recipe>> refine(Recipe current, String instruction) {
+  Future<AIResult<Recipe>> refine(
+    Recipe current,
+    String instruction, {
+    AICancellation? cancel,
+  }) {
     return _router
         .run(
           AIRequest(
@@ -81,8 +92,14 @@ class RecipeAI {
             if (current.steps.isNotEmpty && refined.steps.isEmpty) {
               throw const FormatException('R10');
             }
+            // AI ne menja oznake koje je postavio korisnik, a bez novih
+            // oznaka zadržava postojeće.
+            if (current.labels.isUserSet || refined.labels.isEmpty) {
+              return refined.copyWith(labels: current.labels);
+            }
             return refined;
           },
+          cancel: cancel,
         )
         .then(_stampModel);
   }
@@ -113,6 +130,7 @@ class RecipeAI {
         imagePath: v.imagePath,
         createdAt: v.createdAt,
         answeredBy: r.model.label,
+        labels: v.labels,
       ),
       r.model,
       r.attempts,

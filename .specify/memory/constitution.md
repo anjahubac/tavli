@@ -1,4 +1,11 @@
 <!--
+Sync Impact Report — 2026-11-19
+- Version: 3.0.1 → 3.1.0 (MINOR: principle VI expanded with the canonical design
+  canvas and the no-fixed-sizes rule).
+- Updated docs/development/ui-standard.md, AGENTS.md, docs/product-design.md, scripts/check-docs.py,
+  docs/product-plan.md, the UI library spec and the design wording of active plans.
+- No runtime, schema, credential, hosted settings or deployment change here.
+
 Sync Impact Report — 2026-11-14
 - Version: 3.0.0 → 3.0.1 (PATCH: clarify existing-checkout branch workflow).
 - Previous revision: 2.1.0 → 3.0.0 (MAJOR: narrow the all-data-sync rule with explicit
@@ -135,12 +142,19 @@ a pull request is merged.
 
 **Rationale**: AI output is messy; parsers and fallback logic are where bugs hide.
 
-### VI. Responsive by Default
+### VI. Responsive by Default, Built from the Design Canvas
 
-Every screen MUST work on a phone and on a wide window (macOS, tablet). The
-shell uses bottom navigation tabs below 720 px width and a `NavigationRail`
-at 720 px and above (extended at ≥1000 px). New screens MUST NOT assume a
-fixed width and SHOULD be checked at both sizes.
+Every screen MUST work on a phone and on a wide window (macOS, Windows, tablet).
+The shell uses bottom navigation tabs below 720 px width and a `NavigationRail`
+at 720 px and above (extended at ≥1000 px). Screens and components MUST NOT use
+fixed sizes: width comes from the available space and height from content;
+control heights are minimums that grow with text. Screens MUST be checked at
+both sizes.
+
+The design canvas linked from `docs/development/ui-standard.md` is the canonical
+design. Screens and components MUST follow it exactly and MUST NOT introduce
+layouts it does not show without first adding them to the canvas or the feature
+spec with Dev 4 review.
 
 ### VII. Small, Reviewable Commits
 
@@ -242,4 +256,4 @@ wording), and updating dependent templates and docs in the same commit. Every ne
 `plan.md` Constitution Check MUST evaluate principles I–X; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 3.0.1 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-14
+**Version**: 3.1.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-19

@@ -2,6 +2,8 @@
 // Prati import/export/part unazad kroz lib/ i test/, pa test vidi i
 // posrednu izmenu (npr. widget → ekran → test ekrana). Ispisuje "ALL" kada
 // izmena važi za ceo projekat (pubspec, podešavanja testova).
+// Prati i lokalni paket packages/tavli_ui: izmena u njemu pokreće njegove
+// testove i testove aplikacije koji ga uvoze.
 //
 // Upotreba: dart run scripts/affected_tests.dart <fajl>...
 import 'dart:io';
@@ -12,7 +14,20 @@ const _everything = {
   'pubspec.lock',
   'analysis_options.yaml',
   'dart_test.yaml',
+  'packages/tavli_ui/pubspec.yaml',
+  'packages/tavli_ui/analysis_options.yaml',
 };
+
+/// Folderi sa Dart kodom: aplikacija i lokalni paketi.
+const _roots = [
+  'lib',
+  'test',
+  'packages/tavli_ui/lib',
+  'packages/tavli_ui/test',
+];
+
+/// Folderi sa testovima.
+const _testRoots = ['test/', 'packages/tavli_ui/test/'];
 
 final _directive = RegExp(
   r'''^\s*(?:import|export|part)\s+['"]([^'"]+)['"]''',
@@ -27,7 +42,7 @@ void main(List<String> changed) {
 
   // Ko zavisi od koga: fajl → fajlovi koji ga uvoze.
   final dependents = <String, Set<String>>{};
-  for (final root in ['lib', 'test']) {
+  for (final root in _roots) {
     final dir = Directory(root);
     if (!dir.existsSync()) continue;
     for (final entity in dir.listSync(recursive: true)) {
@@ -55,7 +70,9 @@ void main(List<String> changed) {
 
   final tests =
       seen
-          .where((f) => f.startsWith('test/') && f.endsWith('_test.dart'))
+          .where(
+            (f) => _testRoots.any(f.startsWith) && f.endsWith('_test.dart'),
+          )
           .where((f) => File(f).existsSync())
           .toList()
         ..sort();
@@ -67,6 +84,9 @@ void main(List<String> changed) {
 String? _resolve(String from, String uri) {
   if (uri.startsWith('package:tavli/')) {
     return 'lib/${uri.substring('package:tavli/'.length)}';
+  }
+  if (uri.startsWith('package:tavli_ui/')) {
+    return 'packages/tavli_ui/lib/${uri.substring('package:tavli_ui/'.length)}';
   }
   if (uri.contains(':')) return null;
   final dir = from.substring(0, from.lastIndexOf('/') + 1);

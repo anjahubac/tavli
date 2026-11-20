@@ -4,6 +4,7 @@ Updated: 2026-11-13 from the owner's revision of 12–13 November. This is the
 accepted target, not a claim that every feature exists. The verified baseline is
 in [architecture](architecture.md); the six-phase sequence is in
 [product plan](product-plan.md). Existing visual design/themes remain.
+The 2026-11-20 UX review adds rules for narrow windows and the cooking journey.
 
 ## Primary journeys
 
@@ -18,18 +19,22 @@ AI suggestions are drafts and never silently alter saved data.
 
 ## Navigation
 
-Target order: **Plan, Nabavka, Početna, Recepti, Ostava**. Home is central and
-opens after sign-in/name gates. The title bar shows Tavli and the profile avatar,
-not a repeated tab title. Profile/settings/household remain behind the avatar.
-Current `/plan`, `/shopping`, `/recipes`, `/pantry`, `/profile` and recipe URLs
-remain compatible. Desktop rail does not display shortcut badges.
+The bottom bar orders destinations **Plan, Nabavka, Početna, Recepti, Ostava**.
+The side rail starts with **Početna**, then Plan, Nabavka, Recepti and Ostava.
+Home opens after sign-in/name gates. On compact layouts the title bar shows
+Tavli and the profile avatar. In the side rail, Profil sits at the bottom.
+Profile is the entry point for settings and household. The side rail omits
+shortcut badges. Preserve `/home`, `/plan`, `/shopping`, `/recipes`,
+`/pantry`, `/profile` and recipe URLs. See the
+[adaptive navigation rules](development/ui-standard.md#navigation-and-platform-behavior).
 
 Home shows today's approved meals (including snacks), the next uncooked meal,
 “Kuvaj” and “Skuvano”, tomorrow's meal names and at most one useful notice.
 Notice priority: today's allergen warning → missing shopping today/tomorrow →
 plan ending. Without a plan offer “Napravi plan”. Optional calorie strip appears
 only when tracking is enabled. Cooked meals use a green circular check and muted
-card; undo remains discoverable.
+card. When all of today's meals are cooked, show “Svi današnji obroci su skuvani.”
+Offer “Poništi” after marking a meal and keep it available in the meal detail.
 
 ## Planning
 
@@ -52,9 +57,10 @@ servings, cooked/locked/past entries and concurrent edits. Never overwrite a
 newer edit with an obsolete draft. A month can intersect six Monday–Sunday weeks.
 
 Week/month switching and primary actions remain at stable locations/sizes.
-Mobile shows day markers and selected-day meals for month; wide screens use a
-readable calendar/detail layout. “Ponovo predloži” and “Otvori nabavku” stay in a
-fixed safe-area action bar above mobile navigation.
+Mobile shows day markers and selected-day meals for month. Provide a day list
+when seven columns cannot fit readable labels and usable targets. Wide screens
+use a readable calendar/detail layout. “Ponovo predloži” and “Otvori nabavku”
+stay in a fixed safe-area action bar above mobile navigation.
 
 ## Ingredients and shopping
 
@@ -79,6 +85,9 @@ Bought entries form a separate undoable group. “Prebaci u ostavu” explicitly
 transfers checked purchases, once per receipt identity; it stays in the mobile
 fixed action bar. Checking a shopping item alone does not silently transfer it.
 A purchase and its pantry receipt are one supply and cannot cover demand twice.
+Keep the purchase checkbox separate from the visible “Za koje obroke” action
+for source details. Wide views can show those details beside the list while
+preserving the same action on compact views.
 
 ## Pantry
 
@@ -88,7 +97,8 @@ when quantity is unknown. There is no expiry entry, expiry warning or “use fir
 feature in this target. Legacy expiry columns are not dropped by documentation:
 a later migration must preserve data and older-client compatibility explicitly.
 
-Swipe to remove on phone; accessible delete action on desktop; offer undo.
+Swipe to remove on phone. Provide “Ukloni” in a reachable row menu on compact
+layouts and a keyboard-accessible remove action on desktop. Offer “Poništi”.
 Tap a numeric entry to edit quantity with minus/plus and direct input. Cooking
 consumes known quantities once, never below zero; undo restores them once.
 Unknown quantities persist until the person removes the item. Repeated events,
@@ -99,6 +109,8 @@ partial failures and offline replay must not duplicate consumption or receipts.
 Keep photo/name/manual input, search, AI edit preview, history/restore and
 original source-photo access. Phone offers camera/gallery; desktop uses file
 selection. A scanned recipe is not displayed as a confirmed dish photograph.
+Keep the wide recipe list and detail available together. A card grid can serve
+as a browse view if selecting a card still preserves search and selection.
 
 “Dodaj u plan” selects date/meal and confirms replacing an occupied entry.
 “Kuvaj” uses readable steps, previous/next, accessible ingredients and the
@@ -146,7 +158,8 @@ preferences, with the final vocabulary/provenance reviewed before implementation
 
 Use [UI standards](development/ui-standard.md): phone/wide, light/dark, 2× text,
 keyboard/screen reader, reduced motion, safe areas and offline/error states.
-Existing warm palette and typography stay; accessibility fixes are not a redesign.
+The [design canvas](https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7) is the
+canonical design (see the UI standard); accessibility fixes keep its look.
 From a saved plan to weekly shopping and from today's meal to available cooking
 steps should require at most two actions. Record additional generation/review
 steps honestly when steps are missing.
