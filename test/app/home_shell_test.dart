@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/app/router.dart';
+import 'package:tavli/app/tab_app_bar.dart';
 import 'package:tavli/domain/account.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
@@ -77,6 +78,30 @@ void main() {
     // Kao na platnu: na računaru nema gornje trake „Tavli“.
     expect(find.byType(TavliAppBar), findsNothing);
   });
+
+  for (final location in ['/recipes', '/shopping', '/plan']) {
+    testTavli('širok ekran $location: bez gornje trake nema praznog pojasa', (
+      tester,
+    ) async {
+      await pumpTavli(tester, size: wide, location: location, settle: false);
+      await tester.pump(const Duration(seconds: 1));
+      final bars = find.byType(TabAppBar);
+      expect(bars, findsWidgets);
+      for (final bar in bars.evaluate()) {
+        // Scaffold daje traci njenu stvarnu visinu (0), ne preferredSize (64).
+        expect(tester.getSize(find.byWidget(bar.widget)).height, 0);
+      }
+      // Sadržaj ekrana počinje na samom vrhu svog Scaffold-a.
+      final scaffold = find
+          .ancestor(of: bars.first, matching: find.byType(Scaffold))
+          .first;
+      final body = tester.widget<Scaffold>(scaffold).body!;
+      expect(
+        tester.getTopLeft(find.byWidget(body)).dy,
+        tester.getTopLeft(scaffold).dy,
+      );
+    });
+  }
 
   testTavli('pet tabova redom, Početna u sredini', (tester) async {
     await pumpTavli(tester, size: const Size(390, 844), location: '/plan');
