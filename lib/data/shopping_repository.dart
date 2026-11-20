@@ -890,6 +890,92 @@ class ShoppingRepository {
     );
   }
 
+  /// Zatvoreni i zamenjeni izvori se ne preračunavaju, pa njihovi stari
+  /// doprinosi ostaju u grupi koju je jedinica imala pre zajedničkog rečnika
+  /// (npr. `unit:dl` ili `unit:dag`). Zaliha se sada računa u osnovnoj
+  /// jedinici (ml, g), pa se doprinos i njegova raspodela prebacuju u nju;
+  /// inače bi se već raspoređena zaliha vratila kao slobodna. Otvoreni izvori
+  /// se preračunavaju sami. Idempotentno: posle prelaska grupa se poklapa.
+  Future<void> _migrateLegacyUnits(
+    List<ShoppingSourceRow> sources,
+    Map<String, ShoppingContributionRow> contributions,
+  ) async {
+    final inactive = {
+      for (final s in sources)
+        if (s.closedAt != null || s.supersededAt != null) s.id,
+    };
+    for (final c in [...contributions.values]) {
+      if (!inactive.contains(c.sourceId) || !c.unitGroup.startsWith('unit:')) {
+        continue;
+      }
+      final unit = normalizeUnit(c.baseUnit);
+      if (unit.group == c.unitGroup) continue;
+
+      final allocations = await (_db.select(
+        _db.supplyAllocations,
+      )..where((t) => t.contributionId.equals(c.id))).get();
+      final micros = c.micros == null ? null : c.micros! * unit.factor;
+      final target = contributions.values
+          .where(
+            (o) =>
+                o.id != c.id &&
+                o.sourceId == c.sourceId &&
+                o.ingredientKey == c.ingredientKey &&
+                o.unitGroup == unit.group,
+          )
+          .firstOrNull;
+
+      // Isti sastojak je u tom izvoru već u novoj grupi: spoji doprinose.
+      final targetId = target?.id ?? c.id;
+      if (target != null) {
+        final sum = (target.micros ?? 0) + (micros ?? 0);
+        await (_db.update(
+          _db.shoppingContributions,
+        )..where((t) => t.id.equals(target.id))).write(
+          ShoppingContributionsCompanion(
+            micros: Value(target.micros == null && micros == null ? null : sum),
+          ),
+        );
+      } else {
+        await (_db.update(
+          _db.shoppingContributions,
+        )..where((t) => t.id.equals(c.id))).write(
+          ShoppingContributionsCompanion(
+            unitGroup: Value(unit.group),
+            baseUnit: Value(unit.base),
+            micros: Value(micros),
+          ),
+        );
+      }
+      await _writer.upsertLast(_contribution, targetId);
+      for (final a in allocations) {
+        await (_db.update(
+          _db.supplyAllocations,
+        )..where((t) => t.id.equals(a.id))).write(
+          SupplyAllocationsCompanion(
+            contributionId: Value(targetId),
+            micros: Value(
+              a.coversWholeUnknown || a.micros == null
+                  ? a.micros
+                  : a.micros! * unit.factor,
+            ),
+          ),
+        );
+        await _writer.upsertLast(_allocation, a.id);
+      }
+      if (target != null) {
+        await (_db.delete(
+          _db.shoppingContributions,
+        )..where((t) => t.id.equals(c.id))).go();
+        await _writer.delete(_contribution, c.id);
+        contributions.remove(c.id);
+      }
+      contributions[targetId] = await (_db.select(
+        _db.shoppingContributions,
+      )..where((t) => t.id.equals(targetId))).getSingle();
+    }
+  }
+
   /// Celo domaćinstvo: doprinosi otvorenih izvora prate odobrene recepte,
   /// potvrđena zaliha se raspoređuje hronološki, a otvorene stavke
   /// pokazuju samo ono što preostaje. Kupljene, ručne i stare stavke se ne
@@ -918,6 +1004,7 @@ class ShoppingRepository {
         c.id: c,
     };
     final changed = <String>{};
+    await _migrateLegacyUnits(sources, contributions);
     for (final s in sources) {
       if (s.closedAt != null || s.supersededAt != null) continue;
       final existing = {

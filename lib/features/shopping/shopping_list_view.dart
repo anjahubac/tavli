@@ -13,10 +13,14 @@ import '../../providers.dart';
 import '../planning/plan_format.dart';
 import 'shopping_providers.dart';
 
-/// "1,5 kg", "2 kom"; null kad količina nije poznata.
-String? amountLabel(double? quantity, String? unit) => quantity == null
+/// "1,5 kg", "~35 ml", "2 kom"; null kad količina nije poznata.
+String? amountLabel(
+  double? quantity,
+  String? unit, {
+  bool approximate = false,
+}) => quantity == null
     ? null
-    : [formatQuantity(quantity), ?unit].join(' ').trim();
+    : '${approximate ? '~' : ''}${[formatQuantity(quantity), ?unit].join(' ').trim()}';
 
 /// "Voće i povrće"
 String categoryLabel(String category) => category.isEmpty
