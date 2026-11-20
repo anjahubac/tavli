@@ -77,6 +77,10 @@ class _RecipesBody extends ConsumerStatefulWidget {
 class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   late final TextEditingController _search;
 
+  // Pretraga prelazi iz liste u zaglavlje kad se prozor raširi; ključ čuva
+  // isto polje, pa tekst i fokus ostaju.
+  final _searchKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -96,6 +100,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   }
 
   Widget _searchField() => TavliSearchField(
+    key: _searchKey,
     hint: 'Pretraži recepte',
     controller: _search,
     onChanged: ref.read(recipeSearchProvider.notifier).set,
@@ -108,24 +113,30 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
         .watch(recipesProvider)
         .when(
           loading: () => const TavliLoading(),
-          error: (_, _) => const TavliEmptyState(
-            icon: Icons.error_outline,
-            title: 'Recepti nisu učitani.',
+          error: (_, _) => const _ScrollableMessage(
+            TavliEmptyState(
+              icon: Icons.error_outline,
+              title: 'Recepti nisu učitani.',
+            ),
           ),
           data: (all) {
             if (all.isEmpty) {
-              return const TavliEmptyState(
-                icon: Icons.menu_book_outlined,
-                title: 'Još nema recepata',
-                message:
-                    'Dodaj prvi recept sa slike, po nazivu jela ili ručno.',
+              return const _ScrollableMessage(
+                TavliEmptyState(
+                  icon: Icons.menu_book_outlined,
+                  title: 'Još nema recepata',
+                  message:
+                      'Dodaj prvi recept sa slike, po nazivu jela ili ručno.',
+                ),
               );
             }
             final recipes = filterRecipes(all, query);
             if (recipes.isEmpty) {
-              return TavliEmptyState(
-                icon: Icons.search_off,
-                title: 'Nema recepata za „${query.trim()}“.',
+              return _ScrollableMessage(
+                TavliEmptyState(
+                  icon: Icons.search_off,
+                  title: 'Nema recepata za „${query.trim()}“.',
+                ),
               );
             }
             if (!widget.wide) {
@@ -225,6 +236,8 @@ class _RecipeList extends StatelessWidget {
     return SpoonRefresh(
       onRefresh: onRefresh,
       child: TavliCardGrid(
+        // Položaj liste se pamti i kad se prozor na kratko raširi u mrežu.
+        key: const PageStorageKey('recipes-list'),
         physics: const AlwaysScrollableScrollPhysics(),
         spacing: TavliSpacing.small,
         padding: const EdgeInsets.fromLTRB(
@@ -267,6 +280,7 @@ class _RecipeGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TavliCardGrid(
+      key: const PageStorageKey('recipes-grid'),
       columns: _gridColumns,
       padding: const EdgeInsets.fromLTRB(
         TavliSpacing.large,
@@ -297,6 +311,25 @@ class _RecipeGrid extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Prazno stanje koje se pomera kad uz veći tekst i navigaciju nema mesta.
+class _ScrollableMessage extends StatelessWidget {
+  const _ScrollableMessage(this.child);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(child: child),
+        ),
+      ),
     );
   }
 }

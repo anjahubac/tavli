@@ -60,6 +60,56 @@ void main() {
     expect(find.text('Nema recepata za „musaka“.'), findsOneWidget);
   });
 
+  testTavli('promena širine čuva pretragu, njen fokus i položaj liste', (
+    tester,
+  ) async {
+    await pumpTavli(
+      tester,
+      size: const Size(719, 680),
+      recipes: [for (var i = 0; i < 20; i++) sampleRecipe('r$i', 'Sarma $i')],
+    );
+    await tester.enterText(find.byType(TavliSearchField), 'Sarma');
+    await tester.pumpAndSettle();
+    final list = find.descendant(
+      of: find.byKey(const PageStorageKey('recipes-list')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.drag(list, const Offset(0, -350));
+    await tester.pumpAndSettle();
+    final pixels = tester.state<ScrollableState>(list).position.pixels;
+    expect(pixels, greaterThan(0));
+
+    // Uz bočni meni sadržaj je širok 639, 918, 743, 943 i 719: lista,
+    // mreža, lista, mreža, lista.
+    for (final (width, grid) in [
+      (720.0, false),
+      (999.0, true),
+      (1000.0, false),
+      (1200.0, true),
+      (719.0, false),
+    ]) {
+      tester.view.physicalSize = Size(width, 680);
+      await tester.pumpAndSettle();
+      expect(currentTab(tester), 'Recepti');
+      final input = tester.widget<EditableText>(find.byType(EditableText));
+      expect(input.controller.text, 'Sarma');
+      expect(input.focusNode.hasFocus, isTrue, reason: 'width: $width');
+      expect(
+        find.byKey(const PageStorageKey('recipes-grid')),
+        grid ? findsOneWidget : findsNothing,
+        reason: 'width: $width',
+      );
+      if (!grid) {
+        expect(
+          tester.state<ScrollableState>(list).position.pixels,
+          closeTo(pixels, 1),
+          reason: 'width: $width',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testTavli('telefon: recept se otvara preko celog ekrana', (tester) async {
     await pumpTavli(
       tester,
