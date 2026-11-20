@@ -31,9 +31,10 @@ quantity, snapshot, offline and account invariants.
   parameters.
 - **D5 Parallel work**: phases 1–2 run in parallel with meal plan work.
 - **D6 Canvas over the earlier standard** (Anja): where the two differed, the
-  canvas wins. A secondary button stays 48 high beside a 56 primary button
-  ("Skuvano" beside "Kuvaj"), button labels are 15/700, and the checkbox radius
-  is 6.
+  canvas wins. Button labels are 15/700 and the checkbox radius is 6.
+  Exception (Anja, 2026-11-20): a secondary button is 56 high, the same as a
+  primary button, because uneven buttons side by side look wrong; buttons in
+  one row always share one height.
 
 ## Delivery order (Trello "UI biblioteka 1–14")
 
