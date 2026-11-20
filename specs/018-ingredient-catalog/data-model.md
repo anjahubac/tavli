@@ -57,9 +57,12 @@ ingredient units, density and conversions (D1-010, depends on 017), nutrition
 | `household_id` | `uuid` null, references `households` on delete cascade | `null` = shared alias; set = household confirmation or override. |
 | `alias` | `text` not null | As entered or reviewed; the original ingredient text is never rewritten. |
 | `alias_normalized` | `text` not null | Output of the one normalization function (decision D4). |
+| `withdrawn_at` | `timestamptz` null, `check (withdrawn_at is null or household_id is null)` | Withdraws a wrong shared alias without deleting the row (see Correcting an alias). |
 | `created_at`, `updated_at`, `updated_by` | as other tables | |
 
-Uniqueness: one row per (`household_id` or shared, `alias_normalized`), so a
+Uniqueness: one active row per (`household_id` or shared, `alias_normalized`);
+withdrawn shared aliases are excluded from the unique index, so a correction can
+add the replacement under the same key. A
 household override and a shared alias may coexist and the household one wins (#30).
 Two equally authoritative visible mappings that disagree resolve to `Unresolved`,
 which the matcher handles; the table only has to keep both rows.
@@ -123,6 +126,23 @@ and a shared row has neither.
   active. The server rejects a new household alias that points to a withdrawn
   food.
 - Withdrawal does not touch approved plan snapshots.
+
+## Correcting an alias
+
+`food_id` of an alias is immutable, so a correction never edits the row in
+place. It retires the old row and adds a new one, and caches learn about both
+through the channels they already use.
+
+| Case | Server change | How a cache picks it up |
+| --- | --- | --- |
+| Shared food withdrawn | Same migration sets `withdrawn_at` on the food and on its shared aliases, bumping `updated_at`. If a reviewed replacement exists, the migration inserts new shared aliases to it. | Incremental download by `updated_at` brings the withdrawn rows and the new aliases. The matcher ignores withdrawn rows. |
+| Shared alias points to the wrong food | Migration sets `withdrawn_at` on that alias and inserts a new shared alias with the same `alias_normalized` to the correct food. | Same as above. Until the next download, the device keeps the old match (accepted staleness, see above). |
+| Household alias points to a withdrawn food | The row stays but stops resolving. The matcher returns `Unresolved` for that wording and the review UI (#57) offers it again. Confirming a new food deletes the old household alias and inserts a new one in one transaction. | The delete goes through the existing `deletions` tombstone, the insert through the outbox and download, like other household rows. |
+| Household changes its own mapping | Same as the previous row: delete plus insert in one local transaction and one outbox batch. | Other devices of the household receive the tombstone and the new row on their next download. A device that has the new row but not yet the tombstone sees two household mappings for one key; the matcher returns `Unresolved` for that key until the tombstone arrives, never the stale food. |
+
+Existing recipe links are not rewritten in any case (#30): a link to a withdrawn
+food is treated as unresolved, and a link confirmed under an old household
+mapping stays until the user reviews that ingredient again.
 
 ## Access rules (server)
 
@@ -202,9 +222,27 @@ The order is therefore:
    CI and checked there. Nothing reads the new tables yet, and installed clients
    ignore them.
 3. **Client second.** The drift tables, the version bump and the read-only
-   download ship in a client release that treats a missing table, an access
-   error or an empty result as "no catalog", so it also works against a server
-   that does not have the tables yet. Local and CI checks run both directions:
+   download ship in a client release that works against a server that does not
+   have the tables yet. The download keeps these outcomes separate (#30):
+   - **Older server without the catalog.** PostgREST reports the table as
+     unknown (`PGRST205`, HTTP 404) or PostgreSQL reports `42P01`. The client
+     records "catalog not available on this server", keeps the matcher on
+     `Unresolved` for every name and retries on a later sync. This is not an
+     error for the user.
+   - **Household access failure.** The tables exist but the request is denied
+     (`42501`, HTTP 403) or the active household is no longer the user's. An
+     expired session (`401`, `PGRST3xx`) stays the existing
+     `UnauthorizedSyncError` and is handled as it is today. The client
+     drops the cached household foods and aliases of that household and
+     discards in-flight results, and shared rows already cached stay readable.
+   - **Empty result.** The tables exist and are readable but hold no rows for
+     this scope. This is a valid empty catalog, not an error.
+
+   Today `classifySyncError` in `lib/sync/sync_remote.dart` maps both a missing
+   table and `42501` to `PermanentSyncError`, so the catalog download needs its
+   own classification before this step. Tests cover all three against a fake
+   backend. A test also checks that an
+   access failure is never classified as "older server". Local and CI checks run both directions:
    new client with old server, old client with new server.
 4. **Writes last.** No consumer writes a link, alias or food until step 3 is
    released. Links on recipe ingredients carry the mixed-version gate from #30:
