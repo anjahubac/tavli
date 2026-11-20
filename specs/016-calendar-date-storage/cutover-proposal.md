@@ -134,15 +134,27 @@ reset does not settle the handling of installed clients or offline caches.
 
 Status (18 Nov 2026): the schema coordinator replied that she cannot confirm
 that `tavli-dev` has no affected calendar data without checking it. If the
-check shows nothing to keep, the fresh-database option replaces the migration
-path for `tavli-dev`. The check, to be run by someone with access to that
-project:
+check shows nothing to keep, the fresh-database option may replace the
+migration path for `tavli-dev`.
+
+The three table counts below are input for the date conversion itself. They
+are not enough to approve a full reset of `tavli-dev`, which also removes
+accounts, every other table and stored files. A full reset needs written
+confirmation, by someone with access to that project, of all of the
+following:
 
 - row counts of `meal_plans`, `meal_plan_entries` and `shopping_lists`, and
   whether any of them belong to people who need the data;
-- whether any installed client can still hold queued writes in its outbox
-  (the team builds that were used against `tavli-dev`);
-- the same counts for any other shared environment before it is reset.
+- no other data to preserve anywhere the reset reaches: Auth accounts, all
+  other public tables (recipes, pantry, households and the rest) and the
+  objects in Storage;
+- no installed client holds pending writes in its outbox (the team builds
+  that were used against `tavli-dev`);
+- the same checks for any other shared environment before it is reset.
+
+Until every item is confirmed, the data-preserving migration path described
+above stays the plan and remains available; the fresh-database option does
+not replace it.
 
 The compatibility reader is merged (#42), including equality with the
 UTC-midnight values used for shopping week lookups. The server-side slice
