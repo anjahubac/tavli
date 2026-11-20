@@ -57,6 +57,42 @@ void main() {
     expect(find.text('Nema recepata za „musaka“.'), findsOneWidget);
   });
 
+  testTavli('promena širine čuva pretragu, njen fokus i položaj liste', (
+    tester,
+  ) async {
+    await pumpTavli(
+      tester,
+      size: const Size(719, 680),
+      recipes: [for (var i = 0; i < 20; i++) sampleRecipe('r$i', 'Sarma $i')],
+    );
+    final search = find.byType(SearchBar);
+    await tester.enterText(search, 'Sarma');
+    await tester.pumpAndSettle();
+    final scrollable = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(Scrollable),
+    );
+    await tester.drag(scrollable, const Offset(0, -350));
+    await tester.pumpAndSettle();
+    final pixels = tester.state<ScrollableState>(scrollable).position.pixels;
+    expect(pixels, greaterThan(0));
+
+    for (final width in [720.0, 999.0, 1000.0, 1200.0, 719.0]) {
+      tester.view.physicalSize = Size(width, 680);
+      await tester.pumpAndSettle();
+      expect(currentTab(tester), 'Recepti');
+      final input = tester.widget<EditableText>(find.byType(EditableText));
+      expect(input.controller.text, 'Sarma');
+      expect(input.focusNode.hasFocus, isTrue, reason: 'width: $width');
+      expect(
+        tester.state<ScrollableState>(scrollable).position.pixels,
+        closeTo(pixels, 1),
+        reason: 'width: $width',
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testTavli('telefon: recept se otvara preko celog ekrana', (tester) async {
     await pumpTavli(
       tester,

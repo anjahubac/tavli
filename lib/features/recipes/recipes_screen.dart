@@ -34,22 +34,23 @@ class RecipesScreen extends StatelessWidget {
             icon: const Icon(Icons.add),
             label: const Text('Dodaj recept'),
           ),
-          body: wide
-              ? Row(
-                  children: [
-                    SizedBox(
-                      width: 360,
-                      child: _RecipeList(selectedId: selected),
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(
-                      child: selected == null
-                          ? const _NothingSelected()
-                          : RecipeDetailScreen(id: selected, embedded: true),
-                    ),
-                  ],
-                )
-              : _RecipeList(selectedId: selected),
+          // Lista ostaje na istom mestu u stablu pri promeni širine.
+          body: Row(
+            children: [
+              SizedBox(
+                width: wide ? 360 : constraints.maxWidth,
+                child: _RecipeList(selectedId: selected),
+              ),
+              if (wide) ...[
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: selected == null
+                      ? const _NothingSelected()
+                      : RecipeDetailScreen(id: selected, embedded: true),
+                ),
+              ],
+            ],
+          ),
         );
       },
     );
@@ -250,7 +251,7 @@ class _Message extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
