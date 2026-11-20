@@ -2,7 +2,7 @@
 
 **Status**: scoped proposal; runtime implementation not started by this revision.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 3 / Dev 1 and Dev 2
-**Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
+**Household join planning baseline**: origin/dev at 6e560f6; every implementing branch starts from then-current origin/dev.
 
 ## Existing boundaries and proposed files
 
@@ -34,6 +34,116 @@ allocate drift version only after preceding schema merges. New SQL is additive
 where possible, with RLS/grants and local two-account tests. Applied SQL is immutable.
 If no schema change is needed, explicitly record that decision in the slice PR.
 
+## Direct household join (D3-005 to D3-008)
+
+Decision recorded 2026-11-20 by Matija (Dev 3). Dev 1 is the proposed
+independent reviewer and coordinates shared schema and sync changes.
+The [flow map](../../docs/flows.md) records the boundary for downstream consumers.
+
+| Source | Planned delivery | Primary paths |
+| --- | --- | --- |
+| D3-005 / T008–T009 | Server contract, reusable link authorization, preview and atomic membership switch including the recipe choice and owner succession | Additive `supabase/migrations/` and `supabase/tests/`; private recipe photo handling if needed |
+| D3-006 / T010–T011 | Owner shares the link or displays its QR from Profile | `lib/features/account/`, `lib/features/settings/`; account API and platform coordination with Dev 4 |
+| D3-007 / T012–T013 | Deep link, sign-in continuation, preview, confirmation and verified account/sync handoff | `lib/account/`, `lib/features/account/`, `lib/app/router.dart`, affected `lib/sync/` paths and mirrored tests |
+| D3-008 / T014–T015 | Member listing, removal, manual owner transfer and standalone leave | Account UI/API and additive membership SQL/tests; reuse the reviewed transition rules where applicable |
+
+### Proposed server contract
+
+- Retrieve or initialize the stable share token for the current owner. The
+  server derives identity and household from the authenticated session and
+  membership. The client forms the approved link and QR from that token.
+- Preview takes the opaque token and returns the destination household name, the caller's source ID and whether leaving that source requires the deletion warning. Return a generic unavailable result for an invalid token. It grants no access to destination household rows.
+- Confirm takes the token, expected source household ID, recipe choice
+  (`bring_recipes` or `leave_recipes`), explicit acknowledgement of source deletion if the warning was shown, and a client-generated operation UUID.
+  Derive the caller from the session and verify current membership, source and
+  destination availability before doing any writes. Use the UUID to reconcile
+  a lost response without repeating the transition. Recheck the deletion
+  condition under lock. If the source became empty-on-leave after preview,
+  require the warning and a new confirmation before any write. Return the verified new
+  account scope on success or a stable failure category. Cancellation is local.
+  An already-current destination is a no-op. A stale source requires a fresh
+  preview and confirmation.
+- Establish one membership per user in SQL and support member and owner roles.
+  The existing account migration uses a composite household/user primary key,
+  an owner-only role check and a provisioning trigger. Audit existing rows and
+  define forward recovery before enforcing the new constraint. Serialize
+  switches, owner changes, removals and account deletion against the same
+  affected households. In one DB transaction apply the recipe choice, move
+  membership, and promote the longest-serving remaining member (ascending
+  user UUID breaks ties) or delete the now-empty source with its shared rows. Failures
+  roll back the DB changes. Use least-privilege RPC grants, explicit policies
+  and fixed search paths. Keep token lookup and delivery owner-scoped.
+- Keep the link reusable and rate-limit preview and confirmation server-side.
+  Treat it as a secret in logs and analytics. Route validation, token lifecycle
+  on household retirement and operation receipt retention belong in the final
+  written contract.
+
+The initial SQL fixture uses these proposed RPC signatures and response keys:
+
+| RPC | Result |
+| --- | --- |
+| `household_invite_token()` | Stable token as text; SQLSTATE `42501` for non-owners |
+| `preview_household_join(token text)` | JSON object with `status`, and on success `household_name`, `source_household_id` and `requires_source_deletion_ack` |
+| `confirm_household_join(token text, expected_source_household_id uuid, recipe_choice text, source_deletion_ack boolean, operation_id uuid)` | JSON object with `status` and verified scope on success |
+
+The fixture checks `joined`, `already_member`, `unavailable`,
+`stale_source`, `source_deletion_confirmation_required` and
+`operation_conflict`. A warning acknowledgement is specific to this
+switch. A rejected confirmation leaves no successful receipt, so the caller
+can acknowledge the warning and submit the same operation UUID. Reusing a UUID
+from a successful switch with a different request yields a conflict.
+
+### Recipes, private photos and offline sync
+
+- Use immutable server-controlled recipe creator provenance. Existing
+  recipes without a trusted creator remain unknown and are eligible for
+  copying. The current `updated_by` field tracks edits and cannot attribute
+  creation. Allocate independent destination IDs for copies and retain the
+  source originals while other members remain. Record the schema changes in
+  [data model](data-model.md). Cover account deletion and earlier clients.
+- Inventory recipe versions, labels, photo paths, plan/shopping references and
+  tombstones. Preserve valid source references for remaining members and
+  keep scoped IDs and snapshots consistent in the destination. Storage and
+  Postgres commit separately. If files need transfer, plan idempotent staging
+  in private storage, verified paths, publication after verification and
+  cleanup of staged objects on failure so a failed file copy leaves membership
+  unchanged and source photos available. After acknowledged deletion commits,
+  use a durable, retryable cleanup for empty-source photo objects. A cleanup
+  retry uses verified old-household paths only.
+- Joining requires connectivity. The proposed client sequence pauses new
+  old-scope edits, drains that scope's existing outbox and verifies the server
+  response before rebinding the cache and downloader. If pending writes or
+  required photo uploads cannot finish, keep the old scope and let the user retry.
+  On success use scoped download cursors and segregate remaining old-scope
+  records. Never replay old-household writes under the new ID. Revalidate
+  membership when older or offline clients reconnect. Resolve server-side
+  compatibility and concurrent old-scope writes before exposing the new join
+  flow to existing app versions.
+
+### Implementation status
+
+The SQL slice implements reusable links, preview, membership and owner changes,
+and recipe copies with version history. The migration returns
+`photo_transfer_pending` before any membership mutation when private objects
+would need copying or deleting. Storage staging, cleanup and request rate
+limits remain release gates. Profile, deep links and QR remain consumer work.
+
+### Verification before rollout
+
+- Dev 3 and Dev 1 review the typed contract, exact shared paths, migration
+  ordering, estimates and fixtures before the slice becomes Ready. Dev 4
+  reviews the deep-link and platform changes when those consumers are planned.
+- Run local migration reset and pgTAP with synthetic accounts. Cover owner and
+  non-owner share access, unauthenticated requests, invalid tokens, reusable
+  links, unauthorized data access, throttling, both recipe choices, concurrent
+  switches, replay, stale source, successor and empty-source branches, and
+  rollback. Verify the account deletion and storage boundaries affected by the
+  selected model.
+- Add fake-backed tests for offline, cancellation, sign-in continuation,
+  ambiguous response, source-outbox isolation, and old-client scope changes
+  in the consumer slice. Use the [quality gates](../../docs/development/quality-gates.md)
+  and link observed evidence to the tasks and the PR.
+
 ## Delivery slices
 
 1. Resolve only blocking decisions; map each source requirement to existing code,
@@ -47,7 +157,7 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 4. Integrate consumers after producer merge, preserving offline/replay and previous
    UI/quantity behavior. Run relevant 012/013 gates and update real evidence.
 
-## Constitution check (3.0.0)
+## Constitution check (3.0.1)
 
 | Gate | Required response before implementation |
 | --- | --- |

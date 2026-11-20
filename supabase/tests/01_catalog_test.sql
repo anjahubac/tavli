@@ -70,8 +70,12 @@ select is(
         order by 1),
   -- recipe_meal_types_valid: CHECK na public.recipes je poziva sa pravima
   -- korisnika koji upisuje (20261118120000_recipe_labels.sql).
-  array['private.is_member', 'private.recipe_meal_types_valid'],
-  'authenticated izvršava samo private.is_member i proveru obroka recepta'
+  array[
+    'private.is_member', 'private.recipe_meal_types_valid',
+    'public.confirm_household_join', 'public.household_invite_token',
+    'public.preview_household_join'
+  ],
+  'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );
 
 select is(
