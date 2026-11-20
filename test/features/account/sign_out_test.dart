@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/session_store.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
@@ -14,7 +15,7 @@ void main() {
       'na ovom uređaju.';
 
   Finder tab(String label) => find.descendant(
-    of: find.byType(NavigationBar),
+    of: find.byType(TavliNavigation),
     matching: find.text(label),
   );
 
@@ -27,7 +28,12 @@ void main() {
   }
 
   Future<void> openProfile(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('Profil i podešavanja'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(TavliAppBar),
+        matching: find.bySemanticsLabel('Profil'),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
