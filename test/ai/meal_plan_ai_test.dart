@@ -682,6 +682,25 @@ void main() {
       expect(client.requests.length, 1);
     });
 
+    test(
+      'prekid dok model odgovara: nema popravke, plan je prekinut',
+      () async {
+        final cancel = PlanCancellation();
+        client.handler = (_) {
+          cancel.cancel();
+          return '{"meals": "nije lista"}';
+        };
+
+        final cancelled = await ai
+            .propose(weekRequest(), cancel: cancel)
+            .then<PlanGenerationCancelled?>((_) => null)
+            .catchError((Object e) => e as PlanGenerationCancelled);
+
+        expect(cancelled, isNotNull);
+        expect(client.requests.length, 1, reason: 'popravka nije poslata');
+      },
+    );
+
     test('napredak se javlja posle svake grupe', () async {
       final progress = <(int, int)>[];
       await ai.propose(

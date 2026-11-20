@@ -33,6 +33,12 @@ implementation/test/review estimates before Ready.
 
 ## Sequencing and effort
 
+Prioritize narrow navigation (T002–T005, SC-003/004), then the full cooking
+journey (T012–T017 and T020–T021, SC-001/005) once the shared cooked-operation
+producer is merged. Use T018–T019 for notice priority and T008–T011 for the
+compact calendar and fixed-action checks. Reuse existing shell and shopping
+coverage as baseline evidence. Record any remaining gaps per task.
+
 Do not treat this file's order as permission to run every task concurrently.
 Dependencies are contracts plus phase/feature gates in the product plan. Tests
 for future behavior land with that behavior; do not weaken current tests to make

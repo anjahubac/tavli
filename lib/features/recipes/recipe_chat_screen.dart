@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../ai/ai_models.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/recipe_version.dart';
@@ -29,8 +30,15 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
   String? _pending;
   Recipe? _proposal;
 
+  /// Uputstvo koje nije uspelo; „Pokušaj ponovo“ šalje baš njega, i kad
+  /// je polje u međuvremenu promenjeno ili obrisano.
+  String? _failed;
+
   /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
   int _request = 0;
+
+  /// Prekid tekućeg zahteva: router posle njega ne zove model ni popravku.
+  AICancellation? _cancelToken;
 
   @override
   void initState() {
@@ -40,28 +48,35 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
 
   @override
   void dispose() {
+    _cancelToken?.cancel();
     _input.dispose();
     super.dispose();
   }
 
-  Future<void> _send(Recipe current) async {
-    final instruction = _input.text.trim();
+  Future<void> _send(Recipe current, {String? retry}) async {
+    final instruction = retry ?? _input.text.trim();
     if (instruction.isEmpty || _busy) return;
     final request = ++_request;
+    _cancelToken?.cancel();
+    final cancel = _cancelToken = AICancellation();
     setState(() {
       _busy = true;
       _error = null;
+      _failed = null;
       _pending = instruction;
     });
     try {
-      final r = await ref.read(recipeAIProvider).refine(current, instruction);
+      final r = await ref
+          .read(recipeAIProvider)
+          .refine(current, instruction, cancel: cancel);
       if (!mounted || request != _request) return;
-      _input.clear();
+      if (_input.text.trim() == instruction) _input.clear();
       setState(() => _proposal = r.value);
     } on Exception catch (e) {
       if (!mounted || request != _request) return;
       setState(() {
         _error = aiErrorText(e);
+        _failed = instruction;
         _pending = null;
       });
     } finally {
@@ -93,6 +108,7 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
 
   /// Tekst zahteva ostaje u polju.
   void _cancel() => setState(() {
+    _cancelToken?.cancel();
     _request++;
     _busy = false;
     _pending = null;
@@ -174,7 +190,19 @@ class _RecipeChatScreenState extends ConsumerState<RecipeChatScreen> {
                 if (pending != null) _Bubble(text: pending),
                 if (_busy) AiBusy('AI menja recept…', onCancel: _cancel),
                 if (_error case final error?)
-                  AiErrorBox(error, actions: const []),
+                  AiErrorBox(
+                    error,
+                    actions: [
+                      // Šalje uputstvo koje nije uspelo, ne trenutni tekst.
+                      if (_failed case final failed?)
+                        TextButton(
+                          onPressed: _busy || proposal != null
+                              ? null
+                              : () => _send(recipe, retry: failed),
+                          child: const Text('Pokušaj ponovo'),
+                        ),
+                    ],
+                  ),
                 if (proposal != null)
                   Card(
                     child: Padding(

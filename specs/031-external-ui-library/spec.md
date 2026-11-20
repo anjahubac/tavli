@@ -14,13 +14,20 @@ snapshot, offline and account invariants. No new framework or folder reorganizat
 Source tickets below retain original assignments/phases; the lead coordinates,
 not reassigns them. No additional feature is authorized merely by a technical seam.
 
+At `origin/dev` `28fa253`, the in-repository `packages/tavli_ui` workspace
+package contains theme tokens, shared components and a debug gallery
+([#60](https://github.com/anjahubac/tavli/pull/60),
+[#71](https://github.com/anjahubac/tavli/pull/71)). Use that package for local
+adoption under 021. External repository and distribution work remains subject
+to Q1.
+
 ## Requirements and source traceability
 
 - **FR-001**: Deliver **Build the external UI package only after team agreement**. Source D4-024; Dev 4; phase 4. Completion must satisfy the behavior and evidence below, not only code presence.
 
 ## Behavioral requirements
 
-- **FR-101**: Apply current component standards now in existing folders; inventory genuinely reusable components and their theme/a11y contracts.
+- **FR-101**: Apply the [UI standard](../../docs/development/ui-standard.md) to the local package and its app consumers. Inventory reusable components and their theme and accessibility contracts.
 - **FR-102**: After team agreement, create external package with versioning, ownership, examples and compatibility policy; migrate one reversible consumer at a time.
 - **FR-103**: Preserve light/dark, reduced motion, 2× text, focus/semantics and design tokens; do not redesign app or block features on package extraction.
 

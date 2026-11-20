@@ -16,14 +16,9 @@ const recipeSummaryBatch = 3;
 /// Najviše recepata iz biblioteke koji se nude AI-ju u jednom rasporedu.
 const maxLibraryInPrompt = 60;
 
-/// Osoba je prekinula generisanje; sprema se između grupa.
-class PlanCancellation {
-  bool _cancelled = false;
-
-  bool get isCancelled => _cancelled;
-
-  void cancel() => _cancelled = true;
-}
+/// Osoba je prekinula generisanje. Proverava se između grupa, a router je
+/// proverava i pre svakog poziva modela (i pre popravke odgovora).
+class PlanCancellation extends AICancellation {}
 
 /// Grupa nije uspela; [draft] ima sve što je gotovo pre toga.
 class PlanGenerationFailed implements Exception {
@@ -72,6 +67,8 @@ class MealPlanAI {
       if (cancel?.isCancelled ?? false) throw PlanGenerationCancelled(draft);
       try {
         return await run();
+      } on AICancelled {
+        throw PlanGenerationCancelled(draft);
       } on Object catch (e) {
         throw PlanGenerationFailed(draft, e);
       }
@@ -148,6 +145,7 @@ class MealPlanAI {
             slots: slots,
             library: {for (final r in offered) r.id: r.title},
           ),
+          cancel: cancel,
         ),
       );
       return {
@@ -200,6 +198,7 @@ class MealPlanAI {
             prompt: recipeSummariesPrompt(batch),
           ),
           (json) => parseSummaries(json, titles: batch),
+          cancel: cancel,
         ),
       );
       draft = draft.copyWith(
