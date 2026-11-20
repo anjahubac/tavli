@@ -125,8 +125,10 @@ from a successful switch with a different request yields a conflict.
 The SQL slice implements reusable links, preview, membership and owner changes,
 and recipe copies with version history. The migration returns
 `photo_transfer_pending` before any membership mutation when private objects
-would need copying or deleting. Storage staging, cleanup and request rate
-limits remain release gates. Profile, deep links and QR remain consumer work.
+would need copying or deleting. Preview permits 60 requests per account per minute and confirmation permits
+15. Storage staging and cleanup remain release gates. The account and sync
+consumer reconciles verified membership and retains old household writes in
+the rejected queue. Profile, deep links and QR remain consumer work.
 
 ### Verification before rollout
 

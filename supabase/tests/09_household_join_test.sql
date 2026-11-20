@@ -204,5 +204,43 @@ select is((select count(*) from public.recipes where household_id = :'target_hou
   and title = 'Ponesi iz praznog izvora' and id <> 'join-solo-copy'),
   1::bigint, 'kopija ostaje u odredištu sa novim identitetom');
 
+select tests.create_user('join-photo@test.local') as photo_user \gset
+select tests.household_of(:'photo_user') as photo_home \gset
+insert into public.recipes (id, household_id, title, servings, source, ingredients, steps, image_path)
+values ('join-photo', :'photo_home', 'Recept sa slikom', 1, 'manual', '[]', '[]', 'join-photo.jpg');
+
+select tests.authenticate_as(:'photo_user');
+select is(public.confirm_household_join(:'target_token', :'photo_home',
+  'bring_recipes', true, gen_random_uuid())->>'status',
+  'photo_transfer_pending', 'prelazak ne gubi fotografiju dok prenos nije povezan');
+select is(tests.household_of(:'photo_user'), :'photo_home'::uuid,
+  'članstvo ostaje isto kad fotografija zahteva prenos');
+select tests.clear_auth();
+
+select tests.authenticate_as(:'solo_id');
+select is(
+  (select count(*) from generate_series(1, 61)
+    where public.preview_household_join(repeat('0', 64))->>'status' = 'rate_limited'),
+  1::bigint, 'pregled je ograničen po nalogu'
+);
+select tests.clear_auth();
+select tests.authenticate_as(:'newer_id');
+select is(public.preview_household_join(:'target_token')->>'status', 'available',
+  'ograničenje jednog naloga ne utiče na drugi nalog');
+select tests.clear_auth();
+
+select tests.authenticate_as(:'target_id');
+update public.recipes set created_by = null where household_id = :'target_household_id'
+  and title = 'Moj recept';
+select is((select created_by from public.recipes where household_id = :'target_household_id'
+  and title = 'Moj recept'), :'owner_id'::uuid, 'član ne menja autora recepta');
+select tests.clear_auth();
+
+delete from auth.users where id = :'owner_id';
+select ok(exists (
+  select 1 from public.recipes where household_id = :'target_household_id'
+    and title = 'Moj recept' and created_by is null
+), 'brisanje naloga uklanja autorstvo, a recept ostaje u domaćinstvu');
+
 select * from finish();
 rollback;
