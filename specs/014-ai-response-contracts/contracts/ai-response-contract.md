@@ -112,11 +112,19 @@ The client sends the slots to fill (`date` + `meal`) and a library of
 | P3 | every requested slot appears exactly once; no extra, missing or repeated slot | reject |
 | P4 | `recipeId` is `null` or an id from the sent library; for a library id the library title is used and the model's `title` is ignored | unknown id → reject |
 | P5 | for `recipeId: null`, `title` follows R1 | reject |
+| P6 | `weight` is a `DishWeight` wire value (`light`, `medium`, `hearty`) and `dishKind` a `DishKind` wire value; both are optional | missing or unknown → `null` (unknown for the meal rules), not a rejection |
 
 `meal` values: `breakfast`, `morningSnack`, `lunch`, `afternoonSnack`,
 `dinner` (`MealType`, day order). The two snacks were added by TRELLO-38
 (2026-11-18) as an additive change: P2 only accepts requested slots, so a
 prompt without snack slots never receives one.
+
+`weight` and `dishKind` (P6) were added by TRELLO-39 (2026-11-20) as an
+additive change for the
+[meal rules](../../019-meal-selection-rules/contracts/meal-rules-contract.md).
+The library entries in the prompt also carry the stored labels when known.
+They are optional so that an older fixture or a model that omits them still
+produces a plan; such a dish is simply not checked by the weight rules.
 
 ### `recipe-summary.v1`
 
