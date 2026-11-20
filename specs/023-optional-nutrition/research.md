@@ -23,10 +23,11 @@ No claim is made that either source provides personalized dietary advice.
 
 ## Earlier prototype evidence
 
-An earlier prototype of the nutrition features contained a USDA SR Legacy
-mapping for 171 foods, a portion calculation and ingredient-unit conversions.
-A review of that mapping found five questionable entries (coffee, tea, coconut,
-breadcrumbs and puff pastry). Removing them would leave 161 of the 171 mapped.
+An earlier prototype of the nutrition features had a catalog of 171 foods, of
+which 166 had a USDA SR Legacy mapping and 5 had none, plus a portion
+calculation and ingredient-unit conversions. A review of that mapping found
+five more questionable entries (coffee, tea, coconut, breadcrumbs and puff
+pastry). Removing them would leave 161 of the 171 mapped.
 None of this is in team `dev`, and the mapping is not an accepted team seed.
 The counts do not describe an active team catalog or prove correctness of the
 remaining mappings.
