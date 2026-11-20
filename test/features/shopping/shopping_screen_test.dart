@@ -15,6 +15,7 @@ import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/features/planning/planning_providers.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli/features/shopping/shopping_list_view.dart';
 import 'package:tavli/features/shopping/shopping_providers.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
@@ -119,6 +120,12 @@ Future<void> tapIn(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  test('oznaka približne količine se prikazuje samo kada je zadata', () {
+    expect(amountLabel(35, 'ml', approximate: true), '~35 ml');
+    expect(amountLabel(35, 'ml'), '35 ml');
+    expect(amountLabel(null, 'ml', approximate: true), isNull);
+  });
+
   for (final failPlans in [true, false]) {
     testTavli('greška ${failPlans ? 'planova' : 'nabavke'} nije prazno stanje; '
         'ponovni pokušaj učitava podatke', (tester) async {

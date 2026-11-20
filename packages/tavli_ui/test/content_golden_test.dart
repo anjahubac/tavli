@@ -25,7 +25,7 @@ void main() {
     final name =
         '${motif.name}_${brightness.name}${scale == 1 ? '' : '_text2x'}';
     testWidgets('sadržaj: $name', skip: _skip != null, (tester) async {
-      tester.view.physicalSize = const Size(400, 3600);
+      tester.view.physicalSize = const Size(400, 4000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 

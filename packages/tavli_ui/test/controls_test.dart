@@ -74,7 +74,7 @@ void main() {
           .text
           .style;
       expect(style.data, 'Glavno');
-      expect(rendered?.fontSize, 16);
+      expect(rendered?.fontSize, 15);
       expect(rendered?.fontWeight, FontWeight.w700);
     });
 
@@ -130,7 +130,9 @@ void main() {
   });
 
   group('TavliButtonRow', () {
-    testWidgets('sporedno pored glavnog je visine 56', (tester) async {
+    testWidgets('sporedno pored glavnog ostaje 48, kao na kanvasu', (
+      tester,
+    ) async {
       await pump(
         tester,
         TavliButtonRow(
@@ -140,7 +142,7 @@ void main() {
           ],
         ),
       );
-      expect(sizeOf(tester, 'Skuvano').height, 56);
+      expect(sizeOf(tester, 'Skuvano').height, 48);
       expect(sizeOf(tester, 'Kuvaj').height, 56);
     });
 
@@ -159,7 +161,7 @@ void main() {
     });
 
     for (final scale in [1.0, 2.0]) {
-      testWidgets('dugmad su uvek iste visine, tekst ${scale}x', (
+      testWidgets('glavno i sporedno dele širinu, tekst ${scale}x', (
         tester,
       ) async {
         await pump(
@@ -181,8 +183,8 @@ void main() {
         );
         final a = sizeOf(tester, 'Ponovo predloži sve obroke');
         final b = sizeOf(tester, 'Kuvaj');
-        expect(a.height, b.height);
-        expect(a.height, greaterThanOrEqualTo(56));
+        expect(a.height, greaterThanOrEqualTo(48));
+        expect(b.height, greaterThanOrEqualTo(56));
         expect(a.width, b.width);
         expect(tester.takeException(), isNull);
       });

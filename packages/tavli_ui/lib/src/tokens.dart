@@ -12,8 +12,8 @@ abstract final class TavliSpacing {
 
 /// Radijusi iz standarda komponenti.
 abstract final class TavliRadius {
-  /// Polje za štikliranje.
-  static const double checkbox = 8;
+  /// Polje za štikliranje (kanvas: 6).
+  static const double checkbox = 6;
 
   /// Čip za filter.
   static const double chip = 10;
@@ -32,4 +32,13 @@ abstract final class TavliRadius {
 
   /// Dijalog i donji list.
   static const double sheet = 24;
+}
+
+/// Najveće širine za sadržaj koji ne treba da se razvuče preko celog ekrana.
+abstract final class TavliWidth {
+  /// Dijalog.
+  static const double dialog = 420;
+
+  /// Poruka praznog stanja ili greške.
+  static const double message = 360;
 }

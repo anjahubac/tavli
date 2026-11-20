@@ -158,7 +158,8 @@ preferences, with the final vocabulary/provenance reviewed before implementation
 
 Use [UI standards](development/ui-standard.md): phone/wide, light/dark, 2× text,
 keyboard/screen reader, reduced motion, safe areas and offline/error states.
-Existing warm palette and typography stay; accessibility fixes are not a redesign.
+The [design canvas](https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7) is the
+canonical design (see the UI standard); accessibility fixes keep its look.
 From a saved plan to weekly shopping and from today's meal to available cooking
 steps should require at most two actions. Record additional generation/review
 steps honestly when steps are missing.

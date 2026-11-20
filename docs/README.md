@@ -11,8 +11,10 @@ remains Serbian (Latin). Start here before asking an AI agent to change Tavli.
 | [Roadmap](roadmap.md) | Implementation status and feature order |
 | [Team workflow](development/team-workflow.md) | Owners, reviews, branches, integration and workload |
 | [AI development](development/ai-development.md) | Context, prompts, evidence and agent handoffs |
+| [Flow map](flows.md) | How plan, shopping, pantry, cooking, nutrition and household hand data to each other, with contract status |
 | [Shared contracts](../specs/011-team-development/contracts/shared-boundaries.md) | Interfaces to agree before parallel work |
-| [UI standard](development/ui-standard.md) | Existing themes/components, adaptive layouts and interaction rules |
+| [Design canvas](https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7) | Canonical design for all screens and platforms |
+| [UI standard](development/ui-standard.md) | Canvas rules, measurements, icons, sizing, adaptive layouts and interaction rules |
 | [Quality and releases](development/quality-gates.md) | Required checks by change type; local versus hosted operations |
 | [Testing strategy](development/testing.md) | Test tiers, fixtures, journeys and CI evidence |
 | [Source task mapping](development/source-task-map.md) | All 87 source cards mapped to requirements and tasks |

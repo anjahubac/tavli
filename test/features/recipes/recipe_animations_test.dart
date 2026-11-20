@@ -17,10 +17,7 @@ void main() {
       ai: [aiAnswer(recipeJson('Sarma'))],
     );
     final gate = app.adapter.gate = Completer<void>();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'sarma',
-    );
+    await tester.enterText(textField('Naziv jela'), 'sarma');
     await tester.pump();
     await tester.tap(button('Napravi recept'));
     await tester.pump();
@@ -85,7 +82,7 @@ void main() {
     final boxes = tester
         .widgetList<ColoredBox>(
           find.descendant(
-            of: find.byType(Card),
+            of: find.byType(TavliCard),
             matching: find.byType(ColoredBox),
           ),
         )

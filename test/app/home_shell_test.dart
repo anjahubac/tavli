@@ -1,4 +1,5 @@
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
@@ -25,32 +26,6 @@ void main() {
     await tester.tap(find.text('Ostava'));
     await tester.pumpAndSettle();
     expect(currentTab(tester), 'Ostava');
-  });
-
-  testTavli('320 px, tekst 2×: naziv aktivnog taba ostaje u jednom redu', (
-    tester,
-  ) async {
-    tester.platformDispatcher.textScaleFactorTestValue = 2;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await pumpTavli(tester, size: const Size(320, 900), location: '/shopping');
-    final label = tester.renderObject<RenderParagraph>(
-      find.text('Nabavka').last,
-    );
-    final boxes = label.getBoxesForSelection(
-      const TextSelection(baseOffset: 0, extentOffset: 7),
-    );
-    expect(boxes, hasLength(1));
-    // Natpis raste najviše do 1,5×, da navigacija ostane niska.
-    expect(label.textScaler.scale(10), 15);
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.byIcon(Icons.menu_book_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(currentTab(tester), 'Recepti');
-    expect(tester.takeException(), isNull);
   });
 
   testTavli('tekst 2×: prazna Ostava ima manju sliku, naslov je vidljiv', (
@@ -143,35 +118,74 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testTavli('320 px, tekst 2×: pet tabova bez prelivanja', (tester) async {
-    tester.platformDispatcher.textScaleFactorTestValue = 2;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await pumpTavli(
-      tester,
-      size: const Size(320, 900),
-      location: homeLocation,
-      settle: false,
-    );
-    await tester.pump(const Duration(seconds: 1));
-    expect(tester.takeException(), isNull);
-    final label = tester.renderObject<RenderParagraph>(
-      find.text('Početna').last,
-    );
-    final boxes = label.getBoxesForSelection(
-      const TextSelection(baseOffset: 0, extentOffset: 7),
-    );
-    expect(boxes, hasLength(1));
-    for (final tab in tabs) {
-      await tester.tap(
-        find.descendant(
-          of: find.byType(NavigationBar),
-          matching: find.byIcon(tab.icon),
-        ),
+  testTavli('320 px, tekst 2×: svih pet naziva je čitljivo i dostupno', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpTavli(
+        tester,
+        size: const Size(320, 640),
+        location: homeLocation,
+        settle: false,
       );
       await tester.pump(const Duration(seconds: 1));
-      expect(currentTab(tester), tab.label);
-      expect(tester.takeException(), isNull);
+      final home = find.text('Početna').last;
+      expect(tester.getCenter(home).dx, closeTo(160, 1));
+      for (final tab in tabs) {
+        final label = find.text(tab.label).last;
+        expect(label, findsOneWidget);
+        final text = tester.renderObject<RenderParagraph>(label);
+        expect(text.textScaler.scale(12), 24);
+        expect(text.didExceedMaxLines, isFalse);
+        final target = find.bySemanticsLabel(tab.label).last;
+        expect(tester.getSize(target).width, greaterThanOrEqualTo(48));
+        expect(tester.getSize(target).height, greaterThanOrEqualTo(48));
+        await tester.tap(target);
+        await tester.pump(const Duration(seconds: 1));
+        expect(currentTab(tester), tab.label);
+      }
+    } finally {
+      semantics.dispose();
     }
+  });
+
+  testTavli('kompaktni tab se otvara tastaturom pri velikom tekstu', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(tester, size: const Size(320, 640), location: '/pantry');
+
+    // Fokus može da dođe do taba običnim kretanjem tastaturom.
+    final label = find.text('Recepti').last;
+    final focus = Focus.of(tester.element(label));
+    final traversed = <String?>[];
+    for (var step = 0; step < 12 && !focus.hasPrimaryFocus; step++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      traversed.add(FocusManager.instance.primaryFocus?.debugLabel);
+    }
+    expect(focus.hasPrimaryFocus, isTrue, reason: 'Fokus: $traversed');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(currentTab(tester), 'Recepti');
+
+    focus.requestFocus();
+    await tester.pump();
+    expect(focus.hasPrimaryFocus, isTrue);
+    tester.view.physicalSize = const Size(720, 360);
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(currentTab(tester), 'Recepti');
+    final primary = FocusManager.instance.primaryFocus!;
+    expect(
+      [primary, ...primary.ancestors].map((node) => node.debugLabel),
+      contains('Tab content'),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testTavli('telefon: avatar gore desno otvara Profil, nazad vraća na tab', (

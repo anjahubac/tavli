@@ -140,7 +140,7 @@ ThemeData buildTavliTheme(TavliMotif theme, Brightness brightness) {
           borderRadius: BorderRadius.circular(TavliRadius.button),
         ),
         textStyle: textTheme.labelLarge?.copyWith(
-          fontSize: 16,
+          fontSize: 15,
           fontWeight: FontWeight.w700,
         ),
       ),

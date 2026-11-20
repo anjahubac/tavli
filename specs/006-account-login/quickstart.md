@@ -23,7 +23,9 @@ RLS or grants anything to `anon`.
 ## 2. App checks (no network)
 
 ```bash
-scripts/check.sh           # format, analyze, all Flutter tests (backend faked)
+scripts/check.sh           # format and analyze
+flutter test               # full suite, backend faked
+python3 -m unittest discover -s scripts -p test_auth_email_templates.py
 flutter build macos --debug
 ```
 
@@ -34,7 +36,7 @@ the mail catcher at http://127.0.0.1:55324.
 
 | # | Steps | Expected |
 |---|---|---|
-| 1 | Fresh app → "Prijava" → email → "Pošalji kod" → code from mail catcher | name step "Kako da te zovemo?"; no tab reachable (US1, US2) |
+| 1 | Fresh app → "Prijava" → new email → "Pošalji kod" → code from the first email in the mail catcher (no link/button) | name step "Kako da te zovemo?"; no tab reachable (US1, US2) |
 | 2 | Enter "Ana Petrović" → "Nastavi" → "Profil" | avatar "AP", email, "Moje domaćinstvo", "Vlasnik", "Sve je sačuvano u nalogu." |
 | 3 | Studio: `profiles`, `households`, `household_members` | exactly one row each for the user |
 | 4 | Wrong code; wait 10 min and use old code; resend before 30 s | the three Serbian messages; countdown "Pošalji ponovo za {s} s" |
@@ -57,3 +59,26 @@ git grep -nE "eyJ[A-Za-z0-9_-]{20,}|sb_(secret|publishable)_[A-Za-z0-9]{8,}"
 ```
 
 Expected: no matches (SC-009).
+
+## 5. First-email OTP correction (2026-11-20)
+
+After changing local auth configuration/templates, restart the local stack for
+those files to take effect. Use synthetic addresses only. Test new, still
+unconfirmed and existing accounts: the first delivered email must contain a
+6-digit code, no auth link/button and no instruction to request a second email.
+Read the email on another device and type the code in Tavli. A new account
+reaches the name step; an existing one keeps its household and saved name.
+Request again after 30 seconds without verifying the first code to cover an
+unconfirmed account. Verify wrong, expired and already-used codes cannot create
+a session. Do not record real codes, email addresses or session values as evidence.
+
+The reviewed `deploy-supabase.yml` workflow publishes both subjects and HTML
+bodies via the Supabase Management API on matching pushes to `dev` and `main`
+and on manual deployment from those branches. The existing
+`SUPABASE_ACCESS_TOKEN` must authorize reading and updating Auth configuration
+for the environment's `SUPABASE_PROJECT_REF`. The workflow checks hosted email
+confirmation, OTP length, expiry and resend interval before publishing. If a
+setting differs, resolve the reported configuration mismatch through a reviewed
+deployment change and rerun the workflow. A successful run verifies the stored
+templates and settings. Email delivery and code redemption are exercised with
+synthetic accounts on the local stack.
