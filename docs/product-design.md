@@ -31,7 +31,12 @@ shortcut badges. Preserve `/home`, `/plan`, `/shopping`, `/recipes`,
 Home shows today's approved meals (including snacks), the next uncooked meal,
 “Kuvaj” and “Skuvano”, tomorrow's meal names and at most one useful notice.
 Notice priority: today's allergen warning → missing shopping today/tomorrow →
-plan ending. Without a plan offer “Napravi plan”. Optional calorie strip appears
+plan ending. Fasts are never announced in this slot: one “Post i praznici”
+status card (today's fasting state and the next or current fast) is the only
+entry to fasting questions, right of “Danas” on desktop and under today's
+meals on phone ([035](../specs/035-fasting-holidays/spec.md)). On desktop the
+right column has no labels above its cards, so it starts level with the meal
+cards. Without a plan offer “Napravi plan”. Optional calorie strip appears
 only when tracking is enabled. Cooked meals use a green circular check and muted
 card. When all of today's meals are cooked, show “Svi današnji obroci su skuvani.”
 Offer “Poništi” after marking a meal and keep it available in the meal detail.
