@@ -8,7 +8,8 @@ enum TavliButtonVariant {
   /// Glavno: visina 56, radijus 18, tekst 15 podebljan, boja teme.
   primary,
 
-  /// Sporedno: visina 48 (i pored glavnog, kao na kanvasu), radijus 16, ivica 1 px.
+  /// Sporedno: visina 56 i radijus 18 kao glavno (iste visine u redu),
+  /// ivica 1 px.
   secondary,
 
   /// Tekstualno: visina 48, radijus 14, bez pozadine.
@@ -21,8 +22,8 @@ enum TavliButtonVariant {
 /// Dugme iz biblioteke. Ekran bira samo vrstu, tekst i ikonicu; boja,
 /// radijus i visina dolaze iz standarda.
 ///
-/// Dva ili više dugmadi u istom redu idu u [TavliButtonRow]; sporedno pored
-/// glavnog ostaje 48, kao „Skuvano“ pored „Kuvaj“ na kanvasu.
+/// Dva ili više dugmadi u istom redu idu u [TavliButtonRow]; glavno i
+/// sporedno su iste visine (56), kao „Kuvaj“ i „Skuvano“.
 class TavliButton extends StatelessWidget {
   const TavliButton.primary({
     super.key,
@@ -61,8 +62,11 @@ class TavliButton extends StatelessWidget {
   /// `null` isključuje dugme.
   final VoidCallback? onPressed;
 
-  /// Visina bez obzira na red: 56 za glavno, 48 za ostala.
-  double get baseHeight => variant == TavliButtonVariant.primary ? 56 : 48;
+  /// Visina bez obzira na red: 56 za glavno i sporedno, 48 za tekstualna.
+  double get baseHeight => switch (variant) {
+    TavliButtonVariant.primary || TavliButtonVariant.secondary => 56,
+    TavliButtonVariant.text || TavliButtonVariant.destructive => 48,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +79,7 @@ class TavliButton extends StatelessWidget {
 
     final radius = switch (variant) {
       TavliButtonVariant.primary => TavliRadius.button,
-      TavliButtonVariant.secondary => TavliRadius.field,
+      TavliButtonVariant.secondary => TavliRadius.button,
       TavliButtonVariant.text ||
       TavliButtonVariant.destructive => TavliRadius.compact,
     };
@@ -163,10 +167,10 @@ extension on TavliButtonVariant {
 
 /// Dugmad u jednom redu.
 ///
-/// Kao na kanvasu, glavno dugme je visine 56, a sporedno i tekstualno 48 i
-/// pored glavnog; dugmad su poravnata po sredini. Red bez glavnog dugmeta
-/// ima istu visinu za sve: kada veći tekst ili prelom poveća jedno dugme,
-/// i ostala rastu sa njim. U traci sa akcijama sva dugmad su 56.
+/// Sva dugmad u redu su iste visine: visina najvišeg dugmeta po vrsti
+/// (56 kad u redu ima glavno ili sporedno, inače 48). Kada veći tekst ili
+/// prelom poveća jedno dugme, i ostala rastu sa njim. U traci sa akcijama
+/// sva dugmad su 56.
 ///
 /// [expand] deli širinu podjednako (traka sa akcijama, „Kuvaj“ i
 /// „Skuvano“ na kartici); bez njega dugmad su široka koliko tekst traži.
@@ -187,26 +191,25 @@ class TavliButtonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final outer = _TavliButtonScope.maybeOf(context);
-    final hasPrimary = children.any(
-      (b) => b.variant == TavliButtonVariant.primary,
-    );
-    Widget row(CrossAxisAlignment cross) => Row(
-      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-      mainAxisAlignment: alignment,
-      crossAxisAlignment: cross,
-      children: [
-        for (final (i, b) in children.indexed) ...[
-          if (i > 0) const SizedBox(width: 10),
-          if (expand) Expanded(child: b) else b,
-        ],
-      ],
-    );
-    // Glavno pored sporednog: svako dugme zadržava svoju visinu.
-    if (outer == null && hasPrimary) return row(CrossAxisAlignment.center);
+    final height = children
+        .map((b) => b.baseHeight)
+        .fold<double>(0, (a, b) => a > b ? a : b);
     return _TavliButtonScope(
-      height: outer?.height ?? 48,
+      height: outer?.height ?? height,
       compact: outer?.compact ?? false,
-      child: IntrinsicHeight(child: row(CrossAxisAlignment.stretch)),
+      child: IntrinsicHeight(
+        child: Row(
+          mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: alignment,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, b) in children.indexed) ...[
+              if (i > 0) const SizedBox(width: 10),
+              if (expand) Expanded(child: b) else b,
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -41,4 +41,7 @@ abstract final class TavliWidth {
 
   /// Poruka praznog stanja ili greške.
   static const double message = 360;
+
+  /// Najveća širina sadržaja ekrana sa podešavanjima na širokom ekranu.
+  static const double page = 880;
 }

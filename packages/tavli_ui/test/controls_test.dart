@@ -61,11 +61,11 @@ void main() {
         ),
       );
       expect(sizeOf(tester, 'Glavno').height, 56);
-      expect(sizeOf(tester, 'Sporedno').height, 48);
+      expect(sizeOf(tester, 'Sporedno').height, 56);
       expect(sizeOf(tester, 'Tekst').height, 48);
       expect(sizeOf(tester, 'Obriši').height, 48);
       expect(radiusOf(tester, 'Glavno'), BorderRadius.circular(18));
-      expect(radiusOf(tester, 'Sporedno'), BorderRadius.circular(16));
+      expect(radiusOf(tester, 'Sporedno'), BorderRadius.circular(18));
       expect(radiusOf(tester, 'Tekst'), BorderRadius.circular(14));
 
       final style = tester.widget<Text>(find.text('Glavno'));
@@ -130,9 +130,7 @@ void main() {
   });
 
   group('TavliButtonRow', () {
-    testWidgets('sporedno pored glavnog ostaje 48, kao na kanvasu', (
-      tester,
-    ) async {
+    testWidgets('sporedno pored glavnog je iste visine, 56', (tester) async {
       await pump(
         tester,
         TavliButtonRow(
@@ -142,16 +140,30 @@ void main() {
           ],
         ),
       );
-      expect(sizeOf(tester, 'Skuvano').height, 48);
+      expect(sizeOf(tester, 'Skuvano').height, 56);
       expect(sizeOf(tester, 'Kuvaj').height, 56);
     });
 
-    testWidgets('bez glavnog dugmeta red je visine 48', (tester) async {
+    testWidgets('tekstualno pored sporednog raste na 56', (tester) async {
       await pump(
         tester,
         TavliButtonRow(
           children: [
             TavliButton.secondary(label: 'Otkaži', onPressed: () {}),
+            TavliButton.text(label: 'Preskoči', onPressed: () {}),
+          ],
+        ),
+      );
+      expect(sizeOf(tester, 'Otkaži').height, 56);
+      expect(sizeOf(tester, 'Preskoči').height, 56);
+    });
+
+    testWidgets('samo tekstualna dugmad su visine 48', (tester) async {
+      await pump(
+        tester,
+        TavliButtonRow(
+          children: [
+            TavliButton.text(label: 'Otkaži', onPressed: () {}),
             TavliButton.text(label: 'Preskoči', onPressed: () {}),
           ],
         ),
@@ -183,8 +195,8 @@ void main() {
         );
         final a = sizeOf(tester, 'Ponovo predloži sve obroke');
         final b = sizeOf(tester, 'Kuvaj');
-        expect(a.height, greaterThanOrEqualTo(48));
-        expect(b.height, greaterThanOrEqualTo(56));
+        expect(a.height, greaterThanOrEqualTo(56));
+        expect(a.height, b.height);
         expect(a.width, b.width);
         expect(tester.takeException(), isNull);
       });

@@ -7,6 +7,8 @@ import 'package:tavli/app/router.dart';
 import 'package:tavli/domain/account.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import 'package:tavli_ui/tavli_ui.dart';
+
 import '../helpers/test_app.dart';
 
 void main() {
@@ -242,10 +244,10 @@ void main() {
 
     await tester.tap(profileAvatar());
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
+    expect(find.widgetWithText(TavliBackAppBar, 'Profil'), findsOneWidget);
     expect(find.text('Odjavi se'), findsOneWidget);
 
-    await tester.tap(find.byType(BackButton));
+    await tester.tap(iconButton('Nazad'));
     await tester.pumpAndSettle();
     expect(currentTab(tester), 'Ostava');
   });
@@ -281,10 +283,11 @@ void main() {
 
         await tester.tap(railProfile);
         await tester.pumpAndSettle();
-        expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
+        // Širok ekran: naslov i povratak su na vrhu sadržaja.
+        expect(find.widgetWithText(TavliPageHeader, 'Profil'), findsOneWidget);
         expect(find.text('Odjavi se'), findsOneWidget);
 
-        await tester.tap(find.byType(BackButton));
+        await tester.tap(find.text('Nazad'));
         await tester.pumpAndSettle();
         expect(currentTab(tester), 'Ostava');
       },
@@ -293,7 +296,7 @@ void main() {
 
   testTavli('direktna adresa /profile: nazad vodi na Početnu', (tester) async {
     await pumpTavli(tester, location: '/profile');
-    await tester.tap(find.byType(BackButton));
+    await tester.tap(iconButton('Nazad'));
     // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
