@@ -2,7 +2,9 @@
 
 **Status:** Implemented as the additive migration `20261120120000_calendar_dates.sql`
 and the date-only sync writer (see Implemented cutover). The sections before it
-record the evidence the decision was based on.
+record the evidence the decision was based on and are kept as written at the
+time; where they describe open work, the Implemented cutover section says what
+was resolved and what was consciously skipped.
 **Source:** D1-002 / FR-001 in [016](spec.md), Trello card
 [Datumi bez vremenske zone](https://trello.com/c/HLtlyVWL/16-datumi-bez-vremenske-zone).
 **Owner:** Dev 1. **Proposed independent reviewer:** Dev 2, with affected data
@@ -117,18 +119,32 @@ exist.
   reader already accepts both forms (#42), so downloads are unchanged.
 - **Older app and queued writes.** An older build, or an outbox entry queued
   before the update, still sends a UTC-midnight timestamp. PostgreSQL stores
-  it in a `date` column as the same day, so no write is rejected and no
-  blocking step or forced update is needed.
+  it in a `date` column as the same day, so no write is rejected.
+- **Minimum client build: one with the reader from #42 (team `dev` since
+  18 Nov 2026).** After the migration the server returns `YYYY-MM-DD`. An
+  older build parses that as local midnight, which is the previous UTC day
+  east of UTC (Belgrade), shows the day one day early and would upload the
+  wrong day on the next edit. There is no released app, so the team updates
+  its builds before the migration is deployed; a released app would need a
+  minimum-version gate instead.
+- **Collisions.** Before the type change, the migration looks for weekly
+  lists of one plan on the same UTC day. If any exist it stops with a message
+  naming them instead of merging them; they are resolved by hand.
+- **Consciously skipped.** No blocking step for old builds (see minimum build
+  above) and no automatic merge of colliding lists.
 - **Local cache.** drift keeps `DateTime` at UTC midnight; no local schema
   version or upgrade step is added.
 - **Unchanged.** `created_at`, `updated_at` and other instants stay
   `timestamptz`. Pantry expiry is out of scope.
 
 Tests: `supabase/tests/09_calendar_dates_test.sql` covers the five column
-types, date-only and legacy timestamp input for every field, the period
+types, date-only and legacy timestamp input for the five fields, the period
 checks, one list per plan and week across old and new formats, and rejection
 of a non-existent date. `test/sync/entities_test.dart` checks the
-`YYYY-MM-DD` wire format and null periods.
+`YYYY-MM-DD` wire format and null periods. The conversion of rows that
+already exist is not covered by pgTAP (the test runs after the migration); it
+was checked by resetting a local database to the previous migration, adding
+timestamp rows in a `Europe/Belgrade` session and applying the migration.
 
 Forward recovery is a new additive migration; the applied one is never
 edited. Hosted deployment stays with the team's CI.

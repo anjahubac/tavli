@@ -21,6 +21,7 @@ select tests.authenticate_as(:'ua');
 select lives_ok(format($$insert into public.meal_plans (id, household_id, start_date, end_date, meal_types) values ('p_new', %L, '2026-12-28', '2027-01-03', '["lunch"]')$$, :'ha'),
   'datum bez vremena se prima');
 select is((select start_date from public.meal_plans where id = 'p_new'), '2026-12-28'::date, 'početak je isti dan');
+select is((select end_date from public.meal_plans where id = 'p_new'), '2027-01-03'::date, 'kraj je isti dan');
 
 -- Stara aplikacija: ponoć UTC kao vremenska oznaka daje isti dan.
 select lives_ok(format($$insert into public.meal_plans (id, household_id, start_date, end_date, meal_types) values ('p_old', %L, '2026-12-31T00:00:00.000Z', '2027-01-06T00:00:00.000Z', '["lunch"]')$$, :'ha'),
@@ -36,6 +37,7 @@ select is((select date from public.meal_plan_entries where id = 'e_new'), '2027-
 select lives_ok(format($$insert into public.shopping_lists (id, household_id, name, meal_plan_id, week, period_start, period_end) values ('l_old', %L, 'Nedelja 1', 'p_old', 1, '2026-12-28T00:00:00.000Z', '2027-01-03T00:00:00.000Z')$$, :'ha'),
   'nedelja starog klijenta se prima');
 select is((select period_start from public.shopping_lists where id = 'l_old'), '2026-12-28'::date, 'stari početak nedelje je isti dan');
+select is((select period_end from public.shopping_lists where id = 'l_old'), '2027-01-03'::date, 'stari kraj nedelje je isti dan');
 
 -- Ograničenja perioda važe i posle promene tipa.
 select throws_ok(format($$insert into public.shopping_lists (id, household_id, name, meal_plan_id, week, period_start, period_end) values ('l_dup', %L, 'Nedelja 1', 'p_old', 1, '2026-12-28', '2027-01-03')$$, :'ha'),
