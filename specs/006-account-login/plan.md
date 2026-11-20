@@ -177,3 +177,47 @@ features and Supabase, mirroring `lib/ai/`. Server code lives in `supabase/`.
 ## Complexity Tracking
 
 No constitution violations.
+
+## Correction plan — 2026-11-20 (T070–T072)
+
+Owner/coordinator: Dev 3 (Matija); independent human reviewer: Anja (pending).
+Branch: `fix/signup-email-code`, from latest `origin/dev`.
+Feature context: `SPECIFY_FEATURE_DIRECTORY=specs/006-account-login`; no shared
+`.specify/feature.json` change. This reuses US1 / FR-003, not a new feature.
+
+Allowed paths: `supabase/templates/magic_link.html`, `supabase/config.toml`,
+`scripts/test_auth_email_templates.py`, and this spec's `spec.md`, `plan.md`,
+`tasks.md`, `quickstart.md`. Dev 3 coordinates auth/template ownership.
+Supabase has separate signup-confirmation and OTP-sign-in settings. Point both
+to one `magic_link.html` file, and use one subject for both; avoid duplicate
+HTML so copy/design has a single source of truth. Keep email verification,
+OTP lifetime/length and resend controls enabled. No Dart, dependencies, schema,
+platform settings or deep-link implementation changes are needed.
+
+Constitution check for this slice: I Serbian Latin email copy; II no business
+writes/cache changes; III no AI; IV no real credentials/session reads; V template
+contract regression plus existing fake auth/controller/widget tests; VI existing
+email layout reused, no screen change; VII one focused diff; VIII canonical 006
+spec, branch from latest dev; IX existing dependencies/lints/security rules;
+X Dev 3 coordination and independent Anja review before merge. No exceptions.
+
+Security impact: privacy — existing recipient/code only, no new stored data;
+abuse — confirmation/expiry/rate limits retained; credentials — no new access or
+logging, no code added to confirmation subject; files — static repo HTML only,
+no user-controlled paths; deployment — local configuration only, hosted settings
+unverified. SQL/RLS/storage/AI impact: N/A. A template check cannot prove server
+expiry/replay enforcement; local synthetic-account and hosted rollout evidence
+remain explicit gates. Never probe production to validate this change.
+
+Validation: template contract tests (both templates expose a body token and no
+auth links; confirmation stays enabled; configured lifetime/length/resend match),
+existing network-free account/sign-in suites, `scripts/check.sh`, documentation
+and diff checks. A macOS build is unavailable on the Linux host and no native or
+Dart sources change. Hosted rollout is pending: the existing deployment workflow
+neither watches nor uploads auth templates/config. Extend the reviewed workflow
+with a narrowly scoped template update before claiming dev/production fixed;
+do not manually run hosted config push or change unrelated auth settings.
+
+References: [Supabase passwordless OTP](https://supabase.com/docs/guides/auth/auth-email-passwordless)
+and [email templates](https://supabase.com/docs/guides/auth/auth-email-templates)
+(confirm-signup can use `{{ .Token }}` with `verifyOtp(type: email)`).

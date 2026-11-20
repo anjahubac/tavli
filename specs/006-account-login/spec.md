@@ -11,6 +11,38 @@
 > All UI text is Serbian (Latin script). Quoted strings are the exact UI copy.
 > This is part "a" of the account phase; 006b adds Sign in with Apple and Google.
 
+## Correction slice — 2026-11-20: code in the first email
+
+The registration email used a confirmation link even though US1 / FR-003
+require a code. The app already sends `signInWithOtp(shouldCreateUser: true)`
+and verifies `OtpType.email`; this slice corrects the email contract.
+Historical completion evidence below is unchanged. Repository implementation
+and hosted rollout are tracked separately in T070–T072 in [tasks.md](tasks.md).
+
+- The **first** email for a new address, retries for an unconfirmed address,
+  and sign-in emails for an existing account MUST immediately contain the
+  6-digit `{{ .Token }}` for entry in Tavli. No confirmation button, auth URL,
+  browser callback or second email request is part of this flow.
+- Email verification remains required (`enable_confirmations = true`);
+  successful code verification confirms ownership and establishes the session.
+  Sending an email alone MUST NOT grant access to the app.
+- Supabase routes sign-up confirmation and OTP sign-in through separate
+  template settings, but both MUST point to the same `magic_link.html` file and
+  use subject/title "Tvoj Tavli kod" and body instructions "Upiši ovaj kod u aplikaciju Tavli da
+  se prijaviš. Lozinka ti nije potrebna." The existing one-use/10-minute copy
+  remains; server configuration MUST match 6 digits / 600 seconds / 30-second
+  resend minimum in each environment.
+- Acceptance: with a new address, the first email contains a code and no auth
+  link; entering it reaches the mandatory name step. With an existing account,
+  the first email code signs in without creating another household. Reading
+  either email on a second device still permits code entry on the first device.
+  Wrong, expired and reused codes do not establish a session; rate limits and
+  existing Serbian failure messages still apply.
+- Deployment: local templates/config do not update a hosted project. The
+  current deployment workflow deploys SQL/functions only. Hosted template
+  delivery requires a separately reviewed workflow extension; until that is
+  applied and verified, this fix is not claimed live in dev/production.
+
 ## Clarifications
 
 ### Session 2026-10-30
