@@ -90,6 +90,23 @@ only while its `matchedKey` equals `ingredientKey(name)`):
 - **Nova namirnica.** A small form with the name prefilled from the ingredient, a
   category and a base unit. It creates a household food and links the ingredient to it,
   with the same scope switch for the alias. It never writes to the shared catalog.
+- **Several rows in one visit.** Confirming or cancelling closes only the picker or the
+  food form, never the sheet. The person returns to the same sheet with its scroll
+  position, quantities and home-stock marks unchanged, the confirmed row already shown
+  as linked, and focus on that row. They can then open the next unresolved row
+  directly. When a confirmation also saved a household alias, other rows in the sheet
+  with the same `ingredientKey` are matched again at once and show as linked, without
+  a separate confirmation. Each row is still its own transaction, so a failure on one
+  row does not undo the others.
+- **Household data from an AI draft.** In the AI preview the link itself lives only in
+  the draft (see above). A household food created with "Nova namirnica", or a household
+  alias saved with the switch on, is written to the household at the confirm tap like
+  anywhere else. It is household data with its own stated effect and does not depend on
+  the draft. If the draft is discarded, the link is lost with it, but that food and
+  alias stay and keep working in other recipes. The confirmation line says so: the food
+  form and the switch help name the household as the place it is saved. To remove them,
+  the person uses Correcting a link in another recipe or, later, food management.
+  Nothing is written for a draft that the person only viewed.
 - **Offline.** Works from the local snapshot; writes wait in the outbox.
 - **Errors.** A failed write keeps the row unresolved and offers a retry. If the active
   household changes while the picker is open, the result is discarded (#30).
@@ -124,7 +141,25 @@ only while its `matchedKey` equals `ingredientKey(name)`):
 A linked row offers **Promeni vezu**, which opens the picker with the current food
 selected, and **Ukloni vezu**, which makes the row unresolved again and keeps the
 original text. Both follow the same commit rules and write `linkSource: confirmed` (or
-remove the link). Removing a link does not delete a household alias; a household alias
+remove the link).
+
+**A removed link must not come back by itself.** Without a marker, the next matcher
+run or backfill would match the same name again and re-link it, because the shared or
+household alias that matched it is still there. Removing a link therefore stores
+`unlinkedKey` (= `ingredientKey(name)` at removal) on the ingredient instead of the
+link. While `unlinkedKey` equals the current `ingredientKey(name)`:
+- the matcher result is not applied to this ingredient, and the row shows "Nije
+  povezano";
+- backfill (D1-008) skips it, like a `confirmed` link;
+- the person can still link it again by hand with **Poveži namirnicu**, which clears
+  `unlinkedKey`.
+
+Editing the name makes the marker stale by itself, the same rule as `matchedKey`, so
+the new wording is matched normally. The marker affects only this ingredient in this
+recipe. Stopping a wording from matching in the whole household is the household
+alias's job, not this marker's. `unlinkedKey` is an additive field on the embedded
+ingredient. It needs the same mixed-version gate as the link fields in #30 (an older
+build drops it on save) and an amendment to the #30 contract before T013 (U6). Removing a link does not delete a household alias; a household alias
 is removed or changed only when the person uses the same household switch and the
 change names it. A link that points to a withdrawn shared food (#56) shows as
 unresolved and can be corrected the same way.
@@ -180,6 +215,11 @@ nothing; confirming writes the link even if nothing is added to shopping; the li
 the optional alias and their outbox entries are saved together or not at all; a recipe
 edited after the sheet opened is not overwritten; "Poništi" removes exactly what the
 confirmation wrote; a link made in the AI preview survives saving the recipe;
+a household food or alias created in the AI preview stays after the draft is
+discarded, while the draft's link does not; after "Ukloni vezu" a matcher run and a
+backfill do not re-link the ingredient, and editing its name lets it match again;
+confirming one row returns to the same sheet with the others unchanged, and a
+household alias re-matches other rows with the same key in that sheet;
 repeating the choice creates no duplicate; offline choice is queued; a renamed ingredient stops being linked; no overflow
 at 2× text on 320 dp; the picker works by keyboard. Repository tests for the alias and
 household food writes belong to D1-007 and D1-005.
@@ -193,6 +233,8 @@ household food writes belong to D1-007 and D1-005.
 | U3 | Is `Proposed` part of matcher v1? | No: unique reviewed matches are `Matched`, conflicts `Unresolved`; `Proposed` waits until AI-assisted proposals exist | Dev 2 |
 | U4 | Serbian copy for all remaining text | The table in Copy, reviewed before Ready | Dev 1 |
 | U5 | Purchase-time-only entry point | Kept for the first slice; needs UX review against the recipe and pantry journeys | Dev 4 |
+| U6 | How a removed link stays removed | `unlinkedKey` on the ingredient, valid while it equals `ingredientKey(name)`; an additive amendment to the #30 contract with the same mixed-version gate | Dev 4, Dev 2 |
+| U7 | Household food or alias made from an AI draft that is later discarded | It stays: it is household data saved at the confirm tap with its effect stated, and only the draft's link is lost | Dev 4, Dev 3 |
 
 ## Sequencing
 
