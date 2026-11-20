@@ -39,6 +39,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check Auth email template contract
         run: python3 -m unittest discover -s scripts -p test_auth_email_templates.py
+      # Read-only guard: fail before any migration if hosted Auth settings drifted.
+      - name: Verify hosted Auth settings
+        run: python3 scripts/deploy_auth_email_templates.py --check
       - uses: supabase/setup-cli@v3
         with:
           version: 2.116.0

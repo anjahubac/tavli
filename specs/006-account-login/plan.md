@@ -203,7 +203,8 @@ X Dev 3 coordination and independent Anja review before merge. No exceptions.
 
 Security impact: privacy — existing recipient/code only, no new stored data;
 abuse — confirmation/expiry/rate limits retained; credentials — no new access or
-logging, no code added to confirmation subject; files — static repo HTML only,
+logging; the shared subject includes the code so it shows in the notification
+preview (accepted: same recipient and expiry as the body); files — static repo HTML only,
 no user-controlled paths; deployment — local configuration only, hosted settings
 unverified. SQL/RLS/storage/AI impact: N/A. A template check cannot prove server
 expiry/replay enforcement; local synthetic-account and hosted rollout evidence

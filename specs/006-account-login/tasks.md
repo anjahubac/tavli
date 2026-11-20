@@ -233,7 +233,7 @@ recorded in the correction section of [plan.md](plan.md).
 
 - [x] T070 Use one `supabase/templates/magic_link.html` for both Supabase
   confirmation and OTP sign-in settings; remove the duplicate confirmation HTML.
-  Keep a shared code-only subject, `{{ .Token }}` body, and existing verification
+  Keep a shared subject "Tvoj Tavli kod: {{ .Token }}", `{{ .Token }}` body, and existing verification
   and OTP limits.
 - [x] T071 Validate both template/config contracts with
   `scripts/test_auth_email_templates.py`, existing fake account/sign-in tests,

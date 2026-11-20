@@ -28,7 +28,8 @@ and hosted rollout are tracked separately in T070–T072 in [tasks.md](tasks.md)
   Sending an email alone MUST NOT grant access to the app.
 - Supabase routes sign-up confirmation and OTP sign-in through separate
   template settings, but both MUST point to the same `magic_link.html` file and
-  use subject/title "Tvoj Tavli kod" and body instructions "Upiši ovaj kod u aplikaciju Tavli da
+  use subject "Tvoj Tavli kod: {{ .Token }}" (the code is visible in the
+  notification preview), title "Tvoj Tavli kod" and body instructions "Upiši ovaj kod u aplikaciju Tavli da
   se prijaviš. Lozinka ti nije potrebna." The existing one-use/10-minute copy
   remains; server configuration MUST match 6 digits / 600 seconds / 30-second
   resend minimum in each environment.

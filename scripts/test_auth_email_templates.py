@@ -6,7 +6,11 @@ import tomllib
 import unittest
 from unittest.mock import patch
 
-from deploy_auth_email_templates import deploy_templates, request_auth_config
+from deploy_auth_email_templates import (
+    deploy_templates,
+    main,
+    request_auth_config,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -63,8 +67,8 @@ class AuthEmailTemplatesTest(unittest.TestCase):
         self.assertEqual(email["otp_length"], 6)
         self.assertEqual(email["otp_expiry"], 600)
         self.assertEqual(email["max_frequency"], "30s")
-        self.assertEqual(email["template"]["confirmation"]["subject"], "Tvoj Tavli kod")
-        self.assertEqual(email["template"]["magic_link"]["subject"], "Tvoj Tavli kod")
+        self.assertEqual(email["template"]["confirmation"]["subject"], "Tvoj Tavli kod: {{ .Token }}")
+        self.assertEqual(email["template"]["magic_link"]["subject"], "Tvoj Tavli kod: {{ .Token }}")
 
 
 class DeployAuthEmailTemplatesTest(unittest.TestCase):
@@ -81,9 +85,9 @@ class DeployAuthEmailTemplatesTest(unittest.TestCase):
     def test_publishes_only_both_template_subjects_and_bodies_then_reads_them_back(self):
         html = (ROOT / "supabase/templates/magic_link.html").read_text(encoding="utf-8")
         templates = {
-            "mailer_subjects_confirmation": "Tvoj Tavli kod",
+            "mailer_subjects_confirmation": "Tvoj Tavli kod: {{ .Token }}",
             "mailer_templates_confirmation_content": html,
-            "mailer_subjects_magic_link": "Tvoj Tavli kod",
+            "mailer_subjects_magic_link": "Tvoj Tavli kod: {{ .Token }}",
             "mailer_templates_magic_link_content": html,
         }
         original = self.hosted_settings | {"mailer_subjects_confirmation": "Old subject"}
@@ -114,6 +118,30 @@ class DeployAuthEmailTemplatesTest(unittest.TestCase):
         with patch("deploy_auth_email_templates.request_auth_config", return_value=hosted) as request:
             with self.assertRaisesRegex(SystemExit, "mailer_autoconfirm, mailer_otp_exp"):
                 deploy_templates(self.project, self.token)
+            request.assert_called_once_with("GET", self.project, self.token)
+
+    def test_check_mode_only_reads_hosted_settings_and_never_patches(self):
+        env = {"SUPABASE_PROJECT_REF": self.project, "SUPABASE_ACCESS_TOKEN": self.token}
+        with patch.dict("os.environ", env), patch(
+            "deploy_auth_email_templates.HTTPSConnection"
+        ) as connect:
+            connection = connect.return_value
+            response = connection.getresponse.return_value.__enter__.return_value
+            response.status = 200
+            response.read.side_effect = [json.dumps(self.hosted_settings)]
+            main(["--check"])
+            self.assertEqual(
+                [call.args[0] for call in connection.request.call_args_list], ["GET"]
+            )
+
+    def test_check_mode_fails_on_drift_without_patching(self):
+        env = {"SUPABASE_PROJECT_REF": self.project, "SUPABASE_ACCESS_TOKEN": self.token}
+        drifted = self.hosted_settings | {"mailer_otp_length": 8}
+        with patch.dict("os.environ", env), patch(
+            "deploy_auth_email_templates.request_auth_config", return_value=drifted
+        ) as request:
+            with self.assertRaisesRegex(SystemExit, "mailer_otp_length"):
+                main(["--check"])
             request.assert_called_once_with("GET", self.project, self.token)
 
     def test_fails_when_the_published_templates_do_not_match_on_readback(self):

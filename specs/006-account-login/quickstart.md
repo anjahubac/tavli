@@ -77,7 +77,8 @@ bodies via the Supabase Management API on matching pushes to `dev` and `main`
 and on manual deployment from those branches. The existing
 `SUPABASE_ACCESS_TOKEN` must authorize reading and updating Auth configuration
 for the environment's `SUPABASE_PROJECT_REF`. The workflow checks hosted email
-confirmation, OTP length, expiry and resend interval before publishing. If a
+confirmation, OTP length, expiry and resend interval (`--check`, read-only)
+before any migration is applied, so drift fails the job before `db push`. If a
 setting differs, resolve the reported configuration mismatch through a reviewed
 deployment change and rerun the workflow. A successful run verifies the stored
 templates and settings. Email delivery and code redemption are exercised with
