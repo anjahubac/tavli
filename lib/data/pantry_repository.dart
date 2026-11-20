@@ -104,10 +104,22 @@ class PantryRepository {
   /// ispod nule; null kad količina nije poznata.
   Stream<Map<String, double?>> watchAvailable() {
     final hid = _scope.householdId;
-    final items = (_db.select(
-      _db.pantryItems,
-    )..where((t) => t.householdId.equals(hid))).watch();
-    return items.asyncMap((rows) async {
+    // Okida se na promenu bilo koje od tri tabele: kuvanje i poništavanje ne
+    // menjaju stavke ostave, a menjaju raspoloživu količinu.
+    final changes = _db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {
+            _db.pantryItems,
+            _db.cookedEvents,
+            _db.pantryConsumptions,
+          },
+        )
+        .watch();
+    return changes.asyncMap((_) async {
+      final rows = await (_db.select(
+        _db.pantryItems,
+      )..where((t) => t.householdId.equals(hid))).get();
       final events = await (_db.select(
         _db.cookedEvents,
       )..where((t) => t.householdId.equals(hid))).get();
@@ -120,7 +132,7 @@ class PantryRepository {
                 id: e.id,
                 planEntryId: e.planEntryId,
                 mealDate: CivilDate.fromWire(e.mealDate),
-                mealType: MealType.lunch,
+                mealType: MealType.tryParse(e.mealType) ?? MealType.lunch,
                 actorUserId: e.actorUserId,
                 servings: e.servings,
                 cookedAt: e.cookedAt,

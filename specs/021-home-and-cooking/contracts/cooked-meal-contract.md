@@ -188,6 +188,11 @@ members confirm “Jela sam” themselves; cooking never writes their diaries
 operation; events downloaded from other devices are not re-applied, because the
 rows they produced sync themselves.
 
+Undo closes every active event of the meal, including a duplicate from another
+device, and calls `onUndone` once for each closed event, the winning event
+first. An effect therefore never keeps a row for a duplicate that is no longer
+active.
+
 Any effect failure rolls back the whole transaction; the button shows an error
 and nothing is half-cooked.
 

@@ -118,25 +118,34 @@ class CookingRepository {
     }
     final now = _clock().toUtc();
     // I duplikati sa drugog uređaja se zatvaraju, da obrok ostane neskuvan.
-    for (final e in events.where((e) => e.isActive)) {
-      await (_db.update(
-        _db.cookedEvents,
-      )..where((t) => t.id.equals(e.id))).write(
+    final closed = [
+      current.id,
+      for (final e in events)
+        if (e.isActive && e.id != current.id) e.id,
+    ];
+    for (final id in closed) {
+      await (_db.update(_db.cookedEvents)..where((t) => t.id.equals(id))).write(
         CookedEventsCompanion(
           undoneAt: Value(now),
           undoReason: Value(UndoReason.user.name),
         ),
       );
-      await _writer.upsert(_event, e.id);
+      await _writer.upsert(_event, id);
     }
     await _plans.setCooked(entryId, cooked: false);
-    final undone = _toEvent(
-      await (_db.select(
-        _db.cookedEvents,
-      )..where((t) => t.id.equals(current.id))).getSingle(),
-    );
-    for (final effect in _effects) {
-      await effect.onUndone(undone);
+    // Potrošači dobijaju svaki zatvoreni zapis (i duplikat), da ne ostane
+    // npr. unos u dnevniku ishrane za zapis koji više ne važi.
+    late CookedEvent undone;
+    for (final id in closed) {
+      final event = _toEvent(
+        await (_db.select(
+          _db.cookedEvents,
+        )..where((t) => t.id.equals(id))).getSingle(),
+      );
+      if (id == current.id) undone = event;
+      for (final effect in _effects) {
+        await effect.onUndone(event);
+      }
     }
     return undone;
   });

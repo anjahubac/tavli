@@ -332,7 +332,32 @@ void main() {
     expect(rows.every((r) => r.undoneAt != null), isTrue);
     expect((await available())['brasno'], 1000);
     expect(await cooking.watchActive(meals.first.id).first, isNull);
+    // Potrošač dobija oba zatvorena zapisa, važeći prvi.
+    expect(effect.undone, [mine.id, 'drugi-uredjaj']);
   });
+
+  test(
+    'raspoloživa količina se osvežava uživo pri kuvanju i poništavanju',
+    () async {
+      final meal = meals.first.id;
+      final values = <double?>[];
+      final sub = pantry.watchAvailable().listen(
+        (m) => values.add(m['brasno']),
+      );
+      addTearDown(sub.cancel);
+      await pumpEventQueue();
+      expect(values.last, 1000);
+
+      now = at(12);
+      await cooking.markCooked(meal);
+      await pumpEventQueue();
+      expect(values.last, 750);
+
+      await cooking.undoCooked(meal);
+      await pumpEventQueue();
+      expect(values.last, 1000);
+    },
+  );
 
   test('obrok skuvan pre ove verzije (bez zapisa): skuvano ništa ne menja, '
       'poništavanje samo skida oznaku', () async {
