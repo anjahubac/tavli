@@ -295,6 +295,7 @@ class ShoppingRepository {
     }
     final now = _clock().toUtc();
     final kept = <String>{};
+    final deleted = <String>{};
     for (final e in entries) {
       final period = periodFor(range, CivilDate.fromWire(e.date));
       if (e.recipeSnapshotJson == null || period == null) continue;
@@ -306,6 +307,7 @@ class ShoppingRepository {
       if (source != null && source.listId != listId) {
         // Obrok premešten u drugu nedelju: stari izvor oslobađa zalihu.
         await _deleteSource(source.id);
+        deleted.add(source.id);
         source = null;
       }
       final closedAt = e.isCooked ? (source?.closedAt ?? now) : null;
@@ -339,7 +341,9 @@ class ShoppingRepository {
     // Obrok obrisan ili bez recepta: njegov izvor i neiskorišćena zaliha
     // se oslobađaju; kupljene stavke ostaju.
     for (final s in allSources) {
-      if (!kept.contains(s.id)) await _deleteSource(s.id);
+      if (!kept.contains(s.id) && !deleted.contains(s.id)) {
+        await _deleteSource(s.id);
+      }
     }
     await _reconcile();
   });
@@ -974,12 +978,12 @@ class ShoppingRepository {
           )..where((t) => t.id.equals(existing.id))).write(
             SupplyAllocationsCompanion(
               micros: Value(
-                existing.micros == null && moved == null
-                    ? null
-                    : (existing.micros ?? 0) + (moved ?? 0),
+                _mergedMicros(existing, a.coversWholeUnknown, moved),
               ),
+              // Cela nepoznata količina ostaje samo ako su obe takve; inače
+              // se broji poznata količina, da se ista zaliha ne troši dvaput.
               coversWholeUnknown: Value(
-                existing.coversWholeUnknown || a.coversWholeUnknown,
+                existing.coversWholeUnknown && a.coversWholeUnknown,
               ),
             ),
           );
@@ -1011,6 +1015,25 @@ class ShoppingRepository {
         _db.shoppingContributions,
       )..where((t) => t.id.equals(targetId))).getSingle();
     }
+  }
+
+  /// Količina spojene raspodele iste zalihe: zbir poznatih količina; kad su
+  /// obe raspodele cela nepoznata količina, ostaje njihov zapis.
+  static int? _mergedMicros(
+    SupplyAllocationRow existing,
+    bool movedWhole,
+    int? moved,
+  ) {
+    if (existing.coversWholeUnknown && movedWhole) {
+      return existing.micros == null && moved == null
+          ? null
+          : (existing.micros ?? 0) + (moved ?? 0);
+    }
+    final known = [
+      if (!existing.coversWholeUnknown) existing.micros,
+      if (!movedWhole) moved,
+    ].nonNulls;
+    return known.isEmpty ? null : known.reduce((x, y) => x + y);
   }
 
   /// Celo domaćinstvo: doprinosi otvorenih izvora prate odobrene recepte,
