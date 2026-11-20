@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -127,6 +128,36 @@ void main() {
       findsOneWidget,
       reason: 'novi tekst ostaje u polju',
     );
+  });
+
+  testTavli('AI izmena ne menja oznake koje je postavio korisnik', (
+    tester,
+  ) async {
+    final user = RecipeLabels.byUser(
+      meals: {MealSuitability.lunch},
+      weight: DishWeight.medium,
+    );
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [sampleRecipe('a', 'Sarma').copyWith(labels: user)],
+      ai: [
+        aiAnswer({
+          ...recipeJson('Posna sarma'),
+          'meals': ['dinner'],
+          'weight': 'light',
+        }),
+      ],
+    );
+
+    await send(tester, 'posno');
+    await tapButton(tester, 'Prihvati');
+
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.title, 'Posna sarma');
+    expect(row.mealTypesJson, '["lunch"]');
+    expect(row.weight, 'medium');
+    expect(row.labelsSource, 'user');
   });
 
   testTavli('Odbaci ne menja recept i vraća tekst u polje', (tester) async {

@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
-import '../../app/theme/tavli_palette.dart';
-import '../../app/theme/theme_controller.dart';
+import '../../app/theme_controller.dart';
 import '../../domain/theme_choice.dart';
 
 /// Profil → Izgled: stvarni primer boja i režim prilagođen veličini teksta.
@@ -138,7 +138,7 @@ class _ThemeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = Theme.of(context);
-    final p = TavliPalette.of(theme, current.brightness);
+    final p = TavliPalette.of(theme.motif, current.brightness);
     return Semantics(
       button: true,
       selected: selected,

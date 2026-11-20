@@ -99,6 +99,10 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
     'image_path': photoFileName(r.imagePath),
     'answered_by': r.answeredBy,
     'created_at': _ts(r.createdAt),
+    'meal_types': r.mealTypesJson == null ? null : jsonDecode(r.mealTypesJson!),
+    'weight': r.weight,
+    'dish_kind': r.dishKind,
+    'labels_source': r.labelsSource,
   };
 
   @override
@@ -115,6 +119,13 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
     answeredBy: Value(j['answered_by'] as String?),
     createdAt: Value(_date(j['created_at'])),
     updatedAt: Value(_date(j['updated_at'] ?? j['created_at'])),
+    // Oznake se čuvaju sirove; vrednost koju ova verzija ne zna ostaje.
+    mealTypesJson: Value(
+      j['meal_types'] is List ? _json(j['meal_types']) : null,
+    ),
+    weight: Value(j['weight'] as String?),
+    dishKind: Value(j['dish_kind'] as String?),
+    labelsSource: Value(j['labels_source'] as String?),
   );
 }
 

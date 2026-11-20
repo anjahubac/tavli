@@ -60,3 +60,26 @@ Producer specs: [017](../017-kitchen-unit-conversion/spec.md), [018](../018-ingr
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
 record decision owner/date, precise typed contract and reviewed acceptance fixtures.
+
+## PR #49 correction acceptance — 2026-11-19
+
+The FR-005/FR-101 review slice must satisfy:
+
+- Wait for both plan and recipe-shopping data before choosing the initial mode.
+  An initial load failure displays an error and retry, never an empty state.
+- With recipe items and no plan, open “Po receptu”. A subsequently arriving plan
+  does not change the selected mode; explicit switching remains available.
+- Failed plan items, recipe items or preparation metadata display a recoverable
+  error rather than an empty list. Retrying restores the appropriate content.
+- At phone and wide widths with text at 2×, segment labels retain that scale
+  without overflow. Existing shared button styling remains unchanged.
+- “Poništi”, “Vrati” and “Otvori” remain usable after five seconds when accessible
+  navigation is enabled; normal navigation retains the five-second timeout.
+
+Exact additional/reused UI copy: “Nabavka trenutno ne može da se prikaže.”,
+“Pokušaj ponovo”, “Još nemaš plan”,
+“Nabavka po planu nastaje iz sačuvanog plana obroka.”, “Napravi plan”,
+“U „Po receptu“ te čeka {broj stavki} za kupovinu.”,
+“Sve iz nabavke po receptu je kupljeno.” The existing plural formatter supplies
+`{broj stavki}`. The mode control itself provides the route to “Po receptu”; there
+is no duplicate “Otvori po receptu” action in the no-plan state.

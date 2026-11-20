@@ -92,6 +92,11 @@ class RecipeAI {
             if (current.steps.isNotEmpty && refined.steps.isEmpty) {
               throw const FormatException('R10');
             }
+            // AI ne menja oznake koje je postavio korisnik, a bez novih
+            // oznaka zadržava postojeće.
+            if (current.labels.isUserSet || refined.labels.isEmpty) {
+              return refined.copyWith(labels: current.labels);
+            }
             return refined;
           },
           cancel: cancel,
@@ -125,6 +130,7 @@ class RecipeAI {
         imagePath: v.imagePath,
         createdAt: v.createdAt,
         answeredBy: r.model.label,
+        labels: v.labels,
       ),
       r.model,
       r.attempts,

@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../account/auth_gateway.dart';
+import '../../app/router.dart';
 import '../../domain/account.dart';
 import '../../providers.dart';
 import 'auth_error_text.dart';
@@ -139,6 +142,15 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
           onPressed: _valid && !_busy ? _send : null,
           child: const Text('Pošalji kod'),
         ),
+        // Galerija UI biblioteke radi i bez prijave, samo u debug verziji.
+        if (kDebugMode) ...[
+          const SizedBox(height: 24),
+          TextButton.icon(
+            onPressed: () => context.push(componentsPath),
+            icon: const Icon(Icons.widgets_outlined),
+            label: const Text('Komponente (samo za razvoj)'),
+          ),
+        ],
       ],
     );
   }

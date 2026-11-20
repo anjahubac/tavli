@@ -10,6 +10,7 @@ import 'package:tavli/ai/prompts.dart';
 import 'package:tavli/domain/meal_plan.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli/domain/shopping_source.dart';
 
 const fixtureDir = 'specs/014-ai-response-contracts/contracts/fixtures';
@@ -303,6 +304,56 @@ void main() {
       expect(prep(maxPrepMinutes), maxPrepMinutes);
       expect(prep(maxPrepMinutes + 1), isNull);
       expect(prep(1e12), isNull);
+    });
+  });
+
+  group('oznake recepta (L1–L3)', () {
+    test('poznate oznake se čitaju, izvor je ai', () {
+      final l = aiLabels({
+        'meals': ['Dinner', 'lunch', 'lunch'],
+        'weight': 'hearty',
+        'dishKind': 'baked_fried',
+      });
+      expect(l.meals, ['lunch', 'dinner'], reason: 'redom dana, bez duplikata');
+      expect(l.weightValue, DishWeight.hearty);
+      expect(l.dishKindValue, DishKind.bakedFried);
+      expect(l.sourceValue, LabelsSource.ai);
+    });
+
+    test('nepoznata vrednost postaje prazna, recept se ne odbija', () {
+      final l = aiLabels({
+        'meals': ['brunch', 7, 'snack'],
+        'weight': 'ogromno',
+        'dishKind': 'roast',
+      });
+      expect(l.mealSet, {MealSuitability.snack});
+      expect(l.weight, isNull);
+      expect(l.dishKind, isNull);
+      expect(
+        parse({
+          'title': 'Pasulj',
+          'servings': 4,
+          'ingredients': [
+            {'name': 'pasulj'},
+          ],
+          'meals': 'lunch',
+          'weight': 3,
+        }).labels,
+        RecipeLabels.none,
+      );
+    });
+
+    test('bez ijedne poznate oznake recept ostaje neoznačen', () {
+      expect(aiLabels(const {}), RecipeLabels.none);
+      expect(aiLabels(const {'meals': <Object?>[]}).source, isNull);
+    });
+
+    test('obe užine iz plana odgovaraju oznaci užina', () {
+      expect(suitabilityFor(MealType.morningSnack), MealSuitability.snack);
+      expect(suitabilityFor(MealType.afternoonSnack), MealSuitability.snack);
+      expect(suitabilityFor(MealType.lunch), MealSuitability.lunch);
+      expect(suitabilityFor(MealType.breakfast), MealSuitability.breakfast);
+      expect(suitabilityFor(MealType.dinner), MealSuitability.dinner);
     });
   });
 
