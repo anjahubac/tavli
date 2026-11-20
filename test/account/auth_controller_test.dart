@@ -62,16 +62,26 @@ void main() {
     expect((state() as SignedOut).reason, isNull);
   });
 
-  test('nedostupan keyring: prijava se ne tretira kao obična odjava', () async {
-    secrets.unavailable = true;
+  test('odbijeno čitanje sesije: odjavljen uz bezbedan razlog', () async {
+    secrets.deniedReads.add(SessionStore.key);
 
     await ctrl().start();
 
     expect(state(), isA<SignedOut>());
-    expect(
-      (state() as SignedOut).reason,
-      SignOutReason.secureStorageUnavailable,
-    );
+    expect((state() as SignedOut).reason, SignOutReason.storageUnavailable);
+  });
+
+  test('odbijeno čuvanje obnovljene sesije zatvara pristup nalogu', () async {
+    final session = backend.auth.sessionFor('ana@mail.com');
+    secrets.values[SessionStore.key] = session.json;
+    secrets.deniedWrites.add(SessionStore.key);
+
+    await ctrl().start();
+
+    expect((state() as SignedOut).reason, SignOutReason.storageUnavailable);
+    expect(backend.auth.current, isNull);
+    expect(secrets.values[SessionStore.key], session.json);
+    expect(await db.select(db.accounts).get(), isEmpty);
   });
 
   test('sačuvana sesija i keširan nalog: prijavljen bez mreže', () async {
@@ -120,6 +130,22 @@ void main() {
     expect(st.account.roleLabel, 'Vlasnik');
     expect(secrets.values[SessionStore.key], isNotNull);
     expect(await db.select(db.accounts).get(), hasLength(1));
+  });
+
+  test('odbijeno čuvanje sesije ne završava prijavu ni keširanje', () async {
+    await ctrl().start();
+    await ctrl().sendCode('ana@mail.com');
+    secrets.deniedWrites.add(SessionStore.key);
+
+    await expectLater(
+      ctrl().verify(FakeServer.code),
+      throwsA(isA<SecureStorageUnavailable>()),
+    );
+
+    expect(state(), isA<CodeSent>());
+    expect(backend.auth.current, isNull);
+    expect(secrets.values, isEmpty);
+    expect(await db.select(db.accounts).get(), isEmpty);
   });
 
   test('postojeći nalog sa imenom: odmah prijavljen', () async {

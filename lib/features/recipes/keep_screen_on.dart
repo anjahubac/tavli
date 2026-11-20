@@ -93,8 +93,8 @@ class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   Future<void> _call(Future<void> Function() action, {bool? enabling}) async {
     try {
       await action();
-    } on Exception catch (e) {
-      if (kDebugMode) debugPrint('Ekran: zahtev nije uspeo ($e)');
+    } on Exception {
+      if (kDebugMode) debugPrint('Ekran: zahtev nije uspeo.');
       if (enabling case final on? when mounted) {
         final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
         messenger.showSnackBar(

@@ -66,6 +66,11 @@ class AccountGone extends AuthFailure {
   const AccountGone();
 }
 
+/// Uređaj je odbio pristup sigurnom skladištu sesije.
+class SecureStorageUnavailable extends AuthFailure {
+  const SecureStorageUnavailable();
+}
+
 /// Prijava e-poštom i kodom (Supabase Auth).
 abstract interface class AuthGateway {
   /// Šalje 6-cifreni kod; isti tok pravi nov nalog ili prijavljuje postojeći.
