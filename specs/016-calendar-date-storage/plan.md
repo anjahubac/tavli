@@ -1,6 +1,6 @@
 # Implementation plan: Calendar dates without time-zone drift
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: server columns and sync writer implemented (see [cutover](cutover-proposal.md#implemented-cutover)).
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 1 / Dev 2
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 

@@ -281,6 +281,74 @@ void main() {
     },
   );
 
+  test('kalendarski datumi idu na server kao YYYY-MM-DD', () async {
+    await db
+        .into(db.mealPlans)
+        .insert(
+          MealPlansCompanion.insert(
+            id: 'p-wire',
+            startDate: DateTime.utc(2026, 12, 31),
+            endDate: DateTime.utc(2027, 1, 6),
+            mealTypesJson: '["lunch"]',
+            createdAt: DateTime.utc(2026, 12, 1, 10),
+            householdId: const Value('h1'),
+          ),
+        );
+    final plan = await const MealPlanEntity().read(db, 'p-wire');
+    final remotePlan = const MealPlanEntity().toRemote(plan!);
+    expect(remotePlan['start_date'], '2026-12-31');
+    expect(remotePlan['end_date'], '2027-01-06');
+    expect(remotePlan['created_at'], '2026-12-01T10:00:00.000Z');
+
+    await db
+        .into(db.mealPlanEntries)
+        .insert(
+          MealPlanEntriesCompanion.insert(
+            id: 'e-wire',
+            planId: 'p-wire',
+            date: DateTime.utc(2027, 1, 2),
+            mealType: 'lunch',
+            householdId: const Value('h1'),
+          ),
+        );
+    final entry = await const MealPlanEntryEntity().read(db, 'e-wire');
+    expect(const MealPlanEntryEntity().toRemote(entry!)['date'], '2027-01-02');
+
+    await db
+        .into(db.shoppingLists)
+        .insert(
+          ShoppingListsCompanion.insert(
+            id: 'l-wire',
+            name: 'Nedelja 1',
+            createdAt: DateTime.utc(2026, 12, 1, 10),
+            periodStart: Value(DateTime.utc(2026, 12, 28)),
+            periodEnd: Value(DateTime.utc(2027, 1, 3)),
+            householdId: const Value('h1'),
+          ),
+        );
+    final list = await const ShoppingListEntity().read(db, 'l-wire');
+    final remoteList = const ShoppingListEntity().toRemote(list!);
+    expect(remoteList['period_start'], '2026-12-28');
+    expect(remoteList['period_end'], '2027-01-03');
+  });
+
+  test('lista bez perioda šalje null za oba datuma', () async {
+    await db
+        .into(db.shoppingLists)
+        .insert(
+          ShoppingListsCompanion.insert(
+            id: 'l-none',
+            name: 'Recepti',
+            createdAt: DateTime.utc(2026, 12, 1, 10),
+            householdId: const Value('h1'),
+          ),
+        );
+    final list = await const ShoppingListEntity().read(db, 'l-none');
+    final remote = const ShoppingListEntity().toRemote(list!);
+    expect(remote['period_start'], isNull);
+    expect(remote['period_end'], isNull);
+  });
+
   test('vremenska oznaka sa vremenskom zonom ostaje isti trenutak', () async {
     const entity = RecipeEntity();
     await entity.write(db, {
@@ -408,7 +476,7 @@ void main() {
         ),
         'l1',
         (r) {
-          expect(r['period_start'], '2026-11-30T00:00:00.000Z');
+          expect(r['period_start'], '2026-11-30');
           expect(r['week'], 6);
         },
       );

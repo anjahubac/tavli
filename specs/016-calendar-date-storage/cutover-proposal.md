@@ -1,6 +1,8 @@
 # Calendar-date cutover proposal
 
-**Status:** Draft for review; not an approved migration or implemented fix.
+**Status:** Implemented as the additive migration `20261120120000_calendar_dates.sql`
+and the date-only sync writer (see Implemented cutover). The sections before it
+record the evidence the decision was based on.
 **Source:** D1-002 / FR-001 in [016](spec.md), Trello card
 [Datumi bez vremenske zone](https://trello.com/c/HLtlyVWL/16-datumi-bez-vremenske-zone).
 **Owner:** Dev 1. **Proposed independent reviewer:** Dev 2, with affected data
@@ -98,80 +100,35 @@ A passing run reaches `ROLLBACK`. This checks the conversion mechanics on
 synthetic data. The Supabase migration chain, access rules and queued client
 writes still require local integration tests after the cutover is agreed.
 
-## Proposed sequence for review
+## Implemented cutover
 
-1. Agree the meaning of existing timestamp values and how to handle exceptional
-   non-midnight values. Define a privacy-preserving, non-production validation
-   of conversion collisions and ambiguous records; do not infer original device
-   zones from timestamps.
-2. A compatible reader for both old timestamps and valid date-only values is in
-   `dev` (#42), preserving event timestamps. Still to cover: old cache
-   upgrades, the supported client/platform matrix, and the cases above on
-   real stored data. This prepares a client; it does not authorize a server
-   type change.
-3. Agree a server/client cutover that covers already-installed and offline
-   clients. Verify how queued old writes, interrupted sync, retries, concurrent
-   edits, account/household switching and downgrade are handled. Existing
-   `SyncEngine.onStart()` and `onResume()` push before pulling, so simply
-   upgrading a reader does not resolve the pending-outbox question.
-4. Only after an enforceable or otherwise verified cutover and recovery path
-   are accepted, implement a separately reviewed additive migration and local
-   cache upgrade. Preserve IDs, constraints, approved snapshots and queued user
-   changes. Do not mutate an applied SQL migration or preallocate a drift schema
-   version before integration.
-5. Validate fresh install and upgrades, two-device replay and PostgreSQL/RLS
-   behavior on an ephemeral local stack. Document forward recovery and what
-   happens if a client returns after a long offline period. Hosted deployment
-   remains the team's CI responsibility and is not part of this proposal.
+Decision (20 Nov 2026, Dev 1 with Dev 3's review on #31): keep it simple and
+do not reset any database. The team environment holds no calendar data that
+needs special handling, and the conversion below preserves any rows that do
+exist.
 
-## Fresh database option raised in review
+- **Server.** A new migration changes the five columns to `date` with
+  `(column at time zone 'UTC')::date`. Existing rows keep their UTC day, which
+  is how the app always wrote them, independent of the session time zone
+  (checked under `Europe/Belgrade`, including both DST change days). If two
+  lists of one plan fell on the same day, the existing unique constraint stops
+  the migration instead of merging them silently.
+- **New app.** The sync writer sends the five fields as `YYYY-MM-DD`. The
+  reader already accepts both forms (#42), so downloads are unchanged.
+- **Older app and queued writes.** An older build, or an outbox entry queued
+  before the update, still sends a UTC-midnight timestamp. PostgreSQL stores
+  it in a `date` column as the same day, so no write is rejected and no
+  blocking step or forced update is needed.
+- **Local cache.** drift keeps `DateTime` at UTC midnight; no local schema
+  version or upgrade step is added.
+- **Unchanged.** `created_at`, `updated_at` and other instants stay
+  `timestamptz`. Pantry expiry is out of scope.
 
-A disposable local database can be recreated from the checked-in migration
-chain when validating the new PostgreSQL types. Before applying this option
-to any shared environment, the schema coordinator must confirm that it has no
-data to preserve and that no supported clients have pending writes. A local
-reset does not settle the handling of installed clients or offline caches.
+Tests: `supabase/tests/09_calendar_dates_test.sql` covers the five column
+types, date-only and legacy timestamp input for every field, the period
+checks, one list per plan and week across old and new formats, and rejection
+of a non-existent date. `test/sync/entities_test.dart` checks the
+`YYYY-MM-DD` wire format and null periods.
 
-Status (18 Nov 2026): the schema coordinator replied that she cannot confirm
-that `tavli-dev` has no affected calendar data without checking it. If the
-check shows nothing to keep, the fresh-database option may replace the
-migration path for `tavli-dev`.
-
-The three table counts below are input for the date conversion itself. They
-are not enough to approve a full reset of `tavli-dev`, which also removes
-accounts, every other table and stored files. A full reset needs written
-confirmation, by someone with access to that project, of all of the
-following:
-
-- row counts of `meal_plans`, `meal_plan_entries` and `shopping_lists`, and
-  whether any of them belong to people who need the data;
-- no other data to preserve anywhere the reset reaches: Auth accounts, all
-  other public tables (recipes, pantry, households and the rest) and the
-  objects in Storage;
-- no installed client holds pending writes in its outbox (the team builds
-  that were used against `tavli-dev`);
-- the same checks for any other shared environment before it is reset.
-
-Until every item is confirmed, the data-preserving migration path described
-above stays the plan and remains available; the fresh-database option does
-not replace it.
-
-The compatibility reader is merged (#42), including equality with the
-UTC-midnight values used for shopping week lookups. The server-side slice
-still needs tests for all five date fields, timestamp fields that must stay
-instants, and shopping ordering and uniqueness. Use the existing requirement
-to add a new migration to the chain instead of editing an applied migration.
-
-## Decisions required before dependent implementation
-
-- Dev 1 and Dev 2: accepted legacy-day interpretation, invalid input behavior,
-  supported cache/client versions and observable acceptance fixtures.
-- Dev 1 and the schema coordinator: five exact fields above, uniqueness and
-  collision handling, migration order, local representation and recovery.
-- Dev 1 and sync/data owners: concrete mixed-version cutover, queue ownership,
-  offline replay, retry, user-visible blocking and downgrade behavior.
-- Dev 4: whether pantry expiry has any future role; no expiry data is removed
-  by this proposal.
-
-Record actual decision owners, dates and review evidence once agreed. This
-proposal does not complete T001, D1-002 or any migration.
+Forward recovery is a new additive migration; the applied one is never
+edited. Hosted deployment stays with the team's CI.
