@@ -1,8 +1,11 @@
 import 'package:flutter/semantics.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
-import '../features/account/account_header.dart';
+import '../account/auth_controller.dart';
+import '../domain/account.dart';
 import '../features/account/sync_banner.dart';
 import 'router.dart';
 
@@ -12,17 +15,36 @@ const wideLayoutWidth = 720.0;
 
 enum _NavigationLayout { bottom, largeText, rail }
 
-/// Donji tabovi na telefonu, bočni meni na širem ekranu (macOS, tablet).
-class HomeShell extends StatefulWidget {
+/// Tabovi u redosledu grana; Početna je u sredini donje trake, a u bočnoj
+/// traci prva.
+final List<TavliDestination> _destinations = [
+  for (final t in tabs)
+    TavliDestination(
+      icon: t.icon,
+      label: t.label,
+      home: t.path == homeLocation,
+    ),
+];
+
+/// Inicijali prijavljenog člana za avatar u gornjoj i bočnoj traci.
+String profileInitials(WidgetRef ref) {
+  final auth = ref.watch(authControllerProvider);
+  final name = auth is SignedIn ? auth.account.displayName ?? '' : '';
+  return initials(name);
+}
+
+/// Tabovi kao na platnu: donja navigacija na telefonu, bočna traka sa
+/// Početnom na vrhu i Profilom na dnu na širem ekranu (macOS, tablet).
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   final _railFocus = FocusNode(
     debugLabel: 'Navigation rail',
     canRequestFocus: false,
@@ -76,7 +98,6 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final selected = widget.shell.currentIndex;
     final wide = _layout == _NavigationLayout.rail;
-    final extended = MediaQuery.sizeOf(context).width >= 1000;
 
     return Scaffold(
       body: Row(
@@ -84,33 +105,15 @@ class _HomeShellState extends State<HomeShell> {
           if (wide)
             Focus.withExternalFocusNode(
               focusNode: _railFocus,
-              child: NavigationRail(
-                extended: extended,
-                scrollable: true,
-                labelType: extended
-                    ? NavigationRailLabelType.none
-                    : NavigationRailLabelType.all,
-                selectedIndex: railBranchOrder.indexOf(selected),
-                onDestinationSelected: (i) => _select(railBranchOrder[i]),
-                trailingAtBottom: true,
-                trailing: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ProfileRailItem(extended: extended),
-                ),
-                destinations: [
-                  for (final t in railBranchOrder.map((i) => tabs[i]))
-                    NavigationRailDestination(
-                      icon: Icon(t.icon),
-                      selectedIcon: Icon(t.selectedIcon),
-                      label: Text(t.label),
-                    ),
-                ],
+              child: TavliNavigation(
+                layout: TavliNavigationLayout.side,
+                destinations: _destinations,
+                selectedIndex: selected,
+                onSelected: _select,
+                initials: profileInitials(ref),
+                onProfile: () => context.push('/profile'),
               ),
             )
-          else
-            const SizedBox.shrink(),
-          if (wide)
-            const VerticalDivider(width: 1)
           else
             const SizedBox.shrink(),
           Expanded(
@@ -130,32 +133,24 @@ class _HomeShellState extends State<HomeShell> {
           ? null
           : Focus.withExternalFocusNode(
               focusNode: _bottomFocus,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                ),
-                child: _layout == _NavigationLayout.largeText
-                    ? _LargeTextNavigation(
+              child: _layout == _NavigationLayout.largeText
+                  ? DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: TavliColors.of(context).line),
+                        ),
+                      ),
+                      child: _LargeTextNavigation(
                         selected: selected,
                         onSelected: _select,
-                      )
-                    : NavigationBar(
-                        selectedIndex: selected,
-                        onDestinationSelected: _select,
-                        destinations: [
-                          for (final t in tabs)
-                            NavigationDestination(
-                              icon: Icon(t.icon),
-                              selectedIcon: Icon(t.selectedIcon),
-                              label: t.label,
-                            ),
-                        ],
                       ),
-              ),
+                    )
+                  : TavliNavigation(
+                      layout: TavliNavigationLayout.bottom,
+                      destinations: _destinations,
+                      selectedIndex: selected,
+                      onSelected: _select,
+                    ),
             ),
     );
   }
@@ -253,11 +248,7 @@ class _LargeTextDestination extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        selected ? tab.selectedIcon : tab.icon,
-                        size: 20,
-                        color: foreground,
-                      ),
+                      TavliIcon(tab.icon, size: 20, color: foreground),
                       Text(
                         tab.label,
                         textAlign: TextAlign.center,
