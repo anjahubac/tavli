@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../account/auth_gateway.dart';
@@ -15,6 +16,9 @@ import 'auth_error_text.dart';
 
 /// Posle koliko sekundi može ponovo da se pošalje kod (FR-005).
 const resendAfter = Duration(seconds: 30);
+
+/// Najveća širina obrasca na širokom ekranu.
+const _formWidth = 420.0;
 
 /// "Prijava": e-pošta pa 6-cifreni kod. Bez lozinke; isti tok za nov i
 /// postojeći nalog.
@@ -35,9 +39,9 @@ class SignInScreen extends ConsumerWidget {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(TavliSpacing.large),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(maxWidth: _formWidth),
               child: auth is CodeSent
                   ? _CodeStep(key: ValueKey(auth.sentAt), sent: auth)
                   : _EmailStep(notice: notice),
@@ -45,6 +49,30 @@ class SignInScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Naslov i objašnjenje iznad oba koraka.
+class _Heading extends StatelessWidget {
+  const _Heading(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const TavliPageHeader(title: 'Prijava'),
+        const SizedBox(height: TavliSpacing.small),
+        Text(
+          text,
+          style: Theme.of(context).textTheme.bodyLarge
+              ?.copyWith(color: c.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
@@ -102,33 +130,27 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final invalid = _touched && !_valid;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Prijava', style: text.headlineMedium),
-        const SizedBox(height: 8),
-        const Text(
+        const _Heading(
           'Prijavi se e-poštom. Poslaćemo ti kod, lozinka nije potrebna.',
         ),
         if (widget.notice case final n?) ...[
-          const SizedBox(height: 16),
-          _Notice(n),
+          const SizedBox(height: TavliSpacing.medium),
+          TavliNotice(message: n),
         ],
-        const SizedBox(height: 24),
-        TextField(
+        const SizedBox(height: TavliSpacing.large),
+        TavliTextField(
+          label: 'E-pošta',
           controller: _email,
           focusNode: _focus,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
           autocorrect: false,
           textInputAction: TextInputAction.send,
-          decoration: InputDecoration(
-            labelText: 'E-pošta',
-            border: const OutlineInputBorder(),
-            errorText: invalid ? 'Unesi ispravnu adresu e-pošte.' : null,
-          ),
+          errorText: invalid ? 'Unesi ispravnu adresu e-pošte.' : null,
           onChanged: (_) => setState(() {}),
           onSubmitted: (_) {
             setState(() => _touched = true);
@@ -136,21 +158,21 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
           },
         ),
         if (_error case final e?) ...[
-          const SizedBox(height: 12),
-          _ErrorText(e),
+          const SizedBox(height: TavliSpacing.medium),
+          TavliNotice(tone: TavliNoticeTone.error, message: e),
         ],
-        const SizedBox(height: 16),
-        FilledButton(
+        const SizedBox(height: TavliSpacing.large),
+        TavliButton.primary(
+          label: 'Pošalji kod',
           onPressed: _valid && !_busy ? _send : null,
-          child: const Text('Pošalji kod'),
         ),
         // Galerija UI biblioteke radi i bez prijave, samo u debug verziji.
         if (kDebugMode) ...[
-          const SizedBox(height: 24),
-          TextButton.icon(
+          const SizedBox(height: TavliSpacing.large),
+          TavliButton.text(
+            label: 'Komponente (samo za razvoj)',
+            icon: Icons.widgets_outlined,
             onPressed: () => context.push(componentsPath),
-            icon: const Icon(Icons.widgets_outlined),
-            label: const Text('Komponente (samo za razvoj)'),
           ),
         ],
       ],
@@ -240,77 +262,48 @@ class _CodeStepState extends ConsumerState<_CodeStep> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final left = _secondsLeft;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Prijava', style: text.headlineMedium),
-        const SizedBox(height: 8),
-        Text('Poslali smo kod na ${widget.sent.email}.'),
-        const SizedBox(height: 24),
-        TextField(
+        _Heading('Poslali smo kod na ${widget.sent.email}.'),
+        const SizedBox(height: TavliSpacing.large),
+        TavliTextField(
+          label: 'Kod iz poruke',
           controller: _code,
           autofocus: true,
           enabled: !_busy,
+          isCode: true,
+          autocorrect: false,
           keyboardType: TextInputType.number,
           autofillHints: const [AutofillHints.oneTimeCode],
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
             LengthLimitingTextInputFormatter(12),
           ],
-          style: text.headlineSmall?.copyWith(letterSpacing: 8),
-          decoration: const InputDecoration(
-            labelText: 'Kod iz poruke',
-            border: OutlineInputBorder(),
-          ),
           onChanged: (v) => unawaited(_onChanged(v)),
         ),
         if (_busy) ...[
-          const SizedBox(height: 12),
-          const LinearProgressIndicator(),
+          const SizedBox(height: TavliSpacing.medium),
+          const TavliLoading(),
         ],
         if (_error case final e?) ...[
-          const SizedBox(height: 12),
-          _ErrorText(e),
+          const SizedBox(height: TavliSpacing.medium),
+          TavliNotice(tone: TavliNoticeTone.error, message: e),
         ],
-        const SizedBox(height: 16),
-        OutlinedButton(
+        const SizedBox(height: TavliSpacing.large),
+        TavliButton.secondary(
+          label: left == 0 ? 'Pošalji ponovo' : 'Pošalji ponovo za $left s',
           onPressed: left == 0 && !_busy ? _resend : null,
-          child: Text(
-            left == 0 ? 'Pošalji ponovo' : 'Pošalji ponovo za $left s',
-          ),
         ),
-        const SizedBox(height: 8),
-        TextButton(
+        const SizedBox(height: TavliSpacing.small),
+        TavliButton.text(
+          label: 'Promeni e-poštu',
           onPressed: _busy
               ? null
               : ref.read(authControllerProvider.notifier).changeEmail,
-          child: const Text('Promeni e-poštu'),
         ),
       ],
     );
   }
-}
-
-class _ErrorText extends StatelessWidget {
-  const _ErrorText(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) =>
-      Text(text, style: TextStyle(color: Theme.of(context).colorScheme.error));
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    color: Theme.of(context).colorScheme.secondaryContainer,
-    child: Padding(padding: const EdgeInsets.all(12), child: Text(text)),
-  );
 }

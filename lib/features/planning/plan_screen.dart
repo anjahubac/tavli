@@ -121,6 +121,7 @@ class _PlanView extends ConsumerWidget {
     }
 
     final list = ListView(
+      key: PageStorageKey(('plan', plan.id)),
       padding: const EdgeInsets.all(16),
       children: [
         if (plans.length > 1) ...[

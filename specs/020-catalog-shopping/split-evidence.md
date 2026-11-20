@@ -68,3 +68,28 @@ These are candidate steps, not accepted design decisions or a promise that
 the first extraction alone meets the file-size target. Confirm exact file
 names, boundaries and review order before code changes. No D1-004 task is
 marked complete by this document.
+
+## Proposed split
+
+A first concrete split keeps `ShoppingRepository`, its constructor and every
+public method and type unchanged, so no consumer changes. The library is split
+with `part` files, and each part is a private mixin on one shared private
+base, so moved methods stay ordinary instance members and need no new imports:
+
+| File | Lines | Contents |
+| --- | --- | --- |
+| `lib/data/shopping_repository.dart` | 306 | Class, fields, shared base, legacy list and recipe delta, list and week lookup, `totalsOf` |
+| `lib/data/shopping_sources.dart` | 384 | Plan and standalone sources: `reconcilePlan`, `addRecipePreparation`, preparations, `removeSource`, source and contribution deletion, demand, legacy unit migration of closed sources |
+| `lib/data/shopping_items.dart` | 339 | Read/watch of items, manual items, `itemSources`, buy and unbuy, `planTotals` |
+| `lib/data/shopping_reconcile.dart` | 418 | `_reconcile` only |
+
+Method bodies are moved without edits. The only code changes are the outbox
+entity names, now library-level constants instead of static class members,
+and `ShoppingRepository.totalsOf` qualified at its one call inside a part.
+Transactions, write order, outbox entries and stream queries are untouched.
+`_reconcile` is a single method of about 410 lines; meeting the 400-line goal
+there means splitting its logic, which this refactor deliberately does not do
+(step 4 above needs an agreed interface first).
+
+Step 4 and a decision on whether `part` plus mixins is the preferred style
+remain for Dev 4's review.

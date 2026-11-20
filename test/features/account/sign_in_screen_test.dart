@@ -6,7 +6,7 @@ import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
 
 void main() {
-  Finder field(String label) => find.widgetWithText(TextField, label);
+  Finder field(String label) => textField(label);
 
   Future<void> enterEmail(WidgetTester tester, String email) async {
     await tester.enterText(field('E-pošta'), email);

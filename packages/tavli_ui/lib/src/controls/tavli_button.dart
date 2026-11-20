@@ -5,10 +5,10 @@ import '../tokens.dart';
 
 /// Vrsta dugmeta iz standarda komponenti.
 enum TavliButtonVariant {
-  /// Glavno: visina 56, radijus 18, tekst 16 podebljan, boja teme.
+  /// Glavno: visina 56, radijus 18, tekst 15 podebljan, boja teme.
   primary,
 
-  /// Sporedno: visina 48 (56 pored glavnog), radijus 16, ivica 1 px.
+  /// Sporedno: visina 48 (i pored glavnog, kao na kanvasu), radijus 16, ivica 1 px.
   secondary,
 
   /// Tekstualno: visina 48, radijus 14, bez pozadine.
@@ -21,8 +21,8 @@ enum TavliButtonVariant {
 /// Dugme iz biblioteke. Ekran bira samo vrstu, tekst i ikonicu; boja,
 /// radijus i visina dolaze iz standarda.
 ///
-/// Dva ili više dugmadi u istom redu idu u [TavliButtonRow], da budu iste
-/// visine (sporedno pored glavnog dobija 56).
+/// Dva ili više dugmadi u istom redu idu u [TavliButtonRow]; sporedno pored
+/// glavnog ostaje 48, kao „Skuvano“ pored „Kuvaj“ na kanvasu.
 class TavliButton extends StatelessWidget {
   const TavliButton.primary({
     super.key,
@@ -79,11 +79,10 @@ class TavliButton extends StatelessWidget {
       TavliButtonVariant.text ||
       TavliButtonVariant.destructive => TavliRadius.compact,
     };
+    // Kanvas: tekst dugmeta 15, podebljan, za sve vrste.
     final textStyle = theme.textTheme.labelLarge?.copyWith(
-      fontSize: compact ? 15 : 16,
-      fontWeight: variant == TavliButtonVariant.primary || compact
-          ? FontWeight.w700
-          : FontWeight.w600,
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
       height: 1.25,
     );
     final style = ButtonStyle(
@@ -162,11 +161,12 @@ extension on TavliButtonVariant {
       this == TavliButtonVariant.text || this == TavliButtonVariant.destructive;
 }
 
-/// Dugmad u jednom redu, uvek iste visine.
+/// Dugmad u jednom redu.
 ///
-/// Ako je u redu glavno dugme, sva dugmad su visine 56 (sporedno pored
-/// glavnog), inače 48. Kada veći tekst ili prelom poveća jedno dugme, i
-/// ostala rastu sa njim.
+/// Kao na kanvasu, glavno dugme je visine 56, a sporedno i tekstualno 48 i
+/// pored glavnog; dugmad su poravnata po sredini. Red bez glavnog dugmeta
+/// ima istu visinu za sve: kada veći tekst ili prelom poveća jedno dugme,
+/// i ostala rastu sa njim. U traci sa akcijama sva dugmad su 56.
 ///
 /// [expand] deli širinu podjednako (traka sa akcijama, „Kuvaj“ i
 /// „Skuvano“ na kartici); bez njega dugmad su široka koliko tekst traži.
@@ -186,25 +186,27 @@ class TavliButtonRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = children.any((b) => b.variant == TavliButtonVariant.primary)
-        ? 56.0
-        : 48.0;
+    final outer = _TavliButtonScope.maybeOf(context);
+    final hasPrimary = children.any(
+      (b) => b.variant == TavliButtonVariant.primary,
+    );
+    Widget row(CrossAxisAlignment cross) => Row(
+      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+      mainAxisAlignment: alignment,
+      crossAxisAlignment: cross,
+      children: [
+        for (final (i, b) in children.indexed) ...[
+          if (i > 0) const SizedBox(width: 10),
+          if (expand) Expanded(child: b) else b,
+        ],
+      ],
+    );
+    // Glavno pored sporednog: svako dugme zadržava svoju visinu.
+    if (outer == null && hasPrimary) return row(CrossAxisAlignment.center);
     return _TavliButtonScope(
-      height: _TavliButtonScope.maybeOf(context)?.height ?? height,
-      compact: _TavliButtonScope.maybeOf(context)?.compact ?? false,
-      child: IntrinsicHeight(
-        child: Row(
-          mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-          mainAxisAlignment: alignment,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final (i, b) in children.indexed) ...[
-              if (i > 0) const SizedBox(width: 10),
-              if (expand) Expanded(child: b) else b,
-            ],
-          ],
-        ),
-      ),
+      height: outer?.height ?? 48,
+      compact: outer?.compact ?? false,
+      child: IntrinsicHeight(child: row(CrossAxisAlignment.stretch)),
     );
   }
 }

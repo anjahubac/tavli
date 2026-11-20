@@ -192,8 +192,13 @@ never from another feature branch, and its PR targets `dev`; full git rules are 
   feature providers stay under `lib/features/`; do not invent a replacement layout.
 - Follow [AI development](docs/development/ai-development.md) for briefs, untrusted
   input, validation and handoff; an agent's claim is not test or review evidence.
-- Reuse [UI standards](docs/development/ui-standard.md) and existing theme/motion
-  components. Validate phone, wide screen, 2× text and reduced motion.
+- Build UI exactly as the design canvas shows it, following the
+  [UI standard](docs/development/ui-standard.md): its measurements, icon style
+  and no-fixed-sizes rule, with existing theme/motion components. Never invent a
+  layout the canvas does not show. Validate phone, wide screen, 2× text and
+  reduced motion.
+- Before connecting two flows (plan, shopping, pantry, cooking, nutrition,
+  household), read the [flow map](docs/flows.md) and the producer's contract.
 - Device-only settings/secrets and the planned cycle privacy exception follow
   constitution II; do not route them into the user-data outbox.
 - Read [quality gates](docs/development/quality-gates.md). Documentation changes

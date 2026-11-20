@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -10,6 +11,7 @@ import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/features/planning/plan_calendar.dart';
+import 'package:tavli/features/planning/planning_providers.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
@@ -272,6 +274,43 @@ void main() {
     await tapText(tester, 'Ručak 4.11.');
     expect(find.text('Zameni jelo'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testTavli('promena širine čuva izabrani dan i skrol plana', (tester) async {
+    final month = DateRange(CivilDate(2026, 11, 1), CivilDate(2026, 11, 30));
+    await pumpPlan(
+      tester,
+      size: const Size(999, 560),
+      setup: (db) => seedPlan(db, month),
+    );
+    await tapText(tester, 'Mesec');
+    await tester.ensureVisible(find.text('18'));
+    await tester.tap(find.text('18'));
+    await tester.pumpAndSettle();
+    final list = find.byType(ListView).first;
+    final container = ProviderScope.containerOf(tester.element(list));
+    expect(container.read(planViewProvider).date, CivilDate(2026, 11, 18));
+    final scrollable = find.descendant(
+      of: list,
+      matching: find.byType(Scrollable),
+    );
+    await tester.drag(scrollable, const Offset(0, -250));
+    await tester.pumpAndSettle();
+    final offset = tester.state<ScrollableState>(scrollable).position.pixels;
+    expect(offset, greaterThan(0));
+
+    for (final width in [1000.0, 720.0, 719.0, 999.0]) {
+      tester.view.physicalSize = Size(width, 560);
+      await tester.pumpAndSettle();
+      expect(location(tester), '/plan');
+      expect(container.read(planViewProvider).date, CivilDate(2026, 11, 18));
+      expect(
+        tester.state<ScrollableState>(scrollable).position.pixels,
+        closeTo(offset, 1),
+        reason: 'width: $width',
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testTavli('široko: kalendar i recept jedan pored drugog', (tester) async {
