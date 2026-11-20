@@ -1,8 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:tavli/app/theme/app_theme.dart';
-import 'package:tavli/domain/theme_choice.dart';
 import 'package:tavli/features/settings/animations_gallery_screen.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/test_app.dart';
 
@@ -15,7 +14,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildTavliTheme(TavliTheme.bosiljak, Brightness.light),
+        theme: buildTavliTheme(TavliMotif.bosiljak, Brightness.light),
         home: Builder(
           builder: (context) => MediaQuery(
             data: MediaQuery.of(context).copyWith(disableAnimations: true),
@@ -46,7 +45,7 @@ void main() {
         addTearDown(tester.view.reset);
         await tester.pumpWidget(
           MaterialApp(
-            theme: buildTavliTheme(TavliTheme.bosiljak, Brightness.light),
+            theme: buildTavliTheme(TavliMotif.bosiljak, Brightness.light),
             home: Builder(
               builder: (context) => MediaQuery(
                 data: MediaQuery.of(context)
@@ -119,9 +118,8 @@ void main() {
     expect(find.bySemanticsLabel('Prazan frižider'), findsOneWidget);
 
     await tester.tap(find.text('Nabavka'));
-    // Nabavka sada ima miran prikaz prazne korpe.
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    // Sačekaj obe lokalne liste i inicijalizaciju prikaza Nabavke.
+    await tester.pumpAndSettle();
     expect(find.text('Nabavka je prazna'), findsOneWidget);
     expect(find.bySemanticsLabel('Prazna korpa za nabavku'), findsOneWidget);
     await tester.tap(find.text('Pogledaj recepte'));

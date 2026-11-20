@@ -23,12 +23,13 @@ not reassigns them. No additional feature is authorized merely by a technical se
 
 - **FR-101**: Audit all plugins and OS integrations before target scaffolding: secure store, deep links/email auth, file picker, wake lock, SQLite and lifecycle.
 - **FR-102**: Add reproducible build/CI, signing/distribution decision and real-machine smoke proof; unsupported capability gets an honest fallback.
-- **FR-103**: Validate keyboard, resizing/scaling and native permission/dialog behavior with the existing responsive UI and security standards.
+- **FR-103**: Validate keyboard, focus, window resizing and OS scaling on a real Windows machine using the [UI standard](../../docs/development/ui-standard.md). Check native window controls and dialogs. The mockup's menu and title bar represent design intent. Validate the operating system behavior before adopting custom window chrome.
 
 ## User scenarios and acceptance
 
 - **US1 / SC-001**: Clean Windows build installs/starts and signs in through the verified callback; offline restart preserves the correct account cache.
 - **US2 / SC-002**: File pick/cancel, safe storage failure and wake-lock lifecycle behave correctly on a real Windows machine.
+- **US3 / SC-003**: In a narrow and a wide window, reach all five destinations by keyboard. Resize at increased OS scaling while a recipe is selected. Preserve the selection and visible focus. Verify the actual minimize, maximize and close controls and return focus after cancelling a file dialog.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;

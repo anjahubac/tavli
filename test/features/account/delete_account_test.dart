@@ -20,10 +20,23 @@ void main() {
   );
 
   Future<void> openDialog(WidgetTester tester) async {
-    await tester.ensureVisible(find.text('Obriši nalog'));
+    await tester.scrollUntilVisible(find.text('Obriši nalog'), 100);
+    await tester.pump();
     await tester.tap(find.text('Obriši nalog'));
     await tester.pumpAndSettle();
   }
+
+  testTavli('brisanje je na dnu profila, odvojeno od odjave', (tester) async {
+    await pumpTavli(tester, location: '/profile');
+    await tester.scrollUntilVisible(find.text('Obriši nalog'), 100);
+    await tester.pump();
+    final signOut = tester.getRect(find.text('Odjavi se'));
+    final settings = tester.getRect(find.text('AI ključevi'));
+    final delete = tester.getRect(find.text('Obriši nalog'));
+    expect(delete.top, greaterThan(settings.bottom));
+    expect(delete.top - signOut.bottom, greaterThan(100));
+    expect(find.text('Brisanje naloga'), findsOneWidget);
+  });
 
   testTavli('dijalog: tekst, crveno dugme, "Odustani" ne menja ništa', (
     tester,
@@ -69,17 +82,11 @@ void main() {
     expect(app.secrets.values.containsKey(SessionStore.key), isFalse);
 
     // Ista adresa ponovo: nov prazan nalog i korak sa imenom.
-    await tester.enterText(
-      find.widgetWithText(TextField, 'E-pošta'),
-      testEmail,
-    );
+    await tester.enterText(textField('E-pošta'), testEmail);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Kod iz poruke'),
-      FakeServer.code,
-    );
+    await tester.enterText(textField('Kod iz poruke'), FakeServer.code);
     await tester.pumpAndSettle();
     expect(find.text('Kako da te zovemo?'), findsOneWidget);
   });

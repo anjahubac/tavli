@@ -223,3 +223,26 @@ Findings and fixes (no CRITICAL):
   migration + test; RLS + explicit grants + pgTAP with two accounts; backend
   faked in Flutter tests). Terminology: "waiting change" (spec) = outbox entry
   (plan), defined in the spec's Key Entities.
+
+## Correction slice — 2026-11-20: first-email OTP (US1 / FR-003)
+
+Owner/coordinator: Dev 3 (Matija). Independent human reviewer: Anja (pending).
+Branch `fix/signup-email-code` starts from latest `origin/dev`. No new feature
+number, shared pointer, migration or dependency. Paths and security impact are
+recorded in the correction section of [plan.md](plan.md).
+
+- [x] T070 Use one `supabase/templates/magic_link.html` for both Supabase
+  confirmation and OTP sign-in settings; remove the duplicate confirmation HTML.
+  Keep a shared code-only subject, `{{ .Token }}` body, and existing verification
+  and OTP limits.
+- [x] T071 Validate both template/config contracts with
+  `scripts/test_auth_email_templates.py`, existing fake account/sign-in tests,
+  `scripts/check.sh`, docs and diff checks. Evidence: template regression,
+  script regressions, docs checks and static analysis pass; `test/account/auth_gateway_test.dart` passes.
+  Broader account/widget run was interrupted during cleanup; it is not recorded as green.
+- [ ] T072 Review the deployment workflow extension with Anja and merge into
+  `dev`. Verify new/unconfirmed/existing-account delivery and OTP rejection with
+  synthetic local accounts. Record a successful template deployment and hosted
+  configuration verification from each environment before claiming rollout.
+
+No historical completed task is reinterpreted as evidence for this correction.

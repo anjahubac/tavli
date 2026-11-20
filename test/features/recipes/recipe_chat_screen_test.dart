@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -82,11 +83,81 @@ void main() {
 
     await send(tester, 'posno');
 
-    expect(find.text('AI je vratio neispravan odgovor.'), findsOneWidget);
+    expect(find.text(invalidAnswer), findsOneWidget);
     expect(find.text('Predlog izmene'), findsNothing);
     expect(await app.titles(), ['Sarma']);
     final saved = await app.db.select(app.db.recipes).getSingle();
     expect(saved.stepsJson, contains('Umotati.'));
+  });
+
+  testTavli('Pokušaj ponovo šalje isto uputstvo i daje predlog', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [sampleRecipe('a', 'Sarma')],
+      ai: [
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+        aiAnswer(recipeJson('Posna sarma')),
+      ],
+    );
+
+    await send(tester, 'posno');
+    expect(find.text(invalidAnswer), findsOneWidget);
+    // Korisnik je u međuvremenu promenio tekst u polju.
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Šta da promenim?'),
+      'nešto drugo',
+    );
+    await tester.pump();
+
+    await tapButton(tester, 'Pokušaj ponovo');
+
+    expect(find.text(invalidAnswer), findsNothing);
+    expect(find.text('Predlog izmene'), findsOneWidget);
+    expect(app.adapter.requests, hasLength(3));
+    expect(
+      app.adapter.requests.last.data.toString(),
+      allOf(contains('posno'), isNot(contains('nešto drugo'))),
+      reason: 'uputstvo koje nije uspelo, ne tekst iz polja',
+    );
+    expect(
+      find.widgetWithText(TextField, 'nešto drugo'),
+      findsOneWidget,
+      reason: 'novi tekst ostaje u polju',
+    );
+  });
+
+  testTavli('AI izmena ne menja oznake koje je postavio korisnik', (
+    tester,
+  ) async {
+    final user = RecipeLabels.byUser(
+      meals: {MealSuitability.lunch},
+      weight: DishWeight.medium,
+    );
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [sampleRecipe('a', 'Sarma').copyWith(labels: user)],
+      ai: [
+        aiAnswer({
+          ...recipeJson('Posna sarma'),
+          'meals': ['dinner'],
+          'weight': 'light',
+        }),
+      ],
+    );
+
+    await send(tester, 'posno');
+    await tapButton(tester, 'Prihvati');
+
+    final row = await app.db.select(app.db.recipes).getSingle();
+    expect(row.title, 'Posna sarma');
+    expect(row.mealTypesJson, '["lunch"]');
+    expect(row.weight, 'medium');
+    expect(row.labelsSource, 'user');
   });
 
   testTavli('Odbaci ne menja recept i vraća tekst u polje', (tester) async {

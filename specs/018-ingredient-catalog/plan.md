@@ -24,6 +24,10 @@ Proposed foods/aliases/units/household overrides; immutable UUID and readable sl
 
 Producer dependencies: [017](../017-kitchen-unit-conversion/spec.md)
 
+The [ingredient identity and lookup proposal](ingredient-model-proposal.md)
+is available for consumer review. It is a draft, not an accepted contract or
+evidence that T001 has been completed.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,
@@ -74,5 +78,5 @@ tests do not contact a network; explicit guarded integration uses local services
 No speculative hosted deployment or publication. Record old-client/snapshot
 compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
-limits from open questions remain release gates. UI checks use current theme/
-motion components; do not redesign screens or extract a package incidentally.
+limits from open questions remain release gates. UI follows the design canvas and the
+UI standard; do not invent layouts or move components into the package incidentally.

@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:tavli/app/theme/tavli_colors.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -17,10 +17,7 @@ void main() {
       ai: [aiAnswer(recipeJson('Sarma'))],
     );
     final gate = app.adapter.gate = Completer<void>();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'sarma',
-    );
+    await tester.enterText(textField('Naziv jela'), 'sarma');
     await tester.pump();
     await tester.tap(button('Napravi recept'));
     await tester.pump();
@@ -85,7 +82,7 @@ void main() {
     final boxes = tester
         .widgetList<ColoredBox>(
           find.descendant(
-            of: find.byType(Card),
+            of: find.byType(TavliCard),
             matching: find.byType(ColoredBox),
           ),
         )

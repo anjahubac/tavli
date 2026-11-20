@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tavli/app/theme/theme_controller.dart';
+import 'package:tavli/app/theme_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/domain/theme_choice.dart';
 

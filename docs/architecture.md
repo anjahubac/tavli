@@ -19,7 +19,8 @@ package layout or generic event bus is required by the team standards.
 | --- | --- | --- |
 | `lib/main.dart`, `lib/app/app.dart` | ProviderScope, MaterialApp and lifecycle | App composition, not feature business rules |
 | `lib/app/router.dart`, `home_shell.dart`, `tab_app_bar.dart` | Routes, adaptive shell, shared top bar | Dev 4 coordinates route changes |
-| `lib/app/theme/`, `lib/app/animations/` | Palettes, semantic colors, persisted appearance and reduced motion | Reuse existing tokens/painters |
+| `packages/tavli_ui/` | Local UI package: palettes, theme, semantic colors, spacing/radius/motion tokens, `TavliPlatform`, font | Depends only on Flutter; app imports `package:tavli_ui/tavli_ui.dart` only |
+| `lib/app/theme_controller.dart`, `lib/app/animations/` | Persisted appearance choice and reduced-motion painters | Reuse package tokens; no app logic in the package |
 | `lib/providers.dart` | Shared dependency wiring, auth scope, sync/router/client construction | Feature-level providers remain beside their features |
 | `lib/features/recipes/` | Recipe list/detail, inputs, AI preview/chat, original photo and versions | Compose reusable ingredient/personal/cooking widgets here |
 | `lib/features/planning/` | Setup, draft progress/preview, calendar and meal actions | Draft state is separate from accepted plan data |
@@ -181,8 +182,9 @@ locked meals. None of those workers/endpoints currently exists here.
 ## 6. Accepted product evolution and privacy
 
 Target tabs: Plan, Nabavka, **Početna**, Recepti, Ostava; profile via avatar.
-Current code still starts at Plan with four tabs. Home, pantry and cooking extend
-existing planning/shopping repositories; they do not create a second plan store.
+Code has these five tabs (wide menu: Home first); empty `/home` is default.
+Home, pantry and cooking extend existing planning/shopping repositories; they do
+not create a second plan store.
 Keep route compatibility and auth gates during the transition.
 
 Catalog: stable UUID + readable slug, aliases, base units, conversions and

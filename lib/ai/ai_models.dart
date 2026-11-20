@@ -102,3 +102,22 @@ class AIRequest {
 
   TaskKind get kind => images.isEmpty ? TaskKind.text : TaskKind.vision;
 }
+
+/// Prekid AI zahteva koji je osoba tražila („Prekini“, napušten ekran).
+/// Router ga proverava pre svakog poziva modela, pa posle prekida ne kreće
+/// ni sledeći model ni popravka odgovora.
+class AICancellation {
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  void cancel() => _cancelled = true;
+}
+
+/// Router je stao jer je zahtev prekinut; odgovor se ne prikazuje.
+class AICancelled implements Exception {
+  const AICancelled();
+
+  @override
+  String toString() => 'AICancelled';
+}
