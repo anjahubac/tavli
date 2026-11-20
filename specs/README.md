@@ -37,7 +37,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 | [028-windows-support](028-windows-support/spec.md) | Dev 4 | Draft; resolve recorded questions before dependent implementation |
 | [029-private-cycle-hints](029-private-cycle-hints/spec.md) | Dev 3 | Draft; resolve recorded questions before dependent implementation |
 | [030-nutritionist-plan-import](030-nutritionist-plan-import/spec.md) | Dev 2 | Draft; resolve recorded questions before dependent implementation |
-| [031-external-ui-library](031-external-ui-library/spec.md) | Dev 4 | Draft; resolve recorded questions before dependent implementation |
+| [031-external-ui-library](031-external-ui-library/spec.md) | Dev 4 | In progress: local `packages/tavli_ui` package, built from the design canvas |
 | [032-website-downloads](032-website-downloads/spec.md) | Dev 4 | Draft; resolve recorded questions before dependent implementation |
 | [033-release-operations](033-release-operations/spec.md) | Dev 3 | Draft; resolve recorded questions before dependent implementation |
 | [034-linux-support](034-linux-support/spec.md) | Matija / Dev 3 | Draft; plan and implementation evidence pending |

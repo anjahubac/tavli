@@ -1,14 +1,14 @@
-# Tasks: External Tavli UI library preparation
+# Tasks: Tavli UI component library (local package)
 
-Status: planned, not completed. Source roles/phases are preserved. All source
+Status: in progress; Trello cards "UI biblioteka 1–14" are the delivery slices. Source roles/phases are preserved. All source
 tasks remain not_assessed until current code is checked. Lead: Dev 4;
 proposed reviewers: all feature owners (choose a different human from the implementer).
 Paths and contracts are in plan.md; finalize exact filenames and remaining
 implementation/test/review estimates before Ready.
 
 - [ ] T001 Resolve blocking questions in spec.md, agree typed contract/migration needs and acceptance fixtures. Owner Dev 4; reviewer all feature owners; depends on producer specs in plan.md; evidence: accepted decision/contract links.
-- [ ] T002 [US1] D4-024 / FR-001, phase 4: inspect existing evidence and add missing failing behavior/acceptance cases for **Build the external UI package only after team agreement** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T003 [US1] D4-024 / FR-001, phase 4: **Build the external UI package only after team agreement** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T002; evidence: spec scenarios, applicable checks and reviewed PR.
+- [ ] T002 [US1] D4-024 / FR-001, phase 4: inspect existing evidence and add missing failing behavior/acceptance cases for **the Tavli UI package** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
+- [ ] T003 [US1] D4-024 / FR-001, phase 4: **the Tavli UI package** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T002; evidence: spec scenarios, applicable checks and reviewed PR.
 - [ ] T004 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 4; reviewer all feature owners; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
 
 ## Sequencing and effort

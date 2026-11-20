@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../helpers/test_app.dart';
 
 void main() {
-  Finder field(String label) => find.widgetWithText(TextField, label);
+  Finder field(String label) => textField(label);
 
   Future<void> addIngredient(
     WidgetTester tester, {
@@ -25,6 +25,28 @@ void main() {
     await tester.tap(find.descendant(of: dialog, matching: button('Sačuvaj')));
     await tester.pumpAndSettle();
   }
+
+  testTavli('telefon: porcije i minuti stoje jedno pored drugog', (
+    tester,
+  ) async {
+    await pumpTavli(tester, location: '/recipes/new/manual');
+    final servings = tester.getTopLeft(find.text('Broj porcija'));
+    final prep = tester.getTopLeft(find.text('Vreme pripreme (min)'));
+    expect(prep.dy, servings.dy);
+    expect(tester.takeException(), isNull);
+  });
+
+  testTavli('tekst 2×: polja jedno ispod drugog, nazivi se ne seku', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpTavli(tester, location: '/recipes/new/manual');
+    final servings = tester.getRect(find.text('Broj porcija'));
+    final prep = tester.getRect(find.text('Vreme pripreme (min)'));
+    expect(prep.top, greaterThan(servings.bottom));
+    expect(tester.takeException(), isNull);
+  });
 
   testTavli('bez naziva i sastojaka ništa se ne čuva', (tester) async {
     final app = await pumpTavli(tester, location: '/recipes/new/manual');
@@ -59,7 +81,7 @@ void main() {
     expect(row.prepMinutes, 10);
     expect(row.source, 'manual');
     expect(row.stepsJson, '["Umutiti jaja.","Peći."]');
-    expect(find.widgetWithText(AppBar, 'Kajgana'), findsOneWidget);
+    expect(recipeHeading('Kajgana'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
   });
 
@@ -73,7 +95,7 @@ void main() {
 
     final row = await app.db.select(app.db.recipes).getSingle();
     expect(row.stepsJson, '[]');
-    expect(find.widgetWithText(AppBar, 'Užina'), findsOneWidget);
+    expect(recipeHeading('Užina'), findsOneWidget);
     await tapButton(tester, 'Proveri sastojke');
     await tapButton(tester, 'Dodaj u nabavku (1)');
 
@@ -90,7 +112,7 @@ void main() {
       recipes: [sampleRecipe('a', 'Sarma')],
     );
 
-    await tester.tap(find.byTooltip('Izmeni'));
+    await tester.tap(iconButton('Izmeni'));
     await tester.pumpAndSettle();
     expect(find.text('Izmeni recept'), findsOneWidget);
     await tester.enterText(field('Naziv'), 'Posna sarma');
@@ -103,7 +125,7 @@ void main() {
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Još opcija'));
+    await tester.tap(iconButton('Još opcija'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Prethodne verzije'));
     await tester.pumpAndSettle();
@@ -116,7 +138,7 @@ void main() {
       location: '/recipes/a',
       recipes: [sampleRecipe('a', 'Sarma')],
     );
-    await tester.tap(find.byTooltip('Izmeni'));
+    await tester.tap(iconButton('Izmeni'));
     await tester.pumpAndSettle();
     await tester.enterText(field('Naziv'), 'Nešto drugo');
     await tester.pump();
@@ -134,7 +156,7 @@ void main() {
     await tester.tap(find.text('Odbaci'));
     await tester.pumpAndSettle();
     expect(find.text('Izmeni recept'), findsNothing);
-    expect(find.widgetWithText(AppBar, 'Sarma'), findsOneWidget);
+    expect(recipeHeading('Sarma'), findsOneWidget);
   });
 
   testTavli('brisanje uz potvrdu', (tester) async {
@@ -144,7 +166,7 @@ void main() {
       recipes: [sampleRecipe('a', 'Sarma')],
     );
 
-    await tester.tap(find.byTooltip('Još opcija'));
+    await tester.tap(iconButton('Još opcija'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Obriši recept'));
     await tester.pumpAndSettle();
@@ -154,7 +176,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(await app.titles(), ['Sarma']);
 
-    await tester.tap(find.byTooltip('Još opcija'));
+    await tester.tap(iconButton('Još opcija'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Obriši recept'));
     await tester.pumpAndSettle();
