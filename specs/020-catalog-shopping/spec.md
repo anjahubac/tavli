@@ -14,6 +14,13 @@ snapshot, offline and account invariants. No new framework or folder reorganizat
 Source tickets below retain original assignments/phases; the lead coordinates,
 not reassigns them. No additional feature is authorized merely by a technical seam.
 
+At `origin/dev` `28fa253`, both shopping modes exist. With recipe items and
+no plan, shopping opens “Po receptu”. Explicit selection remains available and
+survives navigation within the account session. The code has switch regression
+tests for touch and mouse input. Source details are accessible by long press
+or a screen-reader action. The visible source action and fixed transfer bar
+remain planned.
+
 ## Requirements and source traceability
 
 - **FR-001**: Deliver **Split shopping code by responsibility**. Source D1-004; Dev 1; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
@@ -29,12 +36,14 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-103**: Repeat Add changes only the delta; different recipes share supply once; bought/manual rows remain through reconciliation.
 - **FR-104**: Known pantry stock reduces numeric demand; unknown presence stays visible with a check-quantity note, not full coverage.
 - **FR-105**: Manual item input prefers catalog search but permits visibly unresolved text; month/weekly list boundaries and standalone preparation identity remain unchanged.
+- **FR-106**: Give generated items with source details a visible “Za koje obroke” action reachable by touch, pointer and keyboard. Opening it preserves the checked state. On wide screens the source details may sit beside the list. Keep “Prebaci u ostavu” reachable on compact screens above navigation when there are eligible purchases.
 
 ## User scenarios and acceptance
 
 - **US1 / SC-001**: Add one missing item, unmark a second available item, add again: exactly one new need is created.
 - **US2 / SC-002**: Demand 300 g, pantry 100 g, purchase 200 g, transfer: coverage is still 300 g; increasing demand to 400 g adds only 100 g.
 - **US3 / SC-003**: Switching recipe/plan mode twice preserves selection and displays the correct list after navigation/restart.
+- **US4 / SC-004**: Starting with a standalone recipe and no plan, add missing ingredients and open the resulting recipe list. Switch modes and return without losing that list. In either mode, where source details are available, open them by keyboard without marking the item bought. With a saved plan, reach weekly shopping in at most two actions.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
@@ -47,7 +56,8 @@ Preserve existing shopping sources/contributions/allocations, integer micros and
 
 ## Exact UI copy carried forward
 
-“Po planu”, “Po receptu”, “Proveri količinu”, “Imaš u ostavi, proveri”.
+“Po planu”, “Po receptu”, “Proveri količinu”, “Imaš u ostavi, proveri”,
+“Za koje obroke”, “Prebaci u ostavu”.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
