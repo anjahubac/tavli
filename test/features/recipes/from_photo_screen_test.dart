@@ -261,7 +261,7 @@ void main() {
     final row = await app.db.select(app.db.recipes).getSingle();
     expect(row.imagePath, path);
     expect(row.source, 'photo');
-    expect(find.widgetWithText(AppBar, 'Bakina pita'), findsOneWidget);
+    expect(recipeHeading('Bakina pita'), findsOneWidget);
   });
 
   testTavli('slikanje kamerom kad postoji kamera', (tester) async {
@@ -326,8 +326,8 @@ void main() {
 
     await tapButton(tester, 'Izaberi iz galerije');
 
-    expect(app.adapter.requests, hasLength(6));
-    expect(find.text('AI je vratio neispravan odgovor.'), findsOneWidget);
+    expect(app.adapter.requests, hasLength(2), reason: 'odgovor + popravka');
+    expect(find.text(invalidAnswer), findsOneWidget);
     expect(find.text('Sačuvaj'), findsNothing);
     expect(find.text('Pokušaj ponovo'), findsOneWidget);
     expect(await app.titles(), isEmpty);

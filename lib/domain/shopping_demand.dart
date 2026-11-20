@@ -1,3 +1,4 @@
+import '../ai/ai_units.dart';
 import 'recipe.dart';
 import 'shopping_sync.dart';
 
@@ -27,18 +28,36 @@ typedef NormalizedUnit = ({String group, String base, int factor});
 
 const _units = <String, NormalizedUnit>{
   'g': (group: 'mass', base: 'g', factor: 1),
-  'gr': (group: 'mass', base: 'g', factor: 1),
+  'dkg': (group: 'mass', base: 'g', factor: 10),
   'kg': (group: 'mass', base: 'g', factor: 1000),
   'ml': (group: 'volume', base: 'ml', factor: 1),
+  'dl': (group: 'volume', base: 'ml', factor: 100),
   'l': (group: 'volume', base: 'ml', factor: 1000),
   'kom': (group: 'count:kom', base: 'kom', factor: 1),
-  'kom.': (group: 'count:kom', base: 'kom', factor: 1),
 };
 
-/// Samo g↔kg i ml↔l se pretvaraju; komadi se sabiraju sa komadima. Ostale
-/// jedinice su uporedive samo kad su iste (bez gustine i "kašika u ml").
-NormalizedUnit normalizeUnit(String? unit) {
-  final u = (unit ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+/// Predložene podrazumevane zapremine; uobičajene mere su približne.
+const _kitchenVolume = <String, int>{
+  'čaša': 200,
+  'šolja': 250,
+  'kašika': 15,
+  'kašičica': 5,
+};
+
+String _unitText(String? unit) =>
+    (unit ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+/// Jedinica se prepoznaje preko zajedničkog rečnika (`canonicalUnit`), pa
+/// "gr", "dag", "kasika" i "čaše" imaju isti ključ kao i njihov kanonski
+/// oblik. Nepoznata jedinica ostaje svoja grupa, tačno kako je napisana.
+///
+/// Kuhinjske mere su isključene dok se ne obezbedi verzionisanje podataka.
+NormalizedUnit normalizeUnit(String? unit, {bool kitchenMeasures = false}) {
+  final u = canonicalUnit(unit) ?? _unitText(unit);
+  final kitchenFactor = kitchenMeasures ? _kitchenVolume[u] : null;
+  if (kitchenFactor != null) {
+    return (group: 'volume', base: 'ml', factor: kitchenFactor);
+  }
   return _units[u] ?? (group: 'unit:$u', base: u, factor: 1);
 }
 
@@ -68,12 +87,16 @@ class DemandSource {
     required this.baseServings,
     required this.servings,
     required this.ingredients,
+    this.kitchenMeasures = false,
   });
 
   final String id;
   final int baseServings;
   final int servings;
   final List<Ingredient> ingredients;
+
+  /// Ne uključivati u sačuvanim izvorima bez kompatibilnog zapisa konverzije.
+  final bool kitchenMeasures;
 }
 
 /// Identitet potražnje: izvor + sastojak + grupa uporedivih jedinica. Isti
@@ -88,6 +111,8 @@ class DemandLine {
     required this.micros,
     required this.baseUnit,
     this.notes = const [],
+    this.approximate = false,
+    this.unsupportedUnit = false,
   });
 
   final DemandKey key;
@@ -98,11 +123,13 @@ class DemandLine {
   final int? micros;
   final String baseUnit;
   final List<String> notes;
+  final bool approximate;
+  final bool unsupportedUnit;
 
   bool get isUnknown => micros == null;
 
-  /// Nepoznata količina se nikad ne oduzima brojčano; osoba je proverava.
-  bool get needsReview => isUnknown;
+  /// Nepoznata količina ili nepodržana jedinica traže proveru.
+  bool get needsReview => isUnknown || unsupportedUnit;
 }
 
 /// Potrebe jednog izvora, skalirane na njegove porcije. Redovi istog sastojka
@@ -112,7 +139,7 @@ List<DemandLine> demandFor(DemandSource source) {
   _checkServings(source.servings, 'servings');
   final merged = <DemandKey, DemandLine>{};
   for (final i in source.ingredients) {
-    final unit = normalizeUnit(i.unit);
+    final unit = normalizeUnit(i.unit, kitchenMeasures: source.kitchenMeasures);
     final q = i.quantity;
     final known = q != null && q.isFinite && q >= 0;
     final key = (
@@ -137,6 +164,16 @@ List<DemandLine> demandFor(DemandSource source) {
           : (micros == null ? null : prev.micros! + micros),
       baseUnit: prev?.baseUnit ?? unit.base,
       notes: [...?prev?.notes, if (i.note != null) i.note!],
+      unsupportedUnit:
+          (prev?.unsupportedUnit ?? false) ||
+          (source.kitchenMeasures &&
+              unit.base.isNotEmpty &&
+              unit.group.startsWith('unit:')),
+      approximate:
+          (prev?.approximate ?? false) ||
+          (known &&
+              source.kitchenMeasures &&
+              _kitchenVolume.containsKey(canonicalUnit(i.unit))),
     );
   }
   return merged.values.toList();
@@ -156,6 +193,8 @@ class ShoppingNeed {
     required this.micros,
     required this.baseUnit,
     required this.sourceIds,
+    this.approximate = false,
+    this.unsupportedUnit = false,
   });
 
   final String ingredient;
@@ -165,8 +204,11 @@ class ShoppingNeed {
   final int? micros;
   final String baseUnit;
   final List<String> sourceIds;
+  final bool approximate;
+  final bool unsupportedUnit;
 
   bool get isUnknown => micros == null;
+  bool get needsReview => isUnknown || unsupportedUnit;
 }
 
 List<ShoppingNeed> summarize(Iterable<DemandLine> lines) {
@@ -186,6 +228,8 @@ List<ShoppingNeed> summarize(Iterable<DemandLine> lines) {
             : ls.fold<int>(0, (sum, l) => sum + l.micros!),
         baseUnit: ls.first.baseUnit,
         sourceIds: {for (final l in ls) l.key.sourceId}.toList(),
+        approximate: ls.any((l) => l.approximate),
+        unsupportedUnit: ls.any((l) => l.unsupportedUnit),
       ),
   ];
 }

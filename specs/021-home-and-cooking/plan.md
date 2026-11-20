@@ -1,6 +1,7 @@
 # Implementation plan: Home, adaptive navigation and cooking
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: five-tab shell and local UI library are in dev. The cooked-operation
+producer is in progress. The adoption and user journey below await acceptance.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 4 / Dev 2 and Dev 1
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
@@ -9,10 +10,11 @@
 - `lib/app/router.dart`
 - `lib/app/home_shell.dart`
 - `lib/app/tab_app_bar.dart`
-- `lib/app/theme/`
+- `lib/app/theme_controller.dart`
+- `packages/tavli_ui/` (shared theme, components and gallery)
 - `lib/features/planning/`
 - `lib/features/recipes/`
-- `lib/features/home/ (new)`
+- `lib/features/home/` (existing placeholder)
 
 Items marked new/proposed/external do not exist at baseline. Verify exact existing
 files and consumers before editing; new files remain in current feature/domain/
@@ -35,6 +37,28 @@ changes, add data-model.md with current→target columns and a reviewed migratio
 allocate drift version only after preceding schema merges. New SQL is additive
 where possible, with RLS/grants and local two-account tests. Applied SQL is immutable.
 If no schema change is needed, explicitly record that decision in the slice PR.
+
+## Priority delivery
+
+1. **Phase 1, narrow navigation** (FR-101, SC-003/004). Dev 4 coordinates
+   `lib/app/home_shell.dart`, `lib/app/router.dart`, `lib/app/tab_app_bar.dart`
+   and `packages/tavli_ui/`. Resolve how the gallery's 220 dp sidebar and
+   capped bottom labels fit the app's breakpoint and text requirements.
+   Verify the app shell at both width boundaries and while resizing between
+   layouts before replacing it. Keep the existing routes and state contracts.
+2. **Phase 2, “Kuvaj” → “Skuvano” → “Poništi”** (FR-102/104/105/107/108,
+   SC-001/005/007). Use an approved plan with saved steps and the merged
+   cooked-operation contract. Dev 4 coordinates Home, recipe/cooking and
+   Plan UI with Dev 2, shopping and pantry effects with Dev 1, and the
+   separate personal-intake integration with Dev 3. Verify known and unknown
+   stock, an intervening manual count, offline replay and visible undo.
+   Complete the consumer checks in 020/022 as their dependencies land.
+
+The navigation and UI consumer slices use existing accounts, records and
+repository interfaces. Privacy remains account or household scoped, with
+personal intake owned by 023. Abuse, credentials, file access and deployment
+changes are N/A for these UI slices. Use the producer's 012/013 evidence for
+schema and sync changes.
 
 ## Delivery slices
 

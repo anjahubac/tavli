@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -12,10 +13,14 @@ import '../../providers.dart';
 import '../planning/plan_format.dart';
 import 'shopping_providers.dart';
 
-/// "1,5 kg", "2 kom"; null kad količina nije poznata.
-String? amountLabel(double? quantity, String? unit) => quantity == null
+/// "1,5 kg", "~35 ml", "2 kom"; null kad količina nije poznata.
+String? amountLabel(
+  double? quantity,
+  String? unit, {
+  bool approximate = false,
+}) => quantity == null
     ? null
-    : [formatQuantity(quantity), ?unit].join(' ').trim();
+    : '${approximate ? '~' : ''}${[formatQuantity(quantity), ?unit].join(' ').trim()}';
 
 /// "Voće i povrće"
 String categoryLabel(String category) => category.isEmpty
@@ -48,6 +53,7 @@ Future<void> setBought(
   String name, {
   required bool bought,
 }) async {
+  final accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
   final messenger = ScaffoldMessenger.of(context);
   final repo = ref.read(shoppingRepositoryProvider);
   final changed = await repo.setBought(ids, bought: bought);
@@ -62,6 +68,9 @@ Future<void> setBought(
   messenger.showSnackBar(
     SnackBar(
       content: Text(bought ? 'Kupljeno: $name' : 'Vraćeno u nabavku: $name'),
+      duration: const Duration(seconds: 5),
+      persist: accessibleNavigation,
+      showCloseIcon: accessibleNavigation,
       action: SnackBarAction(
         label: 'Poništi',
         onPressed: () => unawaited(repo.setBought(ids, bought: !bought)),
@@ -185,7 +194,8 @@ class CategoryHeader extends StatelessWidget {
   }
 }
 
-/// Jedna stavka: dodir štiklira odmah; "i" pokazuje za koje obroke je.
+/// Jedna stavka: dodir štiklira odmah; dugi pritisak pokazuje za koje
+/// obroke je (čitač ekrana: radnja „Za koje obroke“).
 class ShoppingItemTile extends ConsumerWidget {
   const ShoppingItemTile({
     super.key,
@@ -211,6 +221,7 @@ class ShoppingItemTile extends ConsumerWidget {
       setBought(context, ref, [item.id], item.name, bought: !item.isBought),
     );
     Future<void> delete() async {
+      final accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
       final messenger = ScaffoldMessenger.of(context);
       final repo = ref.read(shoppingRepositoryProvider);
       await repo.deleteManual(item.id);
@@ -219,6 +230,9 @@ class ShoppingItemTile extends ConsumerWidget {
         ..showSnackBar(
           SnackBar(
             content: Text('Obrisano: ${item.name}'),
+            duration: const Duration(seconds: 5),
+            persist: accessibleNavigation,
+            showCloseIcon: accessibleNavigation,
             action: SnackBarAction(
               label: 'Vrati',
               onPressed: () => unawaited(
@@ -235,7 +249,10 @@ class ShoppingItemTile extends ConsumerWidget {
         );
     }
 
-    return ListTile(
+    final showSources = item.isManual
+        ? null
+        : () => unawaited(showItemSources(context, ref, item));
+    final tile = ListTile(
       contentPadding: EdgeInsets.zero,
       minTileHeight: 56,
       leading: Checkbox(
@@ -260,12 +277,16 @@ class ShoppingItemTile extends ConsumerWidget {
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () => unawaited(delete()),
                   ))
-          : IconButton(
-              tooltip: 'Za koje obroke',
-              icon: const Icon(Icons.info_outline),
-              onPressed: () => unawaited(showItemSources(context, ref, item)),
-            ),
+          : null,
       onTap: received ? null : toggle,
+      onLongPress: showSources,
+    );
+    if (showSources == null) return tile;
+    return Semantics(
+      customSemanticsActions: {
+        const CustomSemanticsAction(label: 'Za koje obroke'): showSources,
+      },
+      child: tile,
     );
   }
 }

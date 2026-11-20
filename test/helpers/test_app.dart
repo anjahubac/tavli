@@ -23,9 +23,11 @@ import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/keep_screen_on.dart';
 import 'package:tavli/features/recipes/photo_picker.dart';
+import 'package:tavli/features/recipes/recipe_detail_screen.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import 'fake_adapter.dart';
 import 'fake_backend.dart';
@@ -43,6 +45,10 @@ String currentTab(WidgetTester tester) =>
 
 /// E-pošta naloga pod kojim testovi rade (prijavljen po difoltu).
 const testEmail = 'ana@tavli.test';
+
+/// Poruka kad ni popravljen AI odgovor ne prođe proveru (FR-003).
+const invalidAnswer =
+    'AI nije vratio ispravan odgovor ni posle ispravke. Pokušaj ponovo.';
 
 const phone = Size(400, 800);
 const wide = Size(1200, 800);
@@ -279,6 +285,27 @@ Future<void> tapButton(WidgetTester tester, String text) async {
   await tester.tap(button(text));
   await tester.pumpAndSettle();
 }
+
+/// Polje za unos sa datim nazivom: Material `labelText` ili naziv iznad
+/// `TavliTextField`.
+Finder textField(String label) => find.byElementPredicate((e) {
+  final widget = e.widget;
+  if (widget is! TextField) return false;
+  if (widget.decoration?.labelText == label) return true;
+  return e.findAncestorWidgetOfExactType<TavliTextField>()?.label == label;
+});
+
+/// Naslov otvorenog recepta (veliki naslov na ekranu recepta).
+Finder recipeHeading(String title) => find.descendant(
+  of: find.byType(RecipeDetailScreen),
+  matching: find.text(title),
+);
+
+/// `TavliIconButton` po opisu. Njegov oblačić je iz material_ui, pa ga
+/// `find.byTooltip` ne vidi.
+Finder iconButton(String label) => find.byWidgetPredicate(
+  (w) => w is TavliIconButton && w.semanticLabel == label,
+);
 
 /// Dugme (bilo koje Material dugme) sa datim tekstom.
 Finder button(String text) => find.ancestor(
