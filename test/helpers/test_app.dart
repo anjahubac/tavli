@@ -44,6 +44,10 @@ String currentTab(WidgetTester tester) =>
 /// E-pošta naloga pod kojim testovi rade (prijavljen po difoltu).
 const testEmail = 'ana@tavli.test';
 
+/// Poruka kad ni popravljen AI odgovor ne prođe proveru (FR-003).
+const invalidAnswer =
+    'AI nije vratio ispravan odgovor ni posle ispravke. Pokušaj ponovo.';
+
 const phone = Size(400, 800);
 const wide = Size(1200, 800);
 
