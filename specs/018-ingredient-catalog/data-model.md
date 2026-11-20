@@ -188,6 +188,7 @@ and the recipe labels slice (#54) also need one.
 | D7 | Id type, generation and validation boundary | `text` ids like every other table, with a UUID-format check; the client generates the UUID string for household rows, migrations for shared rows, the server validates the format | Dev 4 |
 | D8 | Immutable ownership | Trigger blocks changing `id` and `household_id`; promotion creates a new shared row | Dev 3, Dev 4 |
 | D9 | Withdrawn shared entries | `withdrawn_at` tombstone instead of delete; clients drop it on the next download | Dev 3, Dev 4 |
+| D10 | Separate ingredient table or the embedded ingredient list | Keep the embedded list (`foodId` and `matchedKey` per ingredient, #30). Plans, allergen checks and shopping run in the client over the local database, and no server function queries ingredients today. Revisit with a separate table only if server-side search or per-ingredient access rules are added, for example when allergen enforcement in plans is implemented. | Dev 3, Dev 4 |
 
 ## Rollout
 
@@ -216,5 +217,5 @@ The order is therefore:
 ## Remaining reviews
 
 Dev 3 still has to review scope and access rules, and Dev 4 the schema decisions
-D1–D9. Dev 4's support for keeping the link on the embedded ingredient (#30)
+D1–D10. Dev 4's support for keeping the link on the embedded ingredient (#30)
 is not approval of those.
