@@ -38,10 +38,10 @@ and hosted rollout are tracked separately in T070–T072 in [tasks.md](tasks.md)
   either email on a second device still permits code entry on the first device.
   Wrong, expired and reused codes do not establish a session; rate limits and
   existing Serbian failure messages still apply.
-- Deployment: local templates/config do not update a hosted project. The
-  current deployment workflow deploys SQL/functions only. Hosted template
-  delivery requires a separately reviewed workflow extension; until that is
-  applied and verified, this fix is not claimed live in dev/production.
+- Deployment: the reviewed deployment workflow must publish both email template
+  subjects and bodies to the project assigned to each existing GitHub
+  environment. Before publishing, it must verify the hosted confirmation and
+  OTP settings. The hosted rollout requires successful run evidence.
 
 ## Clarifications
 

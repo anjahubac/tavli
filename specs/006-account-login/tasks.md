@@ -240,10 +240,9 @@ recorded in the correction section of [plan.md](plan.md).
   `scripts/check.sh`, docs and diff checks. Evidence: template regression,
   script regressions, docs checks and static analysis pass; `test/account/auth_gateway_test.dart` passes.
   Broader account/widget run was interrupted during cleanup; it is not recorded as green.
-- [ ] T072 Independent human review and PR into `dev`; deliver auth templates
-  through a separately reviewed deployment workflow extension (current workflow
-  handles only SQL/functions). Verify new/unconfirmed/existing-account delivery
-  and OTP rejection with synthetic local accounts; verify intended hosted
-  configuration without exposing codes/credentials before claiming rollout.
+- [ ] T072 Review the deployment workflow extension with Anja and merge into
+  `dev`. Verify new/unconfirmed/existing-account delivery and OTP rejection with
+  synthetic local accounts. Record a successful template deployment and hosted
+  configuration verification from each environment before claiming rollout.
 
 No historical completed task is reinterpreted as evidence for this correction.

@@ -213,10 +213,27 @@ Validation: template contract tests (both templates expose a body token and no
 auth links; confirmation stays enabled; configured lifetime/length/resend match),
 existing network-free account/sign-in suites, `scripts/check.sh`, documentation
 and diff checks. A macOS build is unavailable on the Linux host and no native or
-Dart sources change. Hosted rollout is pending: the existing deployment workflow
-neither watches nor uploads auth templates/config. Extend the reviewed workflow
-with a narrowly scoped template update before claiming dev/production fixed;
-do not manually run hosted config push or change unrelated auth settings.
+Dart sources change. Hosted rollout remains pending until reviewed and verified.
+
+### Hosted rollout (T072)
+
+Dev 3 (Matija) coordinates the shared path `.github/workflows/deploy-supabase.yml`;
+Anja reviews before merge. The delivery script `scripts/deploy_auth_email_templates.py`
+reads the subjects and HTML paths from the repository config. Add regression
+coverage in `scripts/test_auth_email_templates.py` with a fake Management API.
+The script uses the existing environment-scoped project ref and access token.
+The token needs Auth config read and write access. The job checks the confirmation
+and OTP settings before sending a single PATCH limited to both template subjects
+and bodies, then reads them back. It reports HTTP status and mismatched field
+names without logging request or response content. No new dependencies.
+
+Constitution check for rollout: I existing Serbian email copy; II no business
+data or schema changes; III no AI calls; IV reuse scoped CI credentials and
+suppress API bodies; V offline regression tests; VI no layout changes; VII
+scoped workflow and test changes; VIII canonical 006 task on the signup-fix
+branch; IX existing tooling and deployment guardrails; X Dev 3 coordination and
+independent Anja review. Privacy, files and abuse controls retain the scope
+above; deployment uses the existing dev and production environments.
 
 References: [Supabase passwordless OTP](https://supabase.com/docs/guides/auth/auth-email-passwordless)
 and [email templates](https://supabase.com/docs/guides/auth/auth-email-templates)

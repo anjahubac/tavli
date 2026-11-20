@@ -72,10 +72,13 @@ Request again after 30 seconds without verifying the first code to cover an
 unconfirmed account. Verify wrong, expired and already-used codes cannot create
 a session. Do not record real codes, email addresses or session values as evidence.
 
-Hosted rollout is separate: `deploy-supabase.yml` currently watches/deploys only
-migrations/functions, not auth templates or `config.toml`. A merge alone will
-not replace a hosted confirmation email. Dev 3 + Anja must review a narrowly
-scoped workflow extension that publishes both templates/subjects through the
-normal dev/production environments and verifies the required OTP settings.
-Do not run hosted `supabase config push`, change SMTP or disable confirmation
-as a workaround. No hosted configuration was inspected or changed by this slice.
+The reviewed `deploy-supabase.yml` workflow publishes both subjects and HTML
+bodies via the Supabase Management API on matching pushes to `dev` and `main`
+and on manual deployment from those branches. The existing
+`SUPABASE_ACCESS_TOKEN` must authorize reading and updating Auth configuration
+for the environment's `SUPABASE_PROJECT_REF`. The workflow checks hosted email
+confirmation, OTP length, expiry and resend interval before publishing. If a
+setting differs, resolve the reported configuration mismatch through a reviewed
+deployment change and rerun the workflow. A successful run verifies the stored
+templates and settings. Email delivery and code redemption are exercised with
+synthetic accounts on the local stack.
