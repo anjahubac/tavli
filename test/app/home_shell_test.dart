@@ -7,8 +7,6 @@ import 'package:tavli/app/router.dart';
 import 'package:tavli/domain/account.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
-import 'package:tavli_ui/tavli_ui.dart';
-
 import '../helpers/test_app.dart';
 
 void main() {

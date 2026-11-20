@@ -507,6 +507,137 @@ void main() {
     });
   });
 
+  group('TavliCheckRow, lista i detalj', () {
+    testWidgets('red bira, polje štiklira; izabran red ima pozadinu', (
+      tester,
+    ) async {
+      var checked = false;
+      var selected = 0;
+      await pump(
+        tester,
+        StatefulBuilder(
+          builder: (context, setState) => SizedBox(
+            width: 400,
+            child: TavliCheckRow(
+              title: 'Krompir',
+              detail: '1,5 kg',
+              checked: checked,
+              selected: true,
+              onChanged: (v) => setState(() => checked = v),
+              onSelect: () => selected++,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Krompir'));
+      await tester.pump();
+      expect(selected, 1);
+      expect(checked, isFalse);
+
+      final box = find.descendant(
+        of: find.byType(TavliCheckRow),
+        matching: find.byWidgetPredicate(
+          (w) => w is SizedBox && w.width == 22 && w.height == 22,
+        ),
+      );
+      await tester.tap(box);
+      await tester.pump();
+      expect(checked, isTrue);
+      expect(selected, 1);
+
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(TavliCheckRow),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      final scheme = Theme.of(tester.element(box)).colorScheme;
+      expect(material.color, scheme.primaryContainer);
+    });
+
+    testWidgets('dug pritisak i radnja za čitač ekrana', (tester) async {
+      var opened = 0;
+      await pump(
+        tester,
+        SizedBox(
+          width: 320,
+          child: TavliCheckRow(
+            title: 'Mleko',
+            checked: false,
+            onChanged: (_) {},
+            onLongPress: () => opened++,
+            longPressLabel: 'Za koje obroke',
+          ),
+        ),
+      );
+      await tester.longPress(find.text('Mleko'));
+      await tester.pump();
+      expect(opened, 1);
+      final semantics = tester.getSemantics(find.text('Mleko'));
+      expect(semantics.getSemanticsData().customSemanticsActionIds, isNotEmpty);
+    });
+
+    testWidgets('dugme desno je posebna radnja', (tester) async {
+      var checked = false;
+      var deleted = 0;
+      await pump(
+        tester,
+        SizedBox(
+          width: 320,
+          child: TavliCheckRow(
+            title: 'Deterdžent',
+            checked: checked,
+            onChanged: (v) => checked = v,
+            trailing: TavliIconButton(
+              glyph: TavliIcons.delete,
+              semanticLabel: 'Obriši',
+              onPressed: () => deleted++,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.bySemanticsLabel('Obriši'));
+      await tester.pump();
+      expect(deleted, 1);
+      expect(checked, isFalse);
+    });
+  });
+
+  group('Tavli ikonice u komponentama', () {
+    testWidgets('dugme, dugme sa ikonicom i prazno stanje', (tester) async {
+      await pump(
+        tester,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TavliButton.primary(
+              label: 'Prebaci u ostavu (2)',
+              glyph: TavliIcons.pantry,
+              onPressed: () {},
+            ),
+            TavliIconButton(
+              glyph: TavliIcons.add,
+              semanticLabel: 'Dodaj',
+              onPressed: () {},
+            ),
+            const SizedBox(
+              height: 320,
+              child: TavliEmptyState(
+                glyph: TavliIcons.shopping,
+                title: 'Nabavka je prazna',
+              ),
+            ),
+          ],
+        ),
+      );
+      expect(find.byType(TavliIcon), findsNWidgets(3));
+      expect(find.byType(Icon), findsNothing);
+      expect(find.bySemanticsLabel('Dodaj'), findsOneWidget);
+    });
+  });
+
   group('TavliSwitchRow', () {
     testWidgets('dodir na red menja vrednost, podnaslov', (tester) async {
       var value = false;

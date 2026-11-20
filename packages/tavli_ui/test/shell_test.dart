@@ -390,4 +390,32 @@ void main() {
       }
     }
   }
+
+  testWidgets('TavliListDetail: detalj najviše 300 i najviše trećina', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    Future<double> detailWidth(double width) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              height: 400,
+              child: const TavliListDetail(
+                list: SizedBox.expand(),
+                detail: SizedBox(key: Key('detalj'), height: 40),
+              ),
+            ),
+          ),
+        ),
+      );
+      return tester.getSize(find.byKey(const Key('detalj'))).width;
+    }
+
+    expect(await detailWidth(1200), 300);
+    expect(await detailWidth(840), 280);
+  });
 }
