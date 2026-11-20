@@ -16,7 +16,7 @@ start in phase 2 without waiting for catalog contents. Exact assignments and
 | 1 — foundations | Close open auth/shopping defects; agree food, AI and member-input contracts; strict AI validation; image-through-gateway spike then server credentials; dates without zone; kitchen measures; split shopping repository; meal tags/snacks/list-based slots/rules; five-tab Home shell and UI standard | Producer contracts merged; local checks; current auth/deep links and quantity ledger preserved |
 | 2 — catalog + household | Foods/aliases/conversions/overrides; 300–400 reviewed foods; attributed nutrition; one matcher; existing recipe mapping; unresolved UI; catalog-ready AI ingredients; preferences; invitations/roles; Home, cooking and add-to-plan | Catalog identity/download/mapping tests; two-household isolation; an accepted vertical slice per domain |
 | 3 — catalog consumers | Shopping by food/unit; approximate/unknown amounts; pantry coverage; calories per portion; no-step meals; allergen-safe plans and favorites; member allergies/favorites; realtime; pantry CRUD, explicit transfer, consume/undo | No duplicated supply or intake; restriction validation; offline replay, reversal and account-switch tests |
-| 4 — extensions | Store-price import and basket estimate; receipt QR spike; cookbook RAG; private intake/targets and ratings; voice draft agent; Windows; calorie strip; real website download links | Separate spikes and implementation slices; privacy/source terms; actual platform smoke evidence |
+| 4 — extensions | Store-price import and basket estimate; receipt QR spike; cookbook RAG; private intake/targets and ratings; voice draft agent; Windows and Linux desktop support; calorie strip; real website download links | Separate spikes and implementation slices; privacy/source terms; actual platform smoke evidence |
 | 5 — cycle | Explicit consent, secure device-only dates, optional generic dietary hints and local indicator | No raw cycle data in sync/export/AI; stale-data/disable/delete tests |
 | 6 — imported plans | Image/text first, PDF/alternatives/repeat later; catalog mapping; explicit diary/target/allergen integration; capture/crop | Review before save; original text/exact grams; locked meals; explicit upload retention |
 
@@ -24,6 +24,39 @@ Dev 1: umilutinovic25 (catalog/shopping); Dev 2: Ceviz (AI/planning);
 Dev 3: Matija (people/household); Dev 4: Anja (everyday UI/platforms).
 This keeps current assignments; it does not establish equal workload.
 Estimate remaining implementation, tests and integration per phase before rebalancing.
+
+## Everyday UX priorities — 2026-11-20
+
+The Claude “Tavli: ekrani po uređajima” canvas is the visual reference for the
+five main destinations. The [product UX decisions](product-design.md) and
+[UI standard](development/ui-standard.md) specify behavior and acceptance.
+
+At `origin/dev` `28fa253`, five-tab navigation and the default `/home` route
+are in place ([#59](https://github.com/anjahubac/tavli/pull/59)). Home and the
+Pantry tab still show placeholders. Plan and both shopping modes exist.
+Shopping now opens “Po receptu” when there are recipe items and no plan
+([#49](https://github.com/anjahubac/tavli/pull/49)) and has switch regression
+coverage ([#70](https://github.com/anjahubac/tavli/pull/70)). The local
+`tavli_ui` package and debug gallery exist
+([#60](https://github.com/anjahubac/tavli/pull/60),
+[#71](https://github.com/anjahubac/tavli/pull/71)). The application still uses
+its existing shell. Linux has a merged GTK scaffold
+([#67](https://github.com/anjahubac/tavli/pull/67)), with its build and device
+evidence tracked separately. Windows remains planned.
+
+1. **Phase 1 — navigation in narrow windows.** Before adopting the gallery
+   shell in the app, preserve the five destinations, auth redirects and deep
+   links across the compact, rail and extended layouts. Prove readable labels
+   at 2× text and preserve selection, focus and screen state on resize.
+2. **Phase 2 — “Kuvaj” → “Skuvano” → “Poništi”.** Deliver one complete Home
+   and cooking journey against the shared operation in
+   [021](../specs/021-home-and-cooking/plan.md). Verify the effect on shopping
+   demand and applicable pantry stock offline and after sync. Integration with
+   pantry and nutrition follows the owning specs and their dependencies.
+
+The remaining calendar, shopping, pantry and recipe interaction details
+follow their existing phases and dependencies. The five-user first-use
+evaluation remains in the [acceptance plan](product-design.md#acceptance).
 
 ## Cross-phase requirements
 
@@ -84,6 +117,7 @@ operations. See [full spec index](../specs/README.md) and
 | COOKBOOKS | Dev 2 | Gateway/storage authorization | Text PDF/EPUB vs OCR, quotas/jobs, embeddings, rights/deletion |
 | VOICE | Dev 4; Dev 2 gateway | Gateway/catalog | Recording retention, STT, command schema, Serbian speech on each target |
 | WINDOWS | Dev 4 | Plugin audit | Secure store, deep links/auth, file picker, wake lock, CI/hardware |
+| LINUX | Dev 3 (Matija), platform review Dev 4 (Anja) | Flutter GTK scaffold and plugin audit | Ubuntu 24.04 x86_64 smoke, libsecret/keyring, Linux build CI and required-check settings |
 | CYCLE | Dev 3, Dev 2 hints, Dev 4 indicator | Preferences/hint boundary | Consent, stale rules, six source-proposal questions |
 | PLAN-IMPORT | Dev 2; Dev 1/3/4 consumers | Slots/catalog/nutrition | Ten source-proposal questions, crop/retention, exact quantities/alternatives |
 | UI-PACKAGE | Dev 4; started 2026-11-19 | Design canvas and UI standard | Local `packages/tavli_ui` in this repository; icon set source |
@@ -105,9 +139,9 @@ Retrieve them or clarify explicit requirements before the affected feature start
 6. External requirements: store URLs, Windows hardware, Apple enrollment,
    GitHub ruleset availability and four reviewers' verified GitHub handles.
 
-Word/Excel/share-sheet import and Apple Health/Health Connect are later additions,
-not silent expansion of the 87 imported tickets. The UI library lives in this
-repository as the local `packages/tavli_ui` package (team decision 2026-11-19).
+Word/Excel/share-sheet import and Apple Health/Health Connect remain later
+additions. Use the existing local `packages/tavli_ui` package and gallery for
+the rollout described in [031](../specs/031-external-ui-library/spec.md).
 
 ## Cross-cutting security work — added after source review
 

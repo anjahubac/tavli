@@ -83,11 +83,51 @@ void main() {
 
     await send(tester, 'posno');
 
-    expect(find.text('AI je vratio neispravan odgovor.'), findsOneWidget);
+    expect(find.text(invalidAnswer), findsOneWidget);
     expect(find.text('Predlog izmene'), findsNothing);
     expect(await app.titles(), ['Sarma']);
     final saved = await app.db.select(app.db.recipes).getSingle();
     expect(saved.stepsJson, contains('Umotati.'));
+  });
+
+  testTavli('Pokušaj ponovo šalje isto uputstvo i daje predlog', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [sampleRecipe('a', 'Sarma')],
+      ai: [
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+        aiAnswer({...recipeJson('Posna sarma'), 'steps': <String>[]}),
+        aiAnswer(recipeJson('Posna sarma')),
+      ],
+    );
+
+    await send(tester, 'posno');
+    expect(find.text(invalidAnswer), findsOneWidget);
+    // Korisnik je u međuvremenu promenio tekst u polju.
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Šta da promenim?'),
+      'nešto drugo',
+    );
+    await tester.pump();
+
+    await tapButton(tester, 'Pokušaj ponovo');
+
+    expect(find.text(invalidAnswer), findsNothing);
+    expect(find.text('Predlog izmene'), findsOneWidget);
+    expect(app.adapter.requests, hasLength(3));
+    expect(
+      app.adapter.requests.last.data.toString(),
+      allOf(contains('posno'), isNot(contains('nešto drugo'))),
+      reason: 'uputstvo koje nije uspelo, ne tekst iz polja',
+    );
+    expect(
+      find.widgetWithText(TextField, 'nešto drugo'),
+      findsOneWidget,
+      reason: 'novi tekst ostaje u polju',
+    );
   });
 
   testTavli('AI izmena ne menja oznake koje je postavio korisnik', (

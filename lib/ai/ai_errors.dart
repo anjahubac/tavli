@@ -40,7 +40,11 @@ class TransientError extends AIError {
 
 /// Odgovor ne odgovara očekivanoj JSON šemi.
 class InvalidOutputError extends AIError {
-  const InvalidOutputError(super.message);
+  const InvalidOutputError(super.message, {this.repairFailed = false});
+
+  /// Ni odgovor posle popravke nije prošao proveru; router tada staje
+  /// umesto da ide kroz ceo lanac (FR-003).
+  final bool repairFailed;
 }
 
 /// Ostale 4xx greške (npr. model ne podržava neki parametar).
@@ -66,6 +70,8 @@ class AllModelsExhausted implements Exception {
     this.attempts, {
     this.nextAvailableAt,
     this.invalidOutput = false,
+    this.repairFailed = false,
+    this.emptyOutput = false,
   });
 
   final List<AttemptLog> attempts;
@@ -73,8 +79,16 @@ class AllModelsExhausted implements Exception {
   /// Najraniji trenutak kada neki pauziran model ponovo postaje dostupan.
   final DateTime? nextAvailableAt;
 
-  /// Bar jedan model je odgovorio, ali odgovor nije prošao proveru.
+  /// Bar jedan model je odgovorio, ali odgovor nije prošao proveru
+  /// (ili je model preskočen jer je nedavno tako odgovorio).
   final bool invalidOutput;
+
+  /// Ni odgovor posle popravke nije prošao; lanac je tu stao. Tada je
+  /// [nextAvailableAt] null ako „Pokušaj ponovo“ odmah ima koga da pita.
+  final bool repairFailed;
+
+  /// Bar jedan model je vratio prazan odgovor (bez popravke).
+  final bool emptyOutput;
 
   @override
   String toString() =>

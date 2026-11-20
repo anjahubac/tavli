@@ -31,6 +31,34 @@ Finder checkboxOf(String text) => find.descendant(
 );
 
 void main() {
+  for (final accessible in [false, true]) {
+    testTavli('Otvori nabavku: pristupačna navigacija $accessible', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          FakeAccessibilityFeatures(accessibleNavigation: accessible);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpTavli(
+        tester,
+        location: '/recipes/r1',
+        recipes: [sampleRecipe('r1', 'Sarma')],
+      );
+      await openReview(tester);
+      await tapButton(tester, 'Dodaj u nabavku (2)');
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(find.text('Otvori'), accessible ? findsOneWidget : findsNothing);
+      if (accessible) {
+        await tester.tap(find.text('Otvori'));
+        await tester.pumpAndSettle();
+        expect(find.text('Recepti u nabavci'), findsOneWidget);
+        expect(find.text('kupus'), findsOneWidget);
+      }
+    });
+  }
+
   testTavli('recept bez koraka ulazi u nabavku sa tačnim količinama', (
     tester,
   ) async {

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../ai/ai_models.dart';
 import '../../domain/recipe.dart';
 import '../../providers.dart';
 import '../settings/ai_error_text.dart';
@@ -30,6 +31,9 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
   /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
   int _request = 0;
 
+  /// Prekid tekućeg zahteva: router posle njega ne zove model ni popravku.
+  AICancellation? _cancelToken;
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +42,7 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
 
   @override
   void dispose() {
+    _cancelToken?.cancel();
     _name.dispose();
     _wishes.dispose();
     super.dispose();
@@ -47,6 +52,8 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
     final name = _name.text.trim();
     if (name.isEmpty || _busy) return;
     final request = ++_request;
+    _cancelToken?.cancel();
+    final cancel = _cancelToken = AICancellation();
     setState(() {
       _busy = true;
       _error = null;
@@ -55,7 +62,12 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
     try {
       final r = await ref
           .read(recipeAIProvider)
-          .fromDishName(name, servings: _servings, notes: _wishes.text.trim());
+          .fromDishName(
+            name,
+            servings: _servings,
+            notes: _wishes.text.trim(),
+            cancel: cancel,
+          );
       if (!mounted || request != _request) return;
       setState(() => _result = r.value);
     } on Exception catch (e) {
@@ -67,6 +79,7 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
   }
 
   void _cancel() => setState(() {
+    _cancelToken?.cancel();
     _request++;
     _busy = false;
   });

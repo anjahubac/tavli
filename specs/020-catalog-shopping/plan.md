@@ -1,6 +1,7 @@
 # Implementation plan: Catalog-based shopping and supply reconciliation
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: catalog work remains a scoped proposal; the PR #49 correction slice
+below records separate shopping UI work and does not complete this roadmap.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 1 / Dev 4
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
@@ -77,5 +78,34 @@ tests do not contact a network; explicit guarded integration uses local services
 No speculative hosted deployment or publication. Record old-client/snapshot
 compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
-limits from open questions remain release gates. UI follows the design canvas and the
-UI standard; do not invent layouts or move components into the package incidentally.
+limits from open questions remain release gates. Follow the design canvas and
+UI standard when applying the existing theme and motion components.
+
+## PR #49 review corrections — 2026-11-19
+
+Scope: D4-004 / FR-005 and FR-101. Anja owns the
+slice; Uroš is the requested independent reviewer. No catalog producer contract
+or schema change is needed for this presentation/state correction.
+
+Affected paths: `lib/features/shopping/shopping_screen.dart`,
+`shopping_providers.dart`, `shopping_list_view.dart` in the same directory, and
+`lib/features/recipes/ingredient_review_sheet.dart`, with matching widget tests.
+The unrelated global button theme change in `lib/app/theme/app_theme.dart` is
+reverted to `dev`; no new theme contract is introduced.
+
+`ShoppingView.mode` remains nullable while loading. Initialize it once from
+successful plan and recipe-item snapshots; preserve it across stream updates and
+navigation. Manual selection takes precedence and account changes reset the view.
+This is account-session UI state, not a persisted setting; restart persistence
+from SC-003 remains outside this correction. Retry invalidates the affected
+local data providers; errors never become an empty shopping list or expose raw
+exception text. Large text retains its scale, with vertical segments on narrow
+screens. Action snackbars expire after five seconds normally, but remain
+available with accessible navigation and offer a close button.
+
+Security/privacy/abuse/credentials/files/deployment impact: N/A; no new endpoint,
+logging, credential, file access or deployment change. Existing repositories,
+account scope, outbox writes, quantities and identifiers remain unchanged. No
+migration, dependency or generated output is required. Tests use synthetic local
+data and fake backends; no hosted service is contacted. Human review and the
+remaining canonical task acceptance are still required before delivery Done.

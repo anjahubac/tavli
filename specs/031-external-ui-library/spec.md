@@ -46,6 +46,8 @@ quantity, snapshot, offline and account invariants.
 | 5 Windows | 12 Windows look |
 | 6 Polish | 13 polish; 14 component tracker |
 
+Local shell adoption follows the [021 priorities](../021-home-and-cooking/plan.md#priority-delivery). The gallery already exists on dev ([#71](https://github.com/anjahubac/tavli/pull/71)).
+
 ## Requirements and source traceability
 
 - **FR-001**: Deliver **the Tavli UI package** (source D4-024; Dev 4; originally

@@ -40,6 +40,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 | [031-external-ui-library](031-external-ui-library/spec.md) | Dev 4 | In progress: local `packages/tavli_ui` package, built from the design canvas |
 | [032-website-downloads](032-website-downloads/spec.md) | Dev 4 | Draft; resolve recorded questions before dependent implementation |
 | [033-release-operations](033-release-operations/spec.md) | Dev 3 | Draft; resolve recorded questions before dependent implementation |
+| [034-linux-support](034-linux-support/spec.md) | Matija / Dev 3 | Draft; plan and implementation evidence pending |
 
 ## How to use this set
 
@@ -59,7 +60,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 
 ## Number allocation and historical scope
 
-001–033 are allocated in this revision. Reserve the next number (currently 034)
+001–034 are allocated. Reserve the next number (currently 035)
 with a small registry PR before parallel creation; local auto-numbering cannot
 prevent collisions across four agents. Existing 001–007 evidence is preserved;
 010 has a dated overlay and its original checkmarks. Never rewrite history to
