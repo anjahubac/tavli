@@ -89,7 +89,7 @@ void main() {
       expect(s, isNull);
       final r = requests.single;
       expect(r.url.path, '/auth/v1/signup');
-      expect(r.url.queryParameters['redirect_to'], authCallbackUrl);
+      expect(r.url.queryParameters['redirect_to'], authEmailRedirectUrl);
       expect(body(r)['email'], 'ana@mail.com');
       // Nasumična lozinka koju niko ne koristi; PKCE izazov za link.
       expect((body(r)['password']! as String).length, greaterThan(30));
@@ -140,7 +140,7 @@ void main() {
     expect(r.url.path, '/auth/v1/resend');
     expect(body(r)['type'], 'signup');
     expect(body(r)['email'], 'ana@mail.com');
-    expect(r.url.queryParameters['redirect_to'], authCallbackUrl);
+    expect(r.url.queryParameters['redirect_to'], authEmailRedirectUrl);
   });
 
   group('exchangeLink', () {

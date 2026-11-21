@@ -77,9 +77,13 @@ An account is mandatory. Auth states (`Starting`, `SignedOut`, `CodeSent`,
 name step. Sign-in (`/sign-in`) only sends a code to an existing account
 (`shouldCreateUser: false`, unknown address → `NoAccount`). Sign-up
 (`/sign-up`) creates the account and sends the confirmation email, which has a
-"Potvrdi adresu" button and the same 6-digit code; the button returns to
-`tavli://auth-callback?code=…` and the app exchanges the code with the PKCE
-verifier kept in secure storage (`PkceStorage`). Android, iOS and macOS
+"Potvrdi adresu" button and the same 6-digit code. On hosted projects the
+button lands on the static "Uspešna registracija" page (`site/potvrda/`, Cloudflare
+Pages, URL in `AUTH_CONFIRM_PAGE_URL`), whose "Otvori Tavli" button passes the
+same code on to `tavli://auth-callback?code=…`; locally the button goes straight
+to `tavli://auth-callback`. The app exchanges the code with the PKCE
+verifier kept in secure storage (`PkceStorage`); the page holds no keys and
+sends nothing anywhere. Android, iOS and macOS
 register the `tavli` scheme; Windows signs in with the code until the Windows
 installer registers `tavli://` under `HKEY_CURRENT_USER\Software\Classes\tavli`.
 The name is asked once: with no cached name the app checks the server profile

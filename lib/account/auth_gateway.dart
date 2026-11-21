@@ -93,6 +93,17 @@ class LinkExpired extends AuthFailure {
 /// `additional_redirect_urls`; isto i u oblaku).
 const authCallbackUrl = 'tavli://auth-callback';
 
+/// Kuda vodi dugme „Potvrdi adresu“ iz mejla. U oblaku je to https stranica
+/// „Uspešna registracija“ (`site/potvrda/`), koja otvara [authCallbackUrl] sa
+/// istim kodom; radi i kad mejl klijent ne otvara `tavli://` linkove.
+/// Postavlja se u secrets.json (`AUTH_CONFIRM_PAGE_URL`) i mora biti među
+/// Redirect URLs na Supabase-u. Bez nje (lokalni rad) link ide pravo u
+/// aplikaciju.
+const authEmailRedirectUrl = String.fromEnvironment(
+  'AUTH_CONFIRM_PAGE_URL',
+  defaultValue: authCallbackUrl,
+);
+
 /// Da li je [uri] povratak iz mejla za potvrdu.
 bool isAuthCallback(Uri uri) =>
     uri.scheme == 'tavli' && uri.host == 'auth-callback';
@@ -199,7 +210,7 @@ class SupabaseAuthGateway implements AuthGateway {
         email: e,
         shouldCreateUser: false,
         // Nepotvrđenoj adresi server šalje mejl za potvrdu, sa linkom.
-        emailRedirectTo: authCallbackUrl,
+        emailRedirectTo: authEmailRedirectUrl,
       ),
     );
     _sentAt[e] = _clock();
@@ -214,7 +225,7 @@ class SupabaseAuthGateway implements AuthGateway {
         // Prijava je samo kodom ili linkom; lozinku server traži za nalog,
         // a ovu niko ne zna niti čuva.
         password: _unusedPassword(),
-        emailRedirectTo: authCallbackUrl,
+        emailRedirectTo: authEmailRedirectUrl,
       ),
     );
     final session = res.session;
@@ -235,7 +246,7 @@ class SupabaseAuthGateway implements AuthGateway {
       () => _auth.resend(
         type: sb.OtpType.signup,
         email: e,
-        emailRedirectTo: authCallbackUrl,
+        emailRedirectTo: authEmailRedirectUrl,
       ),
     );
     _sentAt[e] = _clock();
