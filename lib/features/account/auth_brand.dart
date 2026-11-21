@@ -4,12 +4,11 @@ import 'package:material_ui/material_ui.dart';
 class AuthBrand extends StatelessWidget {
   const AuthBrand({super.key});
 
-  // Kanvas: znak 48.
-  static const _size = 48.0;
+  // Kanvas: znak 64, u sredini.
+  static const _size = 64.0;
 
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: AlignmentDirectional.centerStart,
+  Widget build(BuildContext context) => Center(
     child: Image.asset(
       'assets/branding/tavli-auth-icon.png',
       width: _size,

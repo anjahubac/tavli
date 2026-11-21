@@ -264,7 +264,7 @@ class _CheckEmailStepState extends ConsumerState<CheckEmailStep>
         if (_busy) const TavliLoading(),
         if (error case final e?)
           TavliNotice(tone: TavliNoticeTone.error, message: e),
-        TavliCard(
+        AuthInnerCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: TavliSpacing.small,

@@ -296,10 +296,21 @@ void main() {
     testTavli('raspored na ${size.width.toInt()} px', (tester) async {
       await toCodeStep(tester, size: size);
       expect(tester.takeException(), isNull);
-      // Obrazac je najviše 420 širok i ne izlazi iz ekrana.
+      // Obrazac je najviše 440 širok (kartica 528 na računaru), u sredini
+      // ekrana i ne izlazi iz njega.
       final code = tester.getRect(field('Kod iz poruke'));
-      expect(code.width, lessThanOrEqualTo(420));
+      expect(code.width, lessThanOrEqualTo(440));
       expect(code.right, lessThanOrEqualTo(size.width));
+      expect(code.center.dx, closeTo(size.width / 2, 1));
+      // Znak i naslov su u sredini (kanvas).
+      expect(
+        tester.getCenter(find.byType(AuthBrand)).dx,
+        closeTo(size.width / 2, 1),
+      );
+      expect(
+        tester.getCenter(find.text('Upiši kod')).dx,
+        closeTo(size.width / 2, 1),
+      );
     });
   }
 }

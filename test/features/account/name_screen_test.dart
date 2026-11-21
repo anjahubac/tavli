@@ -60,7 +60,7 @@ void main() {
     testTavli('raspored na ${size.width.toInt()} px', (tester) async {
       await pumpTavli(tester, name: null, size: size);
       expect(tester.takeException(), isNull);
-      expect(tester.getSize(nameField()).width, lessThanOrEqualTo(420));
+      expect(tester.getSize(nameField()).width, lessThanOrEqualTo(440));
     });
   }
 }

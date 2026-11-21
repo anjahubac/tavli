@@ -14,7 +14,15 @@ const resendAfter = Duration(seconds: 30);
 /// Kanvas („Predlog: Prijava i registracija“): razmak između delova ekrana
 /// i ivica sadržaja.
 const _gap = 24.0;
-const _top = 32.0;
+
+/// Od ove širine i visine prozora ekran je bela kartica u sredini (računar,
+/// tablet, web); uže ili niže je ceo ekran kao na telefonu.
+const _panelMinWidth = 720.0;
+const _panelMinHeight = 600.0;
+
+/// Kartica na računaru: širina i unutrašnji razmak (kanvas, MacPrijava).
+const _panelMaxWidth = 528.0;
+const _panelPadding = EdgeInsets.symmetric(vertical: 32, horizontal: 44);
 
 /// Adresa upisana na „Prijava“ ili „Registracija“, da se ne kuca ponovo
 /// posle „Registruj se“, „Prijavi se“ ili „Prijavi se umesto toga“.
@@ -29,10 +37,14 @@ class AuthEmailDraft extends Notifier<String> {
   void set(String email) => state = email;
 }
 
-/// Zajednički raspored ekrana prijave, registracije i imena (kanvas): gore
-/// znak ili „Nazad“, pa naslov sa uvodom, sadržaj i dno ekrana. Naslov i
-/// prvo polje su na istoj visini na svim ekranima: uvod uvek zauzima
-/// najmanje tri reda.
+/// Zajednički raspored ekrana prijave, registracije i imena (kanvas).
+///
+/// Telefon: gore „Nazad“ ili prazna traka, pa znak u sredini, centriran
+/// naslov sa uvodom, sadržaj i dno ekrana. Naslov i prvo polje su na istoj
+/// visini na svim ekranima: uvod uvek zauzima najmanje tri reda.
+///
+/// Računar i tablet: isto, ali u beloj kartici u sredini prozora; „Nazad“
+/// stoji iznad kartice.
 class AuthPage extends StatelessWidget {
   const AuthPage({
     super.key,
@@ -49,62 +61,129 @@ class AuthPage extends StatelessWidget {
   final InlineSpan intro;
   final List<Widget> children;
 
-  /// „Nazad“ umesto znaka gore levo.
+  /// „Nazad“ gore levo.
   final VoidCallback? onBack;
 
   /// Dno ekrana (npr. „Nemaš nalog? Registruj se“ ili „Pošalji ponovo“).
   final List<Widget> footer;
 
+  /// Da li je [context] unutar bele kartice na računaru. Kartice u sadržaju
+  /// tada uzimaju boju pozadine, da se odvoje od bele.
+  static bool inPanel(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_PanelScope>() != null;
+
   @override
   Widget build(BuildContext context) {
     final onBack = this.onBack;
-    final top = onBack == null
-        ? const AuthBrand()
-        : Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: TavliButton.text(
-              label: 'Nazad',
-              icon: Icons.chevron_left,
-              onPressed: onBack,
-            ),
+    final back = onBack == null
+        ? null
+        : TavliButton.text(
+            label: 'Nazad',
+            icon: Icons.chevron_left,
+            onPressed: onBack,
           );
     return Scaffold(
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final panel =
+                box.maxWidth >= _panelMinWidth &&
+                box.maxHeight >= _panelMinHeight;
+            if (panel) {
+              // Kartica u sredini; kad je viša od prozora, ekran se skroluje.
+              return SingleChildScrollView(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: TavliWidth.dialog,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      _gap,
-                      TavliSpacing.small,
-                      _gap,
-                      _gap,
-                    ),
+                  constraints: BoxConstraints(minHeight: box.maxHeight),
+                  child: _panel(context, back),
+                ),
+              );
+            }
+            return CustomScrollView(
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _phone(context, back),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _content({required bool fixedIntro}) => [
+    const AuthBrand(),
+    const SizedBox(height: _gap),
+    _Intro(title: title, intro: intro, fixedHeight: fixedIntro),
+    for (final child in children) ...[const SizedBox(height: _gap), child],
+  ];
+
+  Widget _phone(BuildContext context, Widget? back) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: TavliWidth.dialog),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          _gap,
+          TavliSpacing.small,
+          _gap,
+          _gap,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Red gore: visina dugmeta „Nazad“, da se znak i naslov ne
+            // pomeraju između ekrana sa „Nazad“ i bez njega.
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: back,
+              ),
+            ),
+            const SizedBox(height: TavliSpacing.small),
+            ..._content(fixedIntro: true),
+            const Spacer(),
+            if (footer.isNotEmpty) ...[const SizedBox(height: _gap), ...footer],
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _panel(BuildContext context, Widget? back) {
+    final c = Theme.of(context).colorScheme;
+    final x = TavliColors.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(_gap),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _panelMaxWidth),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 40),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: back,
+                ),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  border: Border.all(color: x.line),
+                  borderRadius: BorderRadius.circular(TavliRadius.sheet),
+                ),
+                child: Padding(
+                  padding: _panelPadding,
+                  child: _PanelScope(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Red gore: visina dugmeta „Nazad“, da se naslov ne
-                        // pomera između ekrana sa znakom i sa „Nazad“.
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 56),
-                          child: Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: top,
-                          ),
-                        ),
-                        const SizedBox(height: _top),
-                        _Intro(title: title, intro: intro),
-                        for (final child in children) ...[
-                          const SizedBox(height: _gap),
-                          child,
-                        ],
-                        const Spacer(),
+                        ..._content(fixedIntro: false),
                         if (footer.isNotEmpty) ...[
                           const SizedBox(height: _gap),
                           ...footer,
@@ -114,19 +193,56 @@ class AuthPage extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+class _PanelScope extends InheritedWidget {
+  const _PanelScope({required super.child});
+
+  @override
+  bool updateShouldNotify(_PanelScope oldWidget) => false;
+}
+
+/// Kartica u sadržaju ekrana prijave: na telefonu obična, a u beloj kartici
+/// na računaru u boji pozadine (kanvas).
+class AuthInnerCard extends StatelessWidget {
+  const AuthInnerCard({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = TavliCard(child: child);
+    if (!AuthPage.inPanel(context)) return card;
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        colorScheme: theme.colorScheme.copyWith(
+          surface: TavliColors.of(context).bg,
+        ),
+      ),
+      child: card,
+    );
+  }
+}
+
 class _Intro extends StatelessWidget {
-  const _Intro({required this.title, required this.intro});
+  const _Intro({
+    required this.title,
+    required this.intro,
+    required this.fixedHeight,
+  });
 
   final String title;
   final InlineSpan intro;
+
+  /// Najmanje tri reda uvoda (telefon), da prvo polje bude na istoj visini.
+  final bool fixedHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -151,14 +267,17 @@ class _Intro extends StatelessWidget {
         TavliSpacing.small +
         3 * scaler.scale(16) * 1.5;
     return ConstrainedBox(
-      constraints: BoxConstraints(minHeight: minHeight),
+      constraints: BoxConstraints(minHeight: fixedHeight ? minHeight : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Semantics(header: true, child: Text(title, style: titleStyle)),
+          Semantics(
+            header: true,
+            child: Text(title, style: titleStyle, textAlign: TextAlign.center),
+          ),
           const SizedBox(height: TavliSpacing.small),
-          Text.rich(intro, style: introStyle),
+          Text.rich(intro, style: introStyle, textAlign: TextAlign.center),
         ],
       ),
     );

@@ -59,8 +59,8 @@ h1 { margin: 0; overflow-wrap: break-word; hyphens: auto; font-size: 1.75rem; li
     flex-grow: 0;
     background: var(--kartica);
     border: 1px solid var(--ivica);
-    border-radius: 28px;
-    padding: 40px 44px;
+    border-radius: 24px;
+    padding: 32px 44px;
   }
   .panel .kartica { background: var(--pozadina); }
   .strana .podnozje { margin-top: 24px; }
