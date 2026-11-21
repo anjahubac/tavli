@@ -54,8 +54,8 @@ Values are logical pixels. Heights are minimums.
 | Card | radius 20, no elevation; white surface with 1 px divider-color border, or a tinted container for the highlighted meal |
 | Compact card, thumbnail, text button | radius 14 |
 | Cooked meal card | muted surface, muted text, check icon, label "· skuvano" |
-| Primary (filled) button | height 56, radius 18, label 15/700, optional 18 icon |
-| Secondary (outlined) button | height 56, radius 18, 1 px outline, label 15/700; same height as a primary button (Anja, 2026-11-20). Buttons in one row always share one height |
+| Primary (filled) button | height 48, radius 16, label 15/700, optional 18 icon; not taller than a secondary button, because the fill already draws attention (Anja, 2026-11-21) |
+| Secondary (outlined) button | height 48, radius 16, 1 px outline, label 15/700; same height and radius as a primary button (Anja, 2026-11-20 and 2026-11-21). Buttons in one row always share one height |
 | Floating action button | radius 20 |
 | Segmented control | height 40, radius 20, 1 px outline |
 | Filter chip | height 36, radius 10 |

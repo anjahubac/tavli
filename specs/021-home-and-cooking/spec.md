@@ -121,3 +121,32 @@ layouts. In the app, test `lib/app/home_shell.dart`,
 Device-level keyboard and assistive technology validation follows the
 [UI standard](../../docs/development/ui-standard.md). Runtime acceptance needs
 independent review and a merged PR.
+
+## Cooking mode design — 2026-11-21
+
+Owner: Dev 4. Design approved by Anja on 2026-11-21 (iPhone), drawn on the
+[design canvas](https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7) in the row
+“Predlog: režim kuvanja” for iOS, Android, macOS and Windows. This refines
+FR-010, FR-105 and FR-107.
+
+- **Entry and exit**: “Kuvaj” opens cooking mode for the recipe. The top bar
+  goes back to the recipe. Cooking mode hides the main navigation.
+- **Step view**: recipe name and servings, “Korak N od M”, the step text in a
+  large card, and the ingredients that step uses. A line says the screen stays
+  on. The wake lock follows 007 and is released on exit.
+- **Navigation**: “Prethodni” (secondary) and “Sledeći” (primary) share one
+  row, the same height (48) and the same width. On the last step “Skuvano”
+  replaces “Sledeći” and calls the shared cooked operation exactly once.
+- **Ingredients**: on phones “Sastojci” in the top bar opens a sheet with all
+  ingredients and checkboxes. On macOS and Windows the ingredients are always
+  visible in a side panel with the same checkboxes. Checks are local to the
+  cooking session and are not saved.
+- **Servings are fixed** (Anja, 2026-11-21): cooking mode shows the planned or
+  recipe servings and does not offer a servings control.
+- **Recipe without steps**: the notice “Koraci pripreme nisu uneti.” with a
+  “Dodaj korake” link, the ingredient list and one “Skuvano” button.
+
+Additional UI copy: “Kuvanje”, “Recept”, “Sastojci”, “Gotovo”, “Korak N od M”,
+“U ovom koraku”, “Ekran ostaje upaljen dok kuvaš.”, “Koraci pripreme nisu
+uneti.”, “Dodaj korake”, “Štikliraj ono što je već spremno. Važi samo dok
+kuvaš.”
