@@ -24,6 +24,7 @@ Tables and columns: [../data-model.md](../data-model.md).
 | `profiles` | `select`; `update (display_name)` |
 | `households`, `household_members`, `deletions` | `select` |
 | `recipes`, `recipe_versions`, `shopping_lists`, `shopping_items`, `pantry_items`, `meal_plans`, `meal_plan_entries`, `ratings`, `taste_profiles` | `select, insert, update, delete` |
+| `foods`, `food_aliases` (018, `20261121150000_food_catalog.sql`) | `select, insert, update, delete`; shared rows (`household_id is null`) are readable by every `authenticated` user and writable by none, household rows only by members ([018 data model](../../018-ingredient-catalog/data-model.md)) |
 
 Policies are evaluated with the caller's rights, so `authenticated` gets
 `usage on schema private` and `execute` on `private.is_member(uuid)` only; the
