@@ -100,10 +100,25 @@ void main() {
         }
       }
 
+      // Besplatni nivo ima minutne i dnevne limite: jedno jelo po jedno, a pri
+      // iscrpljenim modelima se čeka do kraja pauze (najviše 70 s) i ponavlja
+      // do 4 puta. Izlazi koji su ipak ostali greška se broje u `errors`.
+      Future<Map<String, Object?>> withRetry(String dish) async {
+        var r = await one(dish);
+        for (
+          var n = 0;
+          n < 4 && r['error'] == 'AllModelsExhausted:false';
+          n++
+        ) {
+          await Future<void>.delayed(const Duration(seconds: 70));
+          r = await one(dish);
+        }
+        return r;
+      }
+
       final results = <Map<String, Object?>>[];
-      for (var i = 0; i < dishes.length; i += 3) {
-        final chunk = dishes.skip(i).take(3).cast<String>();
-        results.addAll(await Future.wait(chunk.map(one)));
+      for (final dish in dishes.cast<String>()) {
+        results.add(await withRetry(dish));
       }
 
       var total = 0;
