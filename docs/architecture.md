@@ -73,8 +73,17 @@ shared providers stay in `lib/providers.dart`; do not invent a parallel DI layer
 ## 3. Account and data lifecycle
 
 An account is mandatory. Auth states (`Starting`, `SignedOut`, `CodeSent`,
-`NeedsName`, `SignedIn`) control route access and the one-time name step. Email
-code is the current method; Apple/Google remain future work. Session tokens live
+`ConfirmSent`, `NeedsName`, `SignedIn`) control route access and the one-time
+name step. Sign-in (`/sign-in`) only sends a code to an existing account
+(`shouldCreateUser: false`, unknown address → `NoAccount`). Sign-up
+(`/sign-up`) creates the account and sends the confirmation email, which has a
+"Potvrdi adresu" button and the same 6-digit code; the button returns to
+`tavli://auth-callback?code=…` and the app exchanges the code with the PKCE
+verifier kept in secure storage (`PkceStorage`). Android, iOS and macOS
+register the `tavli` scheme; Windows signs in with the code until the Windows
+installer registers `tavli://` under `HKEY_CURRENT_USER\Software\Classes\tavli`.
+The name is asked once: with no cached name the app checks the server profile
+before showing the name step. Apple/Google remain future work. Session tokens live
 in secure storage, not drift or logs. Email OTP length, confirmation templates
 and redirect settings must agree for each local/dev/production environment;
 configure them explicitly rather than assuming the email template determines

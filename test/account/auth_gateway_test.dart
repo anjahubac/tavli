@@ -10,6 +10,7 @@ import 'package:tavli/account/auth_gateway.dart';
 import 'package:tavli/account/supabase_client.dart';
 import 'package:tavli/account/supabase_config.dart';
 
+import '../helpers/fake_secret_storage.dart';
 import '../helpers/fake_supabase.dart';
 
 void main() {
@@ -27,6 +28,7 @@ void main() {
     handler = (_) => jsonResponse({});
     client = createSupabaseClient(
       const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+      secrets: MapSecretStorage(),
       httpClient: MockClient((r) async {
         requests.add(r);
         return handler(r);
@@ -38,12 +40,128 @@ void main() {
   Map<String, Object?> body(http.Request r) =>
       jsonDecode(r.body) as Map<String, Object?>;
 
-  test('sendCode šalje sređenu e-poštu i pravi nalog ako ga nema', () async {
+  test('sendCode šalje sređenu e-poštu i ne pravi nalog', () async {
     await gateway().sendCode(' Ana@Mail.com ');
     final r = requests.single;
     expect(r.url.path, '/auth/v1/otp');
     expect(body(r)['email'], 'ana@mail.com');
-    expect(body(r)['create_user'], isTrue);
+    expect(body(r)['create_user'], isFalse);
+  });
+
+  test('sendCode za nepoznatu adresu: NoAccount', () async {
+    handler = (_) => jsonResponse({
+      'code': 422,
+      'error_code': 'otp_disabled',
+      'msg': 'Signups not allowed for otp',
+    }, 422);
+    await expectLater(
+      gateway().sendCode('nova@mail.com'),
+      throwsA(isA<NoAccount>()),
+    );
+  });
+
+  group('signUp', () {
+    Map<String, Object?> user({required bool withIdentity}) => {
+      'id': 'u1',
+      'aud': 'authenticated',
+      'email': 'ana@mail.com',
+      'created_at': '2026-11-21T12:00:00Z',
+      'app_metadata': <String, Object?>{},
+      'user_metadata': <String, Object?>{},
+      'identities': [
+        if (withIdentity)
+          {
+            'id': 'u1',
+            'identity_id': 'i1',
+            'user_id': 'u1',
+            'provider': 'email',
+            'identity_data': {'sub': 'u1', 'email': 'ana@mail.com'},
+            'created_at': '2026-11-21T12:00:00Z',
+            'last_sign_in_at': '2026-11-21T12:00:00Z',
+            'updated_at': '2026-11-21T12:00:00Z',
+          },
+      ],
+    };
+
+    test('nova adresa: mejl za potvrdu sa linkom, bez sesije', () async {
+      handler = (_) => jsonResponse(user(withIdentity: true));
+      final s = await gateway().signUp(' Ana@Mail.com ');
+      expect(s, isNull);
+      final r = requests.single;
+      expect(r.url.path, '/auth/v1/signup');
+      expect(r.url.queryParameters['redirect_to'], authCallbackUrl);
+      expect(body(r)['email'], 'ana@mail.com');
+      // Nasumična lozinka koju niko ne koristi; PKCE izazov za link.
+      expect((body(r)['password']! as String).length, greaterThan(30));
+      expect(body(r)['code_challenge'], isNotNull);
+    });
+
+    test('dve registracije imaju različite lozinke', () async {
+      handler = (_) => jsonResponse(user(withIdentity: true));
+      await gateway().signUp('ana@mail.com');
+      await gateway().signUp('ana@mail.com');
+      expect(
+        body(requests[0])['password'],
+        isNot(body(requests[1])['password']),
+      );
+    });
+
+    test('potvrđena adresa (bez identiteta): AlreadyRegistered', () async {
+      handler = (_) => jsonResponse(user(withIdentity: false));
+      await expectLater(
+        gateway().signUp('ana@mail.com'),
+        throwsA(isA<AlreadyRegistered>()),
+      );
+    });
+
+    test('server bez potvrde adrese: user_already_exists', () async {
+      handler = (_) => jsonResponse({
+        'code': 422,
+        'error_code': 'user_already_exists',
+        'msg': 'User already registered',
+      }, 422);
+      await expectLater(
+        gateway().signUp('ana@mail.com'),
+        throwsA(isA<AlreadyRegistered>()),
+      );
+    });
+
+    test('server bez potvrde adrese: odmah sesija', () async {
+      handler = (_) => jsonResponse(sessionBody());
+      final s = await gateway().signUp('ana@mail.com');
+      expect(s?.userId, 'u1');
+    });
+  });
+
+  test('resendConfirmation: mejl za potvrdu sa linkom', () async {
+    handler = (_) => jsonResponse(<String, Object?>{});
+    await gateway().resendConfirmation('Ana@Mail.com');
+    final r = requests.single;
+    expect(r.url.path, '/auth/v1/resend');
+    expect(body(r)['type'], 'signup');
+    expect(body(r)['email'], 'ana@mail.com');
+    expect(r.url.queryParameters['redirect_to'], authCallbackUrl);
+  });
+
+  group('exchangeLink', () {
+    test('greška u linku: LinkExpired bez poziva servera', () async {
+      await expectLater(
+        gateway().exchangeLink(
+          Uri.parse(
+            '$authCallbackUrl#error=access_denied&error_code=otp_expired',
+          ),
+        ),
+        throwsA(isA<LinkExpired>()),
+      );
+      expect(requests, isEmpty);
+    });
+
+    test('bez verifikatora (drugi uređaj): LinkExpired', () async {
+      await expectLater(
+        gateway().exchangeLink(Uri.parse('$authCallbackUrl?code=abc')),
+        throwsA(isA<LinkExpired>()),
+      );
+    });
   });
 
   test('verifyCode vraća sesiju', () async {

@@ -79,11 +79,17 @@ void main() {
     expect(await app.keys.list(), isEmpty);
     expect(app.secrets.values.containsKey(SessionStore.key), isFalse);
 
-    // Ista adresa ponovo: nov prazan nalog i korak sa imenom.
+    // Ista adresa ponovo: "Prijava" kaže da nalog ne postoji, a
+    // "Registracija" pravi nov prazan nalog i traži ime.
     await tester.enterText(textField('E-pošta'), testEmail);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
+    expect(find.text('Ne postoji nalog sa ovom adresom.'), findsOneWidget);
+    await tapButton(tester, 'Registruj se');
+    await tester.tap(button('Napravi nalog'));
+    await tester.pumpAndSettle();
+    expect(find.text('Proveri mejl'), findsOneWidget);
     await tester.enterText(textField('Kod iz poruke'), FakeServer.code);
     await tester.pumpAndSettle();
     expect(find.text('Kako da te zovemo?'), findsOneWidget);

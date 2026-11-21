@@ -12,7 +12,22 @@ String authErrorText(AuthFailure f) => switch (f) {
   Unavailable() => 'Prijava trenutno nije dostupna.',
   SessionRevoked() || AccountGone() => sessionExpiredText,
   SecureStorageUnavailable() => storageUnavailableText,
+  NoAccount() => '$noAccountTitle $noAccountText',
+  AlreadyRegistered() => alreadyRegisteredTitle,
+  LinkExpired() => linkExpiredText,
 };
+
+/// "Prijava" sa nepoznatom adresom (kanvas: naslov i tekst napomene).
+const noAccountTitle = 'Ne postoji nalog sa ovom adresom.';
+const noAccountText = 'Proveri adresu ili napravi nov nalog.';
+
+/// "Registracija" sa postojećom adresom, uz "Prijavi se umesto toga".
+const alreadyRegisteredTitle = 'Već postoji nalog sa ovom adresom.';
+const signInInsteadText = 'Prijavi se umesto toga';
+
+const linkExpiredText =
+    'Link je istekao ili je već iskorišćen. Upiši kod iz mejla ili pošalji '
+    'mejl ponovo.';
 
 const sessionExpiredText = 'Sesija je istekla. Prijavi se ponovo.';
 const accountDeletedText = 'Nalog je obrisan.';

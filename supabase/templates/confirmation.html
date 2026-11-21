@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="sr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <title>Potvrdi adresu za Tavli</title>
+  </head>
+  <body style="margin:0;padding:0;background:#F8F7F2;">
+    <!-- Pregled u listi poruka -->
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      Potvrdi adresu dugmetom ili upiši kod {{ .Token }} u aplikaciju. Važi 10 minuta.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8F7F2;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+            <!-- Zaglavlje: znak sa našeg Supabase Storage-a -->
+            <tr>
+              <td style="padding:0 8px 20px;">
+                <img src="http://127.0.0.1:55321/storage/v1/object/public/email-assets/tavli-znak.png" width="48" height="48" alt="Tavli" style="display:block;width:48px;height:48px;border:0;" />
+              </td>
+            </tr>
+            <!-- Kartica -->
+            <tr>
+              <td style="background:#FFFFFF;border:1px solid #E5E3DB;border-radius:20px;padding:32px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1B1F1C;">
+                <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;font-weight:800;color:#1B1F1C;">
+                  Potvrdi adresu za Tavli
+                </h1>
+                <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#5C6660;">
+                  Još jedan korak do tvoje kuhinje: potvrdi da je ovo tvoja adresa i Tavli se otvara, već prijavljen.
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="background:#3D7A57;border-radius:16px;">
+                      <a href="{{ .ConfirmationURL }}" style="display:block;padding:14px 20px;font-size:16px;line-height:1.25;font-weight:700;color:#FFFFFF;text-decoration:none;">Potvrdi adresu</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:28px 0 12px;font-size:15px;line-height:1.5;color:#5C6660;text-align:center;">
+                  Ili upiši ovaj kod u aplikaciju Tavli:
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center" style="background:#E2EFE6;border-radius:12px;padding:20px 12px;">
+                      <span style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:34px;font-weight:700;letter-spacing:10px;color:#1F4A33;">{{ .Token }}</span>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:16px 0 0;font-size:14px;line-height:1.5;color:#5C6660;text-align:center;">
+                  Dugme i kod važe 10 minuta i mogu da se iskoriste samo jednom.
+                </p>
+                <hr style="border:none;border-top:1px solid #E5E3DB;margin:28px 0 20px;" />
+                <p style="margin:0;font-size:14px;line-height:1.5;color:#5C6660;">
+                  Nisi pravio/la nalog na Tavli? Samo zanemari ovu poruku. Bez potvrde niko ne može da koristi ovu adresu, i nikome ne šalji ovaj kod, ni nama.
+                </p>
+              </td>
+            </tr>
+            <!-- Podnožje -->
+            <tr>
+              <td style="padding:20px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#7A857F;text-align:center;">
+                Tavli · recepti, kupovina i plan obroka za celo domaćinstvo
+                <br />
+                Ova poruka je poslata na {{ .Email }} jer je sa tom adresom napravljen nalog.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

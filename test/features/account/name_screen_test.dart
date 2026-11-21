@@ -5,7 +5,7 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../helpers/test_app.dart';
 
 void main() {
-  Finder nameField() => find.widgetWithText(TextField, 'Ime');
+  Finder nameField() => textField('Ime');
   VoidCallback? next(WidgetTester tester) =>
       tester.widget<FilledButton>(button('Nastavi')).onPressed;
 

@@ -16,6 +16,9 @@ void main() {
     await tester.pump();
   }
 
+  /// Odjavljen, a nalog ana@mail.com postoji na serveru (bez imena).
+  FakeBackend withAna() => FakeBackend()..server.userFor('ana@mail.com');
+
   Future<TestApp> toCodeStep(
     WidgetTester tester, {
     String location = '/recipes',
@@ -26,6 +29,7 @@ void main() {
       signedIn: false,
       location: location,
       size: size,
+      backend: withAna(),
     );
     await enterEmail(tester, 'Ana@Mail.com');
     await tester.tap(button('Pošalji kod'));
@@ -39,12 +43,35 @@ void main() {
     expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(
       find.text(
-        'Prijavi se e-poštom. Poslaćemo ti kod, lozinka nije potrebna.',
+        'Upiši e-poštu naloga i poslaćemo ti kod za prijavu. Lozinka nije '
+        'potrebna.',
       ),
       findsOneWidget,
     );
+    expect(find.text('Nemaš nalog?'), findsOneWidget);
+    expect(button('Registruj se'), findsOneWidget);
     expect(find.byType(TavliNavigation), findsNothing);
     expect(find.text('Recepti'), findsNothing);
+  });
+
+  testTavli('nepoznata adresa: "Ne postoji nalog", nalog se ne pravi', (
+    tester,
+  ) async {
+    final app = await pumpTavli(tester, signedIn: false);
+    await enterEmail(tester, 'nova@mail.com');
+    await tester.tap(button('Pošalji kod'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ne postoji nalog sa ovom adresom.'), findsOneWidget);
+    expect(find.text('Proveri adresu ili napravi nov nalog.'), findsOneWidget);
+    expect(field('E-pošta'), findsOneWidget);
+    expect(app.backend.server.users, isNot(contains('nova@mail.com')));
+    expect(app.backend.auth.sentCodes, isEmpty);
+
+    // "Registruj se" nosi upisanu adresu.
+    await tapButton(tester, 'Registruj se');
+    expect(find.text('Napravi nalog'), findsWidgets);
+    final input = tester.widget<TextField>(field('E-pošta'));
+    expect(input.controller!.text, 'nova@mail.com');
   });
 
   testTavli('neispravna adresa: dugme isključeno, poruka posle izlaska', (
@@ -75,8 +102,13 @@ void main() {
     tester,
   ) async {
     final app = await toCodeStep(tester);
-    expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
-    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
+    expect(find.text('Upiši kod'), findsOneWidget);
+    expect(
+      find.text('Poslali smo kod na ana@mail.com. Važi 10 minuta.'),
+      findsOneWidget,
+    );
+    // Kanvas: na koraku sa kodom gore je "Nazad" umesto znaka.
+    expect(button('Nazad'), findsOneWidget);
     expect(app.backend.auth.sentCodes, ['ana@mail.com']);
 
     await tester.enterText(field('Kod iz poruke'), FakeServer.code);
@@ -115,12 +147,15 @@ void main() {
       await tester.enterText(field('Kod iz poruke'), FakeServer.code);
       await tester.pumpAndSettle();
       expect(find.text(text), findsOneWidget);
-      expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+      expect(
+        find.text('Poslali smo kod na ana@mail.com. Važi 10 minuta.'),
+        findsOneWidget,
+      );
     });
   }
 
   testTavli('greška pri slanju koda ostaje na prvom koraku', (tester) async {
-    final app = await pumpTavli(tester, signedIn: false);
+    final app = await pumpTavli(tester, signedIn: false, backend: withAna());
     app.backend.auth.failNext = const Offline();
     await enterEmail(tester, 'ana@mail.com');
     await tester.tap(button('Pošalji kod'));
@@ -149,7 +184,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(message), findsOneWidget);
-      expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+      expect(
+        find.text('Poslali smo kod na ana@mail.com. Važi 10 minuta.'),
+        findsOneWidget,
+      );
       expect(app.backend.auth.current, isNull);
       expect(app.secrets.values, isEmpty);
     });
@@ -157,39 +195,73 @@ void main() {
 
   testTavli('"Pošalji ponovo" posle 30 s', (tester) async {
     final app = await toCodeStep(tester);
-    expect(find.text('Pošalji ponovo za 30 s'), findsOneWidget);
+    expect(find.text('Pošalji ponovo (za 30 s)'), findsOneWidget);
     expect(
-      tester.widget<OutlinedButton>(button('Pošalji ponovo za 30 s')).onPressed,
+      tester
+          .widget<ButtonStyleButton>(button('Pošalji ponovo (za 30 s)'))
+          .onPressed,
       isNull,
     );
 
     app.now = app.now.add(const Duration(seconds: 12));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Pošalji ponovo za 18 s'), findsOneWidget);
+    expect(find.text('Pošalji ponovo (za 18 s)'), findsOneWidget);
 
     app.now = app.now.add(const Duration(seconds: 18));
     await tester.pump(const Duration(seconds: 1));
     expect(
-      tester.widget<OutlinedButton>(button('Pošalji ponovo')).onPressed,
+      tester.widget<ButtonStyleButton>(button('Pošalji ponovo')).onPressed,
       isNotNull,
     );
     await tester.tap(button('Pošalji ponovo'));
     await tester.pumpAndSettle();
     expect(app.backend.auth.sentCodes, ['ana@mail.com', 'ana@mail.com']);
-    expect(find.text('Pošalji ponovo za 30 s'), findsOneWidget);
+    expect(find.text('Pošalji ponovo (za 30 s)'), findsOneWidget);
   });
 
-  testTavli('"Promeni e-poštu" vraća na prvi korak', (tester) async {
-    await toCodeStep(tester);
-    await tester.tap(button('Promeni e-poštu'));
+  for (final back in ['Promeni e-poštu', 'Nazad']) {
+    testTavli('"$back" vraća na prvi korak', (tester) async {
+      await toCodeStep(tester);
+      await tester.tap(button(back));
+      await tester.pumpAndSettle();
+      expect(field('E-pošta'), findsOneWidget);
+      expect(field('Kod iz poruke'), findsNothing);
+    });
+  }
+
+  testTavli('istekao link iz mejla: poruka na prijavi', (tester) async {
+    final app = await pumpTavli(tester, signedIn: false);
+    app.links.add(Uri.parse('tavli://auth-callback?code=star'));
     await tester.pumpAndSettle();
-    expect(field('E-pošta'), findsOneWidget);
-    expect(field('Kod iz poruke'), findsNothing);
+    expect(
+      find.text(
+        'Link je istekao ili je već iskorišćen. Upiši kod iz mejla ili '
+        'pošalji mejl ponovo.',
+      ),
+      findsOneWidget,
+    );
+    expect(app.secrets.values, isEmpty);
+  });
+
+  testTavli('naslov je na istoj visini na svim koracima', (tester) async {
+    await pumpTavli(tester, signedIn: false, backend: withAna());
+    double top(String text) => tester.getTopLeft(find.text(text).first).dy;
+    final title = top('Prijava');
+
+    await tapButton(tester, 'Registruj se');
+    expect(top('Napravi nalog'), title);
+
+    await tapButton(tester, 'Prijavi se');
+    await enterEmail(tester, 'ana@mail.com');
+    await tester.tap(button('Pošalji kod'));
+    await tester.pumpAndSettle();
+    // Gore je "Nazad" umesto znaka, a naslov ostaje na istom mestu.
+    expect(top('Upiši kod'), title);
   });
 
   testTavli('duboki link /plan: posle prijave otvara Plan', (tester) async {
-    final backend = FakeBackend();
-    final uid = backend.server.userFor('ana@mail.com');
+    final backend = withAna();
+    final uid = backend.server.users['ana@mail.com']!;
     backend.server.profiles[uid]!['display_name'] = 'Ana';
     final app = await pumpTavli(
       tester,
@@ -211,8 +283,10 @@ void main() {
     testTavli('raspored na ${size.width.toInt()} px', (tester) async {
       await toCodeStep(tester, size: size);
       expect(tester.takeException(), isNull);
-      final card = tester.getSize(find.byType(ConstrainedBox).first);
-      expect(card.width, lessThanOrEqualTo(size.width));
+      // Obrazac je najviše 420 širok i ne izlazi iz ekrana.
+      final code = tester.getRect(field('Kod iz poruke'));
+      expect(code.width, lessThanOrEqualTo(420));
+      expect(code.right, lessThanOrEqualTo(size.width));
     });
   }
 }

@@ -683,4 +683,49 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  group('TavliCodeField', () {
+    testWidgets('nalepljen kod: samo cifre, najviše 6, po jedna u polju', (
+      tester,
+    ) async {
+      final code = TextEditingController();
+      addTearDown(code.dispose);
+      final changes = <String>[];
+      await pump(
+        tester,
+        TavliCodeField(
+          label: 'Kod iz poruke',
+          controller: code,
+          helper: 'Možeš i da nalepiš ceo kod.',
+          onChanged: changes.add,
+        ),
+      );
+      expect(find.text('Kod iz poruke'), findsOneWidget);
+      expect(find.text('Možeš i da nalepiš ceo kod.'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '123 4567');
+      await tester.pump();
+      expect(code.text, '123456');
+      expect(changes.last, '123456');
+      for (final d in ['1', '2', '3', '4', '5', '6']) {
+        expect(find.text(d), findsOneWidget);
+      }
+      expect(find.text('7'), findsNothing);
+    });
+
+    testWidgets('staje u 280 px i uz tekst 2×', (tester) async {
+      final code = TextEditingController();
+      addTearDown(code.dispose);
+      await pump(
+        tester,
+        SizedBox(
+          width: 240,
+          child: TavliCodeField(label: 'Kod iz poruke', controller: code),
+        ),
+        size: const Size(280, 600),
+        textScale: 2,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

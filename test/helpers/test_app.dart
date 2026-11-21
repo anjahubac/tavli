@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -162,6 +163,11 @@ class TestApp {
   final secrets = MapSecretStorage();
   final keys = InMemoryKeyStore();
 
+  /// Linkovi kojima se aplikacija otvara (tavli://auth-callback iz mejla).
+  final links = StreamController<Uri>.broadcast();
+
+  Future<void> dispose() => links.close();
+
   /// Sat za prijavu (odbrojavanje "Pošalji ponovo"); test ga pomera.
   DateTime now = DateTime(2026, 10, 30, 12);
 
@@ -235,6 +241,7 @@ Future<TestApp> pumpTavli(
     FakeAdapter([...ai]),
     backend ?? FakeBackend(),
   );
+  addTearDown(app.dispose);
   if (signedIn) await app.signIn(name: name);
   for (final r in recipes) {
     await app.repo.create(r);
@@ -269,6 +276,7 @@ Future<TestApp> pumpTavli(
         recipePhotoStoreProvider.overrideWithValue(app.photos),
         photoPickerProvider.overrideWithValue(app.picker),
         photoResizerProvider.overrideWithValue((bytes) async => bytes),
+        appLinksProvider.overrideWithValue(app.links.stream),
         ...overrides,
         screenWakeLockProvider.overrideWithValue(app.wakeLock),
       ],
@@ -291,12 +299,13 @@ Future<void> tapButton(WidgetTester tester, String text) async {
 }
 
 /// Polje za unos sa datim nazivom: Material `labelText` ili naziv iznad
-/// `TavliTextField`.
+/// `TavliTextField` ili `TavliCodeField`.
 Finder textField(String label) => find.byElementPredicate((e) {
   final widget = e.widget;
   if (widget is! TextField) return false;
   if (widget.decoration?.labelText == label) return true;
-  return e.findAncestorWidgetOfExactType<TavliTextField>()?.label == label;
+  return e.findAncestorWidgetOfExactType<TavliTextField>()?.label == label ||
+      e.findAncestorWidgetOfExactType<TavliCodeField>()?.label == label;
 });
 
 /// Naslov otvorenog recepta (veliki naslov na ekranu recepta).
