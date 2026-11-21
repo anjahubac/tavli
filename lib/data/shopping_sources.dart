@@ -29,27 +29,35 @@ mixin _ShoppingSources on _ShoppingBase {
               .get())
         l.id,
     };
-    final sources = {
-      for (final s
-          in await (_db.select(_db.shoppingSources)..where(
-                (t) =>
-                    t.householdId.equals(_scope.householdId) &
-                    t.kind.equals(ShoppingSourceKind.planEntry.name) &
-                    t.listId.isIn(planLists),
-              ))
-              .get())
-        s.planEntryId!: s,
-    };
+    // Obrok može imati više izvora (npr. drugi uređaj ga je stavio u drugu
+    // nedelju): zadržava se jedan, ostali se brišu na kraju.
+    final allSources =
+        await (_db.select(_db.shoppingSources)..where(
+              (t) =>
+                  t.householdId.equals(_scope.householdId) &
+                  t.kind.equals(ShoppingSourceKind.planEntry.name) &
+                  t.listId.isIn(planLists),
+            ))
+            .get();
+    final sourcesByEntry = <String, List<ShoppingSourceRow>>{};
+    for (final s in allSources) {
+      (sourcesByEntry[s.planEntryId!] ??= []).add(s);
+    }
     final now = _clock().toUtc();
     final kept = <String>{};
+    final deleted = <String>{};
     for (final e in entries) {
       final period = periodFor(range, CivilDate.fromWire(e.date));
       if (e.recipeSnapshotJson == null || period == null) continue;
       final listId = await weekList(planId, period);
-      var source = sources[e.id];
+      final candidates = sourcesByEntry[e.id] ?? const <ShoppingSourceRow>[];
+      var source =
+          candidates.where((c) => c.listId == listId).firstOrNull ??
+          candidates.firstOrNull;
       if (source != null && source.listId != listId) {
         // Obrok premešten u drugu nedelju: stari izvor oslobađa zalihu.
         await _deleteSource(source.id);
+        deleted.add(source.id);
         source = null;
       }
       final closedAt = e.isCooked ? (source?.closedAt ?? now) : null;
@@ -82,8 +90,10 @@ mixin _ShoppingSources on _ShoppingBase {
     }
     // Obrok obrisan ili bez recepta: njegov izvor i neiskorišćena zaliha
     // se oslobađaju; kupljene stavke ostaju.
-    for (final s in sources.values) {
-      if (!kept.contains(s.id)) await _deleteSource(s.id);
+    for (final s in allSources) {
+      if (!kept.contains(s.id) && !deleted.contains(s.id)) {
+        await _deleteSource(s.id);
+      }
     }
     await _reconcile();
   });
@@ -355,16 +365,47 @@ mixin _ShoppingSources on _ShoppingBase {
       }
       await _writer.upsertLast(_contribution, targetId);
       for (final a in allocations) {
+        final moved = a.coversWholeUnknown || a.micros == null
+            ? a.micros
+            : a.micros! * unit.factor;
+        // Cilj već ima raspodelu iz iste zalihe: saberi u nju, jer je
+        // (doprinos, zaliha) jedinstveno.
+        final existing = target == null
+            ? null
+            : await (_db.select(_db.supplyAllocations)..where(
+                    (t) =>
+                        t.contributionId.equals(targetId) &
+                        t.supplyId.equals(a.supplyId),
+                  ))
+                  .getSingleOrNull();
+        if (existing != null) {
+          await (_db.update(
+            _db.supplyAllocations,
+          )..where((t) => t.id.equals(existing.id))).write(
+            SupplyAllocationsCompanion(
+              micros: Value(
+                _mergedMicros(existing, a.coversWholeUnknown, moved),
+              ),
+              // Cela nepoznata količina ostaje samo ako su obe takve; inače
+              // se broji poznata količina, da se ista zaliha ne troši dvaput.
+              coversWholeUnknown: Value(
+                existing.coversWholeUnknown && a.coversWholeUnknown,
+              ),
+            ),
+          );
+          await _writer.upsertLast(_allocation, existing.id);
+          await (_db.delete(
+            _db.supplyAllocations,
+          )..where((t) => t.id.equals(a.id))).go();
+          await _writer.delete(_allocation, a.id);
+          continue;
+        }
         await (_db.update(
           _db.supplyAllocations,
         )..where((t) => t.id.equals(a.id))).write(
           SupplyAllocationsCompanion(
             contributionId: Value(targetId),
-            micros: Value(
-              a.coversWholeUnknown || a.micros == null
-                  ? a.micros
-                  : a.micros! * unit.factor,
-            ),
+            micros: Value(moved),
           ),
         );
         await _writer.upsertLast(_allocation, a.id);
@@ -380,5 +421,24 @@ mixin _ShoppingSources on _ShoppingBase {
         _db.shoppingContributions,
       )..where((t) => t.id.equals(targetId))).getSingle();
     }
+  }
+
+  /// Količina spojene raspodele iste zalihe: zbir poznatih količina; kad su
+  /// obe raspodele cela nepoznata količina, ostaje njihov zapis.
+  static int? _mergedMicros(
+    SupplyAllocationRow existing,
+    bool movedWhole,
+    int? moved,
+  ) {
+    if (existing.coversWholeUnknown && movedWhole) {
+      return existing.micros == null && moved == null
+          ? null
+          : (existing.micros ?? 0) + (moved ?? 0);
+    }
+    final known = [
+      if (!existing.coversWholeUnknown) existing.micros,
+      if (!movedWhole) moved,
+    ].nonNulls;
+    return known.isEmpty ? null : known.reduce((x, y) => x + y);
   }
 }
