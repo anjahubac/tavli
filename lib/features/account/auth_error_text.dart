@@ -25,9 +25,11 @@ const noAccountText = 'Proveri adresu ili napravi nov nalog.';
 const alreadyRegisteredTitle = 'Već postoji nalog sa ovom adresom.';
 const signInInsteadText = 'Prijavi se umesto toga';
 
+/// Kod iz istog mejla tada više ne važi (dugme i kod su isti jednokratni
+/// ključ), pa ne upućujemo na njega.
 const linkExpiredText =
-    'Link je istekao ili je već iskorišćen. Upiši kod iz mejla ili pošalji '
-    'mejl ponovo.';
+    'Link je istekao ili je već iskorišćen. Ako si već potvrdio/la adresu, '
+    'prijavi se kodom. Ako nisi, pošalji mejl ponovo.';
 
 const sessionExpiredText = 'Sesija je istekla. Prijavi se ponovo.';
 const accountDeletedText = 'Nalog je obrisan.';

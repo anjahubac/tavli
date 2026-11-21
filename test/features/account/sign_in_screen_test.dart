@@ -249,8 +249,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.text(
-        'Link je istekao ili je već iskorišćen. Upiši kod iz mejla ili '
-        'pošalji mejl ponovo.',
+        'Link je istekao ili je već iskorišćen. Ako si već potvrdio/la '
+        'adresu, prijavi se kodom. Ako nisi, pošalji mejl ponovo.',
       ),
       findsOneWidget,
     );
