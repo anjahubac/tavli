@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/taste_profile_repository.dart';
+import 'package:tavli/domain/cuisine_preferences.dart';
 import 'package:tavli/domain/dish_kind_preferences.dart';
 import 'package:tavli/domain/food_preferences.dart';
 import 'package:tavli/domain/recipe_labels.dart';
@@ -97,6 +98,39 @@ void main() {
     expect((await repo.getDishPreferences()).liked, {DishKind.pasta});
     expect((await repository('other').getFoodPreferences()).liked, isEmpty);
     expect(await db.select(db.syncOutbox).get(), hasLength(1));
+  });
+
+  test('writes only the five cuisine codes and keeps other choices', () async {
+    final repo = repository('member');
+    expect((await repo.getCuisinePreferences()).liked, isEmpty);
+    expect(Cuisine.values.map((value) => value.name), [
+      'serbian',
+      'italian',
+      'japanese',
+      'french',
+      'mexican',
+    ]);
+
+    await repo.saveDishPreferences(
+      DishKindPreferences(liked: {DishKind.pasta}),
+    );
+    await repo.saveCuisinePreferences(
+      CuisinePreferences(
+        liked: {Cuisine.japanese, Cuisine.italian},
+        disliked: {Cuisine.italian},
+      ),
+    );
+    final profile = await db.select(db.userProfiles).getSingle();
+    expect(const TasteProfileEntity().toRemote(profile)['profile'], {
+      'likedDishKinds': ['pasta'],
+      'dislikedDishKinds': <String>[],
+      'likedCuisineCodes': ['japanese'],
+      'dislikedCuisineCodes': ['italian'],
+    });
+    final cuisines = await repo.watchCuisinePreferences().first;
+    expect(cuisines.liked, {Cuisine.japanese});
+    expect(cuisines.disliked, {Cuisine.italian});
+    expect((await repository('peer').getCuisinePreferences()).liked, isEmpty);
   });
 
   test('keeps preferences private across accounts in one household', () async {

@@ -71,39 +71,101 @@ class FavoriteRepository {
     });
   }
 
+  /// Reconciles local favorites after a successful pull or before upload.
+  /// Offline edits stay queued while membership cannot be confirmed.
+  Future<void> reconcileMembership() async {
+    final row =
+        await (_db.select(_db.userFavorites)
+              ..where((row) => row.userId.equals(_scope.userId))
+              ..limit(1))
+            .getSingleOrNull();
+    final queued =
+        await (_db.select(_db.syncOutbox)
+              ..where(_favoriteOperation)
+              ..limit(1))
+            .getSingleOrNull();
+    if (row == null && queued == null) return;
+    try {
+      await refreshMembership();
+    } on AuthFailure {
+      // Sync still uses server authorization when the account lookup fails.
+    }
+  }
+
   /// Refreshes the membership identity after access changes. Pending writes
-  /// tied to an older identity are never reissued for the new membership.
+  /// tied to an older identity are discarded, never issued for the new one.
   Future<String> refreshMembership() async {
+    final previous = await _cachedAccount();
+    if (previous == null) throw const Unavailable();
     final remote = await _accountApi.fetch();
+    final membershipId = remote.favoriteMembershipId;
     if (remote.userId != _scope.userId ||
-        remote.householdId != _scope.householdId) {
+        membershipId == null ||
+        membershipId.isEmpty) {
       throw const Unavailable();
     }
-    final membershipId = remote.favoriteMembershipId;
-    if (membershipId == null || membershipId.isEmpty) throw const Unavailable();
-    final updated =
+    final activeMembershipId = remote.householdId == _scope.householdId
+        ? membershipId
+        : null;
+    await _db.transaction(() async {
+      final current = await _cachedAccount();
+      if (current == null ||
+          (current.favoriteMembershipId != previous.favoriteMembershipId &&
+              current.favoriteMembershipId != activeMembershipId)) {
+        throw const Unavailable();
+      }
+
+      await (_db.delete(_db.userFavorites)..where(
+            (row) =>
+                row.userId.equals(_scope.userId) &
+                (activeMembershipId == null
+                    ? const Constant(true)
+                    : (row.membershipId.equals(activeMembershipId).not() |
+                          row.recipeHouseholdId
+                              .equals(_scope.householdId)
+                              .not())),
+          ))
+          .go();
+      // The deterministic ID starts with the membership UUID. Match the queue
+      // independently because a removed recipe may already have lost its row.
+      await (_db.delete(_db.syncOutbox)..where(
+            (row) =>
+                _favoriteOperation(row) &
+                (activeMembershipId == null
+                    ? const Constant(true)
+                    : row.recordId.like('$activeMembershipId:%').not()),
+          ))
+          .go();
+      if (current.favoriteMembershipId != activeMembershipId) {
         await (_db.update(_db.accounts)..where(
               (row) =>
                   row.userId.equals(_scope.userId) &
                   row.householdId.equals(_scope.householdId),
             ))
             .write(
-              AccountsCompanion(favoriteMembershipId: Value(membershipId)),
+              AccountsCompanion(
+                favoriteMembershipId: Value(activeMembershipId),
+              ),
             );
-    if (updated != 1) throw const Unavailable();
-    return membershipId;
+      }
+    });
+    if (activeMembershipId == null) throw const Unavailable();
+    return activeMembershipId;
   }
 
-  Future<String?> _cachedMembershipId() async {
-    final account =
-        await (_db.select(_db.accounts)..where(
-              (row) =>
-                  row.userId.equals(_scope.userId) &
-                  row.householdId.equals(_scope.householdId),
-            ))
-            .getSingleOrNull();
-    return account?.favoriteMembershipId;
-  }
+  Expression<bool> _favoriteOperation($SyncOutboxTable row) =>
+      row.accountId.equals(_scope.userId) & row.entity.equals(_entity.name);
+
+  Future<AccountRow?> _cachedAccount() =>
+      (_db.select(_db.accounts)..where(
+            (row) =>
+                row.userId.equals(_scope.userId) &
+                row.householdId.equals(_scope.householdId),
+          ))
+          .getSingleOrNull();
+
+  Future<String?> _cachedMembershipId() async =>
+      (await _cachedAccount())?.favoriteMembershipId;
 
   JoinedSelectStatement<HasResultSet, Object?> _favorites() {
     final favorite = _db.userFavorites;

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../account/auth_controller.dart';
+import '../domain/cuisine_preferences.dart';
 import '../domain/dish_kind_preferences.dart';
 import '../domain/food_preferences.dart';
 import '../sync/entities.dart';
@@ -42,6 +43,15 @@ class TasteProfileRepository {
       _watchProfile().map(FoodPreferences.fromJson);
 
   Future<void> saveFoodPreferences(FoodPreferences preferences) =>
+      _saveFields(preferences.toJson());
+
+  Future<CuisinePreferences> getCuisinePreferences() async =>
+      CuisinePreferences.fromJson(await _profile());
+
+  Stream<CuisinePreferences> watchCuisinePreferences() =>
+      _watchProfile().map(CuisinePreferences.fromJson);
+
+  Future<void> saveCuisinePreferences(CuisinePreferences preferences) =>
       _saveFields(preferences.toJson());
 
   Future<Map<String, Object?>> _profile() async =>

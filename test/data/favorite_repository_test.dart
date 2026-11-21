@@ -76,13 +76,30 @@ void main() {
       );
       await first.setFavorite('recipe', isFavorite: true);
 
+      await db
+          .into(db.syncOutbox)
+          .insert(
+            SyncOutboxCompanion.insert(
+              accountId: 'first',
+              entity: const FavoriteEntity().name,
+              recordId: 'membership-first:removed-recipe',
+              op: OutboxOp.upsert,
+              state: const Value(OutboxState.rejected),
+              createdAt: now,
+            ),
+          );
+      await second.setFavorite('recipe', isFavorite: true);
+
       expect(await first.refreshMembership(), 'new-membership');
       expect(await first.getFavoriteRecipeIds(), isEmpty);
+      expect(await second.getFavoriteRecipeIds(), {'recipe'});
+      expect((await db.select(db.userFavorites).get()).single.userId, 'second');
+      expect((await db.select(db.syncOutbox).get()).single.accountId, 'second');
       await first.setFavorite('recipe', isFavorite: true);
       expect(await first.getFavoriteRecipeIds(), {'recipe'});
       final queued = await db.select(db.syncOutbox).get();
       expect(queued.map((operation) => operation.recordId).toSet(), {
-        'membership-first:recipe',
+        'membership-second:recipe',
         'new-membership:recipe',
       });
       await const RecipeEntity().deleteLocal(db, 'recipe');

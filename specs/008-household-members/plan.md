@@ -160,15 +160,16 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
   and recipe so access loss and recipe deletion cascade. A reconnect may
   refresh the membership identity but cannot migrate stale writes to it.
   Existing cached accounts can fetch the identity on their first edit.
-  Existing household transition work needs to refresh the cached identity
-  when it replaces an account's active membership. Coordinate the additive
+  Sync reconciles the cached identity before sending favorites and after pulls.
+  A verified access change removes stale favorite rows and queued operations.
+  The invitations PR should keep the identity when saving the new membership. Coordinate the additive
   migration and Drift v9 with Dev 1.
 
 ### Cross-owner handoffs and remaining decisions
 
 - Dev 1 supplies catalog food IDs, visibility rules and reviewed allergen
-  mappings with a completeness signal. Dev 3 and Dev 2 agree the cuisine
-  vocabulary and collection bounds before the structured-profile slice. Dev 1
+  mappings with a completeness signal. Matija confirmed the initial five cuisine
+  codes. Dev 2 should use the same codes and set provider payload bounds. Dev 1
   coordinates any shared migrations. For catalog decision D10, Matija confirmed keeping ingredient links embedded in
   recipe JSON. The server planner
   reads each authorized recipe's `foodId` links and resolves them against
@@ -180,8 +181,8 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
   shape and typed error mapping and owns planner consumption. The note's length
   and leak-check fixtures are decisions for the later note slice.
 - Dev 3 owns personal allergen selection using the existing catalog checker codes. Reuse the household transition work to verify favorite cleanup and stale
-  writes when recipe access changes. Finalize the cleanup hook before favorite
-  sync is enabled.
+  writes when recipe access changes. The sync hooks remove operations tied to
+  a superseded membership.
 - Dev 2 owns 015/019 endpoint limits, replacement, batch behavior, favorite
   weighting and incomplete drafts. Dev 3 reviews the privacy boundary. Dev 2
   and Dev 3 agree the server-only comparison inputs before the later free-text
@@ -191,10 +192,10 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
 
 | Source | Implementation available | Remaining acceptance |
 |---|---|---|
-| D3-004 | `TasteProfileRepository` reads, watches and writes dish-kind and catalog food choices. `PlanningSharingRepository` reads and changes owner consent online. The private resolver applies consent and resolves ranking conflicts. | Dev 2 to confirm cuisine vocabulary and consumer limits. Connect the profile UI and the visible food catalog. |
+| D3-004 | `TasteProfileRepository` reads, watches and writes dish-kind, catalog food and cuisine choices. `PlanningSharingRepository` reads and changes owner consent online. The private resolver applies consent and resolves ranking conflicts. | Dev 2 to apply the five cuisine codes and define consumer limits. Connect the profile UI and the visible food catalog. |
 | D3-009 | `AllergenRepository` reads, watches and replaces owner selections. `public.planning_allergen_codes` checks household scope and resolves the selected union. | Connect profile UI and Dev 2 server planning. |
 | D3-010 | `RecipeAllergens` derives visible recipe groups, warns on unresolved links or unreviewed mappings and compares with the viewer's own selection. The domain fixture covers seven reviewed ingredients out of eight. | Dev 1 supplies linked food IDs and reviewed mappings. Connect the recipe warning UI. Dev 2 applies the same completeness requirement in recommendation eligibility and result checks. |
-| D3-011 | `FavoriteRepository` reads, watches and edits private favorites. The server resolver counts visible favorites after consent. Membership-scoped identity prevents replay on a new membership. | Refresh the cached identity in the household transition flow, connect the recipe heart and list filter, and run the integrated planner acceptance. |
+| D3-011 | `FavoriteRepository` reads, watches and edits private favorites. The server resolver counts visible favorites after consent. Membership-scoped identity prevents replay on a new membership. | Preserve the identity in the invitations PR, connect the recipe heart and list filter, and run the integrated planner acceptance. |
 
 At `origin/dev` 5fc4485, PR #90 has merged the alias matcher. That baseline
 has no food catalog migrations, embedded recipe food links or reviewed

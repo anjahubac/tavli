@@ -60,7 +60,7 @@ and merged PR; checkbox completion alone is not a release or an external approva
 
 ### Logic evidence on the implementation branch
 
-- **T006–T007**: local repository coverage for normalized dish and food
+- **T006–T007**: local repository coverage for normalized dish, food and cuisine
   preferences, a mock transport for owner consent and pgTAP for selection,
   revision conflicts, withdrawal and advisory aggregation.
 - **T016–T017**: owner selection storage and sync coverage plus pgTAP for
@@ -68,7 +68,8 @@ and merged PR; checkbox completion alone is not a release or an external approva
 - **T018–T019**: recipe metadata logic covers reviewed absence, an unknown
   ingredient and a linked ingredient with unreviewed metadata. The catalog
   producer and warning UI remain dependencies.
-- **T020–T021**: repository coverage for owner isolation and repeat toggles,
+- **T020–T021**: repository coverage for owner isolation, repeat toggles and stale queue cleanup,
+  two-client replay coverage,
   plus pgTAP for membership loss, stale replay after rejoin and recipe/account
   deletion. UI and integrated planner acceptance are tracked by the same task.
 

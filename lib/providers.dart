@@ -135,6 +135,13 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
   final photos = ref.watch(photoRemoteProvider);
   if (scope == null || remote == null || photos == null) return null;
   final db = ref.watch(databaseProvider);
+  // Reconciliation only touches the cache and never queues an upload.
+  final favorites = FavoriteRepository(
+    db,
+    scope: scope,
+    writer: SyncedWriter(db, accountId: scope.userId),
+    accountApi: ref.watch(accountApiProvider),
+  );
   final engine = SyncEngine(
     db: db,
     scope: scope,
@@ -145,6 +152,7 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
       photoStore: ref.watch(recipePhotoStoreProvider),
       scope: scope,
       refreshSession: () => _refreshSession(ref),
+      beforeFavoriteUpload: favorites.reconcileMembership,
     ),
     downloader: Downloader(db: db, remote: remote, scope: scope),
     photoSync: PhotoSync(
@@ -161,6 +169,7 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     // izvodi iz zapisa kuvanja.
     afterPull: () async {
       await ref.read(cookingRepositoryProvider).reconcileCookedFlags();
+      await favorites.reconcileMembership();
     },
   );
   ref.onDispose(engine.stop);

@@ -148,7 +148,8 @@ begin
     join public.taste_profiles t on t.user_id = a.id
     cross join (values
       ('dish', 'likedDishKinds', false), ('dish', 'dislikedDishKinds', true),
-      ('food', 'likedFoodIds', false), ('food', 'dislikedFoodIds', true)
+      ('food', 'likedFoodIds', false), ('food', 'dislikedFoodIds', true),
+      ('cuisine', 'likedCuisineCodes', false), ('cuisine', 'dislikedCuisineCodes', true)
     ) flags(category, key, disliked)
     cross join lateral jsonb_array_elements_text(
       case when jsonb_typeof(t.profile -> flags.key) = 'array'
@@ -160,6 +161,9 @@ begin
         'eggs_breakfast', 'cold', 'sweet'
       )
     ) or (flags.category = 'food' and chosen.value = any(visible_food_ids))
+      or (flags.category = 'cuisine' and chosen.value in (
+        'serbian', 'italian', 'japanese', 'french', 'mexican'
+      ))
   ),
   effective_preferences as (
     select category, value, bool_or(disliked) as disliked
@@ -185,6 +189,12 @@ begin
     )),
     'dislikedFoodIds', to_jsonb(array(
       select value from effective_preferences where category = 'food' and disliked order by value
+    )),
+    'likedCuisineCodes', to_jsonb(array(
+      select value from effective_preferences where category = 'cuisine' and not disliked order by value
+    )),
+    'dislikedCuisineCodes', to_jsonb(array(
+      select value from effective_preferences where category = 'cuisine' and disliked order by value
     )),
     'favoriteRecipeCounts', coalesce(
       (select jsonb_object_agg(recipe_id, member_count) from favorites), '{}'::jsonb

@@ -27,7 +27,7 @@ select throws_ok($$update public.user_planning_sharing set preferences = false$$
 select throws_ok($$select * from public.set_planning_preferences_sharing(0, false)$$,
   'P0001', null, 'stale client cannot undo acknowledged consent');
 insert into public.taste_profiles (profile)
-values ('{"likedDishKinds":["salad","pasta"],"likedFoodIds":["46d60c83-0d05-466e-9c28-585a8be28d8f","e760678c-1bce-4cde-8bca-b763885c7895"],"unsharedNote":"canary"}');
+values ('{"likedDishKinds":["salad","pasta"],"likedCuisineCodes":["serbian","italian","unreviewed"],"likedFoodIds":["46d60c83-0d05-466e-9c28-585a8be28d8f","e760678c-1bce-4cde-8bca-b763885c7895"],"unsharedNote":"canary"}');
 insert into public.user_favorites (id, recipe_id, recipe_household_id, membership_id, is_favorite)
 values (:'first_membership' || ':shared-recipe', 'shared-recipe', :'household_id', :'first_membership', true);
 insert into public.user_allergen_selections (group_codes) values (array['eggs']);
@@ -38,7 +38,7 @@ select throws_ok(format($$select public.planning_allergen_codes(%L, %L, array[%L
   :'second_user', :'household_id', :'first_user'), '42501', null, 'peer cannot execute server-only allergen query');
 
 insert into public.taste_profiles (profile)
-values ('{"dislikedDishKinds":["pasta"],"dislikedFoodIds":["46d60c83-0d05-466e-9c28-585a8be28d8f"],"unsharedNote":"canary"}');
+values ('{"dislikedDishKinds":["pasta"],"dislikedCuisineCodes":["italian"],"dislikedFoodIds":["46d60c83-0d05-466e-9c28-585a8be28d8f"],"unsharedNote":"canary"}');
 insert into public.user_favorites (id, recipe_id, recipe_household_id, membership_id, is_favorite)
 values (:'second_membership' || ':shared-recipe', 'shared-recipe', :'household_id', :'second_membership', true);
 select throws_ok(format($$select public.planning_advisory_inputs(%L, %L, array[%L::uuid], false)$$,
@@ -59,15 +59,15 @@ select throws_ok(format($$select public.planning_allergen_codes(%L, %L, array[]:
 
 select is(public.planning_advisory_inputs(:'first_user', :'household_id',
   array[:'first_user'::uuid, :'second_user'::uuid], true),
-  '{"likedDishKinds":["pasta","salad"],"dislikedDishKinds":[],"likedFoodIds":[],"dislikedFoodIds":[],"favoriteRecipeCounts":{"shared-recipe":1}}'::jsonb,
+  '{"likedDishKinds":["pasta","salad"],"dislikedDishKinds":[],"likedFoodIds":[],"dislikedFoodIds":[],"likedCuisineCodes":["italian","serbian"],"dislikedCuisineCodes":[],"favoriteRecipeCounts":{"shared-recipe":1}}'::jsonb,
   'provider input excludes unshared tastes, favorites and raw notes');
 select is(public.planning_advisory_inputs(:'second_user', :'household_id',
   array[:'second_user'::uuid], false),
-  '{"likedDishKinds":[],"dislikedDishKinds":["pasta"],"likedFoodIds":[],"dislikedFoodIds":[],"favoriteRecipeCounts":{"shared-recipe":1}}'::jsonb,
+  '{"likedDishKinds":[],"dislikedDishKinds":["pasta"],"likedFoodIds":[],"dislikedFoodIds":[],"likedCuisineCodes":[],"dislikedCuisineCodes":["italian"],"favoriteRecipeCounts":{"shared-recipe":1}}'::jsonb,
   'sole self can use their own advisory inputs for local ranking');
 select is(public.planning_advisory_inputs(:'second_user', :'household_id',
   array[:'second_user'::uuid], true),
-  '{"likedDishKinds":[],"dislikedDishKinds":[],"likedFoodIds":[],"dislikedFoodIds":[],"favoriteRecipeCounts":{}}'::jsonb,
+  '{"likedDishKinds":[],"dislikedDishKinds":[],"likedFoodIds":[],"dislikedFoodIds":[],"likedCuisineCodes":[],"dislikedCuisineCodes":[],"favoriteRecipeCounts":{}}'::jsonb,
   'sole self still needs consent for provider disclosure');
 
 reset role;
@@ -76,7 +76,7 @@ select * from public.set_planning_preferences_sharing(0, true);
 select tests.clear_auth();
 select is(public.planning_advisory_inputs(:'first_user', :'household_id',
   array[:'first_user'::uuid, :'second_user'::uuid], true),
-  '{"likedDishKinds":["salad"],"dislikedDishKinds":["pasta"],"likedFoodIds":[],"dislikedFoodIds":[],"favoriteRecipeCounts":{"shared-recipe":2}}'::jsonb,
+  '{"likedDishKinds":["salad"],"dislikedDishKinds":["pasta"],"likedFoodIds":[],"dislikedFoodIds":[],"likedCuisineCodes":["serbian"],"dislikedCuisineCodes":["italian"],"favoriteRecipeCounts":{"shared-recipe":2}}'::jsonb,
   'shared dislike prevails and each selected member contributes one favorite');
 
 select is(public.planning_advisory_inputs(:'first_user', :'household_id',
@@ -102,7 +102,7 @@ select throws_ok($$select * from public.set_planning_preferences_sharing(0, true
 select tests.clear_auth();
 select is(public.planning_advisory_inputs(:'second_user', :'household_id',
   array[:'first_user'::uuid], false),
-  '{"likedDishKinds":[],"dislikedDishKinds":[],"likedFoodIds":[],"dislikedFoodIds":[],"favoriteRecipeCounts":{}}'::jsonb,
+  '{"likedDishKinds":[],"dislikedDishKinds":[],"likedFoodIds":[],"dislikedFoodIds":[],"likedCuisineCodes":[],"dislikedCuisineCodes":[],"favoriteRecipeCounts":{}}'::jsonb,
   'withdrawal applies to the next authorized read');
 delete from public.household_members where user_id = :'first_user';
 select throws_ok(format($$select public.planning_advisory_inputs(%L, %L, array[%L::uuid], false)$$,
