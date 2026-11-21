@@ -60,6 +60,12 @@ that UI task becomes Ready. English is used for engineering documents only.
 Producer specs: [018](../018-ingredient-catalog/spec.md), [020](../020-catalog-shopping/spec.md), [021](../021-home-and-cooking/spec.md)
 
 - **Q1** (Dev 4 with reviewer): Agree zero-stock behavior, manual edit sheet/copy and concurrent adjustment-versus-undo policy; no legacy data deletion by inference.
+- **Q1 partial decision (2026-11-19, Dev 4)**: zero-stock and
+  adjustment-versus-undo follow the
+  [cooked meal contract](../021-home-and-cooking/contracts/cooked-meal-contract.md):
+  displayed stock floors at 0, a manual count wins over earlier cooking, undo
+  restores only consumption not superseded by a later count. Edit sheet copy
+  remains open.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

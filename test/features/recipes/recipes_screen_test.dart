@@ -80,11 +80,11 @@ void main() {
     final pixels = tester.state<ScrollableState>(list).position.pixels;
     expect(pixels, greaterThan(0));
 
-    // Uz bočni meni sadržaj je širok 639, 918, 743, 943 i 719: lista,
-    // mreža, lista, mreža, lista.
+    // Uz bočnu traku od 220 sadržaj je širok 500, 880, 780, 980 i 719:
+    // lista, mreža, lista, mreža, lista.
     for (final (width, grid) in [
       (720.0, false),
-      (999.0, true),
+      (1100.0, true),
       (1000.0, false),
       (1200.0, true),
       (719.0, false),

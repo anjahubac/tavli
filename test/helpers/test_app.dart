@@ -133,6 +133,7 @@ Recipe sampleRecipe(
 class FakeWakeLock implements ScreenWakeLock {
   bool on = false;
   bool fail = false;
+  bool failDisable = false;
 
   @override
   Future<void> enable() async {
@@ -141,7 +142,10 @@ class FakeWakeLock implements ScreenWakeLock {
   }
 
   @override
-  Future<void> disable() async => on = false;
+  Future<void> disable() async {
+    if (failDisable) throw Exception('nije podržano');
+    on = false;
+  }
 }
 
 class TestApp {
