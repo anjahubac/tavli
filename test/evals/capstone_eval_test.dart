@@ -154,9 +154,10 @@ void main() {
       client.script(geminiPro, ['{"error":"not_a_recipe"}']);
       await expectLater(
         ai.fromImage(AIImage(Uint8List.fromList([1, 2, 3]))),
-        throwsA(anything),
+        throwsA(isA<NotARecipeException>()),
       );
-      expect(client.calls, isNotEmpty);
+      // Odgovor „nije recept“ je konačan: ne prelazi se na drugi model.
+      expect(client.calls, ['gemini/pro']);
     });
 
     test('EV-11 nevalidan zahtev (4xx): po jedan poziv po modelu, pa greška bez petlje', () async {
@@ -196,7 +197,16 @@ void main() {
       }
       await expectLater(
         ai.fromDishName('gulaš'),
-        throwsA(isA<AllModelsExhausted>()),
+        throwsA(
+          isA<AllModelsExhausted>()
+              .having((e) => e.attempts.length, 'pokušaja', 2)
+              .having((e) => e.invalidOutput, 'invalidOutput', isFalse)
+              .having(
+                (e) => e.nextAvailableAt,
+                'nextAvailableAt',
+                DateTime.utc(2026, 11, 21, 12, 1),
+              ),
+        ),
       );
       expect(client.calls, ['gemini/pro', 'groq/text']);
     });
