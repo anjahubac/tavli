@@ -4,23 +4,49 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/app/router.dart';
+import 'package:tavli/app/tab_app_bar.dart';
 import 'package:tavli/domain/account.dart';
-import 'package:tavli/features/account/account_header.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/test_app.dart';
 
 void main() {
+  TavliNavigation navigation(WidgetTester tester) =>
+      tester.widget<TavliNavigation>(find.byType(TavliNavigation));
+
   List<String> labels(WidgetTester tester) => [
-    for (final d in tester.widgetList<NavigationDestination>(
-      find.byType(NavigationDestination),
-    ))
-      d.label,
+    for (final d in navigation(tester).destinations) d.label,
   ];
+
+  /// Nazivi u bočnoj traci odozgo nadole.
+  List<String> sideLabels(WidgetTester tester) {
+    final names = [for (final d in navigation(tester).destinations) d.label];
+    final found = [
+      for (final n in names)
+        (
+          n,
+          tester
+              .getTopLeft(
+                find.descendant(
+                  of: find.byType(TavliNavigation),
+                  matching: find.text(n),
+                ),
+              )
+              .dy,
+        ),
+    ]..sort((a, b) => a.$2.compareTo(b.$2));
+    return [for (final (n, _) in found) n];
+  }
+
+  Finder profileAvatar() => find.descendant(
+    of: find.byType(TavliAppBar),
+    matching: find.bySemanticsLabel('Profil'),
+  );
 
   testTavli('telefon: donji tabovi i prelazak na Ostavu', (tester) async {
     await pumpTavli(tester, size: const Size(390, 844));
 
-    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(navigation(tester).layout, TavliNavigationLayout.bottom);
     expect(currentTab(tester), 'Recepti');
 
     await tester.tap(find.text('Ostava'));
@@ -47,9 +73,35 @@ void main() {
   testTavli('širok ekran (macOS): bočni meni', (tester) async {
     await pumpTavli(tester, size: wide);
 
-    expect(find.byType(NavigationRail), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(TavliNavigation), findsOneWidget);
+    expect(navigation(tester).layout, TavliNavigationLayout.side);
+    // Kao na platnu: na računaru nema gornje trake „Tavli“.
+    expect(find.byType(TavliAppBar), findsNothing);
   });
+
+  for (final location in ['/recipes', '/shopping', '/plan']) {
+    testTavli('širok ekran $location: bez gornje trake nema praznog pojasa', (
+      tester,
+    ) async {
+      await pumpTavli(tester, size: wide, location: location, settle: false);
+      await tester.pump(const Duration(seconds: 1));
+      final bars = find.byType(TabAppBar);
+      expect(bars, findsWidgets);
+      for (final bar in bars.evaluate()) {
+        // Scaffold daje traci njenu stvarnu visinu (0), ne preferredSize (64).
+        expect(tester.getSize(find.byWidget(bar.widget)).height, 0);
+      }
+      // Sadržaj ekrana počinje na samom vrhu svog Scaffold-a.
+      final scaffold = find
+          .ancestor(of: bars.first, matching: find.byType(Scaffold))
+          .first;
+      final body = tester.widget<Scaffold>(scaffold).body!;
+      expect(
+        tester.getTopLeft(find.byWidget(body)).dy,
+        tester.getTopLeft(scaffold).dy,
+      );
+    });
+  }
 
   testTavli('pet tabova redom, Početna u sredini', (tester) async {
     await pumpTavli(tester, size: const Size(390, 844), location: '/plan');
@@ -57,8 +109,20 @@ void main() {
     expect(labels(tester), ['Plan', 'Nabavka', 'Početna', 'Recepti', 'Ostava']);
     expect(currentTab(tester), 'Plan');
     // Gore je naziv aplikacije, ne naziv taba.
-    expect(find.widgetWithText(AppBar, 'Tavli'), findsOneWidget);
-    expect(find.widgetWithText(AppBar, 'Plan'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(TavliAppBar),
+        matching: find.text('Tavli'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(TavliAppBar),
+        matching: find.text('Plan'),
+      ),
+      findsNothing,
+    );
     await tester.tap(find.text('Nabavka'));
     // Prazna Nabavka ima animaciju u petlji, pa bez pumpAndSettle.
     await tester.pump(const Duration(seconds: 1));
@@ -70,22 +134,21 @@ void main() {
   ) async {
     await pumpTavli(tester, size: wide, location: '/plan');
 
-    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
-    expect(
-      [for (final d in rail.destinations) (d.label as Text).data],
-      ['Početna', 'Plan', 'Nabavka', 'Recepti', 'Ostava'],
-    );
-    expect(rail.selectedIndex, 1);
-    for (final (index, label) in [
+    expect(sideLabels(tester), [
       'Početna',
       'Plan',
       'Nabavka',
       'Recepti',
       'Ostava',
-    ].indexed) {
+    ]);
+    expect(
+      navigation(tester).selectedIndex,
+      tabs.indexWhere((t) => t.label == 'Plan'),
+    );
+    for (final label in ['Početna', 'Plan', 'Nabavka', 'Recepti', 'Ostava']) {
       await tester.tap(
         find.descendant(
-          of: find.byType(NavigationRail),
+          of: find.byType(TavliNavigation),
           matching: find.text(label),
         ),
       );
@@ -94,10 +157,8 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       expect(currentTab(tester), label);
       expect(
-        tester
-            .widget<NavigationRail>(find.byType(NavigationRail))
-            .selectedIndex,
-        index,
+        navigation(tester).selectedIndex,
+        tabs.indexWhere((t) => t.label == label),
       );
     }
   });
@@ -108,8 +169,14 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(currentTab(tester), 'Početna');
-    expect(find.widgetWithText(AppBar, 'Tavli'), findsOneWidget);
-    expect(find.byTooltip('Profil i podešavanja'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(TavliAppBar),
+        matching: find.text('Tavli'),
+      ),
+      findsOneWidget,
+    );
+    expect(profileAvatar(), findsOneWidget);
     expect(find.text('Ovde će biti današnji obroci'), findsOneWidget);
     expect(
       find.text('Uskoro: šta se danas kuva i šta treba da uradiš.'),
@@ -178,7 +245,7 @@ void main() {
     expect(focus.hasPrimaryFocus, isTrue);
     tester.view.physicalSize = const Size(720, 360);
     await tester.pumpAndSettle();
-    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(navigation(tester).layout, TavliNavigationLayout.side);
     expect(currentTab(tester), 'Recepti');
     final primary = FocusManager.instance.primaryFocus!;
     expect(
@@ -192,15 +259,13 @@ void main() {
     tester,
   ) async {
     await pumpTavli(tester, size: const Size(390, 844), location: '/pantry');
+    expect(profileAvatar(), findsOneWidget);
     expect(
-      find.descendant(
-        of: find.byType(AppBar),
-        matching: find.byTooltip('Profil i podešavanja'),
-      ),
+      find.descendant(of: find.byType(TavliAppBar), matching: find.text('AP')),
       findsOneWidget,
     );
 
-    await tester.tap(find.byTooltip('Profil i podešavanja'));
+    await tester.tap(profileAvatar());
     await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, 'Profil'), findsOneWidget);
     expect(find.text('Odjavi se'), findsOneWidget);
@@ -217,22 +282,27 @@ void main() {
       (tester) async {
         await pumpTavli(tester, size: Size(width, 800), location: '/pantry');
 
-        expect(find.byTooltip('Profil i podešavanja'), findsNothing);
+        expect(find.byType(TavliAppBar), findsNothing);
         final railProfile = find.descendant(
-          of: find.byType(NavigationRail),
-          matching: find.byType(ProfileRailItem),
+          of: find.byType(TavliNavigation),
+          matching: find.text('Profil'),
         );
         expect(railProfile, findsOneWidget);
+        // Avatar postoji samo jednom na ekranu, na dnu bočne trake.
+        expect(find.text('AP'), findsOneWidget);
         expect(
-          find.descendant(of: railProfile, matching: find.text('Profil')),
-          findsOneWidget,
+          tester.getTopLeft(railProfile).dy,
+          greaterThan(
+            tester
+                .getTopLeft(
+                  find.descendant(
+                    of: find.byType(TavliNavigation),
+                    matching: find.text('Ostava'),
+                  ),
+                )
+                .dy,
+          ),
         );
-        expect(
-          find.descendant(of: railProfile, matching: find.text('AP')),
-          findsOneWidget,
-        );
-        // Avatar postoji samo jednom na ekranu.
-        expect(find.byType(InitialsAvatar), findsOneWidget);
 
         await tester.tap(railProfile);
         await tester.pumpAndSettle();
