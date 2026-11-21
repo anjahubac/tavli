@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
@@ -116,6 +117,13 @@ class MealEntryDetail extends ConsumerWidget {
           spacing: TavliSpacing.small,
           runSpacing: TavliSpacing.small,
           children: [
+            if (snapshot != null && !meal.isCooked)
+              TavliButton.primary(
+                label: 'Kuvaj',
+                glyph: TavliIcons.cook,
+                onPressed: () =>
+                    context.push('/cook/meal/${plan.id}/${meal.id}'),
+              ),
             TavliButton.secondary(
               label: 'Zameni jelo',
               glyph: TavliIcons.edit,
