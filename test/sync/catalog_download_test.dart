@@ -169,6 +169,21 @@ void main() {
   );
 
   test(
+    'trag brisanja kućne namirnice briše namirnicu i njene aliase',
+    () async {
+      serverFood('f-own', household: hid);
+      serverAlias('a-own', 'f-own', household: hid);
+      await downloader().run();
+      expect(await localFoods(), {'f-own'});
+
+      backend.server.delete('foods', ['f-own'], 'id');
+      await downloader().run();
+      expect(await localFoods(), isEmpty);
+      expect(await localAliases(), isEmpty);
+    },
+  );
+
+  test(
     'bez mreže tokom kataloga baca TransientSyncError kao i do sada',
     () async {
       serverFood('f-shared');

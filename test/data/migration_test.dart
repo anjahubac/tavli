@@ -429,6 +429,15 @@ void main() {
     expect((await db.select(db.pantryItems).get()).single.id, 'o1');
     expect(await db.select(db.foods).get(), isEmpty);
     expect(await db.select(db.foodAliases).get(), isEmpty);
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            "AND name = 'food_aliases_shared_active'",
+          )
+          .get(),
+      hasLength(1),
+    );
     await db.customStatement(
       'INSERT INTO foods (id, slug, name, category, base_unit, created_at, '
       "updated_at) VALUES ('f1', 'jaje', 'jaje', 'ostalo', 'piece', 1, 1)",
