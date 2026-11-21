@@ -248,7 +248,7 @@ class Uploader {
       await _remote.upsert(
         entity.remoteTable,
         rows,
-        onConflict: entity.remoteId,
+        onConflict: entity.remoteConflict,
       );
     }
     await _done([

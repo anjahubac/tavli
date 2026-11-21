@@ -44,6 +44,56 @@ class Downloader {
       timeColumn: 'deleted_at',
       apply: _applyTombstone,
     );
+    await _refreshRatingSummaries();
+  }
+
+  Future<void> _refreshRatingSummaries() async {
+    final rows = await _remote.fetchHouseholdRecipeRatingSummaries();
+    final valid = <RatingSummariesCompanion>[];
+    for (final row in rows) {
+      final householdId = row['household_id'] as String?;
+      final recipeId = row['recipe_id'] as String?;
+      final rawAverage = row['average_stars'];
+      final average = rawAverage is num
+          ? rawAverage.toDouble()
+          : double.tryParse(rawAverage is String ? rawAverage : '');
+      final count = (row['rating_count'] as num?)?.toInt();
+      if (householdId != _scope.householdId ||
+          recipeId == null ||
+          average == null ||
+          !average.isFinite ||
+          average < 1 ||
+          average > 5 ||
+          count == null ||
+          count < 1) {
+        continue;
+      }
+      final recipe =
+          await (_db.select(_db.recipes)..where(
+                (t) =>
+                    t.id.equals(recipeId) &
+                    t.householdId.equals(_scope.householdId),
+              ))
+              .getSingleOrNull();
+      if (recipe == null) continue;
+      valid.add(
+        RatingSummariesCompanion.insert(
+          householdId: householdId!,
+          recipeId: recipeId,
+          averageStars: average,
+          ratingCount: count,
+        ),
+      );
+    }
+
+    await _db.transaction(() async {
+      await (_db.delete(
+        _db.ratingSummaries,
+      )..where((t) => t.householdId.equals(_scope.householdId))).go();
+      for (final row in valid) {
+        await _db.into(_db.ratingSummaries).insertOnConflictUpdate(row);
+      }
+    });
   }
 
   Future<void> _pull({
@@ -116,6 +166,20 @@ class Downloader {
   ) async {
     final id = row[e.remoteId]! as String;
     if (await _hasLocalChange(e.name, id)) return;
+    if (e is RatingEntity) {
+      if (row['user_id'] != _scope.userId) return;
+      final local =
+          await (_db.select(_db.ratings)..where(
+                (t) =>
+                    t.userId.equals(_scope.userId) &
+                    t.recipeId.equals(row['recipe_id']! as String),
+              ))
+              .getSingleOrNull();
+      if (local != null && local.id != id) {
+        if (await _hasLocalChange(e.name, local.id)) return;
+        await e.deleteLocal(_db, local.id);
+      }
+    }
     await e.write(_db, row);
   }
 

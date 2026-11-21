@@ -123,7 +123,21 @@ class FakeServer {
         }
         interruptAfterRows = n - 1;
       }
-      final id = r[key]! as String;
+      final conflictColumns = key.split(',');
+      Map<String, Object?>? existing;
+      if (key != 'id') {
+        for (final candidate in table(name).values) {
+          if (conflictColumns.every(
+            (column) => candidate[column] == r[column],
+          )) {
+            existing = candidate;
+            break;
+          }
+        }
+      }
+      final id =
+          (existing?['id'] ?? (conflictColumns.length == 1 ? r[key] : r['id']))!
+              as String;
       if (rejectIds.contains(id)) throw const PermanentSyncError('23514');
       final entity = _entityOf[name]!;
       if (_deleted(entity, id)) continue;
@@ -131,6 +145,7 @@ class FakeServer {
         continue;
       }
       final row = {...?table(name)[id], ...r, 'updated_at': _now()};
+      if (existing != null && key == 'user_id,recipe_id') row['id'] = id;
       // Kao kolona koju računa baza (generated always).
       if (name == 'supply_allocations') {
         row['supply_id'] =
@@ -439,6 +454,35 @@ class FakeSyncRemote implements SyncRemote {
     server.profiles[userId]!
       ..['display_name'] = name
       ..['updated_at'] = server._now();
+  }
+
+  @override
+  Future<List<Map<String, Object?>>>
+  fetchHouseholdRecipeRatingSummaries() async {
+    _checkSession();
+    server._check();
+    server.calls.add('rating_summaries');
+    final householdId = server.households[_uid];
+    final totals = <String, (int sum, int count)>{};
+    for (final rating in server.rows('ratings')) {
+      final recipeId = rating['recipe_id']! as String;
+      final recipe = server.table('recipes')[recipeId];
+      if (recipe?['household_id'] != householdId) continue;
+      final current = totals[recipeId] ?? (0, 0);
+      totals[recipeId] = (
+        current.$1 + (rating['stars']! as int),
+        current.$2 + 1,
+      );
+    }
+    return [
+      for (final entry in totals.entries)
+        {
+          'household_id': householdId,
+          'recipe_id': entry.key,
+          'average_stars': (entry.value.$1 / entry.value.$2).toStringAsFixed(1),
+          'rating_count': entry.value.$2,
+        },
+    ];
   }
 
   @override

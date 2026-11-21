@@ -234,6 +234,7 @@ class SyncEngine {
     try {
       do {
         _again = false;
+        final ratingChanges = await _hasRatingChanges();
         if (await _waitingCount() > 0) _emit(const Sending());
         final result = await _uploader.run();
         if (_stopped) return;
@@ -241,6 +242,7 @@ class SyncEngine {
           await onUnauthorized?.call();
           return;
         }
+        if (ratingChanges && !result.offline) await pull();
         if (result.offline) {
           _scheduleRetry();
           return;
@@ -279,6 +281,18 @@ class SyncEngine {
 
   Future<int> _waitingCount() async =>
       await _count(OutboxState.pending) + await _count(OutboxState.sending);
+
+  Future<bool> _hasRatingChanges() async =>
+      await (_db.select(_db.syncOutbox)
+            ..where(
+              (t) =>
+                  t.accountId.equals(_scope.userId) &
+                  t.entity.equals('rating') &
+                  t.state.isIn([OutboxState.pending, OutboxState.sending]),
+            )
+            ..limit(1))
+          .getSingleOrNull() !=
+      null;
 
   Future<bool> _hasPostponedPhotos() async =>
       await (_db.select(_db.syncOutbox)

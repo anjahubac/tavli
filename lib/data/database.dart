@@ -269,6 +269,11 @@ class SupplyAllocations extends Table {
 }
 
 @DataClassName('RatingRow')
+@TableIndex(
+  name: 'ratings_user_recipe_unique',
+  columns: {#userId, #recipeId},
+  unique: true,
+)
 class Ratings extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId => text().references(Recipes, #id)();
@@ -281,6 +286,18 @@ class Ratings extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Lokalni keš bezbednog, server-izračunatog proseka domaćinstva.
+@DataClassName('RatingSummaryRow')
+class RatingSummaries extends Table {
+  TextColumn get householdId => text()();
+  TextColumn get recipeId => text()();
+  RealColumn get averageStars => real()();
+  IntColumn get ratingCount => integer()();
+
+  @override
+  Set<Column> get primaryKey => {householdId, recipeId};
 }
 
 /// Profil ukusa kao JSON (polja će se često menjati). Id je userId osobe;
@@ -389,6 +406,7 @@ class SyncCursors extends Table {
     ShoppingContributions,
     SupplyAllocations,
     Ratings,
+    RatingSummaries,
     UserProfiles,
     AppSettings,
     ModelStatuses,
@@ -402,7 +420,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -420,6 +438,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) await transaction(() => _migrateToAccounts(m));
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
       if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
+      if (from < 7) await transaction(_migrateToRecipeRatings);
     },
   );
 
@@ -433,6 +452,30 @@ class AppDatabase extends _$AppDatabase {
     ]) {
       await _addMissingColumn(m, recipes, c);
     }
+  }
+
+  /// v7: jedan lični rejting po receptu i lokalni keš proseka domaćinstva.
+  Future<void> _migrateToRecipeRatings() async {
+    await customStatement('''
+      DELETE FROM ratings
+      WHERE EXISTS (
+        SELECT 1 FROM ratings newer
+        WHERE newer.user_id IS ratings.user_id
+          AND newer.recipe_id = ratings.recipe_id
+          AND (newer.cooked_at > ratings.cooked_at
+            OR (newer.cooked_at = ratings.cooked_at AND newer.id > ratings.id))
+      )
+    ''');
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS ratings_user_recipe_unique '
+      'ON ratings (user_id, recipe_id)',
+    );
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS rating_summaries ('
+      'household_id TEXT NOT NULL, recipe_id TEXT NOT NULL, '
+      'average_stars REAL NOT NULL, rating_count INTEGER NOT NULL, '
+      'PRIMARY KEY (household_id, recipe_id))',
+    );
   }
 
   /// Dodaje kolonu samo ako je nema: tabela napravljena iznova u ranijem

@@ -3,7 +3,9 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/data/recipe_rating_repository.dart';
 import 'package:tavli/sync/downloader.dart';
+import 'package:tavli/sync/entities.dart';
 import 'package:tavli/sync/sync_remote.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
@@ -200,6 +202,35 @@ void main() {
     s.profiles[scope.userId]!['display_name'] = 'Ana Petrović';
   }
 
+  test('server ID replaces a second device ID after rating sync', () async {
+    seedAll();
+    final repo = RecipeRatingRepository(
+      db,
+      writer: SyncedWriter(db, accountId: scope.userId),
+      scope: scope,
+    );
+    await downloader().run();
+    await db.delete(db.ratings).go();
+    await repo.save(recipeId: 'r1', stars: 2, personalNote: 'private');
+    await repo.save(recipeId: 'r1', stars: 3);
+    final local = (await db.select(db.ratings).get()).single;
+    expect(local.id, isNot('g1'));
+    expect(local.comment, 'private');
+    expect(local.stars, 3);
+    await downloader().run();
+    expect((await db.select(db.ratings).get()).single.id, local.id);
+    await backend.sync.upsert('ratings', [
+      const RatingEntity().toRemote(local),
+    ], onConflict: const RatingEntity().remoteConflict);
+    await db.delete(db.syncOutbox).go();
+    await downloader().run();
+    expect((await db.select(db.ratings).get()).single.id, 'g1');
+    expect((await repo.getMyRating('r1'))?.stars, 3);
+    final summary = await repo.watchHouseholdSummary('r1').first;
+    expect(summary?.averageStars, 3);
+    expect(summary?.ratingCount, 1);
+  });
+
   test('prvo preuzimanje: svi entiteti, roditelj pre deteta', () async {
     seedAll();
     backend.server.calls.clear();
@@ -220,6 +251,7 @@ void main() {
       'fetch:ratings',
       'fetch:taste_profiles',
       'fetch:deletions',
+      'rating_summaries',
     ]);
     final recipe = (await db.select(db.recipes).get()).single;
     expect(recipe.householdId, hid);
