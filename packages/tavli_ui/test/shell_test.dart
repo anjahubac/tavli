@@ -246,6 +246,24 @@ void main() {
       expect(taps, [2, 0]);
     });
 
+    testWidgets('macOS: bočna traka se pomera ispod prostora za semafore', (
+      tester,
+    ) async {
+      await pumpNav(
+        tester,
+        platform: TavliPlatform.macos,
+        size: const Size(800, 200),
+      );
+      final scrollView = find.byType(CustomScrollView);
+      expect(
+        tester.getTopLeft(scrollView).dy,
+        TavliWindowFrame.macosTitleBarHeight,
+      );
+      await tester.drag(scrollView, const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(find.text('Profil').hitTestable(), findsOneWidget);
+    });
+
     testWidgets('bez zadatog rasporeda: širok telefon dobija bočnu', (
       tester,
     ) async {

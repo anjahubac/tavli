@@ -5,7 +5,7 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 void main() {
   for (final (p, expected) in [
-    (TargetPlatform.iOS, 2),
+    (TargetPlatform.iOS, 3),
     (TargetPlatform.android, 0),
     (TargetPlatform.macOS, 0),
   ]) {
@@ -42,13 +42,26 @@ void main() {
                   selected: 0,
                   onChanged: (_) {},
                 ),
+                TavliChoice<int>.chips(
+                  options: const [
+                    TavliOption(0, 'Ceo plan'),
+                    TavliOption(1, 'Nedelja 1'),
+                  ],
+                  selected: 0,
+                  onChanged: (_) {},
+                ),
               ],
             ),
           ),
         ),
       );
+      await tester.tapAt(tester.getCenter(find.text('Nedelja')));
+      await tester.tapAt(tester.getCenter(find.text('Ceo plan')));
+      expect(calls, isEmpty);
+
       await tester.tap(find.text('Mleko'));
       await tester.tap(find.text('Mesec'));
+      await tester.tap(find.text('Nedelja 1'));
       expect(calls.length, expected);
     });
   }

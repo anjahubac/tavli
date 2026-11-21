@@ -200,12 +200,12 @@ class _SideBar extends StatelessWidget {
     final platform = TavliPlatform.of(context);
     final windows = platform == TavliPlatform.windows;
     final macos = platform == TavliPlatform.macos;
-    // macOS: semafori prozora stoje u vrhu bočne trake.
+    // Prostor za semafore i povlačenje prozora ostaje iznad skrola.
     final titleBar = macos
         ? TavliWindowFrame.macosTitleBarInsetOf(context)
         : 0.0;
     final top = titleBar > 0
-        ? titleBar
+        ? 0.0
         : 12.0 + (macos ? MediaQuery.paddingOf(context).top : 0);
     final order = [
       for (final (i, d) in nav.destinations.indexed)
@@ -220,6 +220,7 @@ class _SideBar extends StatelessWidget {
       label: 'Glavna navigacija',
       child: Container(
         width: 220,
+        padding: EdgeInsets.only(top: titleBar),
         decoration: BoxDecoration(
           color: shellSurface(context),
           border: Border(

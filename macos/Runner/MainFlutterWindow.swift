@@ -37,6 +37,23 @@ class MainFlutterWindow: NSWindow {
     super.awakeFromNib()
   }
 
+  override func sendEvent(_ event: NSEvent) {
+    if event.type == .leftMouseDown, !styleMask.contains(.fullScreen),
+      let zoomButton = standardWindowButton(.zoomButton)
+    {
+      // Prazan deo iznad bočne navigacije, u istom redu kao semafori.
+      let buttonFrame = zoomButton.convert(zoomButton.bounds, to: nil)
+      let point = event.locationInWindow
+      if point.x >= buttonFrame.maxX + 8, point.x < 200,
+        point.y >= buttonFrame.minY - 6, point.y <= buttonFrame.maxY + 4
+      {
+        performDrag(with: event)
+        return
+      }
+    }
+    super.sendEvent(event)
+  }
+
   @objc private func fullScreenChanged(_ notification: Notification) {
     windowChannel?.invokeMethod(
       "fullScreenChanged", arguments: notification.name == NSWindow.didEnterFullScreenNotification)
