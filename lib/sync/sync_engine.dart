@@ -57,6 +57,7 @@ class SyncEngine {
     this._legacyMover,
     this.onUnauthorized,
     this.refreshSession,
+    this.afterPull,
     TimerFactory? timer,
     DateTime Function()? clock,
     this.debounce = const Duration(seconds: 1),
@@ -80,6 +81,10 @@ class SyncEngine {
 
   /// Sesija je odbijena i posle obnove: nazad na prijavu.
   final Future<void> Function()? onUnauthorized;
+
+  /// Posle svakog uspešnog preuzimanja: lokalne projekcije koje zavise od
+  /// više tabela (npr. oznaka „skuvano“ iz zapisa kuvanja).
+  final Future<void> Function()? afterPull;
 
   static const backoff = [
     Duration(seconds: 5),
@@ -166,7 +171,14 @@ class SyncEngine {
     _db.accounts,
   )..where((t) => t.userId.equals(_scope.userId))).getSingleOrNull();
 
-  Future<void>? _pullInFlight;
+  Completer<void>? _pullFinished;
+  var _pullDeferred = 0;
+
+  /// Broj redova koje poslednje preuzimanje nije moglo da primeni (0 = sve
+  /// je primenjeno). Odvojeno od `lastPullAt`, koji beleži da je preuzimanje
+  /// prošlo do kraja.
+  int get pullDeferred => _pullDeferred;
+
   var _membershipCheck = false;
 
   /// Waits for old-scope work and suspends sync during server reconciliation.
@@ -175,7 +187,7 @@ class SyncEngine {
     _membershipCheck = true;
     try {
       await _inFlight;
-      await _pullInFlight;
+      await _pullFinished?.future;
       return await action();
     } finally {
       _membershipCheck = false;
@@ -183,31 +195,33 @@ class SyncEngine {
     }
   }
 
-  Future<void> pull() async {
-    if (_membershipCheck || _pullInFlight != null) return;
-    final pending = _pull();
-    _pullInFlight = pending;
-    try {
-      await pending;
-    } finally {
-      _pullInFlight = null;
-    }
-  }
-
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
-  Future<void> _pull() async {
+  Future<void> pull() async {
     final downloader = _downloader;
-    if (_stopped || downloader == null) return;
+    if (_stopped ||
+        _membershipCheck ||
+        downloader == null ||
+        _pullFinished != null) {
+      return;
+    }
+    final finished = _pullFinished = Completer<void>();
+    var adoptedWeek = false;
     try {
+      // Prevezivanje lokalnih redova i slanje njihovog starog ID-ja ne smeju
+      // da teku istovremeno.
+      if (_running) await _inFlight;
+      if (_stopped) return;
       final first = !((await _account())?.initialDownloadDone ?? false);
       if (first) setPhase(SyncPhase.downloading);
-      try {
-        await downloader.run();
-      } on UnauthorizedSyncError {
-        if (!(await refreshSession?.call() ?? false)) rethrow;
-        await downloader.run();
-      }
+      final result = await _download(downloader);
+      adoptedWeek = result.adoptedWeek;
       if (_stopped) return;
+      await afterPull?.call();
+      // Preuzimanje je stiglo do kraja i kad je neki red odložen: taj red
+      // ostaje ispred sačuvane pozicije i ponovo se pokušava pri sledećem
+      // preuzimanju, bez trake "Preuzimam…" i bez preuzimanja pri svakom
+      // povratku u aplikaciju.
+      _pullDeferred = result.deferred;
       await (_db.update(
         _db.accounts,
       )..where((t) => t.userId.equals(_scope.userId))).write(
@@ -226,7 +240,21 @@ class SyncEngine {
       // Bez mreže: nastavlja se sledeći put od sačuvane pozicije.
       setPhase(null);
     } finally {
+      _pullFinished = null;
+      finished.complete();
       if (!_stopped) await refreshStatus();
+    }
+    if (adoptedWeek && !_stopped) await push();
+  }
+
+  Future<({int deferred, bool adoptedWeek})> _download(
+    Downloader downloader,
+  ) async {
+    try {
+      return await downloader.run();
+    } on UnauthorizedSyncError {
+      if (!(await refreshSession?.call() ?? false)) rethrow;
+      return downloader.run();
     }
   }
 
@@ -245,6 +273,8 @@ class SyncEngine {
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
     if (_stopped || _membershipCheck) return Future.value();
+    final pullFinished = _pullFinished;
+    if (pullFinished != null) return pullFinished.future.then((_) => push());
     if (_running) {
       _again = true;
       return _inFlight ?? Future.value();

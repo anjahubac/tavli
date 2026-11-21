@@ -1577,6 +1577,18 @@ class $PantryItemsTable extends PantryItems
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _quantitySetAtMeta = const VerificationMeta(
+    'quantitySetAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> quantitySetAt =
+      GeneratedColumn<DateTime>(
+        'quantity_set_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1589,6 +1601,7 @@ class $PantryItemsTable extends PantryItems
     householdId,
     confirmedAt,
     sourceShoppingItemId,
+    quantitySetAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1676,6 +1689,15 @@ class $PantryItemsTable extends PantryItems
         ),
       );
     }
+    if (data.containsKey('quantity_set_at')) {
+      context.handle(
+        _quantitySetAtMeta,
+        quantitySetAt.isAcceptableOrUnknown(
+          data['quantity_set_at']!,
+          _quantitySetAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1725,6 +1747,10 @@ class $PantryItemsTable extends PantryItems
         DriftSqlType.string,
         data['${effectivePrefix}source_shopping_item_id'],
       ),
+      quantitySetAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}quantity_set_at'],
+      ),
     );
   }
 
@@ -1749,6 +1775,10 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
 
   /// Prijem kupljene stavke: ista zaliha kao ta kupovina, ne nova (v5).
   final String? sourceShoppingItemId;
+
+  /// Poslednje ručno brojanje količine (v7): kuvanje pre ovog trenutka se
+  /// više ne oduzima, jer upisana količina već pokazuje stanje.
+  final DateTime? quantitySetAt;
   const PantryItemRow({
     required this.id,
     required this.name,
@@ -1760,6 +1790,7 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
     this.householdId,
     this.confirmedAt,
     this.sourceShoppingItemId,
+    this.quantitySetAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1786,6 +1817,9 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
     if (!nullToAbsent || sourceShoppingItemId != null) {
       map['source_shopping_item_id'] = Variable<String>(sourceShoppingItemId);
     }
+    if (!nullToAbsent || quantitySetAt != null) {
+      map['quantity_set_at'] = Variable<DateTime>(quantitySetAt);
+    }
     return map;
   }
 
@@ -1811,6 +1845,9 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
       sourceShoppingItemId: sourceShoppingItemId == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceShoppingItemId),
+      quantitySetAt: quantitySetAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(quantitySetAt),
     );
   }
 
@@ -1832,6 +1869,7 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
       sourceShoppingItemId: serializer.fromJson<String?>(
         json['sourceShoppingItemId'],
       ),
+      quantitySetAt: serializer.fromJson<DateTime?>(json['quantitySetAt']),
     );
   }
   @override
@@ -1848,6 +1886,7 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
       'householdId': serializer.toJson<String?>(householdId),
       'confirmedAt': serializer.toJson<DateTime?>(confirmedAt),
       'sourceShoppingItemId': serializer.toJson<String?>(sourceShoppingItemId),
+      'quantitySetAt': serializer.toJson<DateTime?>(quantitySetAt),
     };
   }
 
@@ -1862,6 +1901,7 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
     Value<String?> householdId = const Value.absent(),
     Value<DateTime?> confirmedAt = const Value.absent(),
     Value<String?> sourceShoppingItemId = const Value.absent(),
+    Value<DateTime?> quantitySetAt = const Value.absent(),
   }) => PantryItemRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -1875,6 +1915,9 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
     sourceShoppingItemId: sourceShoppingItemId.present
         ? sourceShoppingItemId.value
         : this.sourceShoppingItemId,
+    quantitySetAt: quantitySetAt.present
+        ? quantitySetAt.value
+        : this.quantitySetAt,
   );
   PantryItemRow copyWithCompanion(PantryItemsCompanion data) {
     return PantryItemRow(
@@ -1894,6 +1937,9 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
       sourceShoppingItemId: data.sourceShoppingItemId.present
           ? data.sourceShoppingItemId.value
           : this.sourceShoppingItemId,
+      quantitySetAt: data.quantitySetAt.present
+          ? data.quantitySetAt.value
+          : this.quantitySetAt,
     );
   }
 
@@ -1909,7 +1955,8 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
           ..write('expiresAt: $expiresAt, ')
           ..write('householdId: $householdId, ')
           ..write('confirmedAt: $confirmedAt, ')
-          ..write('sourceShoppingItemId: $sourceShoppingItemId')
+          ..write('sourceShoppingItemId: $sourceShoppingItemId, ')
+          ..write('quantitySetAt: $quantitySetAt')
           ..write(')'))
         .toString();
   }
@@ -1926,6 +1973,7 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
     householdId,
     confirmedAt,
     sourceShoppingItemId,
+    quantitySetAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1940,7 +1988,8 @@ class PantryItemRow extends DataClass implements Insertable<PantryItemRow> {
           other.expiresAt == this.expiresAt &&
           other.householdId == this.householdId &&
           other.confirmedAt == this.confirmedAt &&
-          other.sourceShoppingItemId == this.sourceShoppingItemId);
+          other.sourceShoppingItemId == this.sourceShoppingItemId &&
+          other.quantitySetAt == this.quantitySetAt);
 }
 
 class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
@@ -1954,6 +2003,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
   final Value<String?> householdId;
   final Value<DateTime?> confirmedAt;
   final Value<String?> sourceShoppingItemId;
+  final Value<DateTime?> quantitySetAt;
   final Value<int> rowid;
   const PantryItemsCompanion({
     this.id = const Value.absent(),
@@ -1966,6 +2016,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
     this.householdId = const Value.absent(),
     this.confirmedAt = const Value.absent(),
     this.sourceShoppingItemId = const Value.absent(),
+    this.quantitySetAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PantryItemsCompanion.insert({
@@ -1979,6 +2030,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
     this.householdId = const Value.absent(),
     this.confirmedAt = const Value.absent(),
     this.sourceShoppingItemId = const Value.absent(),
+    this.quantitySetAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -1995,6 +2047,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
     Expression<String>? householdId,
     Expression<DateTime>? confirmedAt,
     Expression<String>? sourceShoppingItemId,
+    Expression<DateTime>? quantitySetAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2009,6 +2062,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
       if (confirmedAt != null) 'confirmed_at': confirmedAt,
       if (sourceShoppingItemId != null)
         'source_shopping_item_id': sourceShoppingItemId,
+      if (quantitySetAt != null) 'quantity_set_at': quantitySetAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2024,6 +2078,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
     Value<String?>? householdId,
     Value<DateTime?>? confirmedAt,
     Value<String?>? sourceShoppingItemId,
+    Value<DateTime?>? quantitySetAt,
     Value<int>? rowid,
   }) {
     return PantryItemsCompanion(
@@ -2037,6 +2092,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
       householdId: householdId ?? this.householdId,
       confirmedAt: confirmedAt ?? this.confirmedAt,
       sourceShoppingItemId: sourceShoppingItemId ?? this.sourceShoppingItemId,
+      quantitySetAt: quantitySetAt ?? this.quantitySetAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2076,6 +2132,9 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
         sourceShoppingItemId.value,
       );
     }
+    if (quantitySetAt.present) {
+      map['quantity_set_at'] = Variable<DateTime>(quantitySetAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2095,6 +2154,7 @@ class PantryItemsCompanion extends UpdateCompanion<PantryItemRow> {
           ..write('householdId: $householdId, ')
           ..write('confirmedAt: $confirmedAt, ')
           ..write('sourceShoppingItemId: $sourceShoppingItemId, ')
+          ..write('quantitySetAt: $quantitySetAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6493,6 +6553,1119 @@ class SupplyAllocationsCompanion extends UpdateCompanion<SupplyAllocationRow> {
   }
 }
 
+class $CookedEventsTable extends CookedEvents
+    with TableInfo<$CookedEventsTable, CookedEventRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CookedEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _planEntryIdMeta = const VerificationMeta(
+    'planEntryId',
+  );
+  @override
+  late final GeneratedColumn<String> planEntryId = GeneratedColumn<String>(
+    'plan_entry_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES meal_plan_entries (id)',
+    ),
+  );
+  static const VerificationMeta _mealDateMeta = const VerificationMeta(
+    'mealDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> mealDate = GeneratedColumn<DateTime>(
+    'meal_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mealTypeMeta = const VerificationMeta(
+    'mealType',
+  );
+  @override
+  late final GeneratedColumn<String> mealType = GeneratedColumn<String>(
+    'meal_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actorUserIdMeta = const VerificationMeta(
+    'actorUserId',
+  );
+  @override
+  late final GeneratedColumn<String> actorUserId = GeneratedColumn<String>(
+    'actor_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _servingsMeta = const VerificationMeta(
+    'servings',
+  );
+  @override
+  late final GeneratedColumn<int> servings = GeneratedColumn<int>(
+    'servings',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cookedAtMeta = const VerificationMeta(
+    'cookedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cookedAt = GeneratedColumn<DateTime>(
+    'cooked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _undoneAtMeta = const VerificationMeta(
+    'undoneAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> undoneAt = GeneratedColumn<DateTime>(
+    'undone_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _undoReasonMeta = const VerificationMeta(
+    'undoReason',
+  );
+  @override
+  late final GeneratedColumn<String> undoReason = GeneratedColumn<String>(
+    'undo_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    planEntryId,
+    mealDate,
+    mealType,
+    actorUserId,
+    servings,
+    cookedAt,
+    undoneAt,
+    undoReason,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cooked_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CookedEventRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('plan_entry_id')) {
+      context.handle(
+        _planEntryIdMeta,
+        planEntryId.isAcceptableOrUnknown(
+          data['plan_entry_id']!,
+          _planEntryIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_planEntryIdMeta);
+    }
+    if (data.containsKey('meal_date')) {
+      context.handle(
+        _mealDateMeta,
+        mealDate.isAcceptableOrUnknown(data['meal_date']!, _mealDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mealDateMeta);
+    }
+    if (data.containsKey('meal_type')) {
+      context.handle(
+        _mealTypeMeta,
+        mealType.isAcceptableOrUnknown(data['meal_type']!, _mealTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mealTypeMeta);
+    }
+    if (data.containsKey('actor_user_id')) {
+      context.handle(
+        _actorUserIdMeta,
+        actorUserId.isAcceptableOrUnknown(
+          data['actor_user_id']!,
+          _actorUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_actorUserIdMeta);
+    }
+    if (data.containsKey('servings')) {
+      context.handle(
+        _servingsMeta,
+        servings.isAcceptableOrUnknown(data['servings']!, _servingsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_servingsMeta);
+    }
+    if (data.containsKey('cooked_at')) {
+      context.handle(
+        _cookedAtMeta,
+        cookedAt.isAcceptableOrUnknown(data['cooked_at']!, _cookedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cookedAtMeta);
+    }
+    if (data.containsKey('undone_at')) {
+      context.handle(
+        _undoneAtMeta,
+        undoneAt.isAcceptableOrUnknown(data['undone_at']!, _undoneAtMeta),
+      );
+    }
+    if (data.containsKey('undo_reason')) {
+      context.handle(
+        _undoReasonMeta,
+        undoReason.isAcceptableOrUnknown(data['undo_reason']!, _undoReasonMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CookedEventRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CookedEventRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      ),
+      planEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan_entry_id'],
+      )!,
+      mealDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}meal_date'],
+      )!,
+      mealType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meal_type'],
+      )!,
+      actorUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}actor_user_id'],
+      )!,
+      servings: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}servings'],
+      )!,
+      cookedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cooked_at'],
+      )!,
+      undoneAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}undone_at'],
+      ),
+      undoReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}undo_reason'],
+      ),
+    );
+  }
+
+  @override
+  $CookedEventsTable createAlias(String alias) {
+    return $CookedEventsTable(attachedDatabase, alias);
+  }
+}
+
+class CookedEventRow extends DataClass implements Insertable<CookedEventRow> {
+  final String id;
+  final String? householdId;
+  final String planEntryId;
+
+  /// Datum obroka (kalendarski, kao `meal_plan_entries.date`) i vrsta.
+  final DateTime mealDate;
+  final String mealType;
+  final String actorUserId;
+  final int servings;
+  final DateTime cookedAt;
+  final DateTime? undoneAt;
+
+  /// `user` ili `duplicate` (dva uređaja bez mreže).
+  final String? undoReason;
+  const CookedEventRow({
+    required this.id,
+    this.householdId,
+    required this.planEntryId,
+    required this.mealDate,
+    required this.mealType,
+    required this.actorUserId,
+    required this.servings,
+    required this.cookedAt,
+    this.undoneAt,
+    this.undoReason,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || householdId != null) {
+      map['household_id'] = Variable<String>(householdId);
+    }
+    map['plan_entry_id'] = Variable<String>(planEntryId);
+    map['meal_date'] = Variable<DateTime>(mealDate);
+    map['meal_type'] = Variable<String>(mealType);
+    map['actor_user_id'] = Variable<String>(actorUserId);
+    map['servings'] = Variable<int>(servings);
+    map['cooked_at'] = Variable<DateTime>(cookedAt);
+    if (!nullToAbsent || undoneAt != null) {
+      map['undone_at'] = Variable<DateTime>(undoneAt);
+    }
+    if (!nullToAbsent || undoReason != null) {
+      map['undo_reason'] = Variable<String>(undoReason);
+    }
+    return map;
+  }
+
+  CookedEventsCompanion toCompanion(bool nullToAbsent) {
+    return CookedEventsCompanion(
+      id: Value(id),
+      householdId: householdId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(householdId),
+      planEntryId: Value(planEntryId),
+      mealDate: Value(mealDate),
+      mealType: Value(mealType),
+      actorUserId: Value(actorUserId),
+      servings: Value(servings),
+      cookedAt: Value(cookedAt),
+      undoneAt: undoneAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(undoneAt),
+      undoReason: undoReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(undoReason),
+    );
+  }
+
+  factory CookedEventRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CookedEventRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String?>(json['householdId']),
+      planEntryId: serializer.fromJson<String>(json['planEntryId']),
+      mealDate: serializer.fromJson<DateTime>(json['mealDate']),
+      mealType: serializer.fromJson<String>(json['mealType']),
+      actorUserId: serializer.fromJson<String>(json['actorUserId']),
+      servings: serializer.fromJson<int>(json['servings']),
+      cookedAt: serializer.fromJson<DateTime>(json['cookedAt']),
+      undoneAt: serializer.fromJson<DateTime?>(json['undoneAt']),
+      undoReason: serializer.fromJson<String?>(json['undoReason']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String?>(householdId),
+      'planEntryId': serializer.toJson<String>(planEntryId),
+      'mealDate': serializer.toJson<DateTime>(mealDate),
+      'mealType': serializer.toJson<String>(mealType),
+      'actorUserId': serializer.toJson<String>(actorUserId),
+      'servings': serializer.toJson<int>(servings),
+      'cookedAt': serializer.toJson<DateTime>(cookedAt),
+      'undoneAt': serializer.toJson<DateTime?>(undoneAt),
+      'undoReason': serializer.toJson<String?>(undoReason),
+    };
+  }
+
+  CookedEventRow copyWith({
+    String? id,
+    Value<String?> householdId = const Value.absent(),
+    String? planEntryId,
+    DateTime? mealDate,
+    String? mealType,
+    String? actorUserId,
+    int? servings,
+    DateTime? cookedAt,
+    Value<DateTime?> undoneAt = const Value.absent(),
+    Value<String?> undoReason = const Value.absent(),
+  }) => CookedEventRow(
+    id: id ?? this.id,
+    householdId: householdId.present ? householdId.value : this.householdId,
+    planEntryId: planEntryId ?? this.planEntryId,
+    mealDate: mealDate ?? this.mealDate,
+    mealType: mealType ?? this.mealType,
+    actorUserId: actorUserId ?? this.actorUserId,
+    servings: servings ?? this.servings,
+    cookedAt: cookedAt ?? this.cookedAt,
+    undoneAt: undoneAt.present ? undoneAt.value : this.undoneAt,
+    undoReason: undoReason.present ? undoReason.value : this.undoReason,
+  );
+  CookedEventRow copyWithCompanion(CookedEventsCompanion data) {
+    return CookedEventRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      planEntryId: data.planEntryId.present
+          ? data.planEntryId.value
+          : this.planEntryId,
+      mealDate: data.mealDate.present ? data.mealDate.value : this.mealDate,
+      mealType: data.mealType.present ? data.mealType.value : this.mealType,
+      actorUserId: data.actorUserId.present
+          ? data.actorUserId.value
+          : this.actorUserId,
+      servings: data.servings.present ? data.servings.value : this.servings,
+      cookedAt: data.cookedAt.present ? data.cookedAt.value : this.cookedAt,
+      undoneAt: data.undoneAt.present ? data.undoneAt.value : this.undoneAt,
+      undoReason: data.undoReason.present
+          ? data.undoReason.value
+          : this.undoReason,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CookedEventRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('planEntryId: $planEntryId, ')
+          ..write('mealDate: $mealDate, ')
+          ..write('mealType: $mealType, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('servings: $servings, ')
+          ..write('cookedAt: $cookedAt, ')
+          ..write('undoneAt: $undoneAt, ')
+          ..write('undoReason: $undoReason')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    householdId,
+    planEntryId,
+    mealDate,
+    mealType,
+    actorUserId,
+    servings,
+    cookedAt,
+    undoneAt,
+    undoReason,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CookedEventRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.planEntryId == this.planEntryId &&
+          other.mealDate == this.mealDate &&
+          other.mealType == this.mealType &&
+          other.actorUserId == this.actorUserId &&
+          other.servings == this.servings &&
+          other.cookedAt == this.cookedAt &&
+          other.undoneAt == this.undoneAt &&
+          other.undoReason == this.undoReason);
+}
+
+class CookedEventsCompanion extends UpdateCompanion<CookedEventRow> {
+  final Value<String> id;
+  final Value<String?> householdId;
+  final Value<String> planEntryId;
+  final Value<DateTime> mealDate;
+  final Value<String> mealType;
+  final Value<String> actorUserId;
+  final Value<int> servings;
+  final Value<DateTime> cookedAt;
+  final Value<DateTime?> undoneAt;
+  final Value<String?> undoReason;
+  final Value<int> rowid;
+  const CookedEventsCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.planEntryId = const Value.absent(),
+    this.mealDate = const Value.absent(),
+    this.mealType = const Value.absent(),
+    this.actorUserId = const Value.absent(),
+    this.servings = const Value.absent(),
+    this.cookedAt = const Value.absent(),
+    this.undoneAt = const Value.absent(),
+    this.undoReason = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CookedEventsCompanion.insert({
+    required String id,
+    this.householdId = const Value.absent(),
+    required String planEntryId,
+    required DateTime mealDate,
+    required String mealType,
+    required String actorUserId,
+    required int servings,
+    required DateTime cookedAt,
+    this.undoneAt = const Value.absent(),
+    this.undoReason = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       planEntryId = Value(planEntryId),
+       mealDate = Value(mealDate),
+       mealType = Value(mealType),
+       actorUserId = Value(actorUserId),
+       servings = Value(servings),
+       cookedAt = Value(cookedAt);
+  static Insertable<CookedEventRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? planEntryId,
+    Expression<DateTime>? mealDate,
+    Expression<String>? mealType,
+    Expression<String>? actorUserId,
+    Expression<int>? servings,
+    Expression<DateTime>? cookedAt,
+    Expression<DateTime>? undoneAt,
+    Expression<String>? undoReason,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (planEntryId != null) 'plan_entry_id': planEntryId,
+      if (mealDate != null) 'meal_date': mealDate,
+      if (mealType != null) 'meal_type': mealType,
+      if (actorUserId != null) 'actor_user_id': actorUserId,
+      if (servings != null) 'servings': servings,
+      if (cookedAt != null) 'cooked_at': cookedAt,
+      if (undoneAt != null) 'undone_at': undoneAt,
+      if (undoReason != null) 'undo_reason': undoReason,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CookedEventsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? householdId,
+    Value<String>? planEntryId,
+    Value<DateTime>? mealDate,
+    Value<String>? mealType,
+    Value<String>? actorUserId,
+    Value<int>? servings,
+    Value<DateTime>? cookedAt,
+    Value<DateTime?>? undoneAt,
+    Value<String?>? undoReason,
+    Value<int>? rowid,
+  }) {
+    return CookedEventsCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      planEntryId: planEntryId ?? this.planEntryId,
+      mealDate: mealDate ?? this.mealDate,
+      mealType: mealType ?? this.mealType,
+      actorUserId: actorUserId ?? this.actorUserId,
+      servings: servings ?? this.servings,
+      cookedAt: cookedAt ?? this.cookedAt,
+      undoneAt: undoneAt ?? this.undoneAt,
+      undoReason: undoReason ?? this.undoReason,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (planEntryId.present) {
+      map['plan_entry_id'] = Variable<String>(planEntryId.value);
+    }
+    if (mealDate.present) {
+      map['meal_date'] = Variable<DateTime>(mealDate.value);
+    }
+    if (mealType.present) {
+      map['meal_type'] = Variable<String>(mealType.value);
+    }
+    if (actorUserId.present) {
+      map['actor_user_id'] = Variable<String>(actorUserId.value);
+    }
+    if (servings.present) {
+      map['servings'] = Variable<int>(servings.value);
+    }
+    if (cookedAt.present) {
+      map['cooked_at'] = Variable<DateTime>(cookedAt.value);
+    }
+    if (undoneAt.present) {
+      map['undone_at'] = Variable<DateTime>(undoneAt.value);
+    }
+    if (undoReason.present) {
+      map['undo_reason'] = Variable<String>(undoReason.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CookedEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('planEntryId: $planEntryId, ')
+          ..write('mealDate: $mealDate, ')
+          ..write('mealType: $mealType, ')
+          ..write('actorUserId: $actorUserId, ')
+          ..write('servings: $servings, ')
+          ..write('cookedAt: $cookedAt, ')
+          ..write('undoneAt: $undoneAt, ')
+          ..write('undoReason: $undoReason, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PantryConsumptionsTable extends PantryConsumptions
+    with TableInfo<$PantryConsumptionsTable, PantryConsumptionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PantryConsumptionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _eventIdMeta = const VerificationMeta(
+    'eventId',
+  );
+  @override
+  late final GeneratedColumn<String> eventId = GeneratedColumn<String>(
+    'event_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES cooked_events (id)',
+    ),
+  );
+  static const VerificationMeta _pantryItemIdMeta = const VerificationMeta(
+    'pantryItemId',
+  );
+  @override
+  late final GeneratedColumn<String> pantryItemId = GeneratedColumn<String>(
+    'pantry_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseUnitMeta = const VerificationMeta(
+    'baseUnit',
+  );
+  @override
+  late final GeneratedColumn<String> baseUnit = GeneratedColumn<String>(
+    'base_unit',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _microsMeta = const VerificationMeta('micros');
+  @override
+  late final GeneratedColumn<int> micros = GeneratedColumn<int>(
+    'micros',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    eventId,
+    pantryItemId,
+    baseUnit,
+    micros,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pantry_consumptions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PantryConsumptionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('event_id')) {
+      context.handle(
+        _eventIdMeta,
+        eventId.isAcceptableOrUnknown(data['event_id']!, _eventIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('pantry_item_id')) {
+      context.handle(
+        _pantryItemIdMeta,
+        pantryItemId.isAcceptableOrUnknown(
+          data['pantry_item_id']!,
+          _pantryItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_pantryItemIdMeta);
+    }
+    if (data.containsKey('base_unit')) {
+      context.handle(
+        _baseUnitMeta,
+        baseUnit.isAcceptableOrUnknown(data['base_unit']!, _baseUnitMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_baseUnitMeta);
+    }
+    if (data.containsKey('micros')) {
+      context.handle(
+        _microsMeta,
+        micros.isAcceptableOrUnknown(data['micros']!, _microsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_microsMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PantryConsumptionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PantryConsumptionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      ),
+      eventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_id'],
+      )!,
+      pantryItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pantry_item_id'],
+      )!,
+      baseUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_unit'],
+      )!,
+      micros: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}micros'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PantryConsumptionsTable createAlias(String alias) {
+    return $PantryConsumptionsTable(attachedDatabase, alias);
+  }
+}
+
+class PantryConsumptionRow extends DataClass
+    implements Insertable<PantryConsumptionRow> {
+  final String id;
+  final String? householdId;
+  final String eventId;
+  final String pantryItemId;
+  final String baseUnit;
+  final int micros;
+  final DateTime createdAt;
+  const PantryConsumptionRow({
+    required this.id,
+    this.householdId,
+    required this.eventId,
+    required this.pantryItemId,
+    required this.baseUnit,
+    required this.micros,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || householdId != null) {
+      map['household_id'] = Variable<String>(householdId);
+    }
+    map['event_id'] = Variable<String>(eventId);
+    map['pantry_item_id'] = Variable<String>(pantryItemId);
+    map['base_unit'] = Variable<String>(baseUnit);
+    map['micros'] = Variable<int>(micros);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PantryConsumptionsCompanion toCompanion(bool nullToAbsent) {
+    return PantryConsumptionsCompanion(
+      id: Value(id),
+      householdId: householdId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(householdId),
+      eventId: Value(eventId),
+      pantryItemId: Value(pantryItemId),
+      baseUnit: Value(baseUnit),
+      micros: Value(micros),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PantryConsumptionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PantryConsumptionRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String?>(json['householdId']),
+      eventId: serializer.fromJson<String>(json['eventId']),
+      pantryItemId: serializer.fromJson<String>(json['pantryItemId']),
+      baseUnit: serializer.fromJson<String>(json['baseUnit']),
+      micros: serializer.fromJson<int>(json['micros']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String?>(householdId),
+      'eventId': serializer.toJson<String>(eventId),
+      'pantryItemId': serializer.toJson<String>(pantryItemId),
+      'baseUnit': serializer.toJson<String>(baseUnit),
+      'micros': serializer.toJson<int>(micros),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PantryConsumptionRow copyWith({
+    String? id,
+    Value<String?> householdId = const Value.absent(),
+    String? eventId,
+    String? pantryItemId,
+    String? baseUnit,
+    int? micros,
+    DateTime? createdAt,
+  }) => PantryConsumptionRow(
+    id: id ?? this.id,
+    householdId: householdId.present ? householdId.value : this.householdId,
+    eventId: eventId ?? this.eventId,
+    pantryItemId: pantryItemId ?? this.pantryItemId,
+    baseUnit: baseUnit ?? this.baseUnit,
+    micros: micros ?? this.micros,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PantryConsumptionRow copyWithCompanion(PantryConsumptionsCompanion data) {
+    return PantryConsumptionRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      pantryItemId: data.pantryItemId.present
+          ? data.pantryItemId.value
+          : this.pantryItemId,
+      baseUnit: data.baseUnit.present ? data.baseUnit.value : this.baseUnit,
+      micros: data.micros.present ? data.micros.value : this.micros,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PantryConsumptionRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('eventId: $eventId, ')
+          ..write('pantryItemId: $pantryItemId, ')
+          ..write('baseUnit: $baseUnit, ')
+          ..write('micros: $micros, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    householdId,
+    eventId,
+    pantryItemId,
+    baseUnit,
+    micros,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PantryConsumptionRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.eventId == this.eventId &&
+          other.pantryItemId == this.pantryItemId &&
+          other.baseUnit == this.baseUnit &&
+          other.micros == this.micros &&
+          other.createdAt == this.createdAt);
+}
+
+class PantryConsumptionsCompanion
+    extends UpdateCompanion<PantryConsumptionRow> {
+  final Value<String> id;
+  final Value<String?> householdId;
+  final Value<String> eventId;
+  final Value<String> pantryItemId;
+  final Value<String> baseUnit;
+  final Value<int> micros;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const PantryConsumptionsCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.eventId = const Value.absent(),
+    this.pantryItemId = const Value.absent(),
+    this.baseUnit = const Value.absent(),
+    this.micros = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PantryConsumptionsCompanion.insert({
+    required String id,
+    this.householdId = const Value.absent(),
+    required String eventId,
+    required String pantryItemId,
+    required String baseUnit,
+    required int micros,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       eventId = Value(eventId),
+       pantryItemId = Value(pantryItemId),
+       baseUnit = Value(baseUnit),
+       micros = Value(micros),
+       createdAt = Value(createdAt);
+  static Insertable<PantryConsumptionRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? eventId,
+    Expression<String>? pantryItemId,
+    Expression<String>? baseUnit,
+    Expression<int>? micros,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (eventId != null) 'event_id': eventId,
+      if (pantryItemId != null) 'pantry_item_id': pantryItemId,
+      if (baseUnit != null) 'base_unit': baseUnit,
+      if (micros != null) 'micros': micros,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PantryConsumptionsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? householdId,
+    Value<String>? eventId,
+    Value<String>? pantryItemId,
+    Value<String>? baseUnit,
+    Value<int>? micros,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return PantryConsumptionsCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      eventId: eventId ?? this.eventId,
+      pantryItemId: pantryItemId ?? this.pantryItemId,
+      baseUnit: baseUnit ?? this.baseUnit,
+      micros: micros ?? this.micros,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (eventId.present) {
+      map['event_id'] = Variable<String>(eventId.value);
+    }
+    if (pantryItemId.present) {
+      map['pantry_item_id'] = Variable<String>(pantryItemId.value);
+    }
+    if (baseUnit.present) {
+      map['base_unit'] = Variable<String>(baseUnit.value);
+    }
+    if (micros.present) {
+      map['micros'] = Variable<int>(micros.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PantryConsumptionsCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('eventId: $eventId, ')
+          ..write('pantryItemId: $pantryItemId, ')
+          ..write('baseUnit: $baseUnit, ')
+          ..write('micros: $micros, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RatingsTable extends Ratings with TableInfo<$RatingsTable, RatingRow> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -9389,6 +10562,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ShoppingContributionsTable(this);
   late final $SupplyAllocationsTable supplyAllocations =
       $SupplyAllocationsTable(this);
+  late final $CookedEventsTable cookedEvents = $CookedEventsTable(this);
+  late final $PantryConsumptionsTable pantryConsumptions =
+      $PantryConsumptionsTable(this);
   late final $RatingsTable ratings = $RatingsTable(this);
   late final $UserProfilesTable userProfiles = $UserProfilesTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
@@ -9416,6 +10592,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'supply_allocations_identity',
     'CREATE UNIQUE INDEX supply_allocations_identity ON supply_allocations (contribution_id, supply_id)',
   );
+  late final Index pantryConsumptionsIdentity = Index(
+    'pantry_consumptions_identity',
+    'CREATE UNIQUE INDEX pantry_consumptions_identity ON pantry_consumptions (event_id, pantry_item_id)',
+  );
   late final Index syncOutboxAccountStateSeq = Index(
     'sync_outbox_account_state_seq',
     'CREATE INDEX sync_outbox_account_state_seq ON sync_outbox (account_id, state, seq)',
@@ -9435,6 +10615,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     shoppingSources,
     shoppingContributions,
     supplyAllocations,
+    cookedEvents,
+    pantryConsumptions,
     ratings,
     userProfiles,
     appSettings,
@@ -9447,6 +10629,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     shoppingSourcesListEntry,
     shoppingContributionsIdentity,
     supplyAllocationsIdentity,
+    pantryConsumptionsIdentity,
     syncOutboxAccountStateSeq,
   ];
 }
@@ -10567,6 +11750,7 @@ typedef $$PantryItemsTableCreateCompanionBuilder =
       Value<String?> householdId,
       Value<DateTime?> confirmedAt,
       Value<String?> sourceShoppingItemId,
+      Value<DateTime?> quantitySetAt,
       Value<int> rowid,
     });
 typedef $$PantryItemsTableUpdateCompanionBuilder =
@@ -10581,6 +11765,7 @@ typedef $$PantryItemsTableUpdateCompanionBuilder =
       Value<String?> householdId,
       Value<DateTime?> confirmedAt,
       Value<String?> sourceShoppingItemId,
+      Value<DateTime?> quantitySetAt,
       Value<int> rowid,
     });
 
@@ -10640,6 +11825,11 @@ class $$PantryItemsTableFilterComposer
 
   ColumnFilters<String> get sourceShoppingItemId => $composableBuilder(
     column: $table.sourceShoppingItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get quantitySetAt => $composableBuilder(
+    column: $table.quantitySetAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10702,6 +11892,11 @@ class $$PantryItemsTableOrderingComposer
     column: $table.sourceShoppingItemId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get quantitySetAt => $composableBuilder(
+    column: $table.quantitySetAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PantryItemsTableAnnotationComposer
@@ -10748,6 +11943,11 @@ class $$PantryItemsTableAnnotationComposer
     column: $table.sourceShoppingItemId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get quantitySetAt => $composableBuilder(
+    column: $table.quantitySetAt,
+    builder: (column) => column,
+  );
 }
 
 class $$PantryItemsTableTableManager
@@ -10791,6 +11991,7 @@ class $$PantryItemsTableTableManager
                 Value<String?> householdId = const Value.absent(),
                 Value<DateTime?> confirmedAt = const Value.absent(),
                 Value<String?> sourceShoppingItemId = const Value.absent(),
+                Value<DateTime?> quantitySetAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PantryItemsCompanion(
                 id: id,
@@ -10803,6 +12004,7 @@ class $$PantryItemsTableTableManager
                 householdId: householdId,
                 confirmedAt: confirmedAt,
                 sourceShoppingItemId: sourceShoppingItemId,
+                quantitySetAt: quantitySetAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -10817,6 +12019,7 @@ class $$PantryItemsTableTableManager
                 Value<String?> householdId = const Value.absent(),
                 Value<DateTime?> confirmedAt = const Value.absent(),
                 Value<String?> sourceShoppingItemId = const Value.absent(),
+                Value<DateTime?> quantitySetAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PantryItemsCompanion.insert(
                 id: id,
@@ -10829,6 +12032,7 @@ class $$PantryItemsTableTableManager
                 householdId: householdId,
                 confirmedAt: confirmedAt,
                 sourceShoppingItemId: sourceShoppingItemId,
+                quantitySetAt: quantitySetAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -12332,6 +13536,24 @@ final class $$MealPlanEntriesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$CookedEventsTable, List<CookedEventRow>>
+  _cookedEventsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.cookedEvents,
+    aliasName: 'meal_plan_entries__id__cooked_events__plan_entry_id',
+  );
+
+  $$CookedEventsTableProcessedTableManager get cookedEventsRefs {
+    final manager = $$CookedEventsTableTableManager(
+      $_db,
+      $_db.cookedEvents,
+    ).filter((f) => f.planEntryId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_cookedEventsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$MealPlanEntriesTableFilterComposer
@@ -12445,6 +13667,31 @@ class $$MealPlanEntriesTableFilterComposer
           }) => $$ShoppingSourcesTableFilterComposer(
             $db: $db,
             $table: $db.shoppingSources,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> cookedEventsRefs(
+    Expression<bool> Function($$CookedEventsTableFilterComposer f) f,
+  ) {
+    final $$CookedEventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.cookedEvents,
+      getReferencedColumn: (t) => t.planEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CookedEventsTableFilterComposer(
+            $db: $db,
+            $table: $db.cookedEvents,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12658,6 +13905,31 @@ class $$MealPlanEntriesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> cookedEventsRefs<T extends Object>(
+    Expression<T> Function($$CookedEventsTableAnnotationComposer a) f,
+  ) {
+    final $$CookedEventsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.cookedEvents,
+      getReferencedColumn: (t) => t.planEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CookedEventsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cookedEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$MealPlanEntriesTableTableManager
@@ -12677,6 +13949,7 @@ class $$MealPlanEntriesTableTableManager
             bool planId,
             bool recipeId,
             bool shoppingSourcesRefs,
+            bool cookedEventsRefs,
           })
         > {
   $$MealPlanEntriesTableTableManager(
@@ -12757,11 +14030,13 @@ class $$MealPlanEntriesTableTableManager
                 planId = false,
                 recipeId = false,
                 shoppingSourcesRefs = false,
+                cookedEventsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (shoppingSourcesRefs) db.shoppingSources,
+                    if (cookedEventsRefs) db.cookedEvents,
                   ],
                   addJoins:
                       <
@@ -12826,6 +14101,26 @@ class $$MealPlanEntriesTableTableManager
                           referencedColumn: 'plan_entry_id',
                           typedResults: items,
                         ),
+                      if (cookedEventsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          MealPlanEntryRow,
+                          $MealPlanEntriesTable,
+                          CookedEventRow,
+                          $CookedEventsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$MealPlanEntriesTableReferences
+                              ._cookedEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$MealPlanEntriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).cookedEventsRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'plan_entry_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -12850,6 +14145,7 @@ typedef $$MealPlanEntriesTableProcessedTableManager =
         bool planId,
         bool recipeId,
         bool shoppingSourcesRefs,
+        bool cookedEventsRefs,
       })
     >;
 typedef $$ShoppingSourcesTableCreateCompanionBuilder =
@@ -14586,6 +15882,898 @@ typedef $$SupplyAllocationsTableProcessedTableManager =
       SupplyAllocationRow,
       PrefetchHooks Function({bool contributionId})
     >;
+typedef $$CookedEventsTableCreateCompanionBuilder =
+    CookedEventsCompanion Function({
+      required String id,
+      Value<String?> householdId,
+      required String planEntryId,
+      required DateTime mealDate,
+      required String mealType,
+      required String actorUserId,
+      required int servings,
+      required DateTime cookedAt,
+      Value<DateTime?> undoneAt,
+      Value<String?> undoReason,
+      Value<int> rowid,
+    });
+typedef $$CookedEventsTableUpdateCompanionBuilder =
+    CookedEventsCompanion Function({
+      Value<String> id,
+      Value<String?> householdId,
+      Value<String> planEntryId,
+      Value<DateTime> mealDate,
+      Value<String> mealType,
+      Value<String> actorUserId,
+      Value<int> servings,
+      Value<DateTime> cookedAt,
+      Value<DateTime?> undoneAt,
+      Value<String?> undoReason,
+      Value<int> rowid,
+    });
+
+final class $$CookedEventsTableReferences
+    extends BaseReferences<_$AppDatabase, $CookedEventsTable, CookedEventRow> {
+  $$CookedEventsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $MealPlanEntriesTable _planEntryIdTable(_$AppDatabase db) => db
+      .mealPlanEntries
+      .createAlias('cooked_events__plan_entry_id__meal_plan_entries__id');
+
+  $$MealPlanEntriesTableProcessedTableManager get planEntryId {
+    final $_column = $_itemColumn<String>('plan_entry_id')!;
+
+    final manager = $$MealPlanEntriesTableTableManager(
+      $_db,
+      $_db.mealPlanEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_planEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $PantryConsumptionsTable,
+    List<PantryConsumptionRow>
+  >
+  _pantryConsumptionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pantryConsumptions,
+        aliasName: 'cooked_events__id__pantry_consumptions__event_id',
+      );
+
+  $$PantryConsumptionsTableProcessedTableManager get pantryConsumptionsRefs {
+    final manager = $$PantryConsumptionsTableTableManager(
+      $_db,
+      $_db.pantryConsumptions,
+    ).filter((f) => f.eventId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _pantryConsumptionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CookedEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $CookedEventsTable> {
+  $$CookedEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get mealDate => $composableBuilder(
+    column: $table.mealDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mealType => $composableBuilder(
+    column: $table.mealType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get servings => $composableBuilder(
+    column: $table.servings,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cookedAt => $composableBuilder(
+    column: $table.cookedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get undoneAt => $composableBuilder(
+    column: $table.undoneAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get undoReason => $composableBuilder(
+    column: $table.undoReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$MealPlanEntriesTableFilterComposer get planEntryId {
+    final $$MealPlanEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.planEntryId,
+      referencedTable: $db.mealPlanEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MealPlanEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.mealPlanEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> pantryConsumptionsRefs(
+    Expression<bool> Function($$PantryConsumptionsTableFilterComposer f) f,
+  ) {
+    final $$PantryConsumptionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.pantryConsumptions,
+      getReferencedColumn: (t) => t.eventId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PantryConsumptionsTableFilterComposer(
+            $db: $db,
+            $table: $db.pantryConsumptions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CookedEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CookedEventsTable> {
+  $$CookedEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get mealDate => $composableBuilder(
+    column: $table.mealDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mealType => $composableBuilder(
+    column: $table.mealType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get servings => $composableBuilder(
+    column: $table.servings,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cookedAt => $composableBuilder(
+    column: $table.cookedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get undoneAt => $composableBuilder(
+    column: $table.undoneAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get undoReason => $composableBuilder(
+    column: $table.undoReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$MealPlanEntriesTableOrderingComposer get planEntryId {
+    final $$MealPlanEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.planEntryId,
+      referencedTable: $db.mealPlanEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MealPlanEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.mealPlanEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CookedEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CookedEventsTable> {
+  $$CookedEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get mealDate =>
+      $composableBuilder(column: $table.mealDate, builder: (column) => column);
+
+  GeneratedColumn<String> get mealType =>
+      $composableBuilder(column: $table.mealType, builder: (column) => column);
+
+  GeneratedColumn<String> get actorUserId => $composableBuilder(
+    column: $table.actorUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get servings =>
+      $composableBuilder(column: $table.servings, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cookedAt =>
+      $composableBuilder(column: $table.cookedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get undoneAt =>
+      $composableBuilder(column: $table.undoneAt, builder: (column) => column);
+
+  GeneratedColumn<String> get undoReason => $composableBuilder(
+    column: $table.undoReason,
+    builder: (column) => column,
+  );
+
+  $$MealPlanEntriesTableAnnotationComposer get planEntryId {
+    final $$MealPlanEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.planEntryId,
+      referencedTable: $db.mealPlanEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$MealPlanEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.mealPlanEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> pantryConsumptionsRefs<T extends Object>(
+    Expression<T> Function($$PantryConsumptionsTableAnnotationComposer a) f,
+  ) {
+    final $$PantryConsumptionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.pantryConsumptions,
+          getReferencedColumn: (t) => t.eventId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PantryConsumptionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.pantryConsumptions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$CookedEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CookedEventsTable,
+          CookedEventRow,
+          $$CookedEventsTableFilterComposer,
+          $$CookedEventsTableOrderingComposer,
+          $$CookedEventsTableAnnotationComposer,
+          $$CookedEventsTableCreateCompanionBuilder,
+          $$CookedEventsTableUpdateCompanionBuilder,
+          (CookedEventRow, $$CookedEventsTableReferences),
+          CookedEventRow,
+          PrefetchHooks Function({
+            bool planEntryId,
+            bool pantryConsumptionsRefs,
+          })
+        > {
+  $$CookedEventsTableTableManager(_$AppDatabase db, $CookedEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CookedEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CookedEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CookedEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> householdId = const Value.absent(),
+                Value<String> planEntryId = const Value.absent(),
+                Value<DateTime> mealDate = const Value.absent(),
+                Value<String> mealType = const Value.absent(),
+                Value<String> actorUserId = const Value.absent(),
+                Value<int> servings = const Value.absent(),
+                Value<DateTime> cookedAt = const Value.absent(),
+                Value<DateTime?> undoneAt = const Value.absent(),
+                Value<String?> undoReason = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CookedEventsCompanion(
+                id: id,
+                householdId: householdId,
+                planEntryId: planEntryId,
+                mealDate: mealDate,
+                mealType: mealType,
+                actorUserId: actorUserId,
+                servings: servings,
+                cookedAt: cookedAt,
+                undoneAt: undoneAt,
+                undoReason: undoReason,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> householdId = const Value.absent(),
+                required String planEntryId,
+                required DateTime mealDate,
+                required String mealType,
+                required String actorUserId,
+                required int servings,
+                required DateTime cookedAt,
+                Value<DateTime?> undoneAt = const Value.absent(),
+                Value<String?> undoReason = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CookedEventsCompanion.insert(
+                id: id,
+                householdId: householdId,
+                planEntryId: planEntryId,
+                mealDate: mealDate,
+                mealType: mealType,
+                actorUserId: actorUserId,
+                servings: servings,
+                cookedAt: cookedAt,
+                undoneAt: undoneAt,
+                undoReason: undoReason,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CookedEventsTable, CookedEventRow>(table),
+                  $$CookedEventsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({planEntryId = false, pantryConsumptionsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (pantryConsumptionsRefs) db.pantryConsumptions,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (planEntryId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.planEntryId,
+                            referencedTable: $$CookedEventsTableReferences
+                                ._planEntryIdTable(db),
+                            referencedColumn: $$CookedEventsTableReferences
+                                ._planEntryIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (pantryConsumptionsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          CookedEventRow,
+                          $CookedEventsTable,
+                          PantryConsumptionRow,
+                          $PantryConsumptionsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CookedEventsTableReferences
+                              ._pantryConsumptionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CookedEventsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pantryConsumptionsRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'event_id',
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$CookedEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CookedEventsTable,
+      CookedEventRow,
+      $$CookedEventsTableFilterComposer,
+      $$CookedEventsTableOrderingComposer,
+      $$CookedEventsTableAnnotationComposer,
+      $$CookedEventsTableCreateCompanionBuilder,
+      $$CookedEventsTableUpdateCompanionBuilder,
+      (CookedEventRow, $$CookedEventsTableReferences),
+      CookedEventRow,
+      PrefetchHooks Function({bool planEntryId, bool pantryConsumptionsRefs})
+    >;
+typedef $$PantryConsumptionsTableCreateCompanionBuilder =
+    PantryConsumptionsCompanion Function({
+      required String id,
+      Value<String?> householdId,
+      required String eventId,
+      required String pantryItemId,
+      required String baseUnit,
+      required int micros,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$PantryConsumptionsTableUpdateCompanionBuilder =
+    PantryConsumptionsCompanion Function({
+      Value<String> id,
+      Value<String?> householdId,
+      Value<String> eventId,
+      Value<String> pantryItemId,
+      Value<String> baseUnit,
+      Value<int> micros,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$PantryConsumptionsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PantryConsumptionsTable,
+          PantryConsumptionRow
+        > {
+  $$PantryConsumptionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CookedEventsTable _eventIdTable(_$AppDatabase db) => db.cookedEvents
+      .createAlias('pantry_consumptions__event_id__cooked_events__id');
+
+  $$CookedEventsTableProcessedTableManager get eventId {
+    final $_column = $_itemColumn<String>('event_id')!;
+
+    final manager = $$CookedEventsTableTableManager(
+      $_db,
+      $_db.cookedEvents,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_eventIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PantryConsumptionsTableFilterComposer
+    extends Composer<_$AppDatabase, $PantryConsumptionsTable> {
+  $$PantryConsumptionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pantryItemId => $composableBuilder(
+    column: $table.pantryItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseUnit => $composableBuilder(
+    column: $table.baseUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get micros => $composableBuilder(
+    column: $table.micros,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CookedEventsTableFilterComposer get eventId {
+    final $$CookedEventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.eventId,
+      referencedTable: $db.cookedEvents,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CookedEventsTableFilterComposer(
+            $db: $db,
+            $table: $db.cookedEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PantryConsumptionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PantryConsumptionsTable> {
+  $$PantryConsumptionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pantryItemId => $composableBuilder(
+    column: $table.pantryItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseUnit => $composableBuilder(
+    column: $table.baseUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get micros => $composableBuilder(
+    column: $table.micros,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CookedEventsTableOrderingComposer get eventId {
+    final $$CookedEventsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.eventId,
+      referencedTable: $db.cookedEvents,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CookedEventsTableOrderingComposer(
+            $db: $db,
+            $table: $db.cookedEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PantryConsumptionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PantryConsumptionsTable> {
+  $$PantryConsumptionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get pantryItemId => $composableBuilder(
+    column: $table.pantryItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get baseUnit =>
+      $composableBuilder(column: $table.baseUnit, builder: (column) => column);
+
+  GeneratedColumn<int> get micros =>
+      $composableBuilder(column: $table.micros, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$CookedEventsTableAnnotationComposer get eventId {
+    final $$CookedEventsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.eventId,
+      referencedTable: $db.cookedEvents,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CookedEventsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.cookedEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PantryConsumptionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PantryConsumptionsTable,
+          PantryConsumptionRow,
+          $$PantryConsumptionsTableFilterComposer,
+          $$PantryConsumptionsTableOrderingComposer,
+          $$PantryConsumptionsTableAnnotationComposer,
+          $$PantryConsumptionsTableCreateCompanionBuilder,
+          $$PantryConsumptionsTableUpdateCompanionBuilder,
+          (PantryConsumptionRow, $$PantryConsumptionsTableReferences),
+          PantryConsumptionRow,
+          PrefetchHooks Function({bool eventId})
+        > {
+  $$PantryConsumptionsTableTableManager(
+    _$AppDatabase db,
+    $PantryConsumptionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PantryConsumptionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PantryConsumptionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PantryConsumptionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> householdId = const Value.absent(),
+                Value<String> eventId = const Value.absent(),
+                Value<String> pantryItemId = const Value.absent(),
+                Value<String> baseUnit = const Value.absent(),
+                Value<int> micros = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PantryConsumptionsCompanion(
+                id: id,
+                householdId: householdId,
+                eventId: eventId,
+                pantryItemId: pantryItemId,
+                baseUnit: baseUnit,
+                micros: micros,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> householdId = const Value.absent(),
+                required String eventId,
+                required String pantryItemId,
+                required String baseUnit,
+                required int micros,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PantryConsumptionsCompanion.insert(
+                id: id,
+                householdId: householdId,
+                eventId: eventId,
+                pantryItemId: pantryItemId,
+                baseUnit: baseUnit,
+                micros: micros,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PantryConsumptionsTable, PantryConsumptionRow>(
+                    table,
+                  ),
+                  $$PantryConsumptionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({eventId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (eventId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.eventId,
+                        referencedTable: $$PantryConsumptionsTableReferences
+                            ._eventIdTable(db),
+                        referencedColumn: $$PantryConsumptionsTableReferences
+                            ._eventIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PantryConsumptionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PantryConsumptionsTable,
+      PantryConsumptionRow,
+      $$PantryConsumptionsTableFilterComposer,
+      $$PantryConsumptionsTableOrderingComposer,
+      $$PantryConsumptionsTableAnnotationComposer,
+      $$PantryConsumptionsTableCreateCompanionBuilder,
+      $$PantryConsumptionsTableUpdateCompanionBuilder,
+      (PantryConsumptionRow, $$PantryConsumptionsTableReferences),
+      PantryConsumptionRow,
+      PrefetchHooks Function({bool eventId})
+    >;
 typedef $$RatingsTableCreateCompanionBuilder = RatingsCompanion Function({
   required String id,
   required String recipeId,
@@ -16290,6 +18478,10 @@ class $AppDatabaseManager {
       $$ShoppingContributionsTableTableManager(_db, _db.shoppingContributions);
   $$SupplyAllocationsTableTableManager get supplyAllocations =>
       $$SupplyAllocationsTableTableManager(_db, _db.supplyAllocations);
+  $$CookedEventsTableTableManager get cookedEvents =>
+      $$CookedEventsTableTableManager(_db, _db.cookedEvents);
+  $$PantryConsumptionsTableTableManager get pantryConsumptions =>
+      $$PantryConsumptionsTableTableManager(_db, _db.pantryConsumptions);
   $$RatingsTableTableManager get ratings =>
       $$RatingsTableTableManager(_db, _db.ratings);
   $$UserProfilesTableTableManager get userProfiles =>

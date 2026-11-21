@@ -234,16 +234,34 @@ class Uploader {
       return batch.length;
     }
     final rows = <Map<String, Object?>>[];
+    final weekLists = <Map<String, Object?>>[];
     final gone = <OutboxRow>[];
     for (final e in batch) {
       final row = await entity.read(_db, e.recordId);
       if (row == null) {
         gone.add(e); // zapis je u međuvremenu obrisan: brisanje sledi
       } else {
-        rows.add(entity.toRemote(row));
+        final payload = entity.toRemote(row);
+        // Nedeljna lista se samo kreira. Ponovljeno slanje ne menja
+        // postojeću listu istog ID-ja ni njen updated_at.
+        if (row is ShoppingListRow &&
+            row.mealPlanId != null &&
+            row.periodStart != null) {
+          weekLists.add(payload);
+        } else {
+          rows.add(payload);
+        }
       }
     }
     if (gone.isNotEmpty) await _done(gone);
+    if (weekLists.isNotEmpty) {
+      await _remote.upsert(
+        entity.remoteTable,
+        weekLists,
+        onConflict: entity.remoteId,
+        ignoreDuplicates: true,
+      );
+    }
     if (rows.isNotEmpty) {
       await _remote.upsert(
         entity.remoteTable,
@@ -255,7 +273,7 @@ class Uploader {
       for (final e in batch)
         if (!gone.contains(e)) e,
     ]);
-    return rows.length;
+    return rows.length + weekLists.length;
   }
 
   Future<void> _sendPhoto(OutboxRow e) async {

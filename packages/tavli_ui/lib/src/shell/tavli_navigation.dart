@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../icons/tavli_icons.dart';
 import '../motion/motion.dart';
 import '../platform.dart';
 import '../theme/tavli_colors.dart';
@@ -13,12 +14,12 @@ class TavliDestination {
   const TavliDestination({
     required this.icon,
     required this.label,
-    IconData? selectedIcon,
     this.home = false,
-  }) : selectedIcon = selectedIcon ?? icon;
+  });
 
-  final IconData icon;
-  final IconData selectedIcon;
+  /// Ista ikonica za izabran i neizabran tab, kao na platnu; izabran tab
+  /// se razlikuje bojom i oznakom iza ikonice.
+  final TavliIconData icon;
   final String label;
 
   /// Početna: u bočnoj navigaciji stoji prva, a u donjoj tamo gde je u listi
@@ -165,10 +166,8 @@ class _BottomItem extends StatelessWidget {
                   color: selected ? c.primaryContainer : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
-                  selected ? destination.selectedIcon : destination.icon,
-                  size: 22,
-                  color: fg,
+                child: Center(
+                  child: TavliIcon(destination.icon, size: 22, color: fg),
                 ),
               ),
               const SizedBox(height: 4),
@@ -238,12 +237,7 @@ class _SideBar extends StatelessWidget {
                         selected: i == nav.selectedIndex,
                         onTap: () => nav.onSelected(i),
                         label: nav.destinations[i].label,
-                        leading: Icon(
-                          i == nav.selectedIndex
-                              ? nav.destinations[i].selectedIcon
-                              : nav.destinations[i].icon,
-                          size: 18,
-                        ),
+                        leading: TavliIcon(nav.destinations[i].icon, size: 18),
                       ),
                     ),
                 ],

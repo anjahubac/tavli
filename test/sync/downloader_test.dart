@@ -217,6 +217,8 @@ void main() {
       'fetch:shopping_sources',
       'fetch:shopping_contributions',
       'fetch:supply_allocations',
+      'fetch:cooked_events',
+      'fetch:pantry_consumptions',
       'fetch:ratings',
       'fetch:taste_profiles',
       'fetch:deletions',

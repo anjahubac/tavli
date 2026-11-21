@@ -28,9 +28,11 @@ select is(
           and has_table_privilege('authenticated', c.oid, p)
         order by 1),
   array[
+    'cooked_events:delete', 'cooked_events:insert', 'cooked_events:select', 'cooked_events:update',
     'deletions:select', 'household_members:select', 'households:select',
     'meal_plan_entries:delete', 'meal_plan_entries:insert', 'meal_plan_entries:select', 'meal_plan_entries:update',
     'meal_plans:delete', 'meal_plans:insert', 'meal_plans:select', 'meal_plans:update',
+    'pantry_consumptions:delete', 'pantry_consumptions:insert', 'pantry_consumptions:select', 'pantry_consumptions:update',
     'pantry_items:delete', 'pantry_items:insert', 'pantry_items:select', 'pantry_items:update',
     'profiles:select',
     'ratings:delete', 'ratings:insert', 'ratings:select', 'ratings:update',
