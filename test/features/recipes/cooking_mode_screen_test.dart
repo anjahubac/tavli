@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli/data/database.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli_ui/tavli_ui.dart';
@@ -198,5 +200,55 @@ void main() {
     final events = await app.db.select(app.db.cookedEvents).get();
     expect(events, hasLength(1), reason: 'zapis se ne briše, samo poništava');
     expect(events.single.undoneAt, isNotNull);
+  });
+
+  testTavli('obrok iz plana prati korake recepta; izmenjene sastojke '
+      'osvežava tek na „Osveži iz recepta“', (tester) async {
+    String? planId;
+    final app = await pumpTavli(
+      tester,
+      location: '/plan',
+      setup: (db) async {
+        planId = await seedPlan(
+          db,
+          DateRange(CivilDate(2026, 11, 2), CivilDate(2026, 11, 2)),
+        );
+      },
+    );
+    final entry = await app.db.select(app.db.mealPlanEntries).getSingle();
+    // Posle planiranja recept u biblioteci dobija korake i više krompira.
+    await (app.db.update(
+      app.db.recipes,
+    )..where((t) => t.id.equals(entry.recipeId!))).write(
+      const RecipesCompanion(
+        stepsJson: Value('["Ogulite krompir.","Skuvajte."]'),
+        ingredientsJson: Value('[{"name":"krompir","quantity":2,"unit":"kg"}]'),
+      ),
+    );
+
+    unawaited(
+      GoRouter.of(tester.element(find.byType(Scaffold).first))
+          .push<void>('/plan/$planId/entries/${entry.id}'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1. Ogulite krompir.'), findsOneWidget);
+    expect(find.text('• 1 kg krompir'), findsOneWidget);
+    await tester.ensureVisible(find.text('Osveži iz recepta'));
+    await tester.tap(find.text('Osveži iz recepta'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Osveži iz recepta'), findsNothing);
+    expect(find.text('• 2 kg krompir'), findsOneWidget);
+    final row = await app.db.select(app.db.mealPlanEntries).getSingle();
+    expect(row.recipeSnapshotJson, contains('Skuvajte.'));
+
+    unawaited(
+      GoRouter.of(tester.element(find.byType(Scaffold).first))
+          .push<void>('/cook/meal/$planId/${entry.id}'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Ogulite krompir.'), findsOneWidget);
+    expect(find.text('KORAK 1 OD 2'), findsOneWidget);
   });
 }

@@ -614,6 +614,49 @@ void main() {
       expect(first.servings, 2);
     });
 
+    test('osveži iz recepta: novi sastojci i koraci, iste porcije, '
+        'nabavka se usklađuje; skuvan i tuđ recept se ne menjaju', () async {
+      final library = Recipe(
+        id: 'r1',
+        title: 'Pasulj',
+        servings: 4,
+        ingredients: const [
+          Ingredient(name: 'krompir', quantity: 2, unit: 'kg'),
+        ],
+        steps: const ['Skuvaj.'],
+        source: RecipeSource.manual,
+        createdAt: DateTime.utc(2026),
+      );
+      final before = (await meal(meals[0].id)).snapshot!;
+      expect(before.ingredientsDifferFrom(library), isTrue);
+      await db.delete(db.syncOutbox).go();
+
+      await repo.refreshFromRecipe(meals[0].id, library);
+
+      final after = await meal(meals[0].id);
+      expect(after.servings, 2, reason: 'porcije obroka ostaju');
+      expect(after.snapshot!.ingredientsDifferFrom(library), isFalse);
+      expect(after.snapshot!.steps, ['Skuvaj.']);
+      // 2 kg × 2/4 + 0,5 + 0,5.
+      expect(await open(), toMicros(2000));
+      final outbox = await db.select(db.syncOutbox).get();
+      expect(
+        outbox.map((r) => (r.entity, r.recordId)),
+        contains(('meal_plan_entry', meals[0].id)),
+      );
+
+      await expectLater(
+        repo.refreshFromRecipe(meals[1].id, library),
+        throwsA(isA<MealNotFoundException>()),
+        reason: 'obrok nije iz tog recepta',
+      );
+      await repo.setCooked(meals[0].id, cooked: true);
+      await expectLater(
+        repo.refreshFromRecipe(meals[0].id, library),
+        throwsA(isA<ProtectedMealException>()),
+      );
+    });
+
     test('tuđi obrok se ne menja', () async {
       final other = makeRepo(
         const AccountScope(userId: 'two', householdId: 'home-two'),

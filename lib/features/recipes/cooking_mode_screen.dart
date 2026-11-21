@@ -84,6 +84,12 @@ class MealCookingRoute extends ConsumerWidget {
       if (m.id == entryId) meal = m;
     }
     final snapshot = meal?.snapshot;
+    // Koraci iz recepta u biblioteci, da se vide i oni dodati posle
+    // planiranja; sastojci ostaju iz plana (nabavka).
+    final recipeId = meal?.recipeId;
+    final library = recipeId == null
+        ? null
+        : ref.watch(recipeProvider(recipeId)).value;
     if (meal == null || snapshot == null) {
       return meals.isLoading
           ? const _Loading()
@@ -107,7 +113,7 @@ class MealCookingRoute extends ConsumerWidget {
               note: i.note,
             ),
         ],
-        steps: snapshot.steps,
+        steps: library?.steps ?? snapshot.steps,
         recipeId: meal.recipeId,
         mealId: meal.id,
       ),

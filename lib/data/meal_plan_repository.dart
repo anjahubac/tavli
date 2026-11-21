@@ -200,6 +200,22 @@ class MealPlanRepository {
     });
   }
 
+  /// Uzima sastojke iz recepta u biblioteci kad ih je osoba izmenila
+  /// posle planiranja („Osveži iz recepta“). Porcije obroka ostaju iste,
+  /// a nabavka se usklađuje. Skuvan obrok se ne menja.
+  Future<void> refreshFromRecipe(String entryId, Recipe recipe) =>
+      _edit(entryId, (e) async {
+        if (e.isCooked) throw const ProtectedMealException();
+        if (e.recipeId != recipe.id) throw const MealNotFoundException();
+        final servings = _mealFromRow(e)?.servings ?? recipe.servings;
+        return MealPlanEntriesCompanion(
+          recipeSnapshotJson: Value(
+            jsonEncode(RecipeSnapshot.fromRecipe(recipe).toJson()),
+          ),
+          servings: Value(servings),
+        );
+      });
+
   /// Zaključan obrok ponovni predlog ne menja.
   Future<void> setLocked(String entryId, {required bool locked}) => _edit(
     entryId,

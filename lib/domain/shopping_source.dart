@@ -79,6 +79,13 @@ class RecipeSnapshot {
         imagePath: imagePath,
       );
 
+  /// Da li recept iz biblioteke ima druge sastojke ili osnovne porcije od
+  /// ovog snimka. Koraci se ne gledaju: plan ih uvek čita iz recepta.
+  bool ingredientsDifferFrom(Recipe recipe) =>
+      baseServings != recipe.servings ||
+      jsonEncode([for (final i in ingredients) i.toJson()]) !=
+          jsonEncode([for (final i in recipe.ingredients) i.toJson()]);
+
   /// Isti ključevi kao recept u bazi (`Recipe.toAiJson`) i kao zapis koji
   /// migracija v5 pravi od postojećih obroka.
   Map<String, dynamic> toJson() => {

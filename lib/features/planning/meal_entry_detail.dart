@@ -7,12 +7,15 @@ import '../../domain/meal_plan.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/shopping_demand.dart' show maxServings, scaleQuantity;
+import '../recipes/recipe_providers.dart';
 import 'meal_actions.dart';
 import 'plan_format.dart';
 import 'planning_providers.dart';
 
 /// Odobren recept obroka i izmene: porcije, zamena, zaključavanje,
-/// skuvano i uklanjanje. Prikazuje snimak iz plana, ne recept iz biblioteke.
+/// skuvano i uklanjanje. Sastojci su iz snimka plana (nabavka se ne menja
+/// sama), a koraci iz recepta u biblioteci kad on postoji; kad mu se
+/// sastojci promene, nudi „Osveži iz recepta“.
 ///
 /// Naslov (naziv jela) i povratak daje okvir ekrana.
 class MealEntryDetail extends ConsumerWidget {
@@ -36,6 +39,16 @@ class MealEntryDetail extends ConsumerWidget {
     final protected = meal.isLocked || meal.isCooked;
     final muted = t.bodyMedium?.copyWith(color: c.onSurfaceVariant);
     final body = t.bodyLarge?.copyWith(color: c.onSurface);
+    final recipeId = meal.recipeId;
+    final library = recipeId == null
+        ? null
+        : ref.watch(recipeProvider(recipeId)).value;
+    final steps = library?.steps ?? snapshot?.steps ?? const <String>[];
+    final ingredientsChanged =
+        library != null &&
+        snapshot != null &&
+        !meal.isCooked &&
+        snapshot.ingredientsDifferFrom(library);
 
     Future<void> remove() async {
       final ok = await showTavliConfirm(
@@ -164,6 +177,16 @@ class MealEntryDetail extends ConsumerWidget {
             onPressed: protected ? null : remove,
           ),
         ),
+        if (ingredientsChanged)
+          TavliNotice(
+            message: 'Sastojci u receptu su izmenjeni posle planiranja.',
+            linkLabel: 'Osveži iz recepta',
+            onLink: () => runMealEdit(
+              context,
+              () => repo.refreshFromRecipe(meal.id, library),
+              done: 'Sastojci su osveženi iz recepta.',
+            ),
+          ),
         if (snapshot != null) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -187,7 +210,7 @@ class MealEntryDetail extends ConsumerWidget {
                 ),
             ],
           ),
-          if (snapshot.steps.isNotEmpty)
+          if (steps.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: TavliSpacing.small,
@@ -196,12 +219,12 @@ class MealEntryDetail extends ConsumerWidget {
                   'Priprema',
                   style: TavliSectionHeaderStyle.bold,
                 ),
-                for (final (n, step) in snapshot.steps.indexed)
+                for (final (n, step) in steps.indexed)
                   Text('${n + 1}. $step', style: body),
               ],
             )
           else
-            Text('Ovaj recept u planu nema korake pripreme.', style: muted),
+            Text('Ovaj recept nema korake pripreme.', style: muted),
         ],
       ],
     );
