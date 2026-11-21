@@ -96,32 +96,6 @@ Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
 record decision owner/date, precise typed contract and reviewed acceptance fixtures.
 
-## Narrow navigation slice — 2026-11-20
-
-Owner: Dev 4. Proposed independent reviewer: Dev 2. This covers the compact
-navigation follow-up to FR-101 (D4-002/D4-003, T002–T005). The shared app
-shell is coordinated by Dev 4. Dev 2 reviews changes to the Plan and Recipes
-layouts. In the app, test `lib/app/home_shell.dart`,
-`lib/features/planning/plan_screen.dart` and
-`lib/features/recipes/recipes_screen.dart` with the matching widget tests.
-
-- At 320 logical pixels and 2× text, all five labels are visible at system
-  scale and each destination has its own at least 48×48 target. Početna stays
-  centered. Existing Serbian labels are reused. The accessibility group is
-  named “Glavna navigacija” and exposes the active destination.
-- Keep the bottom bar below 720, the rail from 720 and the extended rail
-  from 1000. Keep the rail scrollable when height is limited. Across those
-  widths, preserve the tab, Plan day and scroll position, and the recipe list's
-  search, focus and scroll. If focused navigation is replaced, return focus
-  to the active content.
-- Existing post-auth routes, private repository access and data stay unchanged.
-  No dependency, schema, migration, file access, credentials, abuse surface or
-  deployment change. Validate using synthetic fixtures.
-
-Device-level keyboard and assistive technology validation follows the
-[UI standard](../../docs/development/ui-standard.md). Runtime acceptance needs
-independent review and a merged PR.
-
 ## Cooking mode design — 2026-11-21
 
 Owner: Dev 4. Design approved by Anja on 2026-11-21 (iPhone), drawn on the
@@ -150,3 +124,29 @@ Additional UI copy: “Kuvanje”, “Recept”, “Sastojci”, “Gotovo”, �
 “U ovom koraku”, “Ekran ostaje upaljen dok kuvaš.”, “Koraci pripreme nisu
 uneti.”, “Dodaj korake”, “Štikliraj ono što je već spremno. Važi samo dok
 kuvaš.”
+
+## Narrow navigation slice — 2026-11-20
+
+Owner: Dev 4. Proposed independent reviewer: Dev 2. This covers the compact
+navigation follow-up to FR-101 (D4-002/D4-003, T002–T005). The shared app
+shell is coordinated by Dev 4. Dev 2 reviews changes to the Plan and Recipes
+layouts. In the app, test `lib/app/home_shell.dart`,
+`lib/features/planning/plan_screen.dart` and
+`lib/features/recipes/recipes_screen.dart` with the matching widget tests.
+
+- At 320 logical pixels and 2× text, all five labels are visible at system
+  scale and each destination has its own at least 48×48 target. Početna stays
+  centered. Existing Serbian labels are reused. The accessibility group is
+  named “Glavna navigacija” and exposes the active destination.
+- Keep the bottom bar below 720, the rail from 720 and the extended rail
+  from 1000. Keep the rail scrollable when height is limited. Across those
+  widths, preserve the tab, Plan day and scroll position, and the recipe list's
+  search, focus and scroll. If focused navigation is replaced, return focus
+  to the active content.
+- Existing post-auth routes, private repository access and data stay unchanged.
+  No dependency, schema, migration, file access, credentials, abuse surface or
+  deployment change. Validate using synthetic fixtures.
+
+Device-level keyboard and assistive technology validation follows the
+[UI standard](../../docs/development/ui-standard.md). Runtime acceptance needs
+independent review and a merged PR.
