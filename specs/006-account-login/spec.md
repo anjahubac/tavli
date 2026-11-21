@@ -68,7 +68,8 @@ becomes available after 30 seconds (counter "Pošalji ponovo za {s} s").
 and an existing account; there is no password.
 
 The Tavli skillet badge appears above the existing headings on both steps of
-“Prijava” and on “Kako da te zovemo?” for new accounts.
+“Prijava” and on “Kako da te zovemo?” for new accounts. The badge reserves
+its space while the bundled image loads.
 
 **Why this priority**: the app cannot be used without an account; every other part of the app needs it.
 

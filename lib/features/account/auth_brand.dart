@@ -5,12 +5,16 @@ import 'package:tavli_ui/tavli_ui.dart';
 class AuthBrand extends StatelessWidget {
   const AuthBrand({super.key});
 
+  static const _size = TavliSpacing.large * 2;
+
   @override
   Widget build(BuildContext context) => Align(
     alignment: AlignmentDirectional.centerStart,
     child: Image.asset(
       'assets/branding/tavli-auth-icon.png',
-      width: TavliSpacing.large * 2,
+      width: _size,
+      height: _size,
+      fit: BoxFit.contain,
       semanticLabel: 'Tavli',
     ),
   );

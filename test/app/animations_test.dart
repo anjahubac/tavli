@@ -307,7 +307,7 @@ void main() {
           );
           expect(
             find.bySemanticsLabel(IntroMotif.labelFor(motif)),
-            findsOneWidget,
+            findsNothing,
           );
           expect(tester.hasRunningAnimations, isFalse);
           expect(
@@ -334,11 +334,21 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        PaintingBinding.instance.imageCache
+          ..clear()
+          ..clearLiveImages();
 
         await pumpArt(tester, const IntroScreen(), still: true);
 
         expect(logo, findsOneWidget);
-        expect(tester.getRect(logo).right, lessThanOrEqualTo(size.width));
+        final image = find.descendant(
+          of: logo,
+          matching: find.byType(RawImage),
+        );
+        expect(tester.widget<RawImage>(image).image, isNull);
+        final bounds = tester.getRect(logo);
+        expect(bounds.right, lessThanOrEqualTo(size.width));
+        expect(bounds.height, closeTo(bounds.width * 250 / 629, 0.01));
         expect(tester.takeException(), isNull);
       });
     }
@@ -352,6 +362,10 @@ void main() {
       );
 
       await pumpArt(tester, const IntroScreen(), theme: TavliMotif.safran);
+      expect(
+        find.bySemanticsLabel(IntroMotif.labelFor(TavliMotif.safran)),
+        findsNothing,
+      );
       await tester.pump(const Duration(milliseconds: 700));
       expect(layer('safran-1').opacity!.value, greaterThan(0));
       expect(layer('safran-2').opacity!.value, greaterThan(0));
