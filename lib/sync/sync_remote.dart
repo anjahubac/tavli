@@ -39,6 +39,7 @@ abstract interface class SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   });
 
   Future<void> delete(String table, List<String> ids, {String idColumn = 'id'});
@@ -117,8 +118,11 @@ class SupabaseSyncRemote implements SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   }) => _guard(() async {
-    await _from(table).upsert(rows, onConflict: onConflict);
+    await _from(
+      table,
+    ).upsert(rows, onConflict: onConflict, ignoreDuplicates: ignoreDuplicates);
   });
 
   @override

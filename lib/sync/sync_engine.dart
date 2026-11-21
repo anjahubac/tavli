@@ -166,31 +166,34 @@ class SyncEngine {
     _db.accounts,
   )..where((t) => t.userId.equals(_scope.userId))).getSingleOrNull();
 
-  var _pulling = false;
+  Completer<void>? _pullFinished;
 
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
   Future<void> pull() async {
     final downloader = _downloader;
-    if (_stopped || downloader == null || _pulling) return;
-    _pulling = true;
+    if (_stopped || downloader == null || _pullFinished != null) return;
+    final finished = _pullFinished = Completer<void>();
+    var adoptedWeek = false;
     try {
+      // Prevezivanje lokalnih redova i slanje njihovog starog ID-ja ne smeju
+      // da teku istovremeno.
+      if (_running) await _inFlight;
+      if (_stopped) return;
       final first = !((await _account())?.initialDownloadDone ?? false);
       if (first) setPhase(SyncPhase.downloading);
-      try {
-        await downloader.run();
-      } on UnauthorizedSyncError {
-        if (!(await refreshSession?.call() ?? false)) rethrow;
-        await downloader.run();
-      }
+      final result = await _download(downloader);
+      adoptedWeek = result.adoptedWeek;
       if (_stopped) return;
-      await (_db.update(
-        _db.accounts,
-      )..where((t) => t.userId.equals(_scope.userId))).write(
-        AccountsCompanion(
-          initialDownloadDone: const Value(true),
-          lastPullAt: Value(_clock()),
-        ),
-      );
+      if (result.complete) {
+        await (_db.update(
+          _db.accounts,
+        )..where((t) => t.userId.equals(_scope.userId))).write(
+          AccountsCompanion(
+            initialDownloadDone: const Value(true),
+            lastPullAt: Value(_clock()),
+          ),
+        );
+      }
       setPhase(null);
       // Recepti su već upotrebljivi; slike stižu posle.
       await _photoSync?.fetchMissing();
@@ -201,8 +204,21 @@ class SyncEngine {
       // Bez mreže: nastavlja se sledeći put od sačuvane pozicije.
       setPhase(null);
     } finally {
-      _pulling = false;
+      _pullFinished = null;
+      finished.complete();
       if (!_stopped) await refreshStatus();
+    }
+    if (adoptedWeek && !_stopped) await push();
+  }
+
+  Future<({bool complete, bool adoptedWeek})> _download(
+    Downloader downloader,
+  ) async {
+    try {
+      return await downloader.run();
+    } on UnauthorizedSyncError {
+      if (!(await refreshSession?.call() ?? false)) rethrow;
+      return downloader.run();
     }
   }
 
@@ -221,6 +237,8 @@ class SyncEngine {
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
     if (_stopped) return Future.value();
+    final pullFinished = _pullFinished;
+    if (pullFinished != null) return pullFinished.future.then((_) => push());
     if (_running) {
       _again = true;
       return _inFlight ?? Future.value();

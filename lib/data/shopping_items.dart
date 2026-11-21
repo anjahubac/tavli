@@ -89,6 +89,24 @@ mixin _ShoppingItems on _ShoppingBase {
     return id;
   });
 
+  /// Rezolucija liste i dodavanje su jedna transakcija. Sync može da
+  /// zameni lokalni ID liste dok je ekran otvoren.
+  Future<String> addManualToList(
+    Future<String> Function() resolveList,
+    String name, {
+    double? quantity,
+    String? unit,
+    String category = 'ostalo',
+  }) => _db.transaction(() async {
+    return addManual(
+      await resolveList(),
+      name,
+      quantity: quantity,
+      unit: unit,
+      category: category,
+    );
+  });
+
   /// Briše ručnu stavku koja nije kupljena; ostale stavke se ne brišu ovde.
   Future<bool> deleteManual(String itemId) => _db.transaction(() async {
     final item = await _item(itemId);

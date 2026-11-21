@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 
 import '../account/auth_controller.dart';
@@ -252,7 +253,18 @@ class ShoppingRepository extends _ShoppingBase
                 ))
                 .getSingleOrNull();
         if (existing != null) return existing.id;
-        final id = newId();
+        // Isti plan i dan daju isti ID i kada oba uređaja rade offline.
+        final id = sha256
+            .convert(
+              utf8.encode(
+                jsonEncode([
+                  'shopping-week',
+                  planId,
+                  period.range.start.toString(),
+                ]),
+              ),
+            )
+            .toString();
         await _db
             .into(_db.shoppingLists)
             .insert(

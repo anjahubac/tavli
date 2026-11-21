@@ -143,7 +143,7 @@ class ShoppingItemsList extends ConsumerWidget {
           ),
         for (final (category, list) in byCategory(open, (i) => i.category)) ...[
           CategoryHeader(categoryLabel(category)),
-          for (final i in list) ShoppingItemTile(item: i),
+          for (final i in list) ShoppingItemTile(item: i, resolveList: listId),
         ],
         if (bought.isNotEmpty) ...[
           const Divider(height: 32),
@@ -164,7 +164,11 @@ class ShoppingItemsList extends ConsumerWidget {
             ],
           ),
           for (final i in bought)
-            ShoppingItemTile(item: i, received: received.contains(i.id)),
+            ShoppingItemTile(
+              item: i,
+              resolveList: listId,
+              received: received.contains(i.id),
+            ),
         ],
       ],
     );
@@ -200,11 +204,13 @@ class ShoppingItemTile extends ConsumerWidget {
   const ShoppingItemTile({
     super.key,
     required this.item,
+    required this.resolveList,
     this.received = false,
   });
 
   final ShoppingItemRow item;
   final bool received;
+  final Future<String> Function() resolveList;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -236,8 +242,8 @@ class ShoppingItemTile extends ConsumerWidget {
             action: SnackBarAction(
               label: 'Vrati',
               onPressed: () => unawaited(
-                repo.addManual(
-                  item.listId,
+                repo.addManualToList(
+                  resolveList,
                   item.name,
                   quantity: item.quantity,
                   unit: item.unit,
@@ -315,7 +321,7 @@ class _QuickAddFieldState extends ConsumerState<QuickAddField> {
     if (name.isEmpty) return;
     _controller.clear();
     final repo = ref.read(shoppingRepositoryProvider);
-    await repo.addManual(await widget.listId(), name);
+    await repo.addManualToList(widget.listId, name);
   }
 
   @override

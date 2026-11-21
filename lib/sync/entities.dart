@@ -21,14 +21,11 @@ abstract class SyncEntity<T extends Table, R> {
   /// Kolona sa id-jem na serveru (`user_id` za profil ukusa).
   String get remoteId => 'id';
 
-  /// Roditelj (zbog redosleda i brisanja), npr. recipe za recipe_version.
-  String? get parent => null;
+  /// Entitet i kolona svakog stranog ključa u serverskom zapisu.
+  List<(String, String)> get parentKeys => const [];
 
-  /// Ostali roditelji po stranim ključevima (npr. obrok za izvor nabavke).
-  List<String> get extraParents => const [];
-
-  /// Svi roditelji: registar ih drži pre ovog entiteta.
-  List<String> get parents => [?parent, ...extraParents];
+  /// Registar drži roditelje pre deteta.
+  Iterable<String> get parents => parentKeys.map((key) => key.$1);
 
   TableInfo<T, R> table(AppDatabase db);
   Expression<String> idColumn(T t);
@@ -143,7 +140,7 @@ class RecipeVersionEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'recipe';
+  List<(String, String)> get parentKeys => const [('recipe', 'recipe_id')];
   @override
   $RecipeVersionsTable table(AppDatabase db) => db.recipeVersions;
   @override
@@ -187,7 +184,9 @@ class ShoppingListEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'meal_plan';
+  List<(String, String)> get parentKeys => const [
+    ('meal_plan', 'meal_plan_id'),
+  ];
   @override
   $ShoppingListsTable table(AppDatabase db) => db.shoppingLists;
   @override
@@ -231,7 +230,7 @@ class ShoppingItemEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_list';
+  List<(String, String)> get parentKeys => const [('shopping_list', 'list_id')];
   @override
   $ShoppingItemsTable table(AppDatabase db) => db.shoppingItems;
   @override
@@ -282,7 +281,9 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
 
   /// Prijem kupljene stavke ide posle te kupovine.
   @override
-  List<String> get extraParents => const ['shopping_item'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_item', 'source_shopping_item_id'),
+  ];
   @override
   $PantryItemsTable table(AppDatabase db) => db.pantryItems;
   @override
@@ -370,7 +371,10 @@ class MealPlanEntryEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'meal_plan';
+  List<(String, String)> get parentKeys => const [
+    ('meal_plan', 'plan_id'),
+    ('recipe', 'recipe_id'),
+  ];
   @override
   $MealPlanEntriesTable table(AppDatabase db) => db.mealPlanEntries;
   @override
@@ -417,7 +421,7 @@ class RatingEntity extends SyncEntity<$RatingsTable, RatingRow> {
   @override
   EntityScope get scope => EntityScope.user;
   @override
-  String get parent => 'recipe';
+  List<(String, String)> get parentKeys => const [('recipe', 'recipe_id')];
   @override
   $RatingsTable table(AppDatabase db) => db.ratings;
   @override
@@ -459,9 +463,11 @@ class ShoppingSourceEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_list';
-  @override
-  List<String> get extraParents => const ['meal_plan_entry', 'recipe'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_list', 'list_id'),
+    ('meal_plan_entry', 'plan_entry_id'),
+    ('recipe', 'recipe_id'),
+  ];
   @override
   $ShoppingSourcesTable table(AppDatabase db) => db.shoppingSources;
   @override
@@ -514,9 +520,10 @@ class ShoppingContributionEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_source';
-  @override
-  List<String> get extraParents => const ['shopping_item'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_source', 'source_id'),
+    ('shopping_item', 'shopping_item_id'),
+  ];
   @override
   $ShoppingContributionsTable table(AppDatabase db) => db.shoppingContributions;
   @override
@@ -569,9 +576,11 @@ class SupplyAllocationEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_contribution';
-  @override
-  List<String> get extraParents => const ['pantry_item', 'shopping_item'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_contribution', 'contribution_id'),
+    ('pantry_item', 'pantry_item_id'),
+    ('shopping_item', 'purchased_shopping_item_id'),
+  ];
   @override
   $SupplyAllocationsTable table(AppDatabase db) => db.supplyAllocations;
   @override
