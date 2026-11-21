@@ -20,29 +20,42 @@ before editing. Shared providers, routes and schema versions are coordinated.
 
 ## Flow of one question
 
-1. The app sends the question and today's civil date to `ai-gateway`
-   (`fasting_question`), with the user's JWT.
-2. The function embeds the question with the shared model, takes the 5 to 8
-   closest chunks, preferring the current and next year.
-3. One model call from the server allowlist (Gemini, Groq or OpenRouter):
-   answer briefly in Serbian Latin, only from the chunks, otherwise say you do
-   not know.
-4. The function checks every date in the answer against the chunks, then
-   returns the answer and its sources, or a typed error from 015.
-5. With a user's own key, retrieval still runs on the server; only the model
-   call goes direct, as for other AI features.
+1. `AIRouter` sends `fasting_question`, the question, today's civil date and
+   the candidate allowlisted model to the gateway with the user's JWT.
+   Every account uses this route for fasting questions.
+2. Authenticate, validate and reserve quota before provider work. Embed the
+   question and retrieve up to eight relevant chunks from the fasting corpus.
+   Index the current and next two civil years. Honor an explicit supported
+   year first. For yearless queries, resolve relative dates from the supplied
+   civil date and prefer the current and next year where applicable.
+3. The gateway builds the prompt and makes one generation attempt per
+   request. The model returns structured references to the relevant calendar
+   facts or approved explanatory passages, or an unknown result.
+4. Check the references against the retrieved material, including the
+   requested event, occurrence and date field for calendar answers. Render
+   the Serbian Latin answer and sources on the server using the validated
+   facts and passages. For weak retrieval or failed validation, return
+   “ne znam”. Return transport and quota errors using 015.
 
 ## Contract and data plan
 
-- Calendar: `fastingLevelFor(CivilDate) -> FastingDay {level, fastName?, feastName?}`
-  and `nextFast(CivilDate)`; levels `water`, `oil`, `fish`, `none`.
+- Calendar: `fastingRuleFor(CivilDate) -> FastingDay` with the allowed food
+  categories, any time restriction, and optional fast and feast names.
+  `nextNamedFast(CivilDate)` returns the next named fasting period for Home.
 - Knowledge chunk: id, kind (`calendar` | `explanation`), year (nullable),
   text, source label, embedding, model id, created_at. Global reference data;
   RLS read for authenticated users; write only by the maintenance script.
+  Keep one canonical occurrence for each named fast, with complete start
+  and end dates. Index its reference in each covered civil year it overlaps,
+  so 31 December and 1 January resolve to the same Nativity fast occurrence.
+  Scope access to fasting reference chunks before ranking, independently of
+  cookbook authorization.
 - Recipe fasting label: additive nullable column plus source (`ai` | `user`),
   following the 019 recipe-label migration pattern (user values win).
 - Household setting: scope and strictness, owned by Dev 3 with the other
-  household preferences.
+  household preferences. Persist the effective fasting options on the
+  approved plan using the plan snapshot rules so replacements use the
+  options the user confirmed.
 
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).

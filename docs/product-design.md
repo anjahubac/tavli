@@ -34,9 +34,10 @@ Notice priority: today's allergen warning → missing shopping today/tomorrow �
 plan ending. Fasts are never announced in this slot: one “Post i praznici”
 status card (today's fasting state and the next or current fast) is the only
 entry to fasting questions, right of “Danas” on desktop and under today's
-meals on phone ([035](../specs/035-fasting-holidays/spec.md)). On desktop the
-right column has no labels above its cards, so it starts level with the meal
-cards. Without a plan offer “Napravi plan”. Optional calorie strip appears
+meals on phone. Visibility when “Pratim post” is off is pending in
+[035 Q4](../specs/035-fasting-holidays/spec.md#dependencies-and-open-decisions).
+On desktop the right column starts level with the meal cards and places its
+labels inside the cards. Without a plan offer “Napravi plan”. Optional calorie strip appears
 only when tracking is enabled. Cooked meals use a green circular check and muted
 card. When all of today's meals are cooked, show “Svi današnji obroci su skuvani.”
 Offer “Poništi” after marking a meal and keep it available in the meal detail.

@@ -20,8 +20,9 @@ built-in keys exist only as Supabase Edge Function secrets. A signed-in app
 sends built-in AI requests to `ai-gateway`, which checks the caller and the
 limits, makes one provider call and returns the model's text.
 
-Keys a user enters in settings (BYOK) are unchanged: the app keeps calling the
-provider directly with them, never through the gateway.
+Keys a user enters in settings (BYOK) stay on the device. The app calls the
+provider directly for tasks that support those keys. The proposed
+`fasting_question` task requires the gateway for retrieval and validation.
 
 ## Request
 
@@ -54,6 +55,39 @@ validator; the gateway does not parse recipes.
 | `recipe_summaries` | text | `MealPlanAI` summaries |
 
 Any other value is `400 bad_request`. A new AI feature adds its task here first.
+
+### Proposed extension for spec 035
+
+`fasting_question` is a text task with a task-specific body:
+
+```json
+{
+  "task": "fasting_question",
+  "model": "gemini/gemini-flash-lite-latest",
+  "question": "Kada počinje Božićni post?",
+  "civilDate": "2026-11-12"
+}
+```
+
+Use the same authenticated endpoint and allowlist. Validate a non-blank bounded
+`question` and a valid Gregorian `civilDate` in `YYYY-MM-DD` form. Reject
+caller-supplied prompts and images. Apply limits before embedding or generation.
+035 Q5 must define the question size, per-task budget, and accounting for
+embedding and router retries in `ai_calls`. Each attempt has at most one
+generation call. `AIRouter` selects the next model if fallback applies.
+
+The gateway scopes retrieval to the fasting reference corpus before ranking,
+builds the prompt, and validates the model's selected references against the
+retrieved facts or passages. For calendar claims, verify the requested event,
+occurrence and field, then render dates from the canonical facts on the server.
+Sources come from the validated records. Return HTTP 200 with
+`{status: "answered", content, model, sources}`, where `sources` is an array
+of `{id, label}` objects. If there is no relevant material or a selection
+fails validation, return HTTP 200 with
+`{status: "unknown", content: "ne znam", model, sources: []}`. Either
+outcome completes the question. Use the standard typed errors for transport
+and quota failures. The model receives question and context as data. User
+provider keys stay on the device and this task uses gateway credentials.
 
 ### Models
 
@@ -99,6 +133,7 @@ or a provider endpoint (spec 015 SC-001).
 | 429 | `{"error": "provider_rate_limited", "retryAfterSeconds": n?}` | `RateLimitError` for this model, next model | — |
 | 502 | `{"error": "provider_error"}` | `TransientError`, next model | — |
 | 503 | `{"error": "model_unavailable"}` | `ModelNotFoundError`, next model | — |
+| 503 | `{"error": "gateway_unavailable"}` (proposed for the emergency stop) | Skip gateway models for this request. Direct user-key attempts remain eligible for tasks that support them. | existing AI-unavailable message if no eligible attempt succeeds |
 | 504 | `{"error": "timeout"}` | `TransientError(isTimeout: true)`, next model | — |
 | 500 | `{"error": "internal"}` | `TransientError`, next model | — |
 
@@ -258,7 +293,8 @@ print them.
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` come from the platform, as for
 `delete-account`. Rotation: replace the secret in the dashboard; no deploy or
 app release. Emergency stop: remove the provider's secret (its models return
-`503`), or set `AI_GATEWAY_DISABLED=1` (every call returns `503`).
+`503 model_unavailable`), or set `AI_GATEWAY_DISABLED=1` (every call returns
+`503`, with `gateway_unavailable` proposed above).
 
 ## Privacy and logging
 
@@ -271,8 +307,8 @@ deleted after 2 days.
 
 - A built-in credential no longer carries a key; the chat client sends the
   request to `ai-gateway` instead of the provider. User keys keep the direct
-  path. User model order, per-model cooldowns and the 014 validator are
-  unchanged. `ChainConfig.defaults` changes in one way: `openai/default` is
+  path for tasks that support them. User model order, per-model cooldowns and
+  the 014 validator are unchanged. `ChainConfig.defaults` changes in one way: `openai/default` is
   added as the last model of both default chains (vision and text).
 - `GatewayQuotaError` and `GatewayAuthError` with the router handling in
   Gateway errors in `AIRouter`, the per-account, per-kind pause store, the
