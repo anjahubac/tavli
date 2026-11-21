@@ -237,6 +237,7 @@ na tanjiru", "Jaje se kuva".
   still frame, which also appears immediately with Reduce Motion. Keep the
   theme color inside the circle, use the neutral Bosiljak background for
   each brightness, keep the existing subtitle and expose the wordmark as “Tavli”.
+  The skillet scene is decorative, and the wordmark reserves its space while loading.
   [Approved Superdesign draft](https://p.superdesign.dev/draft/84b5fd33-5056-48bc-bf99-b3cdb47b2bb3)
 - Frequent ingredient feedback lasts 180 ms; the badge grows by at most 8% for
   240 ms. Long recognised-ingredient lists finish revealing within 360 ms.

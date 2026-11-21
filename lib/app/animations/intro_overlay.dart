@@ -8,6 +8,7 @@ class IntroScreen extends StatelessWidget {
   const IntroScreen({super.key});
 
   static const _logoWidth = 112.0;
+  static const _logoAspectRatio = 629 / 250;
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +24,17 @@ class IntroScreen extends StatelessWidget {
               children: [
                 const IntroSkillet(),
                 const SizedBox(height: 28),
-                Image.asset(
-                  'assets/branding/tavli-wordmark.png',
+                SizedBox(
                   width: _logoWidth,
-                  fit: BoxFit.contain,
-                  color: theme.colorScheme.onSurface,
-                  semanticLabel: 'Tavli',
+                  child: AspectRatio(
+                    aspectRatio: _logoAspectRatio,
+                    child: Image.asset(
+                      'assets/branding/tavli-wordmark.png',
+                      fit: BoxFit.contain,
+                      color: theme.colorScheme.onSurface,
+                      semanticLabel: 'Tavli',
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(

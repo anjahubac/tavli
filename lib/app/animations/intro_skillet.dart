@@ -3,8 +3,6 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
-import 'intro_motif.dart';
-
 /// Scena sa odobrenog Superdesign platna. Resursi su izvezeni u koordinatama
 /// kruga 640 × 640, pa se zajedno skaliraju za telefon i računar.
 class IntroSkillet extends StatelessWidget {
@@ -49,58 +47,53 @@ class IntroSkillet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final motif = TavliColors.of(context).motif;
-    return Semantics(
-      image: true,
-      label: IntroMotif.labelFor(motif),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 256),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: ClipOval(
-            child: ColoredBox(
-              color: colors.primaryContainer,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final scale = constraints.maxWidth / _scene;
-                  return MotionBuilder(
-                    duration: const Duration(milliseconds: _length),
-                    repeat: false,
-                    builder: (context, t, still) {
-                      final time = t * _length;
-                      return Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (!still)
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: _rim * scale,
-                              child: ClipRect(
-                                child: Stack(
-                                  children: [
-                                    for (final ingredient
-                                        in _ingredients[motif]!)
-                                      ingredient.fall(time, scale),
-                                  ],
-                                ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 256),
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: ClipOval(
+          child: ColoredBox(
+            color: colors.primaryContainer,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = constraints.maxWidth / _scene;
+                return MotionBuilder(
+                  duration: const Duration(milliseconds: _length),
+                  repeat: false,
+                  builder: (context, t, still) {
+                    final time = t * _length;
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (!still)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: _rim * scale,
+                            child: ClipRect(
+                              child: Stack(
+                                children: [
+                                  for (final ingredient in _ingredients[motif]!)
+                                    ingredient.fall(time, scale),
+                                ],
                               ),
                             ),
-                          _pan.place(scale, color: colors.primary),
-                          for (final (index, curl) in _steam.indexed)
-                            _risingSteam(
-                              curl,
-                              time,
-                              delay: 2800 + 200 * index,
-                              scale: scale,
-                              color: colors.onPrimaryContainer,
-                            ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
+                          ),
+                        _pan.place(scale, color: colors.primary),
+                        for (final (index, curl) in _steam.indexed)
+                          _risingSteam(
+                            curl,
+                            time,
+                            delay: 2800 + 200 * index,
+                            scale: scale,
+                            color: colors.onPrimaryContainer,
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
             ),
           ),
         ),
