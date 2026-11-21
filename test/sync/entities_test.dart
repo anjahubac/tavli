@@ -399,6 +399,63 @@ void main() {
     );
   });
 
+  test('v7: zapis kuvanja, potrošnja iz ostave i ručno brojanje', () async {
+    await roundTrip(
+      const CookedEventEntity(),
+      CookedEventsCompanion.insert(
+        id: 'k1',
+        householdId: const Value('h1'),
+        planEntryId: 'e1',
+        mealDate: DateTime.utc(2026, 11, 20),
+        mealType: 'lunch',
+        actorUserId: 'u1',
+        servings: 4,
+        cookedAt: t,
+        undoneAt: Value(t.add(const Duration(hours: 1))),
+        undoReason: const Value('user'),
+      ),
+      'k1',
+      (r) {
+        expect(r['meal_date'], '2026-11-20');
+        expect(r['actor_user_id'], 'u1');
+        expect(r['undone_at'], '2026-10-30T11:05:07.000Z');
+        expect(r['undo_reason'], 'user');
+      },
+    );
+    await roundTrip(
+      const PantryConsumptionEntity(),
+      PantryConsumptionsCompanion.insert(
+        id: 'c1',
+        householdId: const Value('h1'),
+        eventId: 'k1',
+        pantryItemId: 'o1',
+        baseUnit: 'g',
+        micros: 250000000,
+        createdAt: t,
+      ),
+      'c1',
+      (r) {
+        expect(r['event_id'], 'k1');
+        expect(r['micros'], 250000000);
+      },
+    );
+    await roundTrip(
+      const PantryItemEntity(),
+      PantryItemsCompanion.insert(
+        id: 'o9',
+        name: 'brašno',
+        quantity: const Value(600),
+        unit: const Value('g'),
+        category: 'ostalo',
+        addedAt: t,
+        quantitySetAt: Value(t),
+        householdId: const Value('h1'),
+      ),
+      'o9',
+      (r) => expect(r['quantity_set_at'], '2026-10-30T10:05:07.000Z'),
+    );
+  });
+
   test('registar: svi roditelji uvek pre deteta', () {
     final names = [for (final e in syncEntities) e.name];
     for (final e in syncEntities) {
@@ -411,7 +468,12 @@ void main() {
         );
       }
     }
-    expect(names, hasLength(12));
+    expect(names, hasLength(14));
+    expect(const CookedEventEntity().parents, ['meal_plan_entry']);
+    expect(const PantryConsumptionEntity().parents, [
+      'cooked_event',
+      'pantry_item',
+    ]);
     expect(const SupplyAllocationEntity().parents, [
       'shopping_contribution',
       'pantry_item',

@@ -1,6 +1,6 @@
 import '../ai/key_store.dart';
 
-/// Sesija (tokeni) samo u Keychain-u/Keystore-u, pod ključem `auth_session`
+/// Sesija (tokeni) samo u sistemskom bezbednom skladištu, pod ključem `auth_session`
 /// (FR-007). Nikad u bazi, logu ili običnom fajlu.
 class SessionStore {
   const SessionStore(this._storage);
