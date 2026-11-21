@@ -66,7 +66,7 @@ class _Screen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             nav,
-            Expanded(child: content),
+            Expanded(child: TavliBesideNavigation(child: content)),
           ],
         ),
       );
@@ -386,6 +386,33 @@ void main() {
         );
       });
     }
+  });
+
+  testWidgets('macOS: mesto za semafore iznad sadržaja, ne pored bočne '
+      'trake', (tester) async {
+    await pump(
+      tester,
+      const TavliWindowFrame(
+        child: Column(
+          children: [
+            SafeArea(child: Text('prijava')),
+            Expanded(
+              child: TavliBesideNavigation(child: SafeArea(child: Text('tab'))),
+            ),
+          ],
+        ),
+      ),
+      platform: TavliPlatform.macos,
+      size: const Size(1200, 800),
+    );
+    expect(
+      tester.getTopLeft(find.text('prijava')).dy,
+      TavliWindowFrame.macosTitleBarHeight,
+    );
+    expect(
+      tester.getTopLeft(find.text('tab')).dy,
+      tester.getBottomLeft(find.text('prijava')).dy,
+    );
   });
 
   // Ceo kostur na telefonu i računaru, sa tekstom 1x i 2x, svetlo i tamno.

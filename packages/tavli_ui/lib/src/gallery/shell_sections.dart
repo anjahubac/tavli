@@ -124,8 +124,7 @@ class TavliShellGallerySections extends StatelessWidget {
                   child: Text(
                     switch (TavliPlatform.of(context)) {
                       TavliPlatform.windows => 'Sadržaj prozora',
-                      TavliPlatform.macos =>
-                        'macOS: bez trake, semafori su u bočnoj navigaciji',
+                      TavliPlatform.macos => 'macOS: providna traka, semafori iznad sadržaja ili u bočnoj navigaciji',
                       _ => 'Telefon: bez okvira',
                     },
                     textAlign: TextAlign.center,
@@ -384,17 +383,19 @@ class _DesktopPreviewState extends State<_DesktopPreview> {
                     onProfile: () => setState(() => _tab = null),
                   ),
                   Expanded(
-                    child: tab == null
-                        ? const Padding(
-                            padding: EdgeInsets.all(28),
-                            child: TavliPageHeader(title: 'Profil'),
-                          )
-                        : _TabContent(
-                            tab: tab,
-                            month: _month,
-                            onMonth: (v) => setState(() => _month = v),
-                            headerActions: actions,
-                          ),
+                    child: TavliBesideNavigation(
+                      child: tab == null
+                          ? const Padding(
+                              padding: EdgeInsets.all(28),
+                              child: TavliPageHeader(title: 'Profil'),
+                            )
+                          : _TabContent(
+                              tab: tab,
+                              month: _month,
+                              onMonth: (v) => setState(() => _month = v),
+                              headerActions: actions,
+                            ),
+                    ),
                   ),
                 ],
               ),

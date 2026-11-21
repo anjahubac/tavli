@@ -120,8 +120,16 @@ class _TavliAppState extends ConsumerState<TavliApp> {
 
 /// Veliki naslovi rastu sporije od običnog teksta kad je u sistemu
 /// uključen veći tekst.
-Widget _textScaling(BuildContext context, Widget? child) =>
-    TavliTextScaling(child: child ?? const SizedBox.shrink());
+///
+/// Na macOS-u sadržaj ide i ispod providne naslovne trake, pa ekrani bez
+/// bočne navigacije dobijaju mesto za semafore (`TavliWindowFrame`). Na
+/// Windows-u za sada ostaje sistemska naslovna traka.
+Widget _textScaling(BuildContext context, Widget? child) {
+  final scaled = TavliTextScaling(child: child ?? const SizedBox.shrink());
+  return TavliPlatform.of(context) == TavliPlatform.macos
+      ? TavliWindowFrame(child: scaled)
+      : scaled;
+}
 
 class _Refresh extends ChangeNotifier {
   void ping() => notifyListeners();
