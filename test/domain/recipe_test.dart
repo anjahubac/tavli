@@ -153,4 +153,62 @@ void main() {
       expect(original.copyWith(clearPrepMinutes: true).prepMinutes, isNull);
     });
   });
+  group('veza sastojka sa katalogom (#30)', () {
+    const stored = {
+      'name': 'Jaja',
+      'quantity': 2,
+      'unit': 'kom',
+      'category': 'mlečni proizvodi i jaja',
+      'note': null,
+      'foodId': '00000000-0000-4000-8000-000000000001',
+      'matchedKey': 'jaja',
+      'linkSource': 'confirmed',
+    };
+
+    test('čitanje pa čuvanje bez gubitka', () {
+      final i = Ingredient.fromJson(Map.of(stored));
+      expect(i.link?.foodId, '00000000-0000-4000-8000-000000000001');
+      expect(i.link?.matchedKey, 'jaja');
+      expect(i.link?.linkSource, LinkSource.confirmed);
+      final json = i.toJson();
+      expect(json['foodId'], '00000000-0000-4000-8000-000000000001');
+      expect(json['matchedKey'], 'jaja');
+      expect(json['linkSource'], 'confirmed');
+      expect(Ingredient.fromJson(json).link, i.link);
+    });
+
+    test('sastojak bez veze se čuva kao do sada', () {
+      final i = Ingredient.fromJson({'name': 'So'});
+      expect(i.link, isNull);
+      expect(i.toJson().keys.toSet(), {
+        'name',
+        'quantity',
+        'unit',
+        'category',
+        'note',
+      });
+    });
+
+    test('neispravna veza se odbacuje, sastojak ostaje', () {
+      for (final broken in <Map<String, dynamic>>[
+        {...stored, 'foodId': 5},
+        {...stored, 'matchedKey': '  '},
+        {...stored, 'linkSource': 'ai'},
+        Map.of(stored)..remove('linkSource'),
+        Map.of(stored)..remove('foodId'),
+      ]) {
+        final i = Ingredient.fromJson(broken);
+        expect(i.link, isNull, reason: broken.toString());
+        expect(i.name, 'Jaja');
+      }
+    });
+
+    test('copyWith čuva vezu', () {
+      final i = Ingredient.fromJson(Map.of(stored));
+      final changed = i.copyWith(quantity: 3);
+      expect(changed.quantity, 3);
+      expect(changed.name, 'Jaja');
+      expect(changed.link, i.link);
+    });
+  });
 }
