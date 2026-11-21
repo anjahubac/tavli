@@ -17,15 +17,12 @@ class EmailMarkup(HTMLParser):
         self.body = False
         self.body_text = []
         self.links = []
-        self.images = []
 
     def handle_starttag(self, tag, attrs):
         if tag == "body":
             self.body = True
         if tag == "a":
             self.links.append(dict(attrs).get("href"))
-        if tag == "img":
-            self.images.append(dict(attrs))
 
     def handle_endtag(self, tag):
         if tag == "body":
@@ -55,14 +52,6 @@ class AuthEmailTemplatesTest(unittest.TestCase):
                 self.assertIn("Upiši ovaj kod u aplikaciju Tavli", text)
                 self.assertIn("Kod važi 10 minuta", text)
                 self.assertEqual(markup.links, [])
-                self.assertEqual(
-                    [image["src"] for image in markup.images],
-                    [
-                        "https://tavli-od-plana-do-tanjira.sita-2040.chatgpt.site/"
-                        "assets/tavli-app-192.png"
-                    ],
-                )
-                self.assertIn("Tavli", markup.body_text)
                 for placeholder in ("ConfirmationURL", "TokenHash", "RedirectTo", "SiteURL"):
                     self.assertNotIn(placeholder, html)
                 self.assertNotIn("Već sam potvrdio/la", text)
