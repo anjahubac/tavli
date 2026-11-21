@@ -47,8 +47,8 @@ final class IngredientLink {
     if (matchedKey is! String || matchedKey.trim().isEmpty) return null;
     if (source == null) return null;
     return IngredientLink(
-      foodId: foodId,
-      matchedKey: matchedKey,
+      foodId: foodId.trim(),
+      matchedKey: matchedKey.trim(),
       linkSource: source,
     );
   }

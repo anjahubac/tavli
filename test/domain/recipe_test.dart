@@ -203,6 +203,16 @@ void main() {
       }
     });
 
+    test('razmaci oko vrednosti veze se skidaju', () {
+      final i = Ingredient.fromJson({
+        ...stored,
+        'foodId': ' 00000000-0000-4000-8000-000000000001 ',
+        'matchedKey': 'jaja ',
+      });
+      expect(i.link?.foodId, '00000000-0000-4000-8000-000000000001');
+      expect(i.link?.matchedKey, 'jaja');
+    });
+
     test('copyWith čuva vezu', () {
       final i = Ingredient.fromJson(Map.of(stored));
       final changed = i.copyWith(quantity: 3);
