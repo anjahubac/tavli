@@ -105,6 +105,14 @@ void main() {
       expect(titles(r), ['Piletina salata']);
     });
 
+    test('„Do 15 min“ uključuje tačno 15, ne i 16 minuta', () {
+      final r = searchRecipes([
+        recipe('Tačno 15', minutes: 15),
+        recipe('Šesnaest', minutes: 16),
+      ], const RecipeFilter(maxPrepMinutes: 15));
+      expect(titles(r), ['Tačno 15']);
+    });
+
     test('recept bez oznake ili vremena ne prolazi uključen filter', () {
       for (final f in const [
         RecipeFilter(meal: MealSuitability.lunch),

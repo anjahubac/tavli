@@ -57,7 +57,7 @@ Vrsta jela) as the labels sheet, shared through `RecipeLabelsPicker`.
 | --- | --- |
 | New recipe, labels chosen | saved with source `user` |
 | New recipe, nothing chosen | no labels, as before |
-| Edit, labels changed | saved through `RecipeRepository.setLabels` with source `user`; not a recipe version |
+| Edit, labels changed | saved through `RecipeRepository.setLabels` with source `user`; not a recipe version. If only the labels changed, no version is added, so Undo is not spent on an empty change |
 | Edit, labels untouched | existing labels and source stay (AI labels stay `ai`) |
 
 Existing unlabelled recipes are not backfilled in this slice.

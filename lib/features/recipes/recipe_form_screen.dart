@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -142,7 +143,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         ingredients: _ingredients,
         steps: steps,
       );
-      await repo.update(recipe, kind: ChangeKind.manual);
+      // Nova verzija samo kad se sadržaj promenio; izmena samo oznaka ne
+      // pravi praznu verziju koju bi „Poništi“ prvo potrošio.
+      if (jsonEncode(recipe.toAiJson()) != jsonEncode(original.toAiJson())) {
+        await repo.update(recipe, kind: ChangeKind.manual);
+      }
       // Oznake nisu deo verzije recepta; menjaju se samo ako ih je korisnik
       // promenio, da AI oznake koje nije dirao ostanu AI.
       if (!sameChoice(_labels, labelChoiceOf(original.labels))) {
@@ -378,6 +383,9 @@ class _IngredientDialogState extends State<_IngredientDialog> {
         'unit': _unit.text,
         'category': _category,
         'note': _note.text,
+        // Veza sa katalogom ostaje; ako se naziv promeni, prestaje da važi
+        // sama (matchedKey se više ne poklapa, ugovor #30).
+        ...?widget.initial?.link?.toJson(),
       }),
     );
   }
