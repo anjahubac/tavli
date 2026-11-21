@@ -11,7 +11,7 @@ is stale; full acceptance, pantry/preferences/cooking/UI evaluation remain open.
 | --- | --- | --- |
 | Four tabs, Plan opens, Today inside Plan | Five tabs: Plan, Nabavka, Početna, Recepti, Ostava; Home opens | Dev 4, route compatibility tests |
 | Pantry expiry/use-in-plan and no automatic consumption | No expiry UX; optional quantity; consume known stock on cooking, undo restores once | Dev 4 + Dev 1 supply contract |
-| Creator-only private planning preferences | Purpose-limited authorized household inputs; raw personal rows stay private; favorites aggregation unresolved | Dev 3 producer, Dev 2 consumer |
+| Creator-only private planning preferences | Purpose-limited inputs from explicitly selected household members (all by default); raw personal rows stay private; producer contract pending review | Dev 3 producer, Dev 2 consumer |
 | Three fixed meal kinds | List-based slots with morning/afternoon snacks; lock/import compatibility | Dev 2; Dev 4 rendering |
 | Text ingredient identity | UUID/slug catalog with original text and unresolved fallback | Dev 1; Dev 2/3/4 consumers |
 | Existing local built-in provider keys | Planned authenticated Supabase Edge gateway, own keys still device-only | Dev 2 |

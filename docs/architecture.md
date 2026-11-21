@@ -197,8 +197,10 @@ until removed. Those are future semantics to implement with a ledger contract.
 Household member preferences/allergies/favorites need a purpose-limited aggregate
 for planning. Do not expose personal profile or nutrition diary rows to all
 members merely to build an AI prompt. The exact aggregate/consent boundary must
-be accepted in the household contract before migrations. Favorites aggregation
-remains an open product decision. Cycle dates never leave the device; only an
+be accepted in the household contract before migrations. The product decision
+is to use selected participants' favorites, defaulting to all current members;
+the [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
+still needs producer/consumer review. Cycle dates never leave the device; only an
 explicitly approved generic dietary hint can enter a request.
 
 Nutrition is optional, off by default, computed from attributed reference values,
