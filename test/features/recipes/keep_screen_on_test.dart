@@ -75,6 +75,28 @@ void main() {
     expect(app.wakeLock.on, isFalse);
   });
 
+  testTavli('zatvaranje recepta ponavlja neuspelo otpuštanje', (tester) async {
+    final app = await pumpTavli(tester, recipes: [sampleRecipe('a', 'Sarma')]);
+    await tester.tap(find.text('Sarma'));
+    await tester.pumpAndSettle();
+    await tester.tap(toggle());
+    await tester.pumpAndSettle();
+    expect(app.wakeLock.on, isTrue);
+
+    // Isključivanje u receptu propada: ekran ostaje zadržan.
+    app.wakeLock.failDisable = true;
+    await tester.tap(toggle());
+    await tester.pumpAndSettle();
+    expect(app.wakeLock.on, isTrue);
+
+    // Platforma se oporavi; zatvaranje recepta mora ponovo da pokuša.
+    app.wakeLock.failDisable = false;
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(app.wakeLock.on, isFalse);
+  });
+
   testTavli('zapamćen izbor važi odmah pri otvaranju recepta', (tester) async {
     final app = await pumpTavli(
       tester,

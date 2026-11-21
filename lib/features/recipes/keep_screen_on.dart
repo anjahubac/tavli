@@ -71,7 +71,16 @@ class KeepScreenOnScope extends ConsumerStatefulWidget {
 
 class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   late final ScreenWakeLock _lock = ref.read(screenWakeLockProvider);
-  bool _held = false;
+
+  /// Šta korisnik traži (opcija uključena).
+  bool _wanted = false;
+
+  /// Šta je platforma potvrdila. Razlikuje se od [_wanted] kad zahtev propadne,
+  /// pa zatvaranje recepta može da ponovi neuspelo otpuštanje.
+  bool _confirmed = false;
+
+  /// Zahtevi idu jedan za drugim da potvrđeno stanje ne bude u trci.
+  Future<void> _queue = Future.value();
 
   @override
   void initState() {
@@ -84,18 +93,25 @@ class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   }
 
   void _apply(bool on) {
-    if (on == _held) return;
-    _held = on;
-    unawaited(_call(on ? _lock.enable : _lock.disable, enabling: on));
+    if (on == _wanted) return;
+    _wanted = on;
+    _enqueue(on);
+  }
+
+  void _enqueue(bool on) {
+    _queue = _queue.then((_) => _run(on));
+    unawaited(_queue);
   }
 
   /// Ako platforma ne podrži zahtev, aplikacija radi dalje.
-  Future<void> _call(Future<void> Function() action, {bool? enabling}) async {
+  Future<void> _run(bool on) async {
+    if (on == _confirmed) return;
     try {
-      await action();
+      await (on ? _lock.enable() : _lock.disable());
+      _confirmed = on;
     } on Exception {
       if (kDebugMode) debugPrint('Ekran: zahtev nije uspeo.');
-      if (enabling case final on? when mounted) {
+      if (mounted) {
         final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
         messenger.showSnackBar(
           SnackBar(
@@ -112,7 +128,11 @@ class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
 
   @override
   void dispose() {
-    if (_held) unawaited(_call(_lock.disable));
+    // Otpuštanje se pokušava i kad je ranije propalo (_confirmed je i dalje true).
+    if (_wanted || _confirmed) {
+      _wanted = false;
+      _enqueue(false);
+    }
     super.dispose();
   }
 
