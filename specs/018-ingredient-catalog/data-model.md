@@ -1,7 +1,7 @@
 # Data model proposal: ingredient catalog tables (D1-005)
 
 **Status:** accepted in #56. Rollout step 2 (server tables, RLS, grants and
-pgTAP) is `supabase/migrations/20261121120000_food_catalog.sql` with
+pgTAP) is `supabase/migrations/20261121150000_food_catalog.sql` with
 `supabase/tests/10_food_catalog_test.sql`. The local drift tables, download and
 client tests (step 3 onward) are not implemented.
 **Source:** D1-005 / FR-002 in [spec.md](spec.md), task T004/T005 in [tasks.md](tasks.md).
