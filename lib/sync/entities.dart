@@ -756,6 +756,96 @@ class PantryConsumptionEntity
 }
 
 /// Ime u profilu (lokalno u `Accounts`). Šalje se kao izmena imena, ne upsert.
+/// Namirnica kataloga (018). Samo se preuzima: deljene redove piše
+/// migracija, a kućni upis dolazi u kasnijem koraku.
+class FoodEntity extends SyncEntity<$FoodsTable, FoodRow> {
+  const FoodEntity();
+  @override
+  String get name => 'food';
+  @override
+  String get remoteTable => 'foods';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  $FoodsTable table(AppDatabase db) => db.foods;
+  @override
+  Expression<String> idColumn($FoodsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($FoodsTable t) => t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(FoodRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'slug': r.slug,
+    'name': r.name,
+    'category': r.category,
+    'base_unit': r.baseUnit,
+    'source': r.source,
+    'reviewed_at': _tsOrNull(r.reviewedAt),
+    'withdrawn_at': _tsOrNull(r.withdrawnAt),
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  FoodsCompanion fromRemote(Map<String, Object?> j) => FoodsCompanion(
+    id: Value(j['id']! as String),
+    householdId: Value(j['household_id'] as String?),
+    slug: Value(j['slug']! as String),
+    name: Value(j['name']! as String),
+    category: Value(j['category']! as String),
+    baseUnit: Value(j['base_unit']! as String),
+    source: Value(j['source'] as String?),
+    reviewedAt: Value(_dateOrNull(j['reviewed_at'])),
+    withdrawnAt: Value(_dateOrNull(j['withdrawn_at'])),
+    createdAt: Value(_date(j['created_at'])),
+    updatedAt: Value(_date(j['updated_at'] ?? j['created_at'])),
+  );
+}
+
+/// Alias namirnice (018). Samo se preuzima, kao i [FoodEntity].
+class FoodAliasEntity extends SyncEntity<$FoodAliasesTable, FoodAliasRow> {
+  const FoodAliasEntity();
+  @override
+  String get name => 'food_alias';
+  @override
+  String get remoteTable => 'food_aliases';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  List<(String, String)> get parentKeys => const [('food', 'food_id')];
+  @override
+  $FoodAliasesTable table(AppDatabase db) => db.foodAliases;
+  @override
+  Expression<String> idColumn($FoodAliasesTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($FoodAliasesTable t) => t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(FoodAliasRow r) => {
+    'id': r.id,
+    'food_id': r.foodId,
+    'household_id': r.householdId,
+    'alias': r.alias,
+    'alias_normalized': r.aliasNormalized,
+    'withdrawn_at': _tsOrNull(r.withdrawnAt),
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  FoodAliasesCompanion fromRemote(Map<String, Object?> j) =>
+      FoodAliasesCompanion(
+        id: Value(j['id']! as String),
+        foodId: Value(j['food_id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        alias: Value(j['alias']! as String),
+        aliasNormalized: Value(j['alias_normalized']! as String),
+        withdrawnAt: Value(_dateOrNull(j['withdrawn_at'])),
+        createdAt: Value(_date(j['created_at'])),
+        updatedAt: Value(_date(j['updated_at'] ?? j['created_at'])),
+      );
+}
+
 const profileEntity = 'profile';
 
 /// Svi entiteti sa podacima, redom roditelj pre deteta (slanje i preuzimanje).
@@ -779,8 +869,15 @@ const List<SyncEntity<Table, Object?>> syncEntities = [
   TasteProfileEntity(),
 ];
 
+/// Katalog namirnica: van [syncEntities], jer se preuzima posebno (server
+/// bez tabela nije greška) i ne šalje se. Namirnica pre aliasa.
+const List<SyncEntity<Table, Object?>> catalogEntities = [
+  FoodEntity(),
+  FoodAliasEntity(),
+];
+
 SyncEntity<Table, Object?>? entityByName(String name) {
-  for (final e in syncEntities) {
+  for (final e in [...syncEntities, ...catalogEntities]) {
     if (e.name == name) return e;
   }
   return null;
