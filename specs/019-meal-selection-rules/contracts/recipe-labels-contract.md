@@ -192,8 +192,8 @@ to change when #39 starts (agreed with the Dev 2 owner, 2026-11-18):
    Proposed: lunch is any recipe with weight `medium` or `hearty`; the dish
    kind is not restricted. Snacks stay light and exclude `cooked` and `soup`.
 
-FR-102 and the #39 card text are updated when #39 is planned; this contract
-only records the decision.
+FR-102 was updated by TRELLO-39 (2026-11-20); the rules are in the
+[meal rules contract](meal-rules-contract.md).
 
 ## Delivery slices (after #46 is merged)
 
