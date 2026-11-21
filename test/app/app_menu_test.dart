@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:tavli_ui/tavli_ui.dart';
 import 'package:tavli/features/recipes/recipes_screen.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/test_app.dart';
 
@@ -60,6 +61,24 @@ void main() {
     await choose(tester, 'Datoteka', 'Novi recept');
     expect(find.byType(RecipesScreen), findsOneWidget);
     expect(find.text('Ručno'), findsWidgets);
+  });
+
+  testTavli('računar: desni klik na recept nudi Otvori i Izmeni', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await pumpTavli(
+      tester,
+      size: wide,
+      recipes: [sampleRecipe('r1', 'Musaka')],
+    );
+    await tester.tap(find.text('Musaka'), buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Otvori'), findsOneWidget);
+    await tester.tap(find.text('Izmeni'));
+    await tester.pumpAndSettle();
+    expect(find.byType(RecipesScreen), findsNothing);
   });
 
   testTavli('telefon i Windows: bez trake menija', (tester) async {

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
@@ -63,6 +64,34 @@ void main() {
       await pump(tester, p, const TavliMenuBar(child: Text('sadržaj')));
       expect(find.byType(PlatformMenuBar), findsNothing);
       expect(find.text('sadržaj'), findsOneWidget);
+    });
+  }
+
+  for (final (p, opens) in [
+    (TargetPlatform.macOS, true),
+    (TargetPlatform.windows, true),
+    (TargetPlatform.iOS, false),
+  ]) {
+    testWidgets('desni klik otvara meni samo na računaru: ${p.name}', (
+      tester,
+    ) async {
+      var chosen = 0;
+      await pump(
+        tester,
+        p,
+        TavliContextMenu(
+          actions: [TavliMenuAction('Izmeni', onSelected: () => chosen++)],
+          child: const Text('Musaka'),
+        ),
+      );
+      await tester.tap(find.text('Musaka'), buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+      expect(find.text('Izmeni'), opens ? findsOneWidget : findsNothing);
+      if (opens) {
+        await tester.tap(find.text('Izmeni'));
+        await tester.pumpAndSettle();
+        expect(chosen, 1);
+      }
     });
   }
 }

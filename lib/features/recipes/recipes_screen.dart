@@ -268,19 +268,22 @@ class _RecipeList extends StatelessWidget {
         itemBuilder: (context, i) {
           final recipe = recipes[i];
           final path = recipe.imagePath;
-          return TavliCard(
-            padding: const EdgeInsets.all(TavliSpacing.small),
-            onTap: () => context.go('/recipes/${recipe.id}'),
-            child: Row(
-              children: [
-                TavliThumbnail.row(
-                  tintIndex: i,
-                  icon: Icons.soup_kitchen_outlined,
-                  photo: path == null ? null : RecipePhoto(path),
-                ),
-                const SizedBox(width: TavliSpacing.medium),
-                Expanded(child: _RecipeTitle(recipe)),
-              ],
+          return _RecipeMenu(
+            recipe,
+            child: TavliCard(
+              padding: const EdgeInsets.all(TavliSpacing.small),
+              onTap: () => context.go('/recipes/${recipe.id}'),
+              child: Row(
+                children: [
+                  TavliThumbnail.row(
+                    tintIndex: i,
+                    icon: Icons.soup_kitchen_outlined,
+                    photo: path == null ? null : RecipePhoto(path),
+                  ),
+                  const SizedBox(width: TavliSpacing.medium),
+                  Expanded(child: _RecipeTitle(recipe)),
+                ],
+              ),
             ),
           );
         },
@@ -310,22 +313,25 @@ class _RecipeGrid extends StatelessWidget {
       itemBuilder: (context, i) {
         final recipe = recipes[i];
         final path = recipe.imagePath;
-        return TavliCard(
-          padding: EdgeInsets.zero,
-          onTap: () => context.go('/recipes/${recipe.id}'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TavliThumbnail.cardTop(
-                tintIndex: i,
-                icon: Icons.soup_kitchen_outlined,
-                photo: path == null ? null : RecipePhoto(path),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(TavliSpacing.medium),
-                child: _RecipeTitle(recipe),
-              ),
-            ],
+        return _RecipeMenu(
+          recipe,
+          child: TavliCard(
+            padding: EdgeInsets.zero,
+            onTap: () => context.go('/recipes/${recipe.id}'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TavliThumbnail.cardTop(
+                  tintIndex: i,
+                  icon: Icons.soup_kitchen_outlined,
+                  photo: path == null ? null : RecipePhoto(path),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(TavliSpacing.medium),
+                  child: _RecipeTitle(recipe),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -334,6 +340,30 @@ class _RecipeGrid extends StatelessWidget {
 }
 
 /// Prazno stanje koje se pomera kad uz veći tekst i navigaciju nema mesta.
+/// Desni klik na recept (računar): iste radnje kao na ekranu recepta.
+class _RecipeMenu extends StatelessWidget {
+  const _RecipeMenu(this.recipe, {required this.child});
+
+  final Recipe recipe;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TavliContextMenu(
+    actions: [
+      TavliMenuAction(
+        'Otvori',
+        onSelected: () => context.go('/recipes/${recipe.id}'),
+      ),
+      TavliMenuAction(
+        'Izmeni',
+        icon: Icons.edit_outlined,
+        onSelected: () => context.go('/recipes/${recipe.id}/edit'),
+      ),
+    ],
+    child: child,
+  );
+}
+
 class _ScrollableMessage extends StatelessWidget {
   const _ScrollableMessage(this.child);
 
