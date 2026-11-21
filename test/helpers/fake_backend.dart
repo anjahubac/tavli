@@ -59,6 +59,11 @@ class FakeServer {
     final uid = 'user-${++_n}';
     final hid = 'home-$_n';
     households[uid] = hid;
+    table('households')[hid] = {
+      'id': hid,
+      'name': 'Moje domaćinstvo',
+      'updated_at': _now(),
+    };
     profiles[uid] = {
       'id': uid,
       'email': email,
@@ -262,8 +267,11 @@ class FakeServer {
     final sorted =
         [
           for (final r in source)
-            if (_visible(r, userId) ||
-                (_catalogTables.contains(name) && r['household_id'] == null))
+            if (name == 'households'
+                ? households[userId] == r['id']
+                : _visible(r, userId) ||
+                      (_catalogTables.contains(name) &&
+                          r['household_id'] == null))
               Map<String, Object?>.of(r),
         ]..sort((a, b) {
           final t = (a[timeColumn]! as String).compareTo(

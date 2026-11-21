@@ -94,38 +94,14 @@ class Downloader {
   ) async {
     var skipped = 0;
     try {
+      // RLS pri gubitku članstva samo sakrije redove (bez greške), pa se
+      // članstvo proverava odvojeno od rezultata kataloga.
+      if (!await _isMember()) {
+        await _dropHouseholdCatalog();
+        return (skipped: 0, status: CatalogStatus.accessDenied);
+      }
       for (final e in catalogEntities) {
-        skipped += await _pull(
-          key: e.name,
-          table: e.remoteTable,
-          idColumn: e.remoteId,
-          apply: (row) async {
-            if (e.parentKeys.any((key) {
-              final id = row[key.$2];
-              return id is String && deferred.contains((key.$1, id));
-            })) {
-              return false;
-            }
-            await _applyRow(e, row);
-            return true;
-          },
-          onDeferred: (id) => deferred.add((e.name, id)),
-          // Ispravka deljenog zapisa: povlačenje starog reda i zamena pod
-          // istim ključem mogu da stignu bilo kojim redom (isto vreme izmene
-          // u istoj migraciji). Povučeni deljeni redovi strane se primenjuju
-          // prvi, pa zamena ne udari u lokalni jedinstveni indeks. Ponovna
-          // primena istog reda u nastavku je upis po id-ju (bez štete).
-          beforePage: (page) async {
-            for (final row in page) {
-              if (row['household_id'] == null && row['withdrawn_at'] != null) {
-                await _tryApply(e.name, (r) async {
-                  await _applyRow(e, r);
-                  return true;
-                }, row);
-              }
-            }
-          },
-        );
+        skipped += await _pullCatalogEntity(e, deferred);
       }
     } on PermanentSyncError catch (error) {
       final status = catalogStatusFor(error);
@@ -133,6 +109,59 @@ class Downloader {
       return (skipped: skipped, status: status);
     }
     return (skipped: skipped, status: CatalogStatus.available);
+  }
+
+  /// Domaćinstvo je vidljivo samo članu (RLS na `households`).
+  Future<bool> _isMember() async {
+    final rows = await _remote.fetchSince('households', limit: 50);
+    return rows.any((r) => r['id'] == _scope.householdId);
+  }
+
+  /// Jedan prolaz, pa (ako je nešto odloženo) još jedan: ispravka deljenog
+  /// zapisa može da stigne sa zamenom na jednoj strani i povlačenjem na
+  /// sledećoj; zamena tada udari u jedinstveni indeks, a drugi prolaz je
+  /// primenjuje pošto je povlačenje već upisano.
+  Future<int> _pullCatalogEntity(
+    SyncEntity<Table, Object?> e,
+    Set<(String, String)> deferred,
+  ) async {
+    var skipped = 0;
+    for (var pass = 0; pass < 2; pass++) {
+      if (pass == 1) deferred.removeWhere((d) => d.$1 == e.name);
+      skipped = await _pull(
+        key: e.name,
+        table: e.remoteTable,
+        idColumn: e.remoteId,
+        apply: (row) async {
+          if (e.parentKeys.any((key) {
+            final id = row[key.$2];
+            return id is String && deferred.contains((key.$1, id));
+          })) {
+            return false;
+          }
+          await _applyRow(e, row);
+          return true;
+        },
+        onDeferred: (id) => deferred.add((e.name, id)),
+        // Ispravka deljenog zapisa: povlačenje starog reda i zamena pod
+        // istim ključem mogu da stignu bilo kojim redom (isto vreme izmene
+        // u istoj migraciji). Povučeni deljeni redovi strane se primenjuju
+        // prvi, pa zamena ne udari u lokalni jedinstveni indeks. Ponovna
+        // primena istog reda u nastavku je upis po id-ju (bez štete).
+        beforePage: (page) async {
+          for (final row in page) {
+            if (row['household_id'] == null && row['withdrawn_at'] != null) {
+              await _tryApply(e.name, (r) async {
+                await _applyRow(e, r);
+                return true;
+              }, row);
+            }
+          }
+        },
+      );
+      if (skipped == 0) break;
+    }
+    return skipped;
   }
 
   Future<void> _dropHouseholdCatalog() => _db.transaction(() async {

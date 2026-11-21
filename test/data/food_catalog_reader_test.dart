@@ -6,6 +6,7 @@ import 'package:tavli/data/database.dart';
 import 'package:tavli/data/food_catalog_reader.dart';
 import 'package:tavli/domain/food_matcher.dart';
 import 'package:tavli/domain/shopping_sync.dart';
+import 'package:tavli/sync/catalog_status.dart';
 import 'package:tavli/sync/downloader.dart';
 
 import '../helpers/fake_backend.dart';
@@ -130,5 +131,22 @@ void main() {
     backend.server.delete('food_aliases', ['old'], 'id');
     await downloader().run();
     expect(matchedId(await findHere()), 'y');
+  });
+
+  group('status kataloga', () {
+    Future<FoodMatchResult> find(CatalogStatus status) async =>
+        (await FoodCatalogReader(db).matcherFor(
+          home,
+          status: status,
+        )).findByName(originalText: 'namirnica f1', scope: home);
+
+    test(
+      'notOnServer: popunjen keš se ne čita, svako ime je Unresolved',
+      () async {
+        await food('f1');
+        expect(await find(CatalogStatus.available), isA<Matched>());
+        expect(await find(CatalogStatus.notOnServer), isA<Unresolved>());
+      },
+    );
   });
 }

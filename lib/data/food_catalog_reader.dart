@@ -1,17 +1,24 @@
 import 'package:drift/drift.dart';
 
 import '../domain/food_matcher.dart';
+import '../sync/catalog_status.dart';
 import 'database.dart';
 
 /// Matcher kataloga (018, D1-007) nad lokalnim kešom: deljeni redovi i redovi
 /// traženog domaćinstva. Prazan keš (npr. stariji server bez kataloga) daje
-/// Unresolved za svako ime.
+/// Unresolved za svako ime. Isto važi kad server javi [CatalogStatus.notOnServer]:
+/// ranije preuzet keš se tada ne čita (može biti delimičan, npr. namirnice bez
+/// aliasa).
 class FoodCatalogReader {
   FoodCatalogReader(this._db);
 
   final AppDatabase _db;
 
-  Future<FoodMatcher> matcherFor(FoodLookupScope scope) async {
+  Future<FoodMatcher> matcherFor(
+    FoodLookupScope scope, {
+    CatalogStatus status = CatalogStatus.available,
+  }) async {
+    if (status == CatalogStatus.notOnServer) return AliasFoodMatcher(const []);
     final hid = scope.householdId;
     final foodRows = await (_db.select(
       _db.foods,

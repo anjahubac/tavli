@@ -247,4 +247,65 @@ void main() {
     expect(rows['a-new'], isNotNull);
     expect(rows['b-old']!.withdrawnAt, isNotNull);
   });
+
+  test('gubitak članstva bez greške servera briše kućne redove, deljeni '
+      'ostaju', () async {
+    serverFood('f-shared');
+    serverFood('f-own', household: hid);
+    serverAlias('a-own', 'f-own', household: hid);
+    await downloader().run();
+    expect(await localFoods(), {'f-shared', 'f-own'});
+
+    // RLS samo sakrije kućne redove; nijedan zahtev ne vrati grešku.
+    backend.server.households.remove(scope.userId);
+    final result = await downloader().run();
+    expect(result.catalog, CatalogStatus.accessDenied);
+    expect(await localFoods(), {'f-shared'});
+    expect(await localAliases(), isEmpty);
+    expect(await catalogCursors(), isEmpty);
+  });
+
+  test('ispravka deljenog aliasa: zamena i povlačenje na različitim stranicama '
+      'se primaju u istom preuzimanju', () async {
+    serverFood('f-old');
+    serverFood('f-new');
+    Map<String, Object?> shared(
+      String id,
+      String foodId, {
+      String? withdrawn,
+    }) => {
+      'id': id,
+      'food_id': foodId,
+      'household_id': null,
+      'alias': 'jaja',
+      'alias_normalized': 'jaja',
+      'withdrawn_at': withdrawn,
+      'created_at': '2026-11-01T10:00:00.000Z',
+    };
+    backend.server.upsert('food_aliases', [shared('b-old', 'f-old')], 'id');
+    await Downloader(
+      db: db,
+      remote: backend.sync,
+      scope: scope,
+      pageSize: 1,
+    ).run();
+
+    backend.server.upsert('food_aliases', [shared('a-new', 'f-new')], 'id');
+    backend.server.upsert('food_aliases', [
+      shared('b-old', 'f-old', withdrawn: '2026-11-02T10:00:00.000Z'),
+    ], 'id');
+
+    final result = await Downloader(
+      db: db,
+      remote: backend.sync,
+      scope: scope,
+      pageSize: 1,
+    ).run();
+    expect(result.deferred, 0);
+    final rows = {
+      for (final r in await db.select(db.foodAliases).get()) r.id: r,
+    };
+    expect(rows['a-new'], isNotNull);
+    expect(rows['b-old']!.withdrawnAt, isNotNull);
+  });
 }
