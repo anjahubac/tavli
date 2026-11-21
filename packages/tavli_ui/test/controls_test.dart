@@ -728,4 +728,53 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  group('Kanvas prijave', () {
+    testWidgets('tonsko dugme: 48, radijus 16, svetla pozadina', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        TavliButton.tonal(label: 'Pošalji mi kod', onPressed: () {}),
+      );
+      expect(sizeOf(tester, 'Pošalji mi kod').height, 48);
+      expect(radiusOf(tester, 'Pošalji mi kod'), BorderRadius.circular(16));
+      final scheme = Theme.of(tester.element(find.text('Pošalji mi kod')))
+          .colorScheme;
+      final material = tester.widget<Material>(
+        find
+            .ancestor(
+              of: find.text('Pošalji mi kod'),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(material.color, scheme.primaryContainer);
+    });
+
+    testWidgets('visoko polje je 60, a kod iz poruke isto toliko', (
+      tester,
+    ) async {
+      final code = TextEditingController();
+      addTearDown(code.dispose);
+      await pump(
+        tester,
+        SizedBox(
+          width: 360,
+          child: Column(
+            children: [
+              const TavliTextField(label: 'E-pošta', tall: true),
+              TavliCodeField(label: 'Kod iz poruke', controller: code),
+            ],
+          ),
+        ),
+      );
+      expect(tester.getSize(find.byType(TextFormField)).height, 60);
+      final box = find.descendant(
+        of: find.byType(TavliCodeField),
+        matching: find.byType(DecoratedBox),
+      );
+      expect(tester.getSize(box.first).height, 60);
+    });
+  });
 }

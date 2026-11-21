@@ -53,6 +53,7 @@ class _NameScreenState extends ConsumerState<NameScreen> {
         children: [
           TavliTextField(
             label: 'Ime',
+            tall: true,
             controller: _name,
             autofocus: true,
             textCapitalization: TextCapitalization.words,

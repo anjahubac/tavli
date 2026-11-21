@@ -121,6 +121,7 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
       children: [
         TavliTextField(
           label: 'E-pošta',
+          tall: true,
           controller: _email,
           focusNode: _focus,
           keyboardType: TextInputType.emailAddress,

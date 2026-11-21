@@ -13,6 +13,10 @@ enum TavliButtonVariant {
   /// ivica 1 px.
   secondary,
 
+  /// Tonsko: visina 48, radijus 16, svetla pozadina boje teme, bez ivice
+  /// (kanvas: „Pošalji mi kod“ u kartici).
+  tonal,
+
   /// Tekstualno: visina 48, radijus 14, bez pozadine.
   text,
 
@@ -44,6 +48,15 @@ class TavliButton extends StatelessWidget {
   }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
        variant = TavliButtonVariant.secondary;
 
+  const TavliButton.tonal({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.tonal;
+
   const TavliButton.text({
     super.key,
     required this.label,
@@ -74,10 +87,13 @@ class TavliButton extends StatelessWidget {
   /// `null` isključuje dugme.
   final VoidCallback? onPressed;
 
-  /// Visina bez obzira na red: 56 za glavno i sporedno, 48 za tekstualna.
+  /// Visina bez obzira na red: 56 za glavno i sporedno, 48 za tonsko i
+  /// tekstualna.
   double get baseHeight => switch (variant) {
     TavliButtonVariant.primary || TavliButtonVariant.secondary => 56,
-    TavliButtonVariant.text || TavliButtonVariant.destructive => 48,
+    TavliButtonVariant.tonal ||
+    TavliButtonVariant.text ||
+    TavliButtonVariant.destructive => 48,
   };
 
   @override
@@ -92,6 +108,7 @@ class TavliButton extends StatelessWidget {
     final radius = switch (variant) {
       TavliButtonVariant.primary => TavliRadius.button,
       TavliButtonVariant.secondary => TavliRadius.button,
+      TavliButtonVariant.tonal => TavliRadius.field,
       TavliButtonVariant.text ||
       TavliButtonVariant.destructive => TavliRadius.compact,
     };
@@ -128,8 +145,16 @@ class TavliButton extends StatelessWidget {
         TavliButtonVariant.secondary => _enabled(c.onSurface, c),
         TavliButtonVariant.text => _enabled(c.primary, c),
         TavliButtonVariant.destructive => _enabled(c.error, c),
+        TavliButtonVariant.tonal => _enabled(c.onPrimaryContainer, c),
         TavliButtonVariant.primary => null,
       },
+      backgroundColor: variant == TavliButtonVariant.tonal
+          ? WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.disabled)
+                  ? c.onSurface.withValues(alpha: 0.12)
+                  : c.primaryContainer,
+            )
+          : null,
     );
 
     final text = Text(label, textAlign: TextAlign.center);
@@ -150,7 +175,7 @@ class TavliButton extends StatelessWidget {
           );
 
     return switch (variant) {
-      TavliButtonVariant.primary => FilledButton(
+      TavliButtonVariant.primary || TavliButtonVariant.tonal => FilledButton(
         onPressed: onPressed,
         style: style,
         child: child,

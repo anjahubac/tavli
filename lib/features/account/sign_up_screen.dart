@@ -108,6 +108,7 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
           children: [
             TavliTextField(
               label: 'E-pošta',
+              tall: true,
               controller: _email,
               focusNode: _focus,
               keyboardType: TextInputType.emailAddress,
@@ -283,7 +284,7 @@ class _CheckEmailStepState extends ConsumerState<CheckEmailStep>
                   color: c.onSurfaceVariant,
                 ),
               ),
-              TavliButton.secondary(
+              TavliButton.tonal(
                 label: 'Pošalji mi kod',
                 onPressed: left == 0 && !_busy
                     ? () => _send(auth.sendCodeInstead)

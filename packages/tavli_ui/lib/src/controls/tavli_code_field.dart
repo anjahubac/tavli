@@ -95,12 +95,19 @@ class _TavliCodeFieldState extends State<TavliCodeField> {
             width: current ? 2 : 1,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Text(
-            filled ? digits[i] : '',
-            textAlign: TextAlign.center,
-            style: digitStyle,
+        // Kanvas: polje za cifru je visoko 60 kao i ostala polja prijave;
+        // uz veći tekst raste.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 60),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: TavliSpacing.small),
+              child: Text(
+                filled ? digits[i] : '',
+                textAlign: TextAlign.center,
+                style: digitStyle,
+              ),
+            ),
           ),
         ),
       );
