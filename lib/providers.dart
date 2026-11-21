@@ -19,6 +19,7 @@ import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'data/shopping_repository.dart';
+import 'data/taste_profile_repository.dart';
 import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
@@ -238,3 +239,12 @@ final shoppingRepositoryProvider = Provider<ShoppingRepository>(
     clock: ref.watch(clockProvider),
   ),
 );
+
+final tasteProfileRepositoryProvider = Provider<TasteProfileRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return TasteProfileRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
