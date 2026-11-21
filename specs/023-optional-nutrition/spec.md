@@ -62,6 +62,10 @@ Producer specs: [008](../008-household-members/spec.md), [018](../018-ingredient
 
 - **Q1** (Dev 3 with reviewer): Resolve the seven linked tracker questions, source licensing/versioning, opt-out retention, rounding and optional calculator review before dependent work.
 - **Q2** (Dev 3 with reviewer): Agree actor intake/correction and imported manual target consent; private sensitive cache protection is gated by 012.
+- **Producer note (2026-11-19, Dev 4)**: automatic intake attaches to the
+  cooked operation through the actor-only effect in the
+  [cooked meal contract](../021-home-and-cooking/contracts/cooked-meal-contract.md)
+  (D4); Dev 3 confirms or amends it in review.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

@@ -337,6 +337,26 @@ void main() {
     expect(replace.onPressed, isNull);
   });
 
+  testTavli('skuvano iz Plana ide kroz zajedničko mesto: zapis kuvanja, '
+      'pa poništavanje', (tester) async {
+    final app = await pumpPlan(tester, size: wide);
+    await tapText(tester, 'Ručak 4.11.');
+
+    await tapText(tester, 'Označi kao skuvano');
+
+    expect(find.text('Nije skuvano'), findsOneWidget);
+    final events = await app.db.select(app.db.cookedEvents).get();
+    expect(events, hasLength(1));
+    expect(events.single.undoneAt, isNull);
+
+    await tapText(tester, 'Nije skuvano');
+
+    expect(find.text('Označi kao skuvano'), findsOneWidget);
+    final undone = await app.db.select(app.db.cookedEvents).getSingle();
+    expect(undone.id, events.single.id);
+    expect(undone.undoneAt, isNotNull);
+  });
+
   testTavli('porcije obroka se menjaju i sastojci se preračunavaju', (
     tester,
   ) async {
