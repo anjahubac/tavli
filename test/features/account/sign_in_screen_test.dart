@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
@@ -39,7 +40,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(TavliNavigation), findsNothing);
     expect(find.text('Recepti'), findsNothing);
   });
 

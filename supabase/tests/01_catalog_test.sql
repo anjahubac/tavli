@@ -70,8 +70,10 @@ select is(
         where n.nspname in ('public', 'private')
           and has_function_privilege('authenticated', p.oid, 'execute')
         order by 1),
-  array['private.is_member'],
-  'authenticated izvršava samo private.is_member'
+  -- recipe_meal_types_valid: CHECK na public.recipes je poziva sa pravima
+  -- korisnika koji upisuje (20261118120000_recipe_labels.sql).
+  array['private.is_member', 'private.recipe_meal_types_valid'],
+  'authenticated izvršava samo private.is_member i proveru obroka recepta'
 );
 
 select is(

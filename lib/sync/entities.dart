@@ -60,6 +60,10 @@ DateTime _date(Object? v) {
 }
 
 DateTime? _dateOrNull(Object? v) => v == null ? null : _date(v);
+
+/// Kalendarski dan za `date` kolonu na serveru: `YYYY-MM-DD`.
+String _day(DateTime d) => CivilDate.fromWire(d).toString();
+String? _dayOrNull(DateTime? d) => d == null ? null : _day(d);
 String? _tsOrNull(DateTime? d) => d == null ? null : _ts(d);
 String _json(Object? v) => jsonEncode(v);
 String? _jsonOrNull(Object? v) => v == null ? null : jsonEncode(v);
@@ -198,8 +202,8 @@ class ShoppingListEntity
     'name': r.name,
     'meal_plan_id': r.mealPlanId,
     'week': r.week,
-    'period_start': _tsOrNull(r.periodStart),
-    'period_end': _tsOrNull(r.periodEnd),
+    'period_start': _dayOrNull(r.periodStart),
+    'period_end': _dayOrNull(r.periodEnd),
     'created_at': _ts(r.createdAt),
   };
 
@@ -337,8 +341,8 @@ class MealPlanEntity extends SyncEntity<$MealPlansTable, MealPlanRow> {
   Map<String, Object?> toRemote(MealPlanRow r) => {
     'id': r.id,
     'household_id': r.householdId,
-    'start_date': _ts(r.startDate),
-    'end_date': _ts(r.endDate),
+    'start_date': _day(r.startDate),
+    'end_date': _day(r.endDate),
     'meal_types': jsonDecode(r.mealTypesJson),
     'use_pantry': r.usePantry,
     'default_servings': r.defaultServings,
@@ -381,7 +385,7 @@ class MealPlanEntryEntity
     'id': r.id,
     'household_id': r.householdId,
     'plan_id': r.planId,
-    'date': _ts(r.date),
+    'date': _day(r.date),
     'meal_type': r.mealType,
     'recipe_id': r.recipeId,
     'is_locked': r.isLocked,

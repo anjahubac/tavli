@@ -1,0 +1,369 @@
+import 'package:material_ui/material_ui.dart';
+
+/// Jedna Tavli ikonica: linijski crtež na mreži 24×24, kao na platnu
+/// „Tavli: ekrani po uređajima“.
+///
+/// [shapes] su SVG oblici sa platna, prepisani doslovno: putanja (`d`
+/// atribut), `rect x y w h rx` ili `circle cx cy r`. Crta se linijom
+/// [strokeWidth] (u jedinicama mreže 24), zaobljenih krajeva i spojeva, u
+/// boji okolnog teksta.
+@immutable
+class TavliIconData {
+  const TavliIconData(this.name, this.shapes, {this.strokeWidth = 2});
+
+  /// Ime za testove i galeriju.
+  final String name;
+  final List<String> shapes;
+  final double strokeWidth;
+
+  /// Ista ikonica sa debljom linijom (kvačica u statusu 2,4, u polju 3).
+  TavliIconData withStroke(double width) =>
+      TavliIconData(name, shapes, strokeWidth: width);
+
+  @override
+  bool operator ==(Object other) =>
+      other is TavliIconData &&
+      other.name == name &&
+      other.strokeWidth == strokeWidth;
+
+  @override
+  int get hashCode => Object.hash(name, strokeWidth);
+
+  @override
+  String toString() => 'TavliIconData($name)';
+}
+
+/// Set ikonica sa platna. Nova ikonica se crta u istom stilu (linija 2,
+/// zaobljeno, mreža 24) i dodaje ovde, sa ulazom u galeriji.
+abstract final class TavliIcons {
+  // Navigacija.
+  static const plan = TavliIconData('plan', [
+    'rect 4 5 16 15 3',
+    'M4 10h16M9 3v4M15 3v4',
+  ]);
+  static const shopping = TavliIconData('shopping', [
+    'M4 5h2l2 10h9l2-7H7',
+    'circle 9.5 19 1.3',
+    'circle 16.5 19 1.3',
+  ]);
+  static const home = TavliIconData('home', [
+    'M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z',
+  ]);
+  static const recipes = TavliIconData('recipes', [
+    'M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z',
+    'M5 17a3 3 0 0 1 3-3h11',
+  ]);
+  static const pantry = TavliIconData('pantry', [
+    'M4 8l8-4 8 4v8l-8 4-8-4z',
+    'M4 8l8 4 8-4M12 12v8',
+  ]);
+
+  // Akcije.
+  static const cook = TavliIconData('cook', [
+    'M5 10h14v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z',
+    'M3 10h18M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2',
+  ]);
+  static const check = TavliIconData('check', ['M5 12l5 5 9-10']);
+  static const add = TavliIconData('add', ['M12 5v14M5 12h14']);
+  static const search = TavliIconData('search', [
+    'circle 11 11 6',
+    'M20 20l-4.5-4.5',
+  ]);
+  static const delete = TavliIconData('delete', [
+    'M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13',
+  ]);
+  static const edit = TavliIconData('edit', [
+    'M4 20h4L19 9l-4-4L4 16z',
+    'M13 7l4 4',
+  ]);
+  static const close = TavliIconData('close', ['M6 6l12 12M18 6L6 18']);
+  static const today = TavliIconData('today', [
+    'rect 4 5 16 15 3',
+    'M4 10h16',
+    'circle 12 15 1.5',
+  ]);
+
+  // Strelice.
+  static const back = TavliIconData('back', ['M15 5l-7 7 7 7']);
+  static const chevronRight = TavliIconData('chevronRight', ['M9 5l7 7-7 7']);
+  static const arrowForward = TavliIconData('arrowForward', [
+    'M5 12h14M13 6l6 6-6 6',
+  ]);
+  static const arrowBack = TavliIconData('arrowBack', [
+    'M19 12H5M11 6l-6 6 6 6',
+  ]);
+
+  // Nalog i podešavanja.
+  static const key = TavliIconData('key', [
+    'circle 8 15 4',
+    'M11 12l8-8M16 7l2 2M14 9l2 2',
+  ]);
+  static const signOut = TavliIconData('signOut', [
+    'M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4',
+    'M10 16l-4-4 4-4M6 12h10',
+  ]);
+  static const palette = TavliIconData('palette', [
+    'M12 4a8 8 0 1 0 0 16c1.1 0 1.6-.8 1.6-1.6 0-1.2-1-1.5-1-2.6 '
+        '0-.9.7-1.6 1.6-1.6H16a4 4 0 0 0 4-4c0-3.5-3.6-6.2-8-6.2z',
+    'circle 8 11 1',
+    'circle 11 7.5 1',
+    'circle 15.5 8.5 1',
+  ]);
+  static const synced = TavliIconData('synced', [
+    'M7 18a4 4 0 0 1-.6-8A5.5 5.5 0 0 1 17 9a4 4 0 0 1 0 9z',
+    'M9.5 13.5l2 2 3.5-4',
+  ]);
+  static const info = TavliIconData('info', [
+    'circle 12 12 8.5',
+    'M12 11v5M12 8h.01',
+  ]);
+  static const show = TavliIconData('show', [
+    'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z',
+    'circle 12 12 3',
+  ]);
+  static const lightMode = TavliIconData('lightMode', [
+    'circle 12 12 4',
+    'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4'
+        'M5.6 18.4L7 17M17 7l1.4-1.4',
+  ]);
+  static const darkMode = TavliIconData('darkMode', [
+    'M19 14.5A7.5 7.5 0 0 1 9.5 5 7.5 7.5 0 1 0 19 14.5z',
+  ]);
+  static const systemMode = TavliIconData('systemMode', [
+    'circle 12 12 8',
+    'M12 4v16',
+  ]);
+  static const question = TavliIconData('question', [
+    'M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4 3v-3H5a2 2 0 0 1-2-2V7'
+        'a2 2 0 0 1 2-2z',
+    'M10 9.5a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2M12 14.5v.01',
+  ]);
+
+  /// Svi, za galeriju i testove.
+  static const all = [
+    plan,
+    shopping,
+    home,
+    recipes,
+    pantry,
+    cook,
+    check,
+    add,
+    search,
+    delete,
+    edit,
+    close,
+    today,
+    back,
+    chevronRight,
+    arrowForward,
+    arrowBack,
+    key,
+    signOut,
+    palette,
+    synced,
+    info,
+    show,
+    lightMode,
+    darkMode,
+    systemMode,
+    question,
+  ];
+}
+
+/// Crta [TavliIconData] u veličini [size] (podrazumevano iz `IconTheme`),
+/// bojom [color] ili bojom iz `IconTheme`. Bez [semanticLabel] je
+/// ukras i čitač ekrana ga preskače.
+class TavliIcon extends StatelessWidget {
+  const TavliIcon(
+    this.icon, {
+    super.key,
+    this.size,
+    this.color,
+    this.semanticLabel,
+  });
+
+  final TavliIconData icon;
+  final double? size;
+  final Color? color;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = IconTheme.of(context);
+    final side = size ?? theme.size ?? 24;
+    final paint =
+        color ?? theme.color ?? DefaultTextStyle.of(context).style.color!;
+    final drawing = SizedBox.square(
+      dimension: side,
+      child: CustomPaint(painter: _IconPainter(icon, paint)),
+    );
+    if (semanticLabel == null) return ExcludeSemantics(child: drawing);
+    return Semantics(label: semanticLabel, image: true, child: drawing);
+  }
+}
+
+class _IconPainter extends CustomPainter {
+  _IconPainter(this.icon, this.color);
+
+  final TavliIconData icon;
+  final Color color;
+
+  static final _cache = <String, Path>{};
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.shortestSide / 24;
+    canvas.save();
+    canvas.scale(scale);
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = icon.strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+    for (final shape in icon.shapes) {
+      canvas.drawPath(
+        _cache.putIfAbsent(shape, () => parseIconShape(shape)),
+        stroke,
+      );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_IconPainter old) =>
+      old.icon != icon || old.color != color;
+}
+
+/// Pretvara jedan oblik iz [TavliIconData.shapes] u [Path]: `rect x y w h
+/// rx`, `circle cx cy r` ili SVG putanju (M L H V C S Q A Z, velika i mala
+/// slova).
+@visibleForTesting
+Path parseIconShape(String shape) {
+  final parts = shape.trim().split(RegExp(r'\s+'));
+  if (parts.first == 'rect') {
+    final v = parts.skip(1).map(double.parse).toList();
+    return Path()..addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(v[0], v[1], v[2], v[3]),
+        Radius.circular(v.length > 4 ? v[4] : 0),
+      ),
+    );
+  }
+  if (parts.first == 'circle') {
+    final v = parts.skip(1).map(double.parse).toList();
+    return Path()
+      ..addOval(Rect.fromCircle(center: Offset(v[0], v[1]), radius: v[2]));
+  }
+  return _SvgPath(shape).parse();
+}
+
+class _SvgPath {
+  _SvgPath(this.source);
+
+  final String source;
+  final _tokens = <String>[];
+  var _i = 0;
+
+  static final _token = RegExp(
+    r'[MmLlHhVvCcSsQqAaZz]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?',
+  );
+
+  Path parse() {
+    _tokens.addAll(_token.allMatches(source).map((m) => m.group(0)!));
+    final path = Path();
+    var cur = Offset.zero;
+    var start = Offset.zero;
+    Offset? lastControl;
+    String? cmd;
+    while (_i < _tokens.length) {
+      if (_isCommand(_tokens[_i])) cmd = _tokens[_i++];
+      final c = cmd!;
+      final rel = c == c.toLowerCase();
+      final base = rel ? cur : Offset.zero;
+      switch (c.toUpperCase()) {
+        case 'M':
+          cur = base + _point();
+          start = cur;
+          path.moveTo(cur.dx, cur.dy);
+          // Posle M brojevi se nastavljaju kao L.
+          cmd = rel ? 'l' : 'L';
+          lastControl = null;
+        case 'L':
+          cur = base + _point();
+          path.lineTo(cur.dx, cur.dy);
+          lastControl = null;
+        case 'H':
+          cur = Offset((rel ? cur.dx : 0) + _number(), cur.dy);
+          path.lineTo(cur.dx, cur.dy);
+          lastControl = null;
+        case 'V':
+          cur = Offset(cur.dx, (rel ? cur.dy : 0) + _number());
+          path.lineTo(cur.dx, cur.dy);
+          lastControl = null;
+        case 'C':
+          final c1 = base + _point();
+          final c2 = base + _point();
+          final end = base + _point();
+          path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, end.dx, end.dy);
+          lastControl = c2;
+          cur = end;
+        case 'S':
+          final c1 = lastControl == null ? cur : cur * 2 - lastControl;
+          final c2 = base + _point();
+          final end = base + _point();
+          path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, end.dx, end.dy);
+          lastControl = c2;
+          cur = end;
+        case 'Q':
+          final c1 = base + _point();
+          final end = base + _point();
+          path.quadraticBezierTo(c1.dx, c1.dy, end.dx, end.dy);
+          lastControl = null;
+          cur = end;
+        case 'A':
+          final rx = _number();
+          final ry = _number();
+          final rotation = _number();
+          final large = _flag();
+          final sweep = _flag();
+          final end = base + _point();
+          path.arcToPoint(
+            end,
+            radius: Radius.elliptical(rx, ry),
+            rotation: rotation,
+            largeArc: large,
+            clockwise: sweep,
+          );
+          cur = end;
+          lastControl = null;
+        case 'Z':
+          path.close();
+          cur = start;
+          lastControl = null;
+          cmd = null;
+      }
+      if (cmd == null && _i < _tokens.length && !_isCommand(_tokens[_i])) {
+        throw FormatException('Neispravna putanja ikonice', source);
+      }
+    }
+    return path;
+  }
+
+  bool _isCommand(String t) => RegExp(r'^[A-Za-z]$').hasMatch(t);
+
+  double _number() {
+    if (_i >= _tokens.length || _isCommand(_tokens[_i])) {
+      throw FormatException('Neispravna putanja ikonice', source);
+    }
+    return double.parse(_tokens[_i++]);
+  }
+
+  // Zastavice luka mogu biti spojene sa brojem posle njih („0 1 1“ ili
+  // „011“); na platnu su uvek odvojene razmakom.
+  bool _flag() => _number() != 0;
+
+  Offset _point() => Offset(_number(), _number());
+}

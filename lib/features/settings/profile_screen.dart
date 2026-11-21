@@ -1,62 +1,70 @@
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../app/router.dart';
-import '../account/account_header.dart';
+import 'profile_account_section.dart';
+import 'settings_page.dart';
 
+/// Profil i podešavanja, kao na platnu: nalog, podešavanja i brisanje
+/// naloga; na širokom ekranu nalog levo, ostalo desno.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profil'),
-        // Otvoren direktnom adresom nema kuda nazad, pa vodi na Plan.
-        leading: BackButton(
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go(homeLocation),
+    return SettingsPage(
+      title: 'Profil',
+      // Otvoren direktnom adresom nema kuda nazad, pa vodi na početni tab.
+      fallbackLocation: homeLocation,
+      children: [
+        SettingsColumns(
+          start: const [AccountSection()],
+          end: [
+            SettingsSection(
+              title: 'Podešavanja',
+              children: [
+                TavliListGroup(
+                  children: [
+                    TavliListRow(
+                      title: 'Izgled',
+                      subtitle: 'Boje, tema i svetli ili tamni režim',
+                      leading: const Icon(Icons.palette_outlined),
+                      showChevron: true,
+                      onTap: () => context.go('/profile/appearance'),
+                    ),
+                    TavliListRow(
+                      title: 'AI ključevi',
+                      subtitle: 'Gemini, Groq, OpenRouter',
+                      leading: const Icon(Icons.key_outlined),
+                      showChevron: true,
+                      onTap: () => context.go('/profile/ai-keys'),
+                    ),
+                    if (kDebugMode)
+                      TavliListRow(
+                        title: 'Animacije',
+                        subtitle: 'Pregled animacija (samo za razvoj)',
+                        leading: const Icon(Icons.animation),
+                        showChevron: true,
+                        onTap: () => context.go('/profile/animations'),
+                      ),
+                    if (kDebugMode)
+                      TavliListRow(
+                        title: 'Komponente',
+                        subtitle: 'Galerija UI biblioteke (samo za razvoj)',
+                        leading: const Icon(Icons.widgets_outlined),
+                        showChevron: true,
+                        onTap: () => context.push(componentsPath),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            const DeleteAccountSection(),
+          ],
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        children: [
-          const AccountHeader(),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.palette_outlined),
-            title: const Text('Izgled'),
-            subtitle: const Text('Boje, tema i svetli ili tamni režim'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/profile/appearance'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.key),
-            title: const Text('AI ključevi'),
-            subtitle: const Text('Gemini, Groq, OpenRouter'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/profile/ai-keys'),
-          ),
-          if (kDebugMode)
-            ListTile(
-              leading: const Icon(Icons.animation),
-              title: const Text('Animacije'),
-              subtitle: const Text('Pregled animacija (samo za razvoj)'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.go('/profile/animations'),
-            ),
-          if (kDebugMode)
-            ListTile(
-              leading: const Icon(Icons.widgets_outlined),
-              title: const Text('Komponente'),
-              subtitle: const Text('Galerija UI biblioteke (samo za razvoj)'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push(componentsPath),
-            ),
-          const DeleteAccountSection(),
-        ],
-      ),
+      ],
     );
   }
 }

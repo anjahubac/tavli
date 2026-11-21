@@ -8,6 +8,7 @@ import '../content/tavli_notice.dart';
 import '../content/tavli_states.dart';
 import '../content/tavli_tag.dart';
 import '../controls/tavli_button.dart';
+import '../controls/tavli_icon_button.dart';
 import '../controls/tavli_rows.dart';
 import '../tokens.dart';
 import 'gallery_section.dart';
@@ -263,6 +264,37 @@ class _ListsState extends State<_Lists> {
                 title: 'Gibanica',
                 subtitle: '1 h 10 min · 8 porcija',
                 showChevron: true,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+        gap,
+        GalleryLabeled(
+          'Sa ikonicom, dugmadima desno i za brisanje',
+          TavliListGroup(
+            children: [
+              TavliListRow(
+                leading: const Icon(Icons.key_outlined),
+                title: '••••7Lm2',
+                subtitle: 'Dodat 14.11.2026 · Radi',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TavliButton.text(label: 'Proveri', onPressed: () {}),
+                    TavliIconButton(
+                      icon: Icons.delete_outline_rounded,
+                      semanticLabel: 'Obriši ključ',
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+              ),
+              TavliListRow(
+                leading: const Icon(Icons.delete_forever_outlined),
+                title: 'Obriši nalog',
+                subtitle: 'Trajno briše nalog i sve podatke',
+                destructive: true,
                 onTap: () {},
               ),
             ],
