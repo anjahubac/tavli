@@ -28,14 +28,13 @@ The recipe and plan prompts share `ingredientNameRules`
 The JSON shape is unchanged. Plural or inflected forms (“jaja”, “crnog
 luka”) are covered by catalog aliases, not by the prompt.
 
-## App safety net
+## No rewriting in the app
 
-`aiIngredient` (`lib/ai/ai_response_validator.dart`) moves one trailing
-parenthesis from the name to the note: “paradajz (oljušten)” → name
-“paradajz”, note “oljušten” (before an existing note). If the joined note
-would exceed 200 characters, the name stays unchanged and the response is not
-rejected. Nothing else is rewritten: removing adjectives in code would break
-foods such as “kiselo mleko”.
+The app does not rewrite AI names. A first version moved a trailing
+parenthesis to the note, but “mleko (bez laktoze)” then became “mleko” and
+matched plain milk, and it also became the shopping merge key (Dev 1 review).
+Code cannot tell preparation from a product variant, so the name stays as the
+AI wrote it and the prompt carries the rules.
 
 ## Consumers
 
@@ -82,5 +81,5 @@ gaps, not prompt errors.
 ## Evidence
 
 - `test/ai/ai_response_validator_test.dart`, group *naziv sastojka za
-  katalog*: parenthesis to note, joined note, unchanged names, overlong note,
+  katalog*: a variant name such as “mleko (bez laktoze)” stays unchanged;
   both prompts carry the rules.

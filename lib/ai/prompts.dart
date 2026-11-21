@@ -48,7 +48,7 @@ form (nominative singular, lowercase): "jaje", "crni luk", "paradajz",
   "sir"; ground paprika is "aleva paprika".
 - A generic name, never a brand: "krem od lešnika", not "eurokrem".
 - Keep words that make it a different food: "kiselo mleko", "mleveno meso",
-  "beli luk" and "pšenično brašno" stay as they are.''';
+  "beli luk", "mleko bez laktoze" and "pšenično brašno" stay as they are.''';
 
 final recipeSystemPrompt =
     '''

@@ -86,34 +86,15 @@ Ingredient aiIngredient(Object? v) {
   }
   final category = v['category'];
   final normalized = category is String ? category.trim().toLowerCase() : null;
-  final (base, note) = _moveParenthesisToNote(
-    name,
-    _optionalText(v['note'], maxNoteLength, 'R9'),
-  );
   return Ingredient(
-    name: base,
+    name: name,
     quantity: (quantity as num?)?.toDouble(),
     unit: _optionalText(v['unit'], maxUnitLength, 'R7'),
     category: ingredientCategories.contains(normalized)
         ? normalized!
         : 'ostalo',
-    note: note,
+    note: _optionalText(v['note'], maxNoteLength, 'R9'),
   );
-}
-
-final _trailingParenthesis = RegExp(r'^(.+?)\s*\(([^()]+)\)$');
-
-/// „paradajz (oljušten)“ → naziv „paradajz“, napomena „oljušten“, da bi se
-/// sastojak povezao sa katalogom (TRELLO-40). Ništa pametnije od zagrade:
-/// „kiselo mleko“ je namirnica, ne „mleko“ uz pripremu. Ako napomena ne bi
-/// stala u [maxNoteLength], naziv ostaje kakav je.
-(String, String?) _moveParenthesisToNote(String name, String? note) {
-  final m = _trailingParenthesis.firstMatch(name);
-  if (m == null) return (name, note);
-  final inside = m.group(2)!.trim();
-  final joined = note == null ? inside : '$inside, $note';
-  if (inside.isEmpty || joined.length > maxNoteLength) return (name, note);
-  return (m.group(1)!.trim(), joined);
 }
 
 /// R10: koraci bez praznih; nedostaju → prazna lista (sažetak).
