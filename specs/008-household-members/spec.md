@@ -53,7 +53,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **US5 / SC-005**: One member likes a food and another dislikes it; the conflict affects ranking without becoming a safety ban. A deleted recipe or departing member stops contributing favorites.
 - **US6 / SC-006**: Co-members cannot read one another's raw personal settings; a foreign or removed participant ID yields no partial aggregate.
 - **US7 / SC-007**: A preference or note a member has not shared never appears in another member's plan inputs, prompt or UI, for one or several participants; withdrawing consent removes it. An AI response that echoes a name, note or attributed allergy is rejected and never shown or stored.
-- **US8 / SC-008**: With a member's allergen selected, no AI request, log, cache or client response contains it (canary test across all flows), and an allergenic recipe, a recipe with unresolved ingredients or a recipe outside the eligible pool cannot enter the initial personalized draft. If Dev 2 adds invented drafts later, apply the same server checks before any use.
+- **US8 / SC-008**: With a member's allergen selected, no planning AI request, log, cached plan input or client plan response contains it (canary test across planner flows), and an allergenic recipe, a recipe with unresolved ingredients or a recipe outside the eligible pool cannot enter the initial personalized draft. If Dev 2 adds invented drafts later, apply the same server checks before any use.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;

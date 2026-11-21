@@ -20,6 +20,7 @@ import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'data/favorite_repository.dart';
+import 'data/planning_sharing_repository.dart';
 import 'data/shopping_repository.dart';
 import 'data/taste_profile_repository.dart';
 import 'features/planning/planning_providers.dart';
@@ -267,4 +268,13 @@ final tasteProfileRepositoryProvider = Provider<TasteProfileRepository>((ref) {
     scope: scope,
     writer: ref.watch(syncedWriterProvider),
   );
+});
+
+final planningSharingRepositoryProvider = Provider<PlanningSharingRepository?>((
+  ref,
+) {
+  final scope = ref.watch(accountScopeProvider);
+  final client = ref.watch(supabaseClientProvider);
+  if (scope == null || client == null) return null;
+  return SupabasePlanningSharingRepository(client, userId: scope.userId);
 });

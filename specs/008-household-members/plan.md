@@ -187,7 +187,23 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
   and Dev 3 agree the server-only comparison inputs before the later free-text
   note slice.
 
-## Constitution check (3.0.1)
+## Logic handoff on the 008 work branch
+
+| Source | Implementation available | Remaining acceptance |
+|---|---|---|
+| D3-004 | `TasteProfileRepository` reads, watches and writes dish-kind and catalog food choices. `PlanningSharingRepository` reads and changes owner consent online. The private resolver applies consent and resolves ranking conflicts. | Dev 2 to confirm cuisine vocabulary and consumer limits. Connect the profile UI and the visible food catalog. |
+| D3-009 | `AllergenRepository` reads, watches and replaces owner selections. `public.planning_allergen_codes` checks household scope and resolves the selected union. | Connect profile UI and Dev 2 server planning. |
+| D3-010 | `RecipeAllergens` derives visible recipe groups, warns on unresolved links or unreviewed mappings and compares with the viewer's own selection. The domain fixture covers seven reviewed ingredients out of eight. | Dev 1 supplies linked food IDs and reviewed mappings. Connect the recipe warning UI. Dev 2 applies the same completeness requirement in recommendation eligibility and result checks. |
+| D3-011 | `FavoriteRepository` reads, watches and edits private favorites. The server resolver counts visible favorites after consent. Membership-scoped identity prevents replay on a new membership. | Refresh the cached identity in the household transition flow, connect the recipe heart and list filter, and run the integrated planner acceptance. |
+
+At `origin/dev` 5fc4485, PR #90 has merged the alias matcher. That baseline
+has no food catalog migrations, embedded recipe food links or reviewed
+allergen metadata. The 008 branch does not need those producer changes for
+private storage. Review shared changes with Dev 1 for `lib/data/database.dart`,
+generated Drift, `lib/sync/entities.dart` and migration order, and with Dev 2
+for the gateway consumer. No new credential, file or AI transport is added.
+
+## Constitution check (3.1.0)
 
 | Gate | Required response before implementation |
 | --- | --- |

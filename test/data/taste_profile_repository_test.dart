@@ -4,6 +4,7 @@ import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/taste_profile_repository.dart';
 import 'package:tavli/domain/dish_kind_preferences.dart';
+import 'package:tavli/domain/food_preferences.dart';
 import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli/sync/entities.dart';
 import 'package:tavli/sync/synced_writer.dart';
@@ -66,6 +67,37 @@ void main() {
       expect(operation.op, OutboxOp.upsert);
     },
   );
+
+  test('saves catalog food preferences independently of dish kinds', () async {
+    const first = '46d60c83-0d05-466e-9c28-585a8be28d8f';
+    const second = 'e760678c-1bce-4cde-8bca-b763885c7895';
+    final repo = repository('member');
+    expect((await repo.getFoodPreferences()).liked, isEmpty);
+    expect(
+      () => FoodPreferences(liked: {'arbitrary food name'}),
+      throwsArgumentError,
+    );
+
+    await repo.saveDishPreferences(
+      DishKindPreferences(liked: {DishKind.pasta}),
+    );
+    await repo.saveFoodPreferences(
+      FoodPreferences(liked: {first, second}, disliked: {first}),
+    );
+    final stored = await db.select(db.userProfiles).getSingle();
+    expect(const TasteProfileEntity().toRemote(stored)['profile'], {
+      'likedDishKinds': ['pasta'],
+      'dislikedDishKinds': <String>[],
+      'likedFoodIds': [second],
+      'dislikedFoodIds': [first],
+    });
+    final food = await repo.watchFoodPreferences().first;
+    expect(food.liked, {second});
+    expect(food.disliked, {first});
+    expect((await repo.getDishPreferences()).liked, {DishKind.pasta});
+    expect((await repository('other').getFoodPreferences()).liked, isEmpty);
+    expect(await db.select(db.syncOutbox).get(), hasLength(1));
+  });
 
   test('keeps preferences private across accounts in one household', () async {
     final first = repository('first');

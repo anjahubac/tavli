@@ -4,7 +4,7 @@
 
 ## Scope and existing state
 
-PR #77 recorded the initial types, signatures and scenarios as documentation. The logic-first sequence and storage shape are in the [plan](../plan.md) and [data model](../data-model.md). Today `taste_profiles` is owner-only JSON, ratings are personal, and recipes have the nine `DishKind` values. Allergen and favorite tables and the food catalog are planned. Do not expose personal profile or diary rows to household members.
+PR #77 recorded the initial types, signatures and scenarios as documentation. The logic-first sequence and storage shape are in the [plan](../plan.md) and [data model](../data-model.md). Today `taste_profiles` is owner-only JSON, ratings are personal, and recipes have the nine `DishKind` values. Allergen and favorite storage and the server planning reads are implemented on the 008 work branch. Reviewed food catalog data and gateway integration are pending. Do not expose personal profile or diary rows to household members.
 
 ## Inputs
 
@@ -82,7 +82,7 @@ The AI response is untrusted. After parsing and before display or storage the pl
 
 ### Guards that keep allergens away from the AI
 
-1. **Type boundary.** The AI prompt builder accepts only `AiPlanningContext`, an allowlisted type with no allergen field. The allergen types and repository live in a server-only module that the `ai/` layer and the prompt builder cannot import.
+1. **Type boundary.** The AI prompt builder accepts only `AiPlanningContext`, an allowlisted type with no allergen field. Participant allergen access and the union stay server-only. The app has a separate owner-settings repository and the shared code vocabulary. The `ai/` layer and prompt builder cannot import either settings type.
 2. **Import-boundary test.** A test (like the existing `tavli_ui` public-entry check in `scripts/check.sh`) fails if `lib/ai/**` or the prompt builder imports an allergen type or module. It runs in `scripts/check.sh` and CI.
 3. **Outbound guard at the transport.** `AIRouter`/the gateway scans the serialized request body before sending and fails closed if it contains any canonical allergen group code (for example `nuts`) for a request that carries household context. The Serbian error is generic and the body is not logged.
 4. **Canary regression test (always on).** A fixture gives synthetic members distinctive canary allergens. The full plan flow runs with a recording fake transport. The test asserts that no canary appears in any captured request body, header, prompt, log line, client response, drift row, outbox entry or error text. It covers generation, single-meal replacement, retry/repair, fallback to every provider in the chain, and a single-participant request.
@@ -91,7 +91,7 @@ The AI response is untrusted. After parsing and before display or storage the pl
 
 ## Data and lifecycle
 
-Targets: owner-only `user_planning_sharing(user_id, preferences, planning_note, revision)` (booleans, default false; row absent means all false), owner-only `user_allergen_selections(user_id, group_codes)` and `user_favorites(user_id, recipe_id)`, a validated extension of existing `taste_profiles(user_id, profile)`, and catalog `food_allergen_groups(food_id, group_code)` coordinated with Dev 1. Favorites use unique owner and recipe pairs; server membership/recipe checks protect cross-household references. Additive server migrations and drift schema changes are separate implementation slices with explicit grants, RLS, schema-version bump, generated code and outbox writes. Personal entries sync under `user_id`; the planning result is freshly derived for the authorized active household in the first implementation. An optional later cache requires explicit account/household scope and invalidation after member, consent, taste, favorite or recipe changes. A removal immediately revokes server access and blocks queued old-household writes on replay. The client cache never stores allergen data of other members. Delete favorites on recipe deletion or loss of household access. Ordinary sign-out retains personal data and cache under the account.
+Targets: owner-only `user_planning_sharing(user_id, preferences, revision)` (row absent means off; the note flag comes in the later note slice), owner-only `user_allergen_selections(user_id, group_codes)` and `user_favorites(user_id, recipe_id)`, a validated extension of existing `taste_profiles(user_id, profile)`, and catalog `food_allergen_groups(food_id, group_code)` coordinated with Dev 1. Favorites use unique owner and recipe pairs; server membership/recipe checks protect cross-household references. Additive server migrations and drift schema changes are separate implementation slices with explicit grants, RLS, schema-version bump, generated code and outbox writes. Personal entries sync under `user_id`; the planning result is freshly derived for the authorized active household in the first implementation. An optional later cache requires explicit account/household scope and invalidation after member, consent, taste, favorite or recipe changes. A removal immediately revokes server access and blocks queued old-household writes on replay. The client cache never stores allergen data of other members. Delete favorites on recipe deletion or loss of household access. Ordinary sign-out retains personal data and cache under the account.
 
 ## Evidence required in implementation PRs
 
@@ -109,4 +109,11 @@ Targets: owner-only `user_planning_sharing(user_id, preferences, planning_note, 
 
 ## Pending review
 
-Dev 2: exact consumer API and favorite weighting; planner integration is owned by 015/019. Note handling and leak-guard thresholds are reviewed with the later note slice. Dev 1: catalog mapping review, provenance, and migration order. The canonical allergen codes follow the catalog checker. No schema or runtime implementation is claimed by this draft.
+Dev 2: exact consumer API and favorite weighting; planner integration is owned by 015/019. Note handling and leak-guard thresholds are reviewed with the later note slice. Dev 1: catalog mapping review, provenance, and migration order. The canonical allergen codes follow the catalog checker. The 008 work branch provides `public.planning_advisory_inputs` and a
+separate `public.planning_allergen_codes` function. Only the database service role can call either RPC. The gateway must derive
+the actor from its verified session before calling them. The advisory function takes a verified actor,
+household, participant set, explicit provider-disclosure flag and a catalog food
+ID allowlist supplied by the server. It returns dish-kind preferences, visible
+food preferences and visible favorite counts. Its default food allowlist is
+empty. Catalog lookup, consumer transport, consent revalidation during
+generation and the later note and cuisine fields are pending.

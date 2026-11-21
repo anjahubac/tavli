@@ -57,3 +57,20 @@ Each Ready task records: exact files, named reviewer, producer PR, remaining day
 (implementation + tests + review/integration), confidence and risk. Estimates are
 not invented from ticket counts. Done requires accepted behavior, actual evidence
 and merged PR; checkbox completion alone is not a release or an external approval.
+
+### Logic evidence on the implementation branch
+
+- **T006–T007**: local repository coverage for normalized dish and food
+  preferences, a mock transport for owner consent and pgTAP for selection,
+  revision conflicts, withdrawal and advisory aggregation.
+- **T016–T017**: owner selection storage and sync coverage plus pgTAP for
+  canonical codes, direct-access denials and the private selected-member union.
+- **T018–T019**: recipe metadata logic covers reviewed absence, an unknown
+  ingredient and a linked ingredient with unreviewed metadata. The catalog
+  producer and warning UI remain dependencies.
+- **T020–T021**: repository coverage for owner isolation and repeat toggles,
+  plus pgTAP for membership loss, stale replay after rejoin and recipe/account
+  deletion. UI and integrated planner acceptance are tracked by the same task.
+
+The parent task checkboxes remain open until their acceptance scenarios pass
+and the implementation is reviewed.

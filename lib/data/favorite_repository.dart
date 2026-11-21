@@ -122,6 +122,7 @@ class FavoriteRepository {
       ),
     ])..where(
       favorite.userId.equals(_scope.userId) &
+          account.householdId.equals(_scope.householdId) &
           favorite.recipeHouseholdId.equals(_scope.householdId) &
           recipe.householdId.equals(_scope.householdId) &
           (account.favoriteMembershipId.isNull() |

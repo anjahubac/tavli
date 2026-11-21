@@ -1,7 +1,10 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart';
+
 import '../account/auth_controller.dart';
 import '../domain/dish_kind_preferences.dart';
+import '../domain/food_preferences.dart';
 import '../sync/entities.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
@@ -23,28 +26,34 @@ class TasteProfileRepository {
   final String _userId;
   final SyncedWriter _writer;
 
-  Future<DishKindPreferences> getDishPreferences() async {
-    final row = await _profileRow();
-    if (row == null) return DishKindPreferences();
-    return DishKindPreferences.fromJson(_decodeProfile(row.profileJson));
-  }
+  Future<DishKindPreferences> getDishPreferences() async =>
+      DishKindPreferences.fromJson(await _profile());
 
   Stream<DishKindPreferences> watchDishPreferences() =>
-      (_db.select(
-        _db.userProfiles,
-      )..where((row) => row.id.equals(_userId))).watchSingleOrNull().map(
-        (row) => row == null
-            ? DishKindPreferences()
-            : DishKindPreferences.fromJson(_decodeProfile(row.profileJson)),
-      );
+      _watchProfile().map(DishKindPreferences.fromJson);
 
   Future<void> saveDishPreferences(DishKindPreferences preferences) =>
+      _saveFields(preferences.toJson());
+
+  Future<FoodPreferences> getFoodPreferences() async =>
+      FoodPreferences.fromJson(await _profile());
+
+  Stream<FoodPreferences> watchFoodPreferences() =>
+      _watchProfile().map(FoodPreferences.fromJson);
+
+  Future<void> saveFoodPreferences(FoodPreferences preferences) =>
+      _saveFields(preferences.toJson());
+
+  Future<Map<String, Object?>> _profile() async =>
+      _decodeProfile(await _profileQuery().getSingleOrNull());
+
+  Stream<Map<String, Object?>> _watchProfile() =>
+      _profileQuery().watchSingleOrNull().map(_decodeProfile);
+
+  Future<void> _saveFields(Map<String, Object?> fields) =>
       _db.transaction(() async {
-        final row = await _profileRow();
-        final profile = row == null
-            ? <String, Object?>{}
-            : _decodeProfile(row.profileJson);
-        profile.addAll(preferences.toJson());
+        final profile = await _profile();
+        profile.addAll(fields);
 
         await _db
             .into(_db.userProfiles)
@@ -57,12 +66,12 @@ class TasteProfileRepository {
         await _writer.upsert(const TasteProfileEntity().name, _userId);
       });
 
-  Future<UserProfileRow?> _profileRow() => (_db.select(
-    _db.userProfiles,
-  )..where((row) => row.id.equals(_userId))).getSingleOrNull();
+  SimpleSelectStatement<$UserProfilesTable, UserProfileRow> _profileQuery() =>
+      _db.select(_db.userProfiles)..where((row) => row.id.equals(_userId));
 
-  Map<String, Object?> _decodeProfile(String encoded) {
-    final decoded = jsonDecode(encoded);
+  Map<String, Object?> _decodeProfile(UserProfileRow? row) {
+    if (row == null) return {};
+    final decoded = jsonDecode(row.profileJson);
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('Profil ukusa mora biti JSON objekat.');
     }
