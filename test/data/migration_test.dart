@@ -154,7 +154,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 6);
+    expect(db.schemaVersion, 7);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
@@ -359,5 +359,55 @@ void main() {
     final again = AppDatabase(NativeDatabase(file));
     addTearDown(again.close);
     expect((await again.select(again.recipes).get()).single.title, 'Sarma');
+  });
+
+  test('migracija 6 → 7 čuva ostavu i dodaje kuvanje, potrošnju i '
+      'vreme brojanja; ponovljen korak ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v7-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    // v6 struktura: bez novih tabela i kolone.
+    await first.customStatement('DROP TABLE pantry_consumptions');
+    await first.customStatement('DROP TABLE cooked_events');
+    await first.customStatement(
+      'ALTER TABLE pantry_items DROP COLUMN quantity_set_at',
+    );
+    await first.customStatement(
+      'INSERT INTO pantry_items (id, name, quantity, unit, category, added_at) '
+      "VALUES ('o1', 'brašno', 1000, 'g', 'ostalo', 1)",
+    );
+    await first.customStatement('PRAGMA user_version = 6');
+    await first.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    final pantry = (await db.select(db.pantryItems).get()).single;
+    expect(pantry.id, 'o1');
+    expect(pantry.quantity, 1000);
+    expect(pantry.quantitySetAt, isNull);
+    expect(await db.select(db.cookedEvents).get(), isEmpty);
+    await db.customStatement(
+      'INSERT INTO cooked_events (id, plan_entry_id, meal_date, meal_type, '
+      'actor_user_id, servings, cooked_at) '
+      "VALUES ('k1', 'e1', 1, 'lunch', 'u1', 2, 1)",
+    );
+    await db.customStatement(
+      'INSERT INTO pantry_consumptions (id, event_id, pantry_item_id, '
+      "base_unit, micros, created_at) VALUES ('c1', 'k1', 'o1', 'g', 1, 1)",
+    );
+    await expectLater(
+      db.customStatement(
+        'INSERT INTO pantry_consumptions (id, event_id, pantry_item_id, '
+        "base_unit, micros, created_at) VALUES ('c2', 'k1', 'o1', 'g', 1, 1)",
+      ),
+      throwsA(isA<SqliteException>()),
+    );
+    await db.customStatement('PRAGMA user_version = 6');
+    await db.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.cookedEvents).get()).single.id, 'k1');
+    expect(await again.select(again.pantryConsumptions).get(), hasLength(1));
   });
 }

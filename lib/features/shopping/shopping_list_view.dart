@@ -180,6 +180,7 @@ class _ShoppingItemsListState extends ConsumerState<ShoppingItemsList> {
 
         Widget row(ShoppingItemRow i) => ShoppingItemTile(
           item: i,
+          resolveList: widget.listId,
           received: received.contains(i.id),
           selected: selected?.id == i.id,
           onSelect: withDetail
@@ -230,12 +231,14 @@ class ShoppingItemTile extends ConsumerWidget {
   const ShoppingItemTile({
     super.key,
     required this.item,
+    required this.resolveList,
     this.received = false,
     this.selected = false,
     this.onSelect,
   });
 
   final ShoppingItemRow item;
+  final Future<String> Function() resolveList;
   final bool received;
   final bool selected;
   final VoidCallback? onSelect;
@@ -262,8 +265,8 @@ class ShoppingItemTile extends ConsumerWidget {
         'Obrisano: ${item.name}',
         actionLabel: 'Vrati',
         onAction: () => unawaited(
-          repo.addManual(
-            item.listId,
+          repo.addManualToList(
+            resolveList,
             item.name,
             quantity: item.quantity,
             unit: item.unit,
@@ -320,7 +323,7 @@ class _QuickAddFieldState extends ConsumerState<QuickAddField> {
     if (name.isEmpty) return;
     _controller.clear();
     final repo = ref.read(shoppingRepositoryProvider);
-    await repo.addManual(await widget.listId(), name);
+    await repo.addManualToList(widget.listId, name);
   }
 
   @override

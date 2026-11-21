@@ -10,10 +10,11 @@ writing them here does not configure GitHub branch protection.
 | Dart/UI/domain | `scripts/check.sh`, affected tests | full `flutter test` in CI; phone/wide matrix for UI |
 | Shared data/AI/router | failing behavioral tests then implementation; full suite before PR | reviewer verifies failure/offline/cancellation/undo boundaries |
 | Stored/wire value format (sync entities, dates, units) | assert the stored value and one downstream query that matches on that exact value (for example the week-list lookup) | reviewer confirms old-format input is covered |
+| Synced identity, outbox, or conflict handling | run two isolated clients against the same backend with concurrent offline writes, reconnect in both orders, and replay an acknowledged write | verify logical uniqueness, preservation of independent writes, legacy-ID recovery, and progress past an isolated apply failure |
 | drift schema | version bump, upgrade/fresh-cache test, generated output | pending-outbox/account-switch regression |
 | SQL/RLS/storage | local `supabase db reset`, `supabase test db` | two accounts, ownership, allowed/denied reads/writes, deletion |
 | Edge Function | fake provider/auth/limits tests, local function checks | local authenticated integration, no hosted test calls |
-| Dependency/platform | separate PR, plan justification, affected platform build | Android/iOS/macOS as applicable; Windows only after target exists |
+| Dependency/platform | separate PR, plan justification, affected platform build | Android/iOS/macOS/Windows as applicable |
 | Release | full suite, macOS debug smoke build, local backend tests, UX evidence | tested dev artifact, production approval, compatibility/rollback notes |
 
 Before each commit, run `dart format lib test scripts` when Dart changed; the
@@ -36,8 +37,10 @@ Current `.github/workflows/check.yml` runs format/analyze and full Flutter tests
 `pr-conventions.yml` checks names and PR titles; `deploy-supabase.yml` deploys
 on supported `dev`/`main` changes. The docs job added with 011 validates active
 Markdown/registry consistency; the separate scripts job runs every script
-regression test (`scripts/test_*.py`). macOS, SQL/pgTAP and future Windows checks are
-not silently claimed to be current CI jobs: each needs a dedicated setup task.
+regression test (`scripts/test_*.py`). The Windows job verifies an x64 release
+compilation; it does not duplicate the full tests or retain build output. macOS
+and SQL/pgTAP checks are not silently claimed to be current CI jobs: each needs
+a dedicated setup task.
 
 Dev 3 records actual repository plan/ruleset availability and required checks
 before enabling restrictions. Require independent review and green checks on
@@ -68,7 +71,8 @@ cannot require hidden data resets to succeed. For additive schema changes,
 document older-client support and forward recovery; do not propose rolling
 back applied SQL blindly. Any destructive repair needs its own reviewed plan
 and explicit authorization. Store links and QR codes remain unavailable until
-real distribution URLs are supplied; Windows is planned until its build is proven.
+real distribution URLs are supplied. A green Windows build is not public signing
+or distribution evidence.
 
 ## Security evidence
 
@@ -93,3 +97,20 @@ from making Flutter identify the app repository as its SDK checkout. The parent
 keeps its Git/index context for affected-file selection; command failures still
 propagate and both pre-commit checks remain enabled. The Python regression suite
 runs in the documentation/tooling CI job.
+
+## Sync changes
+
+- Document every business key with a uniqueness constraint, its scope and its
+  deletion lifecycle. For entities that can be created independently offline,
+  use a stable ID derived from the canonical business key or a server operation
+  that atomically returns the existing identity. Reconcile legacy IDs and
+  pending dependent writes in one local transaction.
+- Specify how conflicting writes are ordered and which fields they replace.
+  Prefer independent operations for independent edits. If a retry of a mutable
+  write must be exactly-once, persist an operation ID and acknowledge duplicate
+  deliveries atomically on the server. An upsert by row ID alone only prevents
+  duplicate rows.
+- Keep failed rows retryable without preventing independent downloads. Advance
+  durable cursors only past work that is applied or durably queued for repair.
+  Test the normal repository, uploader and downloader entry points with two
+  separate databases. Include a local SQL test when server behavior changes.

@@ -27,7 +27,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 ## Behavioral requirements
 
 - **FR-101**: Support breakfast, morning snack, lunch, afternoon snack and dinner without fixed three-field assumptions; include snacks in shopping/Home/intake.
-- **FR-102**: Default lunch medium/hearty cooked/roast, dinner light/medium; at most one hearty meal daily, no same dish kind on consecutive days; household defaults editable.
+- **FR-102**: Default lunch medium/hearty (any dish kind), dinner light/medium; at most one hearty meal daily; the same recipe at most once within three consecutive days. Revised 2026-11-20 (TRELLO-39, [meal rules contract](contracts/meal-rules-contract.md)); editable household defaults are deferred.
 - **FR-103**: Snacks are light without cooked dishes. Locked/cooked/imported meals are preserved by regeneration; show restriction conflicts rather than silently rewrite a locked meal.
 - **FR-104**: Allergens constrain selection before approval; taste/favorite aggregation uses only the accepted personal-data contract.
 - **FR-105**: Select suitable saved recipes locally first and use AI for gaps; validate final placement in app code, not just prompt wording.
@@ -57,11 +57,11 @@ that UI task becomes Ready. English is used for engineering documents only.
 
 Producer specs: [008](../008-household-members/spec.md), [014](../014-ai-response-contracts/spec.md)
 
-- **Q1** (Dev 2 with reviewer): Finalize enums, existing-recipe backfill, household rule edit UI, repeat rules scope and favorites aggregation with 008.
+- **Q1** (Dev 2 with reviewer): Finalize enums, existing-recipe backfill, household rule edit UI and repeat rules scope. Matija decided on 2026-11-20 that favorites aggregate across explicitly selected participants, defaulting to all current household members; Dev 2 reviews the [008 producer contract](../008-household-members/contracts/member-planning-inputs.md) before consuming it.
   Labels (enums, backfill, edit UI) proposed 2026-11-18 in
   [contracts/recipe-labels-contract.md](contracts/recipe-labels-contract.md);
   pending review by Dev 1 and Dev 3 (Trello #37). Rule edit UI, repeat scope and
-  favorites remain open.
+  selected-member favorites contract remains pending Dev 2 review.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

@@ -7,7 +7,7 @@ import 'supabase_config.dart';
 
 /// Supabase klijent (Auth, PostgREST, Storage, Functions). [httpClient]
 /// se menja u testovima. Sesija se ne čuva u klijentu nego u
-/// `SessionStore` (Keychain/Keystore).
+/// `SessionStore` (sistemsko bezbedno skladište).
 SupabaseClient createSupabaseClient(
   SupabaseConfig config, {
   http.Client? httpClient,

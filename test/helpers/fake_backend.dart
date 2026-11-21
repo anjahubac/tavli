@@ -130,6 +130,21 @@ class FakeServer {
       if (_parentsOf[name]?.any((p) => _deleted(p.$1, r[p.$2])) ?? false) {
         continue;
       }
+      if (name == 'shopping_lists' &&
+          r['meal_plan_id'] != null &&
+          r['period_start'] != null &&
+          table(name).values.any(
+            (existing) =>
+                existing['id'] != id &&
+                existing['meal_plan_id'] == r['meal_plan_id'] &&
+                existing['period_start'] == r['period_start'],
+          )) {
+        throw const PermanentSyncError('23505');
+      }
+      if (name == 'shopping_items' &&
+          !table('shopping_lists').containsKey(r['list_id'])) {
+        throw const PermanentSyncError(pgForeignKeyViolation);
+      }
       final row = {...?table(name)[id], ...r, 'updated_at': _now()};
       // Kao kolona koju računa baza (generated always).
       if (name == 'supply_allocations') {
@@ -414,10 +429,16 @@ class FakeSyncRemote implements SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   }) async {
     _checkSession();
     server.upsert(table, [
-      for (final r in rows) jsonDecode(jsonEncode(r)) as Map<String, Object?>,
+      for (final r in rows)
+        if (!ignoreDuplicates ||
+            !server
+                .rows(table)
+                .any((existing) => existing[onConflict] == r[onConflict]))
+          jsonDecode(jsonEncode(r)) as Map<String, Object?>,
     ], onConflict);
   }
 

@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli/account/session_store.dart';
 import 'package:tavli/features/account/auth_brand.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
@@ -142,6 +144,29 @@ void main() {
     );
     expect(field('E-pošta'), findsOneWidget);
   });
+
+  for (final (platform, message) in [
+    (
+      TargetPlatform.linux,
+      'Bezbedno skladište sesije nije dostupno. Proveri da li je sistemski keyring pokrenut i otključan, pa pokušaj ponovo.',
+    ),
+    (TargetPlatform.windows, 'Funkcija nije dostupna na ovom uređaju.'),
+  ]) {
+    testTavli('odbijeno čuvanje sesije na ${platform.name}', (tester) async {
+      debugDefaultTargetPlatformOverride = platform;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final app = await toCodeStep(tester);
+      app.secrets.deniedWrites.add(SessionStore.key);
+
+      await tester.enterText(field('Kod iz poruke'), FakeServer.code);
+      await tester.pumpAndSettle();
+
+      expect(find.text(message), findsOneWidget);
+      expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+      expect(app.backend.auth.current, isNull);
+      expect(app.secrets.values, isEmpty);
+    });
+  }
 
   testTavli('"Pošalji ponovo" posle 30 s', (tester) async {
     final app = await toCodeStep(tester);
