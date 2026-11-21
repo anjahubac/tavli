@@ -155,6 +155,15 @@ at request time. A profile hint can be considered separately after the initial
 implementation. Dev 2 owns incomplete drafts when the reviewed recipe pool is
 exhausted; the 008 delivery does not depend on building that planner behavior.
 
+- **Favorite membership lifetime.** SQL uses a separate identity for every
+  household membership. The favorite row references the precise membership
+  and recipe so access loss and recipe deletion cascade. A reconnect may
+  refresh the membership identity but cannot migrate stale writes to it.
+  Existing cached accounts can fetch the identity on their first edit.
+  Existing household transition work needs to refresh the cached identity
+  when it replaces an account's active membership. Coordinate the additive
+  migration and Drift v9 with Dev 1.
+
 ### Cross-owner handoffs and remaining decisions
 
 - Dev 1 supplies catalog food IDs, visibility rules and reviewed allergen

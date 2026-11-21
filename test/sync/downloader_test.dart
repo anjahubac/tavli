@@ -228,6 +228,7 @@ void main() {
       'fetch:ratings',
       'fetch:taste_profiles',
       'fetch:user_allergen_selections',
+      'fetch:user_favorites',
       'fetch:deletions',
     ]);
     final selection = await db.select(db.userAllergenSelections).getSingle();

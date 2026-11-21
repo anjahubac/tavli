@@ -87,6 +87,7 @@ class FakeServer {
     'ratings': 'rating',
     'taste_profiles': 'taste_profile',
     'user_allergen_selections': 'allergen_selection',
+    'user_favorites': 'favorite',
   };
 
   /// Roditelji po stranim ključevima: dete obrisanog roditelja se preskače.

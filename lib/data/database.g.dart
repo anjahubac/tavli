@@ -8584,6 +8584,436 @@ class UserAllergenSelectionsCompanion
   }
 }
 
+class $UserFavoritesTable extends UserFavorites
+    with TableInfo<$UserFavoritesTable, UserFavoriteRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserFavoritesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recipeIdMeta = const VerificationMeta(
+    'recipeId',
+  );
+  @override
+  late final GeneratedColumn<String> recipeId = GeneratedColumn<String>(
+    'recipe_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recipeHouseholdIdMeta = const VerificationMeta(
+    'recipeHouseholdId',
+  );
+  @override
+  late final GeneratedColumn<String> recipeHouseholdId =
+      GeneratedColumn<String>(
+        'recipe_household_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _membershipIdMeta = const VerificationMeta(
+    'membershipId',
+  );
+  @override
+  late final GeneratedColumn<String> membershipId = GeneratedColumn<String>(
+    'membership_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    userId,
+    recipeId,
+    recipeHouseholdId,
+    membershipId,
+    isFavorite,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_favorites';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserFavoriteRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('recipe_id')) {
+      context.handle(
+        _recipeIdMeta,
+        recipeId.isAcceptableOrUnknown(data['recipe_id']!, _recipeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recipeIdMeta);
+    }
+    if (data.containsKey('recipe_household_id')) {
+      context.handle(
+        _recipeHouseholdIdMeta,
+        recipeHouseholdId.isAcceptableOrUnknown(
+          data['recipe_household_id']!,
+          _recipeHouseholdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_recipeHouseholdIdMeta);
+    }
+    if (data.containsKey('membership_id')) {
+      context.handle(
+        _membershipIdMeta,
+        membershipId.isAcceptableOrUnknown(
+          data['membership_id']!,
+          _membershipIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_membershipIdMeta);
+    }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isFavoriteMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserFavoriteRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserFavoriteRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      recipeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recipe_id'],
+      )!,
+      recipeHouseholdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recipe_household_id'],
+      )!,
+      membershipId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}membership_id'],
+      )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
+    );
+  }
+
+  @override
+  $UserFavoritesTable createAlias(String alias) {
+    return $UserFavoritesTable(attachedDatabase, alias);
+  }
+}
+
+class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
+  final String id;
+  final String userId;
+  final String recipeId;
+  final String recipeHouseholdId;
+  final String membershipId;
+  final bool isFavorite;
+  const UserFavoriteRow({
+    required this.id,
+    required this.userId,
+    required this.recipeId,
+    required this.recipeHouseholdId,
+    required this.membershipId,
+    required this.isFavorite,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['user_id'] = Variable<String>(userId);
+    map['recipe_id'] = Variable<String>(recipeId);
+    map['recipe_household_id'] = Variable<String>(recipeHouseholdId);
+    map['membership_id'] = Variable<String>(membershipId);
+    map['is_favorite'] = Variable<bool>(isFavorite);
+    return map;
+  }
+
+  UserFavoritesCompanion toCompanion(bool nullToAbsent) {
+    return UserFavoritesCompanion(
+      id: Value(id),
+      userId: Value(userId),
+      recipeId: Value(recipeId),
+      recipeHouseholdId: Value(recipeHouseholdId),
+      membershipId: Value(membershipId),
+      isFavorite: Value(isFavorite),
+    );
+  }
+
+  factory UserFavoriteRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserFavoriteRow(
+      id: serializer.fromJson<String>(json['id']),
+      userId: serializer.fromJson<String>(json['userId']),
+      recipeId: serializer.fromJson<String>(json['recipeId']),
+      recipeHouseholdId: serializer.fromJson<String>(json['recipeHouseholdId']),
+      membershipId: serializer.fromJson<String>(json['membershipId']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'userId': serializer.toJson<String>(userId),
+      'recipeId': serializer.toJson<String>(recipeId),
+      'recipeHouseholdId': serializer.toJson<String>(recipeHouseholdId),
+      'membershipId': serializer.toJson<String>(membershipId),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
+    };
+  }
+
+  UserFavoriteRow copyWith({
+    String? id,
+    String? userId,
+    String? recipeId,
+    String? recipeHouseholdId,
+    String? membershipId,
+    bool? isFavorite,
+  }) => UserFavoriteRow(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    recipeId: recipeId ?? this.recipeId,
+    recipeHouseholdId: recipeHouseholdId ?? this.recipeHouseholdId,
+    membershipId: membershipId ?? this.membershipId,
+    isFavorite: isFavorite ?? this.isFavorite,
+  );
+  UserFavoriteRow copyWithCompanion(UserFavoritesCompanion data) {
+    return UserFavoriteRow(
+      id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      recipeId: data.recipeId.present ? data.recipeId.value : this.recipeId,
+      recipeHouseholdId: data.recipeHouseholdId.present
+          ? data.recipeHouseholdId.value
+          : this.recipeHouseholdId,
+      membershipId: data.membershipId.present
+          ? data.membershipId.value
+          : this.membershipId,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserFavoriteRow(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('recipeHouseholdId: $recipeHouseholdId, ')
+          ..write('membershipId: $membershipId, ')
+          ..write('isFavorite: $isFavorite')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    userId,
+    recipeId,
+    recipeHouseholdId,
+    membershipId,
+    isFavorite,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserFavoriteRow &&
+          other.id == this.id &&
+          other.userId == this.userId &&
+          other.recipeId == this.recipeId &&
+          other.recipeHouseholdId == this.recipeHouseholdId &&
+          other.membershipId == this.membershipId &&
+          other.isFavorite == this.isFavorite);
+}
+
+class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
+  final Value<String> id;
+  final Value<String> userId;
+  final Value<String> recipeId;
+  final Value<String> recipeHouseholdId;
+  final Value<String> membershipId;
+  final Value<bool> isFavorite;
+  final Value<int> rowid;
+  const UserFavoritesCompanion({
+    this.id = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.recipeId = const Value.absent(),
+    this.recipeHouseholdId = const Value.absent(),
+    this.membershipId = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UserFavoritesCompanion.insert({
+    required String id,
+    required String userId,
+    required String recipeId,
+    required String recipeHouseholdId,
+    required String membershipId,
+    required bool isFavorite,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       userId = Value(userId),
+       recipeId = Value(recipeId),
+       recipeHouseholdId = Value(recipeHouseholdId),
+       membershipId = Value(membershipId),
+       isFavorite = Value(isFavorite);
+  static Insertable<UserFavoriteRow> custom({
+    Expression<String>? id,
+    Expression<String>? userId,
+    Expression<String>? recipeId,
+    Expression<String>? recipeHouseholdId,
+    Expression<String>? membershipId,
+    Expression<bool>? isFavorite,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
+      if (recipeId != null) 'recipe_id': recipeId,
+      if (recipeHouseholdId != null) 'recipe_household_id': recipeHouseholdId,
+      if (membershipId != null) 'membership_id': membershipId,
+      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UserFavoritesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? userId,
+    Value<String>? recipeId,
+    Value<String>? recipeHouseholdId,
+    Value<String>? membershipId,
+    Value<bool>? isFavorite,
+    Value<int>? rowid,
+  }) {
+    return UserFavoritesCompanion(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      recipeId: recipeId ?? this.recipeId,
+      recipeHouseholdId: recipeHouseholdId ?? this.recipeHouseholdId,
+      membershipId: membershipId ?? this.membershipId,
+      isFavorite: isFavorite ?? this.isFavorite,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (recipeId.present) {
+      map['recipe_id'] = Variable<String>(recipeId.value);
+    }
+    if (recipeHouseholdId.present) {
+      map['recipe_household_id'] = Variable<String>(recipeHouseholdId.value);
+    }
+    if (membershipId.present) {
+      map['membership_id'] = Variable<String>(membershipId.value);
+    }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserFavoritesCompanion(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('recipeHouseholdId: $recipeHouseholdId, ')
+          ..write('membershipId: $membershipId, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppSettingsTable extends AppSettings
     with TableInfo<$AppSettingsTable, AppSettingRow> {
   @override
@@ -9336,6 +9766,17 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _favoriteMembershipIdMeta =
+      const VerificationMeta('favoriteMembershipId');
+  @override
+  late final GeneratedColumn<String> favoriteMembershipId =
+      GeneratedColumn<String>(
+        'favorite_membership_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _initialDownloadDoneMeta =
       const VerificationMeta('initialDownloadDone');
   @override
@@ -9380,6 +9821,7 @@ class $AccountsTable extends Accounts
     householdId,
     householdName,
     role,
+    favoriteMembershipId,
     initialDownloadDone,
     lastPullAt,
     createdAt,
@@ -9451,6 +9893,15 @@ class $AccountsTable extends Accounts
     } else if (isInserting) {
       context.missing(_roleMeta);
     }
+    if (data.containsKey('favorite_membership_id')) {
+      context.handle(
+        _favoriteMembershipIdMeta,
+        favoriteMembershipId.isAcceptableOrUnknown(
+          data['favorite_membership_id']!,
+          _favoriteMembershipIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('initial_download_done')) {
       context.handle(
         _initialDownloadDoneMeta,
@@ -9510,6 +9961,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.string,
         data['${effectivePrefix}role'],
       )!,
+      favoriteMembershipId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}favorite_membership_id'],
+      ),
       initialDownloadDone: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}initial_download_done'],
@@ -9538,6 +9993,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final String householdId;
   final String householdName;
   final String role;
+  final String? favoriteMembershipId;
   final bool initialDownloadDone;
   final DateTime? lastPullAt;
   final DateTime createdAt;
@@ -9548,6 +10004,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.householdId,
     required this.householdName,
     required this.role,
+    this.favoriteMembershipId,
     required this.initialDownloadDone,
     this.lastPullAt,
     required this.createdAt,
@@ -9563,6 +10020,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['household_id'] = Variable<String>(householdId);
     map['household_name'] = Variable<String>(householdName);
     map['role'] = Variable<String>(role);
+    if (!nullToAbsent || favoriteMembershipId != null) {
+      map['favorite_membership_id'] = Variable<String>(favoriteMembershipId);
+    }
     map['initial_download_done'] = Variable<bool>(initialDownloadDone);
     if (!nullToAbsent || lastPullAt != null) {
       map['last_pull_at'] = Variable<DateTime>(lastPullAt);
@@ -9581,6 +10041,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       householdId: Value(householdId),
       householdName: Value(householdName),
       role: Value(role),
+      favoriteMembershipId: favoriteMembershipId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(favoriteMembershipId),
       initialDownloadDone: Value(initialDownloadDone),
       lastPullAt: lastPullAt == null && nullToAbsent
           ? const Value.absent()
@@ -9601,6 +10064,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       householdId: serializer.fromJson<String>(json['householdId']),
       householdName: serializer.fromJson<String>(json['householdName']),
       role: serializer.fromJson<String>(json['role']),
+      favoriteMembershipId: serializer.fromJson<String?>(
+        json['favoriteMembershipId'],
+      ),
       initialDownloadDone: serializer.fromJson<bool>(
         json['initialDownloadDone'],
       ),
@@ -9618,6 +10084,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'householdId': serializer.toJson<String>(householdId),
       'householdName': serializer.toJson<String>(householdName),
       'role': serializer.toJson<String>(role),
+      'favoriteMembershipId': serializer.toJson<String?>(favoriteMembershipId),
       'initialDownloadDone': serializer.toJson<bool>(initialDownloadDone),
       'lastPullAt': serializer.toJson<DateTime?>(lastPullAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -9631,6 +10098,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     String? householdId,
     String? householdName,
     String? role,
+    Value<String?> favoriteMembershipId = const Value.absent(),
     bool? initialDownloadDone,
     Value<DateTime?> lastPullAt = const Value.absent(),
     DateTime? createdAt,
@@ -9641,6 +10109,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     householdId: householdId ?? this.householdId,
     householdName: householdName ?? this.householdName,
     role: role ?? this.role,
+    favoriteMembershipId: favoriteMembershipId.present
+        ? favoriteMembershipId.value
+        : this.favoriteMembershipId,
     initialDownloadDone: initialDownloadDone ?? this.initialDownloadDone,
     lastPullAt: lastPullAt.present ? lastPullAt.value : this.lastPullAt,
     createdAt: createdAt ?? this.createdAt,
@@ -9659,6 +10130,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ? data.householdName.value
           : this.householdName,
       role: data.role.present ? data.role.value : this.role,
+      favoriteMembershipId: data.favoriteMembershipId.present
+          ? data.favoriteMembershipId.value
+          : this.favoriteMembershipId,
       initialDownloadDone: data.initialDownloadDone.present
           ? data.initialDownloadDone.value
           : this.initialDownloadDone,
@@ -9678,6 +10152,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('householdId: $householdId, ')
           ..write('householdName: $householdName, ')
           ..write('role: $role, ')
+          ..write('favoriteMembershipId: $favoriteMembershipId, ')
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('createdAt: $createdAt')
@@ -9693,6 +10168,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     householdId,
     householdName,
     role,
+    favoriteMembershipId,
     initialDownloadDone,
     lastPullAt,
     createdAt,
@@ -9707,6 +10183,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.householdId == this.householdId &&
           other.householdName == this.householdName &&
           other.role == this.role &&
+          other.favoriteMembershipId == this.favoriteMembershipId &&
           other.initialDownloadDone == this.initialDownloadDone &&
           other.lastPullAt == this.lastPullAt &&
           other.createdAt == this.createdAt);
@@ -9719,6 +10196,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<String> householdId;
   final Value<String> householdName;
   final Value<String> role;
+  final Value<String?> favoriteMembershipId;
   final Value<bool> initialDownloadDone;
   final Value<DateTime?> lastPullAt;
   final Value<DateTime> createdAt;
@@ -9730,6 +10208,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.householdId = const Value.absent(),
     this.householdName = const Value.absent(),
     this.role = const Value.absent(),
+    this.favoriteMembershipId = const Value.absent(),
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -9742,6 +10221,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     required String householdId,
     required String householdName,
     required String role,
+    this.favoriteMembershipId = const Value.absent(),
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
     required DateTime createdAt,
@@ -9759,6 +10239,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<String>? householdId,
     Expression<String>? householdName,
     Expression<String>? role,
+    Expression<String>? favoriteMembershipId,
     Expression<bool>? initialDownloadDone,
     Expression<DateTime>? lastPullAt,
     Expression<DateTime>? createdAt,
@@ -9771,6 +10252,8 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (householdId != null) 'household_id': householdId,
       if (householdName != null) 'household_name': householdName,
       if (role != null) 'role': role,
+      if (favoriteMembershipId != null)
+        'favorite_membership_id': favoriteMembershipId,
       if (initialDownloadDone != null)
         'initial_download_done': initialDownloadDone,
       if (lastPullAt != null) 'last_pull_at': lastPullAt,
@@ -9786,6 +10269,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<String>? householdId,
     Value<String>? householdName,
     Value<String>? role,
+    Value<String?>? favoriteMembershipId,
     Value<bool>? initialDownloadDone,
     Value<DateTime?>? lastPullAt,
     Value<DateTime>? createdAt,
@@ -9798,6 +10282,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       householdId: householdId ?? this.householdId,
       householdName: householdName ?? this.householdName,
       role: role ?? this.role,
+      favoriteMembershipId: favoriteMembershipId ?? this.favoriteMembershipId,
       initialDownloadDone: initialDownloadDone ?? this.initialDownloadDone,
       lastPullAt: lastPullAt ?? this.lastPullAt,
       createdAt: createdAt ?? this.createdAt,
@@ -9826,6 +10311,11 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
+    if (favoriteMembershipId.present) {
+      map['favorite_membership_id'] = Variable<String>(
+        favoriteMembershipId.value,
+      );
+    }
     if (initialDownloadDone.present) {
       map['initial_download_done'] = Variable<bool>(initialDownloadDone.value);
     }
@@ -9850,6 +10340,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('householdId: $householdId, ')
           ..write('householdName: $householdName, ')
           ..write('role: $role, ')
+          ..write('favoriteMembershipId: $favoriteMembershipId, ')
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('createdAt: $createdAt, ')
@@ -10800,6 +11291,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UserProfilesTable userProfiles = $UserProfilesTable(this);
   late final $UserAllergenSelectionsTable userAllergenSelections =
       $UserAllergenSelectionsTable(this);
+  late final $UserFavoritesTable userFavorites = $UserFavoritesTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $ModelStatusesTable modelStatuses = $ModelStatusesTable(this);
   late final $AccountsTable accounts = $AccountsTable(this);
@@ -10853,6 +11345,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ratings,
     userProfiles,
     userAllergenSelections,
+    userFavorites,
     appSettings,
     modelStatuses,
     accounts,
@@ -17691,6 +18184,240 @@ typedef $$UserAllergenSelectionsTableProcessedTableManager =
       UserAllergenSelectionRow,
       PrefetchHooks Function()
     >;
+typedef $$UserFavoritesTableCreateCompanionBuilder =
+    UserFavoritesCompanion Function({
+      required String id,
+      required String userId,
+      required String recipeId,
+      required String recipeHouseholdId,
+      required String membershipId,
+      required bool isFavorite,
+      Value<int> rowid,
+    });
+typedef $$UserFavoritesTableUpdateCompanionBuilder =
+    UserFavoritesCompanion Function({
+      Value<String> id,
+      Value<String> userId,
+      Value<String> recipeId,
+      Value<String> recipeHouseholdId,
+      Value<String> membershipId,
+      Value<bool> isFavorite,
+      Value<int> rowid,
+    });
+
+class $$UserFavoritesTableFilterComposer
+    extends Composer<_$AppDatabase, $UserFavoritesTable> {
+  $$UserFavoritesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recipeId => $composableBuilder(
+    column: $table.recipeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recipeHouseholdId => $composableBuilder(
+    column: $table.recipeHouseholdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get membershipId => $composableBuilder(
+    column: $table.membershipId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserFavoritesTableOrderingComposer
+    extends Composer<_$AppDatabase, $UserFavoritesTable> {
+  $$UserFavoritesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recipeId => $composableBuilder(
+    column: $table.recipeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recipeHouseholdId => $composableBuilder(
+    column: $table.recipeHouseholdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get membershipId => $composableBuilder(
+    column: $table.membershipId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserFavoritesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UserFavoritesTable> {
+  $$UserFavoritesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get recipeId =>
+      $composableBuilder(column: $table.recipeId, builder: (column) => column);
+
+  GeneratedColumn<String> get recipeHouseholdId => $composableBuilder(
+    column: $table.recipeHouseholdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get membershipId => $composableBuilder(
+    column: $table.membershipId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
+}
+
+class $$UserFavoritesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UserFavoritesTable,
+          UserFavoriteRow,
+          $$UserFavoritesTableFilterComposer,
+          $$UserFavoritesTableOrderingComposer,
+          $$UserFavoritesTableAnnotationComposer,
+          $$UserFavoritesTableCreateCompanionBuilder,
+          $$UserFavoritesTableUpdateCompanionBuilder,
+          (
+            UserFavoriteRow,
+            BaseReferences<_$AppDatabase, $UserFavoritesTable, UserFavoriteRow>,
+          ),
+          UserFavoriteRow,
+          PrefetchHooks Function()
+        > {
+  $$UserFavoritesTableTableManager(_$AppDatabase db, $UserFavoritesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserFavoritesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserFavoritesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserFavoritesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> recipeId = const Value.absent(),
+                Value<String> recipeHouseholdId = const Value.absent(),
+                Value<String> membershipId = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UserFavoritesCompanion(
+                id: id,
+                userId: userId,
+                recipeId: recipeId,
+                recipeHouseholdId: recipeHouseholdId,
+                membershipId: membershipId,
+                isFavorite: isFavorite,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String userId,
+                required String recipeId,
+                required String recipeHouseholdId,
+                required String membershipId,
+                required bool isFavorite,
+                Value<int> rowid = const Value.absent(),
+              }) => UserFavoritesCompanion.insert(
+                id: id,
+                userId: userId,
+                recipeId: recipeId,
+                recipeHouseholdId: recipeHouseholdId,
+                membershipId: membershipId,
+                isFavorite: isFavorite,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$UserFavoritesTable, UserFavoriteRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UserFavoritesTable,
+                    UserFavoriteRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserFavoritesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UserFavoritesTable,
+      UserFavoriteRow,
+      $$UserFavoritesTableFilterComposer,
+      $$UserFavoritesTableOrderingComposer,
+      $$UserFavoritesTableAnnotationComposer,
+      $$UserFavoritesTableCreateCompanionBuilder,
+      $$UserFavoritesTableUpdateCompanionBuilder,
+      (
+        UserFavoriteRow,
+        BaseReferences<_$AppDatabase, $UserFavoritesTable, UserFavoriteRow>,
+      ),
+      UserFavoriteRow,
+      PrefetchHooks Function()
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       required String key,
@@ -18096,6 +18823,7 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   required String householdId,
   required String householdName,
   required String role,
+  Value<String?> favoriteMembershipId,
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
   required DateTime createdAt,
@@ -18108,6 +18836,7 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<String> householdId,
   Value<String> householdName,
   Value<String> role,
+  Value<String?> favoriteMembershipId,
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
   Value<DateTime> createdAt,
@@ -18150,6 +18879,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<String> get role => $composableBuilder(
     column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get favoriteMembershipId => $composableBuilder(
+    column: $table.favoriteMembershipId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18208,6 +18942,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get favoriteMembershipId => $composableBuilder(
+    column: $table.favoriteMembershipId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get initialDownloadDone => $composableBuilder(
     column: $table.initialDownloadDone,
     builder: (column) => ColumnOrderings(column),
@@ -18256,6 +18995,11 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get favoriteMembershipId => $composableBuilder(
+    column: $table.favoriteMembershipId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get initialDownloadDone => $composableBuilder(
     column: $table.initialDownloadDone,
@@ -18308,6 +19052,7 @@ class $$AccountsTableTableManager
                 Value<String> householdId = const Value.absent(),
                 Value<String> householdName = const Value.absent(),
                 Value<String> role = const Value.absent(),
+                Value<String?> favoriteMembershipId = const Value.absent(),
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -18319,6 +19064,7 @@ class $$AccountsTableTableManager
                 householdId: householdId,
                 householdName: householdName,
                 role: role,
+                favoriteMembershipId: favoriteMembershipId,
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
                 createdAt: createdAt,
@@ -18332,6 +19078,7 @@ class $$AccountsTableTableManager
                 required String householdId,
                 required String householdName,
                 required String role,
+                Value<String?> favoriteMembershipId = const Value.absent(),
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 required DateTime createdAt,
@@ -18343,6 +19090,7 @@ class $$AccountsTableTableManager
                 householdId: householdId,
                 householdName: householdName,
                 role: role,
+                favoriteMembershipId: favoriteMembershipId,
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
                 createdAt: createdAt,
@@ -18901,6 +19649,8 @@ class $AppDatabaseManager {
         _db,
         _db.userAllergenSelections,
       );
+  $$UserFavoritesTableTableManager get userFavorites =>
+      $$UserFavoritesTableTableManager(_db, _db.userFavorites);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$ModelStatusesTableTableManager get modelStatuses =>

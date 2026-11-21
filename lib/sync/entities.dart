@@ -89,6 +89,15 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
   GeneratedColumn<String> scopeColumn($RecipesTable t) => t.householdId;
 
   @override
+  Future<void> deleteLocal(AppDatabase db, String id) =>
+      db.transaction(() async {
+        await (db.delete(
+          db.userFavorites,
+        )..where((row) => row.recipeId.equals(id))).go();
+        await super.deleteLocal(db, id);
+      });
+
+  @override
   Map<String, Object?> toRemote(RecipeRow r) => {
     'id': r.id,
     'household_id': r.householdId,
@@ -659,6 +668,46 @@ class TasteProfileEntity
       );
 }
 
+class FavoriteEntity extends SyncEntity<$UserFavoritesTable, UserFavoriteRow> {
+  const FavoriteEntity();
+
+  @override
+  String get name => 'favorite';
+  @override
+  String get remoteTable => 'user_favorites';
+  @override
+  EntityScope get scope => EntityScope.user;
+  @override
+  List<(String, String)> get parentKeys => const [('recipe', 'recipe_id')];
+  @override
+  $UserFavoritesTable table(AppDatabase db) => db.userFavorites;
+  @override
+  Expression<String> idColumn($UserFavoritesTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($UserFavoritesTable t) => t.userId;
+
+  @override
+  Map<String, Object?> toRemote(UserFavoriteRow row) => {
+    'id': row.id,
+    'user_id': row.userId,
+    'recipe_id': row.recipeId,
+    'recipe_household_id': row.recipeHouseholdId,
+    'membership_id': row.membershipId,
+    'is_favorite': row.isFavorite,
+  };
+
+  @override
+  UserFavoritesCompanion fromRemote(Map<String, Object?> json) =>
+      UserFavoritesCompanion.insert(
+        id: json['id']! as String,
+        userId: json['user_id']! as String,
+        recipeId: json['recipe_id']! as String,
+        recipeHouseholdId: json['recipe_household_id']! as String,
+        membershipId: json['membership_id']! as String,
+        isFavorite: json['is_favorite']! as bool,
+      );
+}
+
 /// Owner-only allergen settings, synced as one replaceable selection.
 class AllergenSelectionEntity
     extends SyncEntity<$UserAllergenSelectionsTable, UserAllergenSelectionRow> {
@@ -820,6 +869,7 @@ const List<SyncEntity<Table, Object?>> syncEntities = [
   RatingEntity(),
   TasteProfileEntity(),
   AllergenSelectionEntity(),
+  FavoriteEntity(),
 ];
 
 SyncEntity<Table, Object?>? entityByName(String name) {

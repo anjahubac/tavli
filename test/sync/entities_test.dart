@@ -468,7 +468,7 @@ void main() {
         );
       }
     }
-    expect(names, hasLength(15));
+    expect(names, hasLength(16));
     expect(const CookedEventEntity().parents, ['meal_plan_entry']);
     expect(const PantryConsumptionEntity().parents, [
       'cooked_event',

@@ -19,6 +19,7 @@ import 'ai/recipe_ai.dart';
 import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
+import 'data/favorite_repository.dart';
 import 'data/shopping_repository.dart';
 import 'data/taste_profile_repository.dart';
 import 'features/planning/planning_providers.dart';
@@ -238,6 +239,15 @@ final shoppingRepositoryProvider = Provider<ShoppingRepository>(
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     writer: ref.watch(syncedWriterProvider),
     clock: ref.watch(clockProvider),
+  ),
+);
+
+final favoriteRepositoryProvider = Provider<FavoriteRepository>(
+  (ref) => FavoriteRepository(
+    ref.watch(databaseProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    writer: ref.watch(syncedWriterProvider),
+    accountApi: ref.watch(accountApiProvider),
   ),
 );
 
