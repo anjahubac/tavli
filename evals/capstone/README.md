@@ -20,12 +20,12 @@ expected outcome and the reason it exists.
 
 ## Before and after evidence
 
-PR #102 measured the ingredient-name prompt change on 30 dish names through
-`RecipeAI.fromDishName`, checking each ingredient with `AliasFoodMatcher`
-against the legacy food reference: 87.1% (230/264) with the base rules and
-90.7% (244/269) with the "name the kind" and "no brand" rules. That run is
-the candidate "one reasoned change, measured on the same inputs" for CAP-05.
-It still needs a saved trace and a committed, repeatable run.
+`trace-ingredient-names.md` records one reasoned change measured on the same
+inputs: the ingredient-name rules from PR #102 against the `dev` prompt, on 30
+fixed dishes (`dishes.json`), two runs per condition. Per-dish traces are in
+`traces/`, and `python3 evals/capstone/analyze_catalog_names.py` summarizes
+them. The runner is `test/evals/live_catalog_names_test.dart`; it is skipped
+unless run by hand with a label and a key from a file outside the repo.
 
 ## Limits
 

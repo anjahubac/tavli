@@ -49,6 +49,13 @@ what dish it chose was not recorded. EV-10 shows the output stayed a valid
 recipe without leaking password text; it does not prove the model ignored the
 instruction in every case.
 
+## Before and after: catalog-ready ingredient names
+
+The change from PR #102 measured on 30 fixed dishes, two runs per condition
+(86.3% and 86.2% before, 91.8% and 90.5% after). Full method, per-dish traces,
+counter-evidence and limits are in `trace-ingredient-names.md`; the raw traces
+are in `traces/`.
+
 ## Checks that the tests can fail
 
 - EV-13: removing `withdrawn: true` from the catalog food made the test fail
@@ -60,6 +67,5 @@ instruction in every case.
 
 ## Not covered
 
-Before and after evidence for one
-reasoned change (PR #102, 87.1% to 90.7% on 30 dish names) is described in
-`README.md` and still needs a saved trace and a repeatable run.
+All seven `live` cases ran once with one model. The before and after
+evidence is in `trace-ingredient-names.md`.
