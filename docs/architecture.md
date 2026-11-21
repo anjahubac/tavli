@@ -110,8 +110,13 @@ Last server write wins for record edits; deletion tombstones prevent resurrectio
 Future realtime is an authenticated invalidation signal that triggers the same
 pull path, with reconnect recovery. It never becomes an alternative UI database.
 
-Shared catalog/prices will download as read-only reference data; household-owned
-additions remain ordinary outbox-backed writes. Current theme/settings and AI
+The ingredient catalog (`foods`, `food_aliases`, spec 018) downloads read-only
+after the household entities and before tombstones, through `catalogEntities`
+outside the generic `syncEntities` loop. A server without the tables or a
+denied household read never stops the rest of the download (`CatalogStatus`).
+`FoodCatalogReader` builds the matcher from the local cache. Household catalog
+writes are not implemented yet; when added they become ordinary outbox-backed
+writes. Shared prices remain planned as read-only reference data. Current theme/settings and AI
 keys remain device-local. Planned cycle data is a deliberate device-only secure
 exception; do not add it to the generic sync/export pipeline.
 
