@@ -135,7 +135,7 @@ ThemeData buildTavliTheme(TavliMotif theme, Brightness brightness) {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        minimumSize: const Size(64, 56),
+        minimumSize: const Size(64, 48),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(TavliRadius.button),
         ),
