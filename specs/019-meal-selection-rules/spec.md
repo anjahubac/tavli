@@ -27,7 +27,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 ## Behavioral requirements
 
 - **FR-101**: Support breakfast, morning snack, lunch, afternoon snack and dinner without fixed three-field assumptions; include snacks in shopping/Home/intake.
-- **FR-102**: Default lunch medium/hearty cooked/roast, dinner light/medium; at most one hearty meal daily, no same dish kind on consecutive days; household defaults editable.
+- **FR-102**: Default lunch medium/hearty (any dish kind), dinner light/medium; at most one hearty meal daily; the same recipe at most once within three consecutive days. Revised 2026-11-20 (TRELLO-39, [meal rules contract](contracts/meal-rules-contract.md)); editable household defaults are deferred.
 - **FR-103**: Snacks are light without cooked dishes. Locked/cooked/imported meals are preserved by regeneration; show restriction conflicts rather than silently rewrite a locked meal.
 - **FR-104**: Allergens constrain selection before approval; taste/favorite aggregation uses only the accepted personal-data contract.
 - **FR-105**: Select suitable saved recipes locally first and use AI for gaps; validate final placement in app code, not just prompt wording.

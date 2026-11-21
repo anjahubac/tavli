@@ -1,6 +1,8 @@
 import '../domain/meal_plan.dart';
+import '../domain/meal_rules.dart';
 import '../domain/plan_calendar.dart';
 import '../domain/recipe.dart';
+import '../domain/recipe_labels.dart';
 import '../domain/shopping_demand.dart' show maxServings;
 import '../domain/shopping_source.dart';
 import 'ai_models.dart';
@@ -72,36 +74,32 @@ class MealPlanAI {
       }
     }
 
-    for (final period in weekPeriods(request.range)) {
-      final missing = [
-        for (final s in draft.missingSlots)
-          if (period.range.contains(s.date)) s,
-      ];
-      if (missing.isEmpty) continue;
-      final planned = {for (final p in draft.proposals.values) p.title};
-      final result = await step(
-        () => _router.run(
-          AIRequest(
-            system: mealPlanSystemPrompt,
-            prompt: planOutlinePrompt(
-              slots: missing,
-              servings: request.servings,
-              library: [for (final r in offered) (id: r.id, title: r.title)],
-              alreadyPlanned: planned.toList(),
-              wishes: request.wishes,
-              pantry: request.usePantry ? request.pantryNames : const [],
-            ),
-            temperature: 0.8,
-          ),
-          (json) => parseOutline(
-            json,
-            slots: missing,
-            library: {for (final r in offered) r.id: r.title},
-          ),
-          cancel: cancel,
-        ),
+    final requested = request.slots.toSet();
+    // Jela koja ostaju: iz sačuvanog plana i, kod zamene u nacrtu, ostali
+    // predlozi. Ne predlažu se ponovo, ali ih pravila gledaju.
+    Map<MealSlot, MealFacts> keptFacts() => {
+      ...request.kept,
+      for (final e in draft.proposals.entries)
+        if (!requested.contains(e.key)) e.key: e.value.facts,
+    };
+    final around = [
+      for (final e in keptFacts().entries)
+        (slot: e.key, title: e.value.title ?? '', weight: e.value.weight),
+    ]..sort((a, b) => a.slot.compareTo(b.slot));
+
+    // Za recept iz biblioteke važe sačuvane oznake, ne one koje AI kaže.
+    SlotProposal withStoredLabels(SlotProposal p) {
+      final labels = byId[p.libraryRecipeId]?.labels;
+      if (labels == null) return p;
+      return SlotProposal(
+        title: p.title,
+        libraryRecipeId: p.libraryRecipeId,
+        weight: labels.weightValue ?? p.weight,
+        dishKind: labels.dishKindValue ?? p.dishKind,
       );
-      final proposals = result.value;
+    }
+
+    void put(Map<MealSlot, SlotProposal> proposals) {
       draft = draft.copyWith(
         proposals: {...draft.proposals, ...proposals},
         libraryRecipes: {
@@ -111,7 +109,77 @@ class MealPlanAI {
             id: RecipeSnapshot.fromRecipe(byId[id]!),
         },
       );
+    }
+
+    Future<Map<MealSlot, SlotProposal>> outline(
+      List<MealSlot> slots, {
+      List<String> rejected = const [],
+    }) async {
+      final planned = {for (final p in draft.proposals.values) p.title};
+      final result = await step(
+        () => _router.run(
+          AIRequest(
+            system: mealPlanSystemPrompt,
+            prompt: planOutlinePrompt(
+              slots: slots,
+              servings: request.servings,
+              library: [
+                for (final r in offered)
+                  (
+                    id: r.id,
+                    title: r.title,
+                    weight: r.labels.weightValue,
+                    dishKind: r.labels.dishKindValue,
+                  ),
+              ],
+              alreadyPlanned: planned.toList(),
+              around: around,
+              rejected: rejected,
+              wishes: request.wishes,
+              pantry: request.usePantry ? request.pantryNames : const [],
+            ),
+            temperature: 0.8,
+          ),
+          (json) => parseOutline(
+            json,
+            slots: slots,
+            library: {for (final r in offered) r.id: r.title},
+          ),
+          cancel: cancel,
+        ),
+      );
+      return {
+        for (final e in result.value.entries) e.key: withStoredLabels(e.value),
+      };
+    }
+
+    final proposedNow = <MealSlot>{};
+    for (final period in weekPeriods(request.range)) {
+      final missing = [
+        for (final s in draft.missingSlots)
+          if (period.range.contains(s.date)) s,
+      ];
+      if (missing.isEmpty) continue;
+      final proposals = await outline(missing);
+      put(proposals);
+      proposedNow.addAll(proposals.keys);
       onProgress?.call(draft);
+    }
+
+    if (proposedNow.isNotEmpty) {
+      final before = draft.proposals;
+      await _applyRules(
+        movable: proposedNow,
+        facts: () => {
+          ...keptFacts(),
+          for (final s in proposedNow) s: draft.proposals[s]!.facts,
+        },
+        proposals: () => draft.proposals,
+        put: put,
+        retry: (slots, rejected) => outline(slots, rejected: rejected),
+        library: offered,
+      );
+      if (!identical(before, draft.proposals)) onProgress?.call(draft);
     }
 
     final missingKeys = draft.missingRecipeKeys;
@@ -139,6 +207,78 @@ class MealPlanAI {
       onProgress?.call(draft);
     }
     return draft;
+  }
+
+  /// Pravila rasporeda posle AI odgovora (TRELLO-39), tiho, korak po korak:
+  /// 1. ručak i večera koji su samo zamenili mesta vraćaju se na svoje;
+  /// 2. za mesta koja i dalje ne prolaze jedan novi AI zahtev, samo za njih;
+  /// 3. ako ni to ne prođe, odgovarajući sačuvan recept sa poznatim
+  ///    oznakama;
+  /// 4. inače jelo ostaje (bez poruke korisniku).
+  /// Menjaju se samo [movable] mesta; jela koja ostaju u planu se ne diraju.
+  Future<void> _applyRules({
+    required Set<MealSlot> movable,
+    required Map<MealSlot, MealFacts> Function() facts,
+    required Map<MealSlot, SlotProposal> Function() proposals,
+    required void Function(Map<MealSlot, SlotProposal>) put,
+    required Future<Map<MealSlot, SlotProposal>> Function(
+      List<MealSlot> slots,
+      List<String> rejected,
+    )
+    retry,
+    required List<Recipe> library,
+  }) async {
+    List<MealSlot> broken() {
+      final breaks = mealRuleBreaks(facts(), movable: movable);
+      return [
+        for (final s in movable)
+          if (breaks[s]?.isNotEmpty ?? false) s,
+      ]..sort();
+    }
+
+    for (final (lunch, dinner) in lunchDinnerSwaps(facts(), movable)) {
+      final current = proposals();
+      put({lunch: current[dinner]!, dinner: current[lunch]!});
+    }
+
+    var bad = broken();
+    if (bad.isEmpty) return;
+    try {
+      final current = proposals();
+      put(await retry(bad, [for (final s in bad) current[s]!.title]));
+    } on PlanGenerationFailed {
+      // Novi predlog nije uspeo: ostaje prvi, pa ide rezervni korak.
+    }
+
+    bad = broken();
+    for (final slot in bad) {
+      final before = mealRuleBreaks(facts(), movable: movable);
+      for (final r in library) {
+        final weight = r.labels.weightValue;
+        if (weight == null) continue;
+        final candidate = SlotProposal(
+          title: r.title,
+          libraryRecipeId: r.id,
+          weight: weight,
+          dishKind: r.labels.dishKindValue,
+        );
+        final after = mealRuleBreaks({
+          ...facts(),
+          slot: candidate.facts,
+        }, movable: movable);
+        final fits =
+            (after[slot]?.isEmpty ?? true) &&
+            after.entries.every(
+              (e) =>
+                  e.key == slot ||
+                  (before[e.key] ?? const {}).containsAll(e.value),
+            );
+        if (fits) {
+          put({slot: candidate});
+          break;
+        }
+      }
+    }
   }
 }
 
@@ -168,17 +308,28 @@ Map<MealSlot, SlotProposal> parseOutline(
     if (result.containsKey(slot)) {
       throw FormatException('Mesto se ponavlja', '$slot');
     }
+    // Nepoznata ili izostavljena oznaka je null: to jelo se po tom
+    // pravilu ne proverava (ne odbija se ceo raspored).
+    final weight = DishWeight.tryParse(raw['weight']);
+    final dishKind = DishKind.tryParse(raw['dishKind']);
     final id = raw['recipeId'];
     if (id != null) {
       final title = id is String ? library[id] : null;
       if (title == null) throw const FormatException('Nepoznat recept');
-      result[slot] = SlotProposal(title: title, libraryRecipeId: id as String);
+      result[slot] = SlotProposal(
+        title: title,
+        libraryRecipeId: id as String,
+        weight: weight,
+        dishKind: dishKind,
+      );
       continue;
     }
     final title = aiTitle(raw['title']);
     result[slot] = SlotProposal(
       title: title,
       draftRecipeKey: draftRecipeKey(title),
+      weight: weight,
+      dishKind: dishKind,
     );
   }
   if (result.length != wanted.length) {
