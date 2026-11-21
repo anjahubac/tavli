@@ -192,4 +192,49 @@ void main() {
       expect(r, isA<Unresolved>());
     });
   });
+
+  group('withdrawn shared entries', () {
+    test('withdrawn shared food is never Matched by its alias', () async {
+      final r = await find(
+        [alias(jaje, 'jaja')],
+        'jaja',
+        foods: [CatalogFood(jaje, withdrawn: true)],
+      );
+      expect(r, isA<Unresolved>());
+    });
+
+    test('withdrawn shared food is never Matched by its name', () async {
+      final r = await find(
+        const [],
+        'jaje',
+        foods: [CatalogFood(jaje, withdrawn: true)],
+      );
+      expect(r, isA<Unresolved>());
+    });
+
+    test('household alias to a withdrawn food is ignored', () async {
+      final r = await find(
+        [alias(jaje, 'jaja', householdId: 'A')],
+        'jaja',
+        foods: [CatalogFood(jaje, withdrawn: true)],
+      );
+      expect(r, isA<Unresolved>());
+    });
+
+    test('withdrawn shared alias gives way to its replacement', () async {
+      final kokosje = food('jaje-kokosje', 'kokošje jaje');
+      final r = await find([
+        AliasEntry(food: jaje, aliasNormalized: 'jaja', withdrawn: true),
+        alias(kokosje, 'jaja'),
+      ], 'jaja');
+      expect((r as Matched).food.id, 'jaje-kokosje');
+    });
+
+    test('withdrawn shared alias alone is Unresolved', () async {
+      final r = await find([
+        AliasEntry(food: jaje, aliasNormalized: 'jaja', withdrawn: true),
+      ], 'jaja');
+      expect(r, isA<Unresolved>());
+    });
+  });
 }

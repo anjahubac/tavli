@@ -65,24 +65,30 @@ abstract interface class FoodMatcher {
 }
 
 /// Jedan red aliasa. `householdId == null` znači deljeni alias.
+/// [withdrawn]: deljeni alias je povučen (`withdrawn_at`) i ne poklapa se.
 final class AliasEntry {
   const AliasEntry({
     required this.food,
     required this.aliasNormalized,
     this.householdId,
+    this.withdrawn = false,
   });
 
   final FoodIdentity food;
   final String aliasNormalized;
   final String? householdId;
+  final bool withdrawn;
 }
 
 /// Namirnica kataloga i njen vlasnik. `householdId == null` = deljena.
+/// [withdrawn]: deljena namirnica je povučena; nikad nije `Matched`, ni
+/// preko imena ni preko aliasa koji pokazuju na nju.
 final class CatalogFood {
-  const CatalogFood(this.food, {this.householdId});
+  const CatalogFood(this.food, {this.householdId, this.withdrawn = false});
 
   final FoodIdentity food;
   final String? householdId;
+  final bool withdrawn;
 }
 
 /// Matcher v1: samo tačan alias (ili kanonsko ime) preko `ingredientKey`.
@@ -92,20 +98,35 @@ final class AliasFoodMatcher implements FoodMatcher {
   AliasFoodMatcher(
     List<AliasEntry> entries, {
     List<CatalogFood> foods = const [],
-  }) : _entries = [
-         for (final e in entries)
-           AliasEntry(
-             food: e.food,
-             aliasNormalized: ingredientKey(e.aliasNormalized),
-             householdId: e.householdId,
-           ),
-         for (final f in foods)
-           AliasEntry(
-             food: f.food,
-             aliasNormalized: ingredientKey(f.food.name),
-             householdId: f.householdId,
-           ),
-       ];
+  }) : _entries = _activeEntries(entries, foods);
+
+  /// Aktivni redovi: bez povučenih aliasa i bez svega što pokazuje na
+  /// povučenu namirnicu; kanonska imena se dodaju kao aliasi vlasnika.
+  static List<AliasEntry> _activeEntries(
+    List<AliasEntry> entries,
+    List<CatalogFood> foods,
+  ) {
+    final withdrawn = {
+      for (final f in foods)
+        if (f.withdrawn) f.food.id,
+    };
+    return [
+      for (final e in entries)
+        if (!e.withdrawn && !withdrawn.contains(e.food.id))
+          AliasEntry(
+            food: e.food,
+            aliasNormalized: ingredientKey(e.aliasNormalized),
+            householdId: e.householdId,
+          ),
+      for (final f in foods)
+        if (!f.withdrawn)
+          AliasEntry(
+            food: f.food,
+            aliasNormalized: ingredientKey(f.food.name),
+            householdId: f.householdId,
+          ),
+    ];
+  }
 
   final List<AliasEntry> _entries;
 
