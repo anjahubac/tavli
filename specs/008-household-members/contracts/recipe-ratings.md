@@ -1,10 +1,10 @@
 # Recipe ratings contract
 
-**Status:** proposed for review  
-**Owner:** Dev 3  
-**Producer:** personal rating repository and household summary endpoint  
-**Consumer:** recipe detail and recipe list UI  
-**Source:** D3-018 / FR-011, Trello “Ocene recepata”
+- **Status** — data slice in review, UI planned
+- **Owner** — Dev 3
+- **Producer** — personal rating repository and household summary endpoint
+- **Consumer** — recipe detail and recipe list UI
+- **Source** — D3-018 / FR-011, Trello “Ocene recepata”
 
 ## Purpose
 

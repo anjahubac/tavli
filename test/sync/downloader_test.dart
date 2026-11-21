@@ -231,6 +231,25 @@ void main() {
     expect(summary?.ratingCount, 1);
   });
 
+  test(
+    'failed rating summary refresh preserves the cache and recipe pulls',
+    () async {
+      seedAll();
+      await downloader().run();
+      final cached = (await db.select(db.ratingSummaries).get()).single;
+      serverRecipe('during-failed-summary');
+      backend.server.ratingSummaryFailure = const TransientSyncError('503');
+
+      await downloader().run();
+
+      expect(await db.select(db.ratingSummaries).get(), [cached]);
+      expect(
+        (await db.select(db.recipes).get()).map((recipe) => recipe.id),
+        contains('during-failed-summary'),
+      );
+    },
+  );
+
   test('prvo preuzimanje: svi entiteti, roditelj pre deteta', () async {
     seedAll();
     backend.server.calls.clear();
@@ -248,6 +267,8 @@ void main() {
       'fetch:shopping_sources',
       'fetch:shopping_contributions',
       'fetch:supply_allocations',
+      'fetch:cooked_events',
+      'fetch:pantry_consumptions',
       'fetch:ratings',
       'fetch:taste_profiles',
       'fetch:deletions',
@@ -381,15 +402,24 @@ void main() {
   test('trag brisanja briše lokalni red i izmene koje čekaju', () async {
     seedAll();
     await downloader().run();
-    await SyncedWriter(db, accountId: scope.userId).upsert('pantry_item', 'o1');
+    final writer = SyncedWriter(db, accountId: scope.userId);
+    await writer.upsert('pantry_item', 'o1');
+    await db.delete(db.ratings).go();
+    await RecipeRatingRepository(
+      db,
+      writer: writer,
+      scope: scope,
+    ).save(recipeId: 'r1', stars: 3);
     backend.server.delete('pantry_items', ['o1'], 'id');
     backend.server.delete('recipes', ['r1'], 'id');
+    backend.server.ratingSummaryFailure = const TransientSyncError('503');
 
     await downloader().run();
     expect(await db.select(db.pantryItems).get(), isEmpty);
     expect(await db.select(db.recipes).get(), isEmpty);
     expect(await db.select(db.recipeVersions).get(), isEmpty);
     expect(await db.select(db.ratings).get(), isEmpty);
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
     // Stavka plana ostaje, bez recepta.
     expect((await db.select(db.mealPlanEntries).get()).single.recipeId, isNull);
     expect(await db.select(db.syncOutbox).get(), isEmpty);

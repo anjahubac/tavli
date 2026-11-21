@@ -112,7 +112,14 @@ class AccountService {
         )..where((t) => t.householdId.equals(hid))).get()) {
           if (_imagePath(v.recipeJson) case final p?) photos.add(p);
         }
-        // Deca pre roditelja: raspodela, doprinosi, izvori, pa liste i ostava.
+        // Deca pre roditelja: potrošnja i kuvanje, raspodela, doprinosi,
+        // izvori, pa liste i ostava.
+        await (_db.delete(
+          _db.pantryConsumptions,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.cookedEvents,
+        )..where((t) => t.householdId.equals(hid))).go();
         await (_db.delete(
           _db.supplyAllocations,
         )..where((t) => t.householdId.equals(hid))).go();

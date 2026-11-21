@@ -67,6 +67,9 @@ is linked to the original operation, bounded and repeatable. Zero-floor conflict
 and edited/deleted ingredients have explicit behavior. Other members confirm
 their intake independently; cooking does not write their private diaries.
 
+Proposed v1: [cooked meal contract](../../021-home-and-cooking/contracts/cooked-meal-contract.md)
+(accepted by Dev 4 on 2026-11-19; Dev 1 and Dev 3 confirm in review).
+
 ## C6 — nutrition/source and strip (Dev 1 → Dev 2/3; Dev 3 → Dev 4)
 
 Reference values per 100 g with source/version/date and missing-data state;

@@ -77,6 +77,8 @@ class TavliTextField extends StatelessWidget {
     this.focusNode,
     this.autocorrect = true,
     this.isCode = false,
+    this.trailing,
+    this.textCapitalization = TextCapitalization.none,
   }) : assert(controller == null || initialValue == null),
        assert(minLines <= maxLines);
 
@@ -113,6 +115,12 @@ class TavliTextField extends StatelessWidget {
   /// Jednokratni kod iz poruke: veće cifre sa razmakom između njih.
   final bool isCode;
 
+  /// Dugme na desnom kraju polja, npr. `TavliIconButton` „Prikaži“.
+  final Widget? trailing;
+
+  /// npr. [TextCapitalization.words] za ime.
+  final TextCapitalization textCapitalization;
+
   @override
   Widget build(BuildContext context) {
     final style = _textStyle(context, enabled: enabled);
@@ -129,6 +137,7 @@ class TavliTextField extends StatelessWidget {
       inputFormatters: inputFormatters,
       autofocus: autofocus,
       obscureText: obscureText,
+      textCapitalization: textCapitalization,
       minLines: obscureText ? 1 : minLines,
       maxLines: obscureText ? 1 : maxLines,
       autofillHints: autofillHints,
@@ -145,6 +154,11 @@ class TavliTextField extends StatelessWidget {
         hint: hint,
         error: errorText,
         enabled: enabled,
+        // Svoj čvor za čitač ekrana: bez njega dugme u polju koje je
+        // izašlo iz vidnog dela liste ostaje kao nevidljiv čvor.
+        suffix: trailing == null
+            ? null
+            : Semantics(container: true, child: trailing),
       ),
     );
     final label = this.label;

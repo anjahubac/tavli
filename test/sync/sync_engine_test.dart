@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/data/recipe_rating_repository.dart';
 import 'package:tavli/sync/downloader.dart';
 import 'package:tavli/sync/photo_sync.dart';
 import 'package:tavli/sync/sync_engine.dart';
@@ -228,6 +229,27 @@ void main() {
     });
     tearDown(() => full.stop());
 
+    test(
+      'rating upload completes and refreshes the household summary',
+      () async {
+        await addRecipe('rated');
+        final ratings = RecipeRatingRepository(
+          db,
+          writer: writer,
+          scope: scope,
+        );
+        await ratings.save(recipeId: 'rated', stars: 4);
+
+        await full.push().timeout(const Duration(seconds: 5));
+
+        expect(backend.server.table('ratings'), hasLength(1));
+        final summary = await ratings.watchHouseholdSummary('rated').first;
+        expect(summary?.averageStars, 4);
+        expect(summary?.ratingCount, 1);
+        expect(full.status, isA<AllSaved>());
+      },
+    );
+
     Future<AccountRow> account() => db.select(db.accounts).getSingle();
 
     test('posle prijave: prvo slanje, pa celo preuzimanje', () async {
@@ -254,6 +276,35 @@ void main() {
       await full.onStart();
       expect(phases, isEmpty);
     });
+
+    test(
+      'posle preuzimanja poziva afterPull, kad su redovi već upisani',
+      () async {
+        var after = 0;
+        final engine2 = SyncEngine(
+          db: db,
+          scope: scope,
+          uploader: Uploader(
+            db: db,
+            remote: backend.sync,
+            photos: backend.photos,
+            photoStore: FakePhotoStore(),
+            scope: scope,
+            refreshSession: () async => true,
+          ),
+          downloader: Downloader(db: db, remote: backend.sync, scope: scope),
+          timer: timers.call,
+          clock: () => now,
+          afterPull: () async {
+            expect(await db.select(db.pantryItems).get(), hasLength(1));
+            after++;
+          },
+        );
+        addTearDown(engine2.stop);
+        await engine2.pull();
+        expect(after, 1);
+      },
+    );
 
     test('povratak u aplikaciju preuzima tek posle 15 minuta', () async {
       await full.onStart();

@@ -19,6 +19,7 @@ import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'data/shopping_repository.dart';
+import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
 import 'sync/legacy_mover.dart';
@@ -81,7 +82,7 @@ final accountServiceProvider = Provider<AccountService>(
 );
 
 /// Upisuje izmene prijavljenog naloga u red za slanje i budi slanje.
-final syncedWriterProvider = Provider<SyncedWriter>(
+final Provider<SyncedWriter> syncedWriterProvider = Provider<SyncedWriter>(
   (ref) => SyncedWriter(
     ref.watch(databaseProvider),
     accountId: (ref.watch(accountScopeProvider) ?? noAccountScope).userId,
@@ -124,7 +125,7 @@ Future<bool> _refreshSession(Ref ref) async {
 
 /// Slanje i preuzimanje za prijavljen nalog; null bez naloga ili servera.
 /// Nov nalog → nov engine (stari se zaustavlja).
-final syncEngineProvider = Provider<SyncEngine?>((ref) {
+final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
   final scope = ref.watch(accountScopeProvider);
   final remote = ref.watch(syncRemoteProvider);
   final photos = ref.watch(photoRemoteProvider);
@@ -152,6 +153,11 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
     refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    // Ceo red obroka može da stigne zastareo; oznaka „skuvano“ se ponovo
+    // izvodi iz zapisa kuvanja.
+    afterPull: () async {
+      await ref.read(cookingRepositoryProvider).reconcileCookedFlags();
+    },
   );
   ref.onDispose(engine.stop);
   unawaited(engine.onStart());

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../tokens.dart';
 import 'shell_parts.dart';
 
 /// Zaglavlje ekrana: opcioni red iznad naslova (npr. datum), veliki naslov i
@@ -15,13 +16,23 @@ class TavliPageHeader extends StatelessWidget {
     required this.title,
     this.overline,
     this.actions = const [],
-  });
+    this.backLabel,
+    this.onBack,
+  }) : assert(
+         (backLabel == null) == (onBack == null),
+         'povratak traži i naziv i radnju',
+       );
 
   final String title;
 
   /// Tekst iznad naslova, npr. „Petak, 13. novembar“.
   final String? overline;
   final List<Widget> actions;
+
+  /// Povratak iznad naslova na širokom ekranu, npr. „Profil“ na ekranu
+  /// Izgled (na telefonu povratak je u `TavliBackAppBar`).
+  final String? backLabel;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +44,8 @@ class TavliPageHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (backLabel case final label?)
+          _BackLink(label: label, onTap: onBack!),
         if (overline != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
@@ -84,6 +97,47 @@ class TavliPageHeader extends StatelessWidget {
             children: actions,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BackLink extends StatelessWidget {
+  const _BackLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: label == 'Nazad' ? label : 'Nazad na $label',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(TavliRadius.chip),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 32),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.chevron_left_rounded, size: 20, color: c.primary),
+              Flexible(
+                child: Text(
+                  label,
+                  style: t.labelLarge?.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: c.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -140,6 +140,9 @@ enum TavliSectionHeaderStyle {
 
   /// Običan podebljan: „Kupljeno · 2“.
   bold,
+
+  /// Naslov dana u Planu: „Petak, 13. novembar“ (20, ekstra podebljan).
+  title,
 }
 
 /// Naslov odeljka u listi ili na kartici, sa opcionom akcijom desno.
@@ -165,20 +168,28 @@ class TavliSectionHeader extends StatelessWidget {
     final text = Text(
       caps ? title.toUpperCase() : title,
       semanticsLabel: title,
-      style: caps
-          ? t.labelMedium?.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.9,
-              height: 1.3,
-              color: c.onSurfaceVariant,
-            )
-          : t.titleMedium?.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-              color: c.onSurface,
-            ),
+      style: switch (style) {
+        TavliSectionHeaderStyle.caps => t.labelMedium?.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.9,
+          height: 1.3,
+          color: c.onSurfaceVariant,
+        ),
+        TavliSectionHeaderStyle.bold => t.titleMedium?.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          height: 1.35,
+          color: c.onSurface,
+        ),
+        TavliSectionHeaderStyle.title => t.titleLarge?.copyWith(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+          height: 1.3,
+          color: c.onSurface,
+        ),
+      },
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: TavliSpacing.small),

@@ -9,19 +9,38 @@ import '../tokens.dart';
 class TavliDialogAction<T> {
   const TavliDialogAction(
     this.label,
-    this.value, {
+    T value, {
     this.isDefault = false,
     this.isDestructive = false,
-  });
+    this.enabled = true,
+  }) : _value = value,
+       _compute = null;
+
+  /// Vrednost se uzima tek na dodir, npr. tekst iz polja u dijalogu.
+  const TavliDialogAction.computed(
+    this.label,
+    ValueGetter<T> value, {
+    this.isDefault = false,
+    this.isDestructive = false,
+    this.enabled = true,
+  }) : _value = null,
+       _compute = value;
 
   final String label;
-  final T value;
+  final T? _value;
+  final ValueGetter<T>? _compute;
+
+  /// Vrednost koju dijalog vraća kad se dodirne ovo dugme.
+  T get value => _compute != null ? _compute() : _value as T;
 
   /// Glavna radnja (podebljana; na Androidu glavno dugme).
   final bool isDefault;
 
   /// Brisanje i druge nepovratne radnje (crveno).
   final bool isDestructive;
+
+  /// `false` isključuje dugme (npr. „Sačuvaj“ dok je polje prazno).
+  final bool enabled;
 }
 
 /// Dijalog: naslov, tekst ili sadržaj (forma) i dugmad.
@@ -71,7 +90,7 @@ class TavliDialog<T> extends StatelessWidget {
             CupertinoDialogAction(
               isDefaultAction: a.isDefault,
               isDestructiveAction: a.isDestructive,
-              onPressed: () => pop(a.value),
+              onPressed: a.enabled ? () => pop(a.value) : null,
               child: Text(a.label),
             ),
         ],
@@ -125,23 +144,30 @@ class TavliDialog<T> extends StatelessWidget {
               const SizedBox(height: TavliSpacing.large),
               Align(
                 alignment: AlignmentDirectional.centerEnd,
-                child: TavliButtonRow(
+                // Kad dugmad ne staju u red (uzak ekran, krupan tekst), idu
+                // jedno ispod drugog, poravnata desno.
+                child: OverflowBar(
+                  alignment: MainAxisAlignment.end,
+                  // Isti razmak kao u `TavliButtonRow`.
+                  spacing: 10,
+                  overflowSpacing: TavliSpacing.small,
+                  overflowAlignment: OverflowBarAlignment.end,
                   children: [
                     for (final a in actions)
                       if (a.isDestructive)
                         TavliButton.destructive(
                           label: a.label,
-                          onPressed: () => pop(a.value),
+                          onPressed: a.enabled ? () => pop(a.value) : null,
                         )
                       else if (a.isDefault)
                         TavliButton.primary(
                           label: a.label,
-                          onPressed: () => pop(a.value),
+                          onPressed: a.enabled ? () => pop(a.value) : null,
                         )
                       else
                         TavliButton.text(
                           label: a.label,
-                          onPressed: () => pop(a.value),
+                          onPressed: a.enabled ? () => pop(a.value) : null,
                         ),
                   ],
                 ),

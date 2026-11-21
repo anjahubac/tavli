@@ -26,7 +26,25 @@ Support Ubuntu 24.04 LTS on x86_64 first. Deliver a runnable Flutter Linux bundl
 
 No new server table or business-data format is intended. Session and user keys stay in the OS secure store; business data remains account-scoped in drift/outbox and Supabase. Validate local file paths and avoid logging email codes, tokens, keys, personal data or raw exception bodies. No new remote endpoint or AI route is introduced (abuse impact: N/A); no hosted deployment or public artifact is authorized. CI uses least-privilege permissions and no credentials. Apply [security baseline](../012-security-baseline/spec.md), [testing strategy](../013-testing-strategy/spec.md) and [quality gates](../../docs/development/quality-gates.md).
 
-**New UI copy:** none planned. Any needed Linux-specific error or permission text must be specified here in Serbian Latin before implementation.
+### Shared session storage behavior
+
+Matija coordinates the account code in `lib/account/auth_controller.dart`,
+`lib/account/auth_gateway.dart`, `lib/features/account/auth_error_text.dart`
+and `lib/features/account/sign_in_screen.dart` with Anja, the platform
+reviewer. PR #75 carries the shared behavior for Windows PR #78 to inherit
+from `dev`.
+
+- A verified email code only opens account access after the session is
+  saved in OS secure storage. If saving fails, clear the SDK's in-memory
+  session, leave the code form available for a resend, and show the secure
+  storage message.
+- A secure storage failure during startup or refresh returns to sign-in
+  and clears the SDK's in-memory session. Retain the saved session and
+  account cache. Offline restore with readable secure storage still allows
+  access to the matching cached account.
+- Linux shows “Bezbedno skladište sesije nije dostupno. Proveri da li je
+  sistemski keyring pokrenut i otključan, pa pokušaj ponovo.”
+  Other platforms show “Funkcija nije dostupna na ovom uređaju.”
 
 ## Implementation preparation and evidence
 

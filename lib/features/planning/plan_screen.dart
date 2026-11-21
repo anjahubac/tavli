@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
-import '../../app/placeholder_screen.dart';
+import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/plan_calendar.dart';
-import '../../domain/recipe_format.dart';
 import '../recipes/recipe_providers.dart';
+import '../settings/settings_page.dart';
 import 'meal_entry_card.dart';
 import 'meal_entry_detail.dart';
 import 'plan_calendar.dart';
@@ -17,51 +18,77 @@ import 'plan_format.dart';
 import 'plan_generation.dart';
 import 'planning_providers.dart';
 
-/// Širina od koje Plan prikazuje kalendar i recept jedan pored drugog.
-const planWideWidth = 1000.0;
+/// Širok ekran (bočna navigacija): zaglavlje „Plan“ sa izborom perioda
+/// umesto gornje trake, a akcije dole desno umesto zakucane trake.
+bool isWidePlan(BuildContext context) =>
+    MediaQuery.sizeOf(context).width >= wideLayoutWidth;
 
 /// Tab Plan. Bez plana je glavna akcija "Napravi plan"; sa planom prikazuje
-/// izabranu nedelju ili mesec, a glavna akcija je "Otvori nabavku".
+/// izabranu nedelju ili mesec, a glavne akcije su "Ponovo predloži" i
+/// "Otvori nabavku".
 class PlanScreen extends ConsumerWidget {
   const PlanScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plans = ref.watch(mealPlansProvider);
-    return plans.when(
-      loading: () => const Scaffold(
-        appBar: TabAppBar(),
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (_, _) => const EmptyStateScreen(
-        art: Icon(Icons.error_outline, size: 56),
-        title: 'Plan trenutno ne može da se prikaže',
-      ),
-      data: (list) {
-        final view = ref.watch(planViewProvider);
-        final plan = selectedPlan(list, view, ref.watch(clockProvider)());
-        if (plan == null) {
-          return EmptyStateScreen(
-            art: Icon(
-              Icons.calendar_month_outlined,
-              size: 56,
-              color: Theme.of(context).colorScheme.primary,
+    return Scaffold(
+      appBar: const TabAppBar(),
+      body: SafeArea(
+        child: plans.when(
+          loading: () => const TavliLoading(),
+          error: (_, _) => _Scrollable(
+            child: TavliEmptyState(
+              glyph: TavliIcons.info,
+              title: 'Plan trenutno ne može da se prikaže',
+              action: TavliButton.primary(
+                label: 'Pokušaj ponovo',
+                onPressed: () => ref.invalidate(mealPlansProvider),
+              ),
             ),
-            title: 'Još nemaš plan',
-            body:
-                'Izaberi nedelju ili mesec i obroke; predlog pregledaš '
-                'pre čuvanja.',
-            action: FilledButton.icon(
-              onPressed: () => context.go('/plan/new'),
-              icon: const Icon(Icons.add),
-              label: const Text('Napravi plan'),
-            ),
-          );
-        }
-        return _PlanView(plans: list, plan: plan);
-      },
+          ),
+          data: (list) {
+            final view = ref.watch(planViewProvider);
+            final plan = selectedPlan(list, view, ref.watch(clockProvider)());
+            if (plan == null) {
+              return _Scrollable(
+                child: TavliEmptyState(
+                  glyph: TavliIcons.plan,
+                  title: 'Još nemaš plan',
+                  message:
+                      'Izaberi nedelju ili mesec i obroke; predlog pregledaš '
+                      'pre čuvanja.',
+                  action: TavliButton.primary(
+                    label: 'Napravi plan',
+                    glyph: TavliIcons.add,
+                    onPressed: () => context.go('/plan/new'),
+                  ),
+                ),
+              );
+            }
+            return _PlanView(plans: list, plan: plan);
+          },
+        ),
+      ),
     );
   }
+}
+
+/// Prazno stanje koje se pomera kada ne staje, a inače stoji u sredini.
+class _Scrollable extends StatelessWidget {
+  const _Scrollable({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: Center(child: child),
+      ),
+    ),
+  );
 }
 
 class _PlanView extends ConsumerWidget {
@@ -72,31 +99,17 @@ class _PlanView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final view = ref.watch(planViewProvider);
     final controller = ref.read(planViewProvider.notifier);
     final today = CivilDate.today(ref.watch(clockProvider));
     final selected = selectedDate(plan, view, today);
     final meals = ref.watch(plannedMealsProvider(plan.id)).value ?? const [];
     final bySlot = {for (final m in meals) m.slot: m};
-    final wide = MediaQuery.sizeOf(context).width >= planWideWidth;
-    final week = weekOf(selected);
-    final days = [
-      for (final d in plan.range.days)
-        if (week.contains(d)) d,
-    ];
-    PlannedMeal? openMeal;
-    for (final m in meals) {
-      if (m.id == view.entryId) openMeal = m;
-    }
+    final month = view.mode == PlanViewMode.month;
+    final wide = isWidePlan(context);
 
-    void open(PlannedMeal meal) {
-      if (wide) {
-        controller.selectEntry(meal.id);
-      } else {
+    void open(PlannedMeal meal) =>
         unawaited(context.push('/plan/${plan.id}/entries/${meal.id}'));
-      }
-    }
 
     Future<void> regenerate() async {
       final router = GoRouter.of(context);
@@ -107,195 +120,303 @@ class _PlanView extends ConsumerWidget {
       if (started) {
         router.go('/plan/new/preview');
       } else {
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Nema obroka za novi predlog: ostali su zaključani, skuvani '
-                'ili prošli.',
-              ),
-            ),
-          );
+        showTavliMessageOn(
+          messenger,
+          'Nema obroka za novi predlog: ostali su zaključani, skuvani '
+          'ili prošli.',
+        );
       }
     }
 
-    final list = ListView(
-      key: PageStorageKey(('plan', plan.id)),
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (plans.length > 1) ...[
-          DropdownButtonFormField<String>(
-            initialValue: plan.id,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Izaberi plan',
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              for (final p in plans)
-                DropdownMenuItem(
-                  value: p.id,
-                  child: Text(
-                    rangeLabel(p.range),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-            ],
-            onChanged: (id) {
-              if (id != null) controller.selectPlan(id);
-            },
-          ),
-          const SizedBox(height: 12),
-        ],
-        Text(rangeLabel(plan.range), style: theme.textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Text(
-          '${mealsCount(meals.length)} · '
-          '${servingsLabel(plan.defaultServings)} po obroku',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: () => context.go('/shopping'),
-          icon: const Icon(Icons.shopping_basket_outlined),
-          label: const Text('Otvori nabavku'),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SegmentedButton<PlanViewMode>(
-              segments: const [
-                ButtonSegment(value: PlanViewMode.week, label: Text('Nedelja')),
-                ButtonSegment(value: PlanViewMode.month, label: Text('Mesec')),
-              ],
-              selected: {view.mode},
-              onSelectionChanged: (s) => controller.setMode(s.single),
-            ),
-            TextButton.icon(
-              onPressed: plan.range.contains(today)
-                  ? () => controller.selectDate(today)
-                  : null,
-              icon: const Icon(Icons.today),
-              label: const Text('Danas'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (view.mode == PlanViewMode.month)
-          PlanMonthCalendar(
-            plan: plan,
-            meals: meals,
-            selected: selected,
-            today: today,
-            onSelect: controller.selectDate,
+    // Strelice idu kroz nedelje ili mesece plana; izabran dan ostaje u
+    // planu.
+    CivilDate clamp(CivilDate d) => d.isBefore(plan.range.start)
+        ? plan.range.start
+        : d.isAfter(plan.range.end)
+        ? plan.range.end
+        : d;
+    final week = weekOf(selected);
+    final monthRange = monthOf(selected);
+    final period = month
+        ? TavliPeriodSwitcher(
+            compact: wide,
+            label: monthLabel(selected),
+            previousLabel: 'Prethodni mesec',
+            nextLabel: 'Sledeći mesec',
+            onPrevious: plan.range.start.isBefore(monthRange.start)
+                ? () => controller.selectDate(
+                    clamp(monthOf(monthRange.start.addDays(-1)).start),
+                  )
+                : null,
+            onNext: plan.range.end.isAfter(monthRange.end)
+                ? () => controller.selectDate(clamp(monthRange.end.addDays(1)))
+                : null,
           )
-        else
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Prethodna nedelja',
-                onPressed: days.first == plan.range.start
-                    ? null
-                    : () => controller.selectDate(days.first.addDays(-1)),
-                icon: const Icon(Icons.chevron_left),
-              ),
-              Expanded(
-                child: Text(
-                  rangeLabel(DateRange(days.first, days.last)),
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Sledeća nedelja',
-                onPressed: days.last == plan.range.end
-                    ? null
-                    : () => controller.selectDate(days.last.addDays(1)),
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
-          ),
-        for (final day in days) ...[
-          const SizedBox(height: 12),
-          Text(
-            day == today ? '${dayLabel(day)} · danas' : dayLabel(day),
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: day == selected ? theme.colorScheme.primary : null,
-            ),
-          ),
-          for (final slot in plan.slots.where((s) => s.date == day))
-            MealEntryCard(
-              slot: slot,
-              meal: bySlot[slot],
-              selected: wide && bySlot[slot]?.id == view.entryId,
-              onTap: () => open(bySlot[slot]!),
-            ),
-        ],
-        const SizedBox(height: 24),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton.icon(
-              onPressed: regenerate,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Ponovo predloži'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => context.go('/plan/new'),
-              icon: const Icon(Icons.add),
-              label: const Text('Napravi novi plan'),
-            ),
-          ],
-        ),
+        : TavliPeriodSwitcher(
+            compact: wide,
+            label: weekLabel(week),
+            previousLabel: 'Prethodna nedelja',
+            nextLabel: 'Sledeća nedelja',
+            onPrevious: plan.range.start.isBefore(week.start)
+                ? () => controller.selectDate(
+                    clamp(selected.addDays(-DateTime.daysPerWeek)),
+                  )
+                : null,
+            onNext: plan.range.end.isAfter(week.end)
+                ? () => controller.selectDate(
+                    clamp(selected.addDays(DateTime.daysPerWeek)),
+                  )
+                : null,
+          );
+    final todayButton = TavliButton.text(
+      label: 'Danas',
+      glyph: TavliIcons.today,
+      onPressed: plan.range.contains(today)
+          ? () => controller.selectDate(today)
+          : null,
+    );
+    final modeChoice = TavliChoice<PlanViewMode>.segmented(
+      options: const [
+        TavliOption(PlanViewMode.week, 'Nedelja'),
+        TavliOption(PlanViewMode.month, 'Mesec'),
       ],
+      selected: view.mode,
+      onChanged: controller.setMode,
+    );
+    final picker = plans.length > 1
+        ? _PlanPicker(plans: plans, plan: plan)
+        : null;
+    const newPlanLabel = 'Napravi novi plan';
+    final regenerateButton = TavliButton.secondary(
+      label: 'Ponovo predloži',
+      onPressed: regenerate,
     );
 
-    return Scaffold(
-      appBar: const TabAppBar(),
-      body: wide
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    if (!wide) {
+      final dayMeals = [
+        for (final slot in plan.slots.where((s) => s.date == selected))
+          (slot, bySlot[slot]),
+      ];
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ListView(
+              key: PageStorageKey(('plan', plan.id)),
+              padding: const EdgeInsets.fromLTRB(
+                TavliSpacing.large,
+                TavliSpacing.small,
+                TavliSpacing.large,
+                TavliSpacing.large,
+              ),
               children: [
-                SizedBox(width: 440, child: list),
-                const VerticalDivider(width: 1),
-                Expanded(
-                  child: openMeal == null
-                      ? Center(
-                          child: Text(
-                            'Izaberi obrok da vidiš recept.',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        )
-                      : MealEntryDetail(
-                          key: ValueKey(openMeal.id),
-                          plan: plan,
-                          meal: openMeal,
-                          onRemoved: () => controller.selectEntry(null),
-                        ),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  runSpacing: TavliSpacing.small,
+                  children: [modeChoice, todayButton],
+                ),
+                const SizedBox(height: TavliSpacing.small),
+                period,
+                const SizedBox(height: TavliSpacing.small),
+                if (month) ...[
+                  PlanMonthCalendar(
+                    plan: plan,
+                    meals: meals,
+                    selected: selected,
+                    today: today,
+                    onSelect: controller.selectDate,
+                  ),
+                  const SizedBox(height: TavliSpacing.small),
+                  const TavliCalendarLegend(),
+                  const SizedBox(height: TavliSpacing.medium),
+                  if (dayMeals.isNotEmpty)
+                    TavliMealList(
+                      children: [
+                        for (final (slot, meal) in dayMeals)
+                          mealRow(slot, meal, onTap: open),
+                      ],
+                    ),
+                ] else ...[
+                  PlanWeekStrip(
+                    plan: plan,
+                    meals: meals,
+                    selected: selected,
+                    today: today,
+                    onSelect: controller.selectDate,
+                  ),
+                  const SizedBox(height: TavliSpacing.small),
+                  TavliSectionHeader(
+                    dayLabel(selected),
+                    style: TavliSectionHeaderStyle.title,
+                  ),
+                  for (final (i, (slot, meal)) in dayMeals.indexed) ...[
+                    if (i > 0) const SizedBox(height: TavliSpacing.small),
+                    MealEntryCard(slot: slot, meal: meal, onTap: open),
+                  ],
+                ],
+                const SizedBox(height: TavliSpacing.large),
+                if (picker != null) ...[
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: picker,
+                  ),
+                  const SizedBox(height: TavliSpacing.small),
+                ],
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TavliButton.text(
+                    label: newPlanLabel,
+                    glyph: TavliIcons.add,
+                    onPressed: () => context.go('/plan/new'),
+                  ),
                 ),
               ],
-            )
-          : Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: list,
-              ),
             ),
+          ),
+          TavliActionBar(
+            actions: [
+              regenerateButton,
+              TavliButton.primary(
+                label: 'Otvori nabavku',
+                onPressed: () => context.go('/shopping'),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(TavliSpacing.large),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: TavliSpacing.medium,
+        children: [
+          TavliPageHeader(
+            title: 'Plan',
+            actions: [period, todayButton, modeChoice],
+          ),
+          if (picker != null)
+            Align(alignment: AlignmentDirectional.centerStart, child: picker),
+          Expanded(
+            child: month
+                ? PlanMonthCalendar(
+                    plan: plan,
+                    meals: meals,
+                    selected: selected,
+                    today: today,
+                    detailed: true,
+                    // Dan iz meseca otvara njegovu nedelju.
+                    onSelect: (d) {
+                      controller
+                        ..selectDate(d)
+                        ..setMode(PlanViewMode.week);
+                    },
+                  )
+                : LayoutBuilder(
+                    builder: (context, constraints) =>
+                        constraints.maxWidth >= TavliWidth.weekGrid
+                        ? PlanWeekGrid(
+                            plan: plan,
+                            bySlot: bySlot,
+                            selected: selected,
+                            onOpen: open,
+                          )
+                        : ListView(
+                            key: PageStorageKey(('plan', plan.id)),
+                            children: [
+                              PlanWeekStrip(
+                                plan: plan,
+                                meals: meals,
+                                selected: selected,
+                                today: today,
+                                onSelect: controller.selectDate,
+                              ),
+                              const SizedBox(height: TavliSpacing.small),
+                              TavliSectionHeader(
+                                dayLabel(selected),
+                                style: TavliSectionHeaderStyle.title,
+                              ),
+                              for (final slot in plan.slots.where(
+                                (s) => s.date == selected,
+                              )) ...[
+                                MealEntryCard(
+                                  slot: slot,
+                                  meal: bySlot[slot],
+                                  onTap: open,
+                                ),
+                                const SizedBox(height: TavliSpacing.small),
+                              ],
+                            ],
+                          ),
+                  ),
+          ),
+          // Akcije dole desno, sve iste visine; kad ne staju u red, jedna
+          // ispod druge.
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            overflowAlignment: OverflowBarAlignment.end,
+            spacing: TavliSpacing.small,
+            overflowSpacing: TavliSpacing.small,
+            children: [
+              TavliButton.secondary(
+                label: newPlanLabel,
+                glyph: TavliIcons.add,
+                onPressed: () => context.go('/plan/new'),
+              ),
+              regenerateButton,
+              TavliButton.primary(
+                label: 'Otvori nabavku',
+                glyph: TavliIcons.shopping,
+                onPressed: () => context.go('/shopping'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// Obrok na telefonu, na svojoj adresi (`/plan/:planId/entries/:entryId`).
+/// Izbor plana kada ih ima više: dugme sa opsegom izabranog plana otvara
+/// meni sa planovima (isto kao u Nabavci).
+class _PlanPicker extends ConsumerWidget {
+  const _PlanPicker({required this.plans, required this.plan});
+
+  final List<MealPlan> plans;
+  final MealPlan plan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Semantics(
+    label: 'Izaberi plan',
+    child: TavliButton.secondary(
+      label: rangeLabel(plan.range),
+      glyph: TavliIcons.plan,
+      onPressed: () {
+        final box = context.findRenderObject()! as RenderBox;
+        unawaited(
+          showTavliActionMenu(
+            context,
+            title: 'Izaberi plan',
+            position: box.localToGlobal(box.size.bottomLeft(Offset.zero)),
+            actions: [
+              for (final p in plans)
+                TavliMenuAction(
+                  rangeLabel(p.range),
+                  onSelected: () =>
+                      ref.read(planViewProvider.notifier).selectPlan(p.id),
+                ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Obrok na svojoj adresi (`/plan/:planId/entries/:entryId`): telefon sa
+/// trakom za povratak, računar sa povratkom „Plan“ iznad naslova.
 class MealEntryScreen extends ConsumerWidget {
   const MealEntryScreen({
     super.key,
@@ -314,19 +435,25 @@ class MealEntryScreen extends ConsumerWidget {
     for (final m in meals.value ?? const <PlannedMeal>[]) {
       if (m.id == entryId) meal = m;
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Obrok')),
-      body: plan == null || meal == null
-          ? Center(
-              child: meals.isLoading
-                  ? const CircularProgressIndicator()
-                  : const Text('Obrok nije pronađen.'),
-            )
-          : MealEntryDetail(
-              plan: plan,
-              meal: meal,
-              onRemoved: () => context.go('/plan'),
-            ),
+    return SettingsPage(
+      title: meal?.snapshot?.title ?? 'Obrok',
+      backLabel: 'Plan',
+      fallbackLocation: '/plan',
+      children: [
+        if (plan == null || meal == null)
+          meals.isLoading
+              ? const TavliLoading()
+              : const TavliEmptyState(
+                  glyph: TavliIcons.info,
+                  title: 'Obrok nije pronađen.',
+                )
+        else
+          MealEntryDetail(
+            plan: plan,
+            meal: meal,
+            onRemoved: () => context.go('/plan'),
+          ),
+      ],
     );
   }
 }

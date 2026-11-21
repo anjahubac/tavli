@@ -21,7 +21,9 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 
 ## Contract and data plan
 
-Household membership/invites are server-authorized; preferences, allergens, favorites and ratings are personal. Planning receives only the agreed minimum aggregate. New grants/RLS and account-scope/outbox transitions require migration and denial tests.
+Household membership/invites are server-authorized; preferences, allergens, favorites and ratings are personal. The [member planning inputs contract](contracts/member-planning-inputs.md) specifies the proposed typed boundary, selected participants and fixtures. Planning receives only the agreed minimum aggregate. New grants/RLS and account-scope/outbox transitions require migration and denial tests.
+
+The D3-001 contract PR is documentation and interface design only. Later slices implement personal tastes in the existing `taste_profiles` path, user/allergen-group and user/favorite relations, catalog food/group mappings with Dev 1, then the aggregate consumed by Dev 2. Document current-to-target columns in `data-model.md` before the schema slice; allocate the next drift version after earlier schema PRs merge. No new dependency is proposed.
 
 Producer dependencies: Existing baseline; no new producer feature required for the first slice.
 
@@ -38,7 +40,7 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 
 D3-018 / FR-011 reuses the existing owner-only ratings table and sync outbox.
 The server uses a unique user and recipe pair and keeps the existing server
-ID when an offline write arrives from another device. The Drift v6 to v7
+ID when an offline write arrives from another device. The Drift v7 to v8
 upgrade keeps the latest rating per pair and adds a local cache for the
 household average and count. Dev 3 owns the ratings repository and SQL.
 Coordinate changes to `lib/data/database.dart`, its generated output and
@@ -65,16 +67,16 @@ existing workflow before distributing a client that uses the new sync contract.
 4. Integrate consumers after producer merge, preserving offline/replay and previous
    UI/quantity behavior. Run relevant 012/013 gates and update real evidence.
 
-## Constitution check (3.0.0)
+## Constitution check (3.0.1)
 
 | Gate | Required response before implementation |
 | --- | --- |
 | I | English docs; exact Serbian Latin UI/copy for changed screens |
 | II | Preserve outbox/account scope; explicit personal/device/reference classification |
-| III | Any AI through AIRouter and validated task contract; N/A documented if none |
+| III | D3-001 adds no AI call; later planner use remains through AIRouter |
 | IV | No real secrets/logged private content; apply 012 trust-boundary controls |
 | V | Test-first logic/parsing; local SQL/Edge tests when backend changes |
-| VI | Phone/wide/text/motion/keyboard proof for UI; N/A for technical-only slice |
+| VI | D3-001 is documentation-only; UI slices require phone/wide/text/motion/keyboard proof |
 | VII | Reviewable task slices; generated files via generator only |
 | VIII | This canonical spec, owned dev-based branch/task IDs, no stacking |
 | IX | Existing paths/interfaces; justify dependencies and migration decisions |
