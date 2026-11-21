@@ -755,7 +755,6 @@ class PantryConsumptionEntity
       );
 }
 
-/// Ime u profilu (lokalno u `Accounts`). Šalje se kao izmena imena, ne upsert.
 /// Namirnica kataloga (018). Samo se preuzima: deljene redove piše
 /// migracija, a kućni upis dolazi u kasnijem koraku.
 class FoodEntity extends SyncEntity<$FoodsTable, FoodRow> {
@@ -846,6 +845,7 @@ class FoodAliasEntity extends SyncEntity<$FoodAliasesTable, FoodAliasRow> {
       );
 }
 
+/// Ime u profilu (lokalno u `Accounts`). Šalje se kao izmena imena, ne upsert.
 const profileEntity = 'profile';
 
 /// Svi entiteti sa podacima, redom roditelj pre deteta (slanje i preuzimanje).

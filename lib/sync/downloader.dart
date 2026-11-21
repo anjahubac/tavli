@@ -110,6 +110,21 @@ class Downloader {
             return true;
           },
           onDeferred: (id) => deferred.add((e.name, id)),
+          // Ispravka deljenog zapisa: povlačenje starog reda i zamena pod
+          // istim ključem mogu da stignu bilo kojim redom (isto vreme izmene
+          // u istoj migraciji). Povučeni deljeni redovi strane se primenjuju
+          // prvi, pa zamena ne udari u lokalni jedinstveni indeks. Ponovna
+          // primena istog reda u nastavku je upis po id-ju (bez štete).
+          beforePage: (page) async {
+            for (final row in page) {
+              if (row['household_id'] == null && row['withdrawn_at'] != null) {
+                await _tryApply(e.name, (r) async {
+                  await _applyRow(e, r);
+                  return true;
+                }, row);
+              }
+            }
+          },
         );
       }
     } on PermanentSyncError catch (error) {
@@ -140,6 +155,7 @@ class Downloader {
     required String table,
     required Future<bool> Function(Map<String, Object?>) apply,
     void Function(String id)? onDeferred,
+    Future<void> Function(List<Map<String, Object?>> page)? beforePage,
     String timeColumn = 'updated_at',
     String idColumn = 'id',
   }) async {
@@ -167,6 +183,7 @@ class Downloader {
       since = _iso(DateTime.parse(last[timeColumn]! as String));
       afterId = last[idColumn]! as String;
       await _db.transaction(() async {
+        await beforePage?.call(rows);
         Map<String, Object?>? checkpoint;
         for (final row in rows) {
           if (await _tryApply(key, apply, row)) {

@@ -188,4 +188,48 @@ void main() {
     await downloader().run();
     expect((await db.select(db.foods).getSingle()).withdrawnAt, isNotNull);
   });
+  test('ispravka deljenog aliasa: zamena pre povlačenja istog ključa se prima '
+      'u istom preuzimanju', () async {
+    serverFood('f-old');
+    serverFood('f-new');
+    backend.server.upsert('food_aliases', [
+      {
+        'id': 'b-old',
+        'food_id': 'f-old',
+        'household_id': null,
+        'alias': 'jaja',
+        'alias_normalized': 'jaja',
+        'withdrawn_at': null,
+        'created_at': '2026-11-01T10:00:00.000Z',
+      },
+    ], 'id');
+    await downloader().run();
+
+    // Zamena stiže ispred povlačenja (isti ključ, raniji red preuzimanja).
+    backend.server.upsert('food_aliases', [
+      {
+        'id': 'a-new',
+        'food_id': 'f-new',
+        'household_id': null,
+        'alias': 'jaja',
+        'alias_normalized': 'jaja',
+        'withdrawn_at': null,
+        'created_at': '2026-11-02T10:00:00.000Z',
+      },
+    ], 'id');
+    backend.server.upsert('food_aliases', [
+      {
+        ...backend.server.table('food_aliases')['b-old']!,
+        'withdrawn_at': '2026-11-02T10:00:00.000Z',
+      },
+    ], 'id');
+
+    final result = await downloader().run();
+    expect(result.deferred, 0);
+    final rows = {
+      for (final r in await db.select(db.foodAliases).get()) r.id: r,
+    };
+    expect(rows['a-new'], isNotNull);
+    expect(rows['b-old']!.withdrawnAt, isNotNull);
+  });
 }
