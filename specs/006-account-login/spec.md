@@ -11,6 +11,69 @@
 > All UI text is Serbian (Latin script). Quoted strings are the exact UI copy.
 > This is part "a" of the account phase; 006b adds Sign in with Apple and Google.
 
+## Correction slice — 2026-11-21: separate sign-up with a confirmation email
+
+Decided by Anja on 2026-11-21. This slice supersedes the 2026-11-20 slice
+below wherever they differ; the older slice stays as history. FR-003's "the
+same flow MUST create a new account or sign into an existing one" no longer
+applies: sign-in and sign-up are separate screens. Tasks are T073–T078 in
+[tasks.md](tasks.md).
+
+- **Prijava** (`/sign-in`) only signs in an existing account: it sends a
+  6-digit code with `shouldCreateUser: false`. An unknown address shows "Ne
+  postoji nalog sa ovom adresom." with "Proveri adresu ili napravi nov nalog."
+  and a link to sign-up. It never creates an account or a household.
+- **Registracija** (`/sign-up`, title "Napravi nalog") creates the account and
+  sends the confirmation email. An address that already has a confirmed
+  account shows "Već postoji nalog sa ovom adresom." with "Prijavi se umesto
+  toga". After sending, "Proveri mejl" names the address and offers the code
+  field, "Pošalji mejl ponovo" (30 s countdown) and "Promeni e-poštu".
+- The **confirmation email** (`confirmation.html`, subject "Potvrdi adresu za
+  Tavli") has a "Potvrdi adresu" button (`{{ .ConfirmationURL }}`, PKCE) and
+  the same 6-digit `{{ .Token }}`. The **sign-in email** (`magic_link.html`,
+  subject "Tvoj Tavli kod") has only the code and no link. Both emails open
+  with a dark green band (#2D483B) holding the cream Tavli logo and the tagline
+  "Od plana do tanjira.", loaded only from the public `email-assets` bucket.
+- The button and the code are one single-use key valid for 10 minutes. Using
+  either one invalidates the other. "Pošalji mejl ponovo" issues a new key and
+  invalidates the button and code from the older email.
+- On hosted projects the button lands on the static **"Uspešna registracija"**
+  page (`site/potvrda/`, Cloudflare Pages). The app passes its URL as
+  `emailRedirectTo` from the build-time value `AUTH_CONFIRM_PAGE_URL`; without
+  it the button goes straight to `tavli://auth-callback`. The page holds no
+  keys and makes no requests. It reads `code` or `error`/`error_code` from the
+  query or hash, removes them from the address bar, and offers "Otvori Tavli",
+  which opens `tavli://auth-callback` with the same parameters. The app
+  exchanges the code with the PKCE verifier from secure storage, then shows
+  the name step once for a new account.
+- **Another device:** when the email is read on a different device than the
+  app, the person types the email code in the app. If they already pressed the
+  button there, the address is confirmed but the code is used up. "Proveri
+  mejl" then offers "Pošalji mi kod", which sends a sign-in code. Automatic
+  sign-in on the other device ("Da li si to ti?") is a later slice.
+- **Windows** has no `tavli://` registration until the installer adds it, so
+  "Proveri mejl" asks only for the code there.
+- **Layout:** every auth screen centers the 64 px Tavli badge, the title and
+  the intro. On phones the content sits directly on the background, and "Nazad"
+  is in a top bar when the step has one. On wide windows (at least 720 × 600)
+  the content is a white card, max width 528 px with radius 24, under a "Nazad"
+  row. The success page follows the same rules.
+- **Hosted configuration** (owner action per environment, in order, after this
+  slice reaches the branch): custom SMTP with a 30 s minimum interval; Site URL
+  and Redirect URLs containing the page URL and `tavli://auth-callback`; "Confirm
+  email" ON; then a rerun of `deploy-supabase`, which refuses to publish while
+  the hosted settings differ from `config.toml`.
+- Security: no new keys in the app or page; the page sets CSP `'self'`,
+  `no-referrer` and `noindex`. Email images come only from our bucket. Known
+  risk: link-scanning mail gateways may open the button and use up the key;
+  mitigation (verify only after a tap on our page) is proposed, not decided.
+- Acceptance: a new address gets one email with the button and the code. The
+  button on the same device reaches "Kako da te zovemo?". The code on another
+  device does the same. A used or expired link shows "Link je istekao ili je već
+  iskorišćen. Ako si već potvrdio/la adresu, prijavi se kodom. Ako nisi, pošalji
+  mejl ponovo." An existing account on "Prijava" gets only a code and no second
+  household. An unknown address on "Prijava" creates nothing.
+
 ## Correction slice — 2026-11-20: code in the first email
 
 The registration email used a confirmation link even though US1 / FR-003
@@ -367,6 +430,27 @@ so signing in again with the same account continues where they left off.
 | Delete offline | "Nema interneta. Nalog može da se obriše samo uz vezu." |
 | Delete failed | "Brisanje nije uspelo. Pokušaj ponovo." |
 | Deleted | "Nalog je obrisan." |
+| Sign-in subtitle (2026-11-21) | "Upiši e-poštu naloga i poslaćemo ti kod za prijavu. Lozinka nije potrebna." |
+| Sign-in switch link | "Nemaš nalog?" / "Registruj se" |
+| Unknown address on sign-in | "Ne postoji nalog sa ovom adresom." / "Proveri adresu ili napravi nov nalog." |
+| Sign-up title and button | "Napravi nalog" |
+| Sign-up subtitle | "Recepti, nabavka i plan obroka čuvaju se na nalogu. Lozinka nije potrebna." |
+| Sign-up helper | "Poslaćemo ti mejl da potvrdiš adresu." |
+| Sign-up switch link | "Već imaš nalog?" / "Prijavi se" |
+| Existing address on sign-up | "Već postoji nalog sa ovom adresom." / "Prijavi se umesto toga" |
+| Check email title | "Proveri mejl" |
+| Check email text (phone / desktop / Windows) | "Poslali smo mejl na {email}. Dodirni Potvrdi adresu u mejlu ili upiši kod iz njega." / "… Klikni na Potvrdi adresu …" / "Poslali smo mejl na {email}. Upiši ovde kod iz tog mejla." |
+| Resend confirmation | "Pošalji mejl ponovo" / "Pošalji mejl ponovo (za {s} s)" |
+| Code step title | "Upiši kod" |
+| Paste hint | "Možeš i da nalepiš ceo kod. Proverava se sam čim je upisan." |
+| Other device card | "Potvrdio/la si adresu na drugom uređaju?" / "Pošaljemo ti kod za prijavu i upišeš ga ovde." / "Pošalji mi kod" |
+| Used or expired link | "Link je istekao ili je već iskorišćen. Ako si već potvrdio/la adresu, prijavi se kodom. Ako nisi, pošalji mejl ponovo." |
+| Back | "Nazad" |
+| Success page (web) | "Uspešna registracija" / "Tvoja adresa je potvrđena. Dobrodošao/la za sto!" / "Još samo jedan dodir." / "Otvori Tavli i već si prijavljen/a. Sledeće pitamo samo za ime." / "Otvori Tavli" / "Tavli ti je na drugom uređaju?" / "Tamo, na ekranu „Proveri mejl“, dodirni „Pošalji mi kod“ i upiši kod koji stigne." |
+| Error page (web) | "Link više ne važi" / "Link iz mejla važi 10 minuta i radi samo jednom." / "Ako si ga već iskoristio/la, adresa je potvrđena." / "Ako nisi, otvori Tavli i dodirni „Pošalji mejl ponovo“." |
+| Empty page (web) | "Potvrda adrese" |
+| Confirmation email | subject "Potvrdi adresu za Tavli"; "Potvrdi adresu"; "Tavli ti je na drugom uređaju? Upiši ovaj kod tamo:"; "Dugme i kod važe 10 minuta i rade samo jednom." |
+| Sign-in email | subject "Tvoj Tavli kod"; title "Tvoj kod za prijavu"; "Upiši ovaj kod u aplikaciju Tavli da se prijaviš. Lozinka ti nije potrebna." |
 
 ### Key Entities
 
