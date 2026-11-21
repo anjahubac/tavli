@@ -163,6 +163,27 @@ void main() {
       return taps;
     }
 
+    testWidgets('smanjeno kretanje: oznaka izabranog taba bez animacije', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpNav(tester);
+      final pills = tester.widgetList<AnimatedContainer>(
+        find.descendant(
+          of: find.byType(TavliNavigation),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      expect(pills, isNotEmpty);
+      for (final pill in pills) {
+        expect(pill.duration, Duration.zero);
+      }
+    });
+
     testWidgets('telefon: donja traka, Početna u sredini', (tester) async {
       final taps = await pumpNav(tester);
       final xs = [
