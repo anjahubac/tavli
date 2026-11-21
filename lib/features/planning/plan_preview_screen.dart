@@ -324,8 +324,8 @@ class _SlotTile extends StatelessWidget {
   /// Jelo koje predlog zamenjuje (pregled izmena).
   final String? previous;
 
-  /// Red obroka ima unutrašnji razmak i zaobljen oblik, da polje za
-  /// hover i dodir obuhvati ceo red, a ne samo tekst.
+  /// Zajednički unutrašnji razmak redova obroka. Proširena lista sastojaka
+  /// koristi isti vodoravni razmak da bi bila poravnata sa tekstom reda.
   static const _padding = EdgeInsets.symmetric(
     horizontal: TavliSpacing.medium,
     vertical: TavliSpacing.small / 2,
