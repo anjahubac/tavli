@@ -57,11 +57,11 @@ that UI task becomes Ready. English is used for engineering documents only.
 
 Producer specs: [008](../008-household-members/spec.md), [014](../014-ai-response-contracts/spec.md)
 
-- **Q1** (Dev 2 with reviewer): Finalize enums, existing-recipe backfill, household rule edit UI, repeat rules scope and favorites aggregation with 008.
+- **Q1** (Dev 2 with reviewer): Finalize enums, existing-recipe backfill, household rule edit UI and repeat rules scope. Matija decided on 2026-11-20 that favorites aggregate across explicitly selected participants, defaulting to all current household members; Dev 2 reviews the [008 producer contract](../008-household-members/contracts/member-planning-inputs.md) before consuming it.
   Labels (enums, backfill, edit UI) proposed 2026-11-18 in
   [contracts/recipe-labels-contract.md](contracts/recipe-labels-contract.md);
   pending review by Dev 1 and Dev 3 (Trello #37). Rule edit UI, repeat scope and
-  favorites remain open.
+  selected-member favorites contract remains pending Dev 2 review.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

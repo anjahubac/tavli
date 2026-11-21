@@ -24,6 +24,10 @@ Attributed nutrition values on reference foods are separate from owner-only inta
 
 Producer dependencies: [008](../008-household-members/spec.md), [018](../018-ingredient-catalog/spec.md), [021](../021-home-and-cooking/spec.md)
 
+Independent [nutrition reference research](research.md) records source and
+prototype evidence. It does not approve a mapping or implement
+the team nutrition or diary features.
+
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).
 Before implementation, record typed fields, validation, identity/units/CivilDate,
@@ -74,5 +78,5 @@ tests do not contact a network; explicit guarded integration uses local services
 No speculative hosted deployment or publication. Record old-client/snapshot
 compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
-limits from open questions remain release gates. UI checks use current theme/
-motion components; do not redesign screens or extract a package incidentally.
+limits from open questions remain release gates. UI follows the design canvas and the
+UI standard; do not invent layouts or move components into the package incidentally.

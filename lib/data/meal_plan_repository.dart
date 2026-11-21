@@ -217,7 +217,9 @@ class MealPlanRepository {
     (_) async => MealPlanEntriesCompanion(isLocked: Value(locked)),
   );
 
-  /// Skuvan obrok više ne traži kupovinu; kupljeno i zaliha ostaju.
+  /// Skuvan obrok više ne traži kupovinu; kupljeno i zaliha ostaju. Samo
+  /// oznaka obroka: ekrani idu kroz `CookingRepository`, koji uz nju beleži
+  /// zapis kuvanja i potrošnju iz ostave.
   Future<void> setCooked(String entryId, {required bool cooked}) => _edit(
     entryId,
     (_) async => MealPlanEntriesCompanion(isCooked: Value(cooked)),

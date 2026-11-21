@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../icons/tavli_icons.dart';
 import '../motion/motion.dart';
 import '../tokens.dart';
 
@@ -9,13 +10,28 @@ import '../tokens.dart';
 class TavliEmptyState extends StatelessWidget {
   const TavliEmptyState({
     super.key,
-    required this.icon,
+    this.icon,
+    this.glyph,
+    this.art,
     required this.title,
     this.message,
     this.action,
-  });
+  }) : assert(
+         (icon != null ? 1 : 0) +
+                 (glyph != null ? 1 : 0) +
+                 (art != null ? 1 : 0) ==
+             1,
+         'tačno jedno: ikonica, Tavli ikonica ili crtež',
+       );
 
-  final IconData icon;
+  final IconData? icon;
+
+  /// Ikonica iz Tavli seta ([TavliIcons]); zamenjuje [icon].
+  final TavliIconData? glyph;
+
+  /// Crtež umesto ikonice u krugu, npr. animirana prazna korpa
+  /// aplikacije; sam nosi svoj opis za čitač ekrana.
+  final Widget? art;
   final String title;
   final String? message;
   final Widget? action;
@@ -34,18 +50,32 @@ class TavliEmptyState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ExcludeSemantics(
-                child: SizedBox.square(
-                  dimension: 72,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: c.primaryContainer,
-                      shape: BoxShape.circle,
+              if (art case final art?)
+                art
+              else
+                ExcludeSemantics(
+                  child: SizedBox.square(
+                    dimension: 72,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: c.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: switch (glyph) {
+                        final g? => TavliIcon(
+                          g,
+                          size: 32,
+                          color: c.onPrimaryContainer,
+                        ),
+                        null => Icon(
+                          icon,
+                          size: 32,
+                          color: c.onPrimaryContainer,
+                        ),
+                      },
                     ),
-                    child: Icon(icon, size: 32, color: c.onPrimaryContainer),
                   ),
                 ),
-              ),
               const SizedBox(height: TavliSpacing.medium),
               Semantics(
                 header: true,

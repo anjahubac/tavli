@@ -8,7 +8,7 @@ import '../domain/account.dart';
 import 'supabase_client.dart';
 
 /// Prijavljena sesija. [json] je ceo zapis sesije (tokeni) koji se čuva
-/// samo u Keychain-u/Keystore-u (`SessionStore`); nikad u bazi ili logu.
+/// samo u sistemskom bezbednom skladištu (`SessionStore`); nikad u bazi ili logu.
 class AuthSession {
   const AuthSession({
     required this.userId,
@@ -64,6 +64,11 @@ class SessionRevoked extends AuthFailure {
 /// Nalog više ne postoji (obrisan na drugom uređaju).
 class AccountGone extends AuthFailure {
   const AccountGone();
+}
+
+/// Uređaj je odbio pristup sigurnom skladištu sesije.
+class SecureStorageUnavailable extends AuthFailure {
+  const SecureStorageUnavailable();
 }
 
 /// Prijava e-poštom i kodom (Supabase Auth).
