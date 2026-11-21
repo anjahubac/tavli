@@ -126,11 +126,15 @@ New households generate a 12-character invite code. Previously issued
 16- and 64-character credentials remain valid. The HTTPS share URL uses the configured project's
 `/functions/v1/household-invite` endpoint and carries the credential in a URL
 fragment. A fixed redirect points to `tavli://household/join`. The server
-handles the code only in authenticated request bodies. Native link delivery and browser behavior must be verified with the UI and
-platform changes. The custom scheme has no OS-level domain verification.
-The in-app QR scanner and manual entry handle the invite directly. Verify
-Android App Links and iOS Universal Links before claiming verified delivery
-for shared browser links.
+handles the code only in authenticated request bodies.
+
+Matija (Dev 3) accepted the unverified `tavli://` custom scheme for the
+initial release. Another installed app registered for the scheme may receive
+the invite code, which remains usable by a signed-in bearer. Native delivery
+and browser behavior need platform verification. The in-app QR scanner and
+manual entry handle codes directly. macOS requires registering the scheme and
+routing it into the app. Windows support is planned and will require its own
+protocol registration when the desktop app becomes available.
 
 The confirmation Edge Function verifies the caller and consults the existing
 rate-limited RPC. When photos are required it receives an authorized manifest,
