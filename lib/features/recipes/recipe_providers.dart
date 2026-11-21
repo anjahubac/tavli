@@ -9,6 +9,7 @@ import '../../data/photo_resize.dart';
 import '../../data/recipe_photo_store.dart';
 import '../../data/recipe_repository.dart';
 import '../../domain/recipe.dart';
+import '../../domain/recipe_search.dart';
 import '../../domain/recipe_version.dart';
 import '../../providers.dart';
 import 'photo_picker.dart';
@@ -57,14 +58,18 @@ final recipePhotoFileProvider = FutureProvider.autoDispose
       (ref, path) => ref.watch(recipePhotoStoreProvider).file(path),
     );
 
-/// Upit za pretragu; deli se između liste i podeljenog prikaza.
-class RecipeSearch extends Notifier<String> {
+/// Naziv i filteri za listu recepata; ostaju i kad se prozor raširi.
+class RecipeSearch extends Notifier<RecipeFilter> {
   @override
-  String build() => '';
+  RecipeFilter build() => RecipeFilter.none;
 
-  void set(String query) => state = query;
+  void setQuery(String query) => state = state.copyWith(query: query);
+
+  void set(RecipeFilter filter) => state = filter;
+
+  void clearFilters() => state = state.cleared();
 }
 
-final recipeSearchProvider = NotifierProvider<RecipeSearch, String>(
+final recipeSearchProvider = NotifierProvider<RecipeSearch, RecipeFilter>(
   RecipeSearch.new,
 );

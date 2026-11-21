@@ -7,6 +7,8 @@ import '../../app/animations/spoon_refresh.dart';
 import '../../app/tab_app_bar.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
+import '../../domain/recipe_labels.dart';
+import '../../domain/recipe_search.dart';
 import 'add_recipe_sheet.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
@@ -84,7 +86,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   @override
   void initState() {
     super.initState();
-    _search = TextEditingController(text: ref.read(recipeSearchProvider));
+    _search = TextEditingController(text: ref.read(recipeSearchProvider).query);
   }
 
   @override
@@ -103,12 +105,25 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
     key: _searchKey,
     hint: 'Pretraži recepte',
     controller: _search,
-    onChanged: ref.read(recipeSearchProvider.notifier).set,
+    onChanged: ref.read(recipeSearchProvider.notifier).setQuery,
+  );
+
+  Widget _filterButton(RecipeFilter filter) => TavliIconButton(
+    icon: Icons.tune,
+    semanticLabel: filter.hasFilters
+        ? 'Filteri (${filter.activeFilters})'
+        : 'Filteri',
+    selected: filter.hasFilters,
+    onPressed: () => showTavliSheet<void>(
+      context,
+      title: 'Filteri',
+      builder: (_) => const _RecipeFilterSheet(),
+    ),
   );
 
   @override
   Widget build(BuildContext context) {
-    final query = ref.watch(recipeSearchProvider);
+    final filter = ref.watch(recipeSearchProvider);
     final content = ref
         .watch(recipesProvider)
         .when(
@@ -130,13 +145,24 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                 ),
               );
             }
-            final recipes = filterRecipes(all, query);
+            final recipes = searchRecipes(all, filter);
             if (recipes.isEmpty) {
               return _ScrollableMessage(
-                TavliEmptyState(
-                  icon: Icons.search_off,
-                  title: 'Nema recepata za „${query.trim()}“.',
-                ),
+                filter.hasFilters
+                    ? TavliEmptyState(
+                        icon: Icons.search_off,
+                        title: 'Nema recepata za izabrane filtere.',
+                        action: TavliButton.secondary(
+                          label: 'Očisti filtere',
+                          onPressed: ref
+                              .read(recipeSearchProvider.notifier)
+                              .clearFilters,
+                        ),
+                      )
+                    : TavliEmptyState(
+                        icon: Icons.search_off,
+                        title: 'Nema recepata za „${filter.query.trim()}“.',
+                      ),
               );
             }
             if (!widget.wide) {
@@ -159,7 +185,13 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                 TavliSpacing.large,
                 TavliSpacing.medium,
               ),
-              child: _searchField(),
+              child: Row(
+                children: [
+                  Expanded(child: _searchField()),
+                  const SizedBox(width: TavliSpacing.small),
+                  _filterButton(filter),
+                ],
+              ),
             ),
           Expanded(child: content),
         ],
@@ -179,6 +211,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
             title: 'Recepti',
             actions: [
               SizedBox(width: _searchWidth, child: _searchField()),
+              _filterButton(filter),
               TavliButton.primary(
                 label: 'Dodaj recept',
                 icon: Icons.add,
@@ -311,6 +344,84 @@ class _RecipeGrid extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Donji list sa filterima. Izbor se primenjuje odmah; „Sve“ isključuje
+/// filter.
+class _RecipeFilterSheet extends ConsumerWidget {
+  const _RecipeFilterSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(recipeSearchProvider);
+    final search = ref.read(recipeSearchProvider.notifier);
+
+    Widget section<T>(
+      String title,
+      List<TavliOption<T?>> options,
+      T? selected,
+      RecipeFilter Function(T?) apply,
+    ) => Padding(
+      padding: const EdgeInsets.only(bottom: TavliSpacing.medium),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TavliSectionHeader(title),
+          const SizedBox(height: TavliSpacing.small),
+          TavliChoice<T?>.chips(
+            options: [TavliOption<T?>(null, 'Sve'), ...options],
+            selected: selected,
+            onChanged: (v) => search.set(apply(v)),
+          ),
+        ],
+      ),
+    );
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          section<MealSuitability>(
+            'Obrok',
+            [for (final m in MealSuitability.values) TavliOption(m, m.label)],
+            filter.meal,
+            (v) => filter.copyWith(meal: () => v),
+          ),
+          section<DishWeight>(
+            'Težina',
+            [for (final w in DishWeight.values) TavliOption(w, w.label)],
+            filter.weight,
+            (v) => filter.copyWith(weight: () => v),
+          ),
+          section<DishKind>(
+            'Vrsta jela',
+            [for (final k in DishKind.values) TavliOption(k, k.label)],
+            filter.dishKind,
+            (v) => filter.copyWith(dishKind: () => v),
+          ),
+          section<int>(
+            'Vreme pripreme',
+            [for (final m in prepTimeLimits) TavliOption(m, 'Do $m min')],
+            filter.maxPrepMinutes,
+            (v) => filter.copyWith(maxPrepMinutes: () => v),
+          ),
+          TavliButtonRow(
+            expand: true,
+            children: [
+              TavliButton.secondary(
+                label: 'Očisti filtere',
+                onPressed: filter.hasFilters ? search.clearFilters : null,
+              ),
+              TavliButton.primary(
+                label: 'Prikaži recepte',
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

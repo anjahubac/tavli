@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
@@ -328,5 +329,124 @@ void main() {
     expect(second.dx, first.dx);
     expect(second.dy, greaterThan(first.dy));
     expect(tester.takeException(), isNull);
+  });
+
+  group('filteri (TRELLO-102)', () {
+    List<Recipe> labelled() => [
+      sampleRecipe('a', 'Sarma').copyWith(
+        labels: RecipeLabels.byUser(
+          meals: {MealSuitability.lunch},
+          weight: DishWeight.hearty,
+          dishKind: DishKind.cooked,
+        ),
+      ),
+      sampleRecipe('b', 'Grčka salata').copyWith(
+        prepMinutes: 10,
+        labels: RecipeLabels.byUser(
+          meals: {MealSuitability.dinner},
+          weight: DishWeight.light,
+          dishKind: DishKind.salad,
+        ),
+      ),
+      sampleRecipe('c', 'Pasulj'),
+    ];
+
+    Future<void> openFilters(WidgetTester tester) async {
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> close(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('Prikaži recepte'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Prikaži recepte'));
+      await tester.pumpAndSettle();
+    }
+
+    testTavli('izbor obroka i vremena sužava listu', (tester) async {
+      await pumpTavli(tester, recipes: labelled());
+
+      await openFilters(tester);
+      expect(find.text('OBROK'), findsOneWidget);
+      await tester.tap(find.text('Večera'));
+      await tester.pumpAndSettle();
+      await close(tester);
+
+      expect(find.text('Grčka salata'), findsOneWidget);
+      expect(find.text('Sarma'), findsNothing);
+      expect(find.text('Pasulj'), findsNothing);
+      expect(find.bySemanticsLabel('Filteri (1)'), findsOneWidget);
+    });
+
+    testTavli('bez pogotka: poruka i „Očisti filtere“ vraća sve', (
+      tester,
+    ) async {
+      await pumpTavli(tester, recipes: labelled());
+
+      await openFilters(tester);
+      await tester.tap(find.text('Jak'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Do 15 min'));
+      await tester.tap(find.text('Do 15 min'));
+      await tester.pumpAndSettle();
+      await close(tester);
+
+      expect(find.text('Nema recepata za izabrane filtere.'), findsOneWidget);
+      await tester.tap(find.text('Očisti filtere'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sarma'), findsOneWidget);
+      expect(find.text('Grčka salata'), findsOneWidget);
+      expect(find.text('Pasulj'), findsOneWidget);
+      expect(find.bySemanticsLabel('Filteri'), findsOneWidget);
+    });
+
+    testTavli('naziv i filter zajedno; „Sve“ isključuje filter', (
+      tester,
+    ) async {
+      await pumpTavli(tester, recipes: labelled());
+
+      await tester.enterText(find.byType(TavliSearchField), 'r');
+      await tester.pumpAndSettle();
+      await openFilters(tester);
+      await tester.tap(find.text('Ručak'));
+      await tester.pumpAndSettle();
+      await close(tester);
+      expect(find.text('Sarma'), findsOneWidget);
+      expect(find.text('Grčka salata'), findsNothing);
+
+      await openFilters(tester);
+      await tester.tap(find.text('Sve').first);
+      await tester.pumpAndSettle();
+      await close(tester);
+      expect(find.text('Sarma'), findsOneWidget);
+      expect(find.text('Grčka salata'), findsOneWidget);
+      expect(find.text('Pasulj'), findsNothing);
+    });
+
+    for (final size in [const Size(320, 640), const Size(1200, 800)]) {
+      testTavli('${size.width} px, tekst 2×, tamna tema, bez animacija: '
+          'filteri bez preliva', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        await pumpTavli(
+          tester,
+          size: size,
+          recipes: labelled(),
+          settings: {'theme_mode': 'dark'},
+        );
+        await openFilters(tester);
+        await tester.tap(find.text('Ručak'));
+        await tester.pumpAndSettle();
+        expect(find.bySemanticsLabel('Filteri (1)'), findsOneWidget);
+        await tester.ensureVisible(find.text('Prikaži recepte'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 }
