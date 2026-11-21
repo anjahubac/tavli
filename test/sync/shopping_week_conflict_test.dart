@@ -155,7 +155,7 @@ void main() {
         expect((await uploader(first).run()).rejected, 0);
         expect(backend.server.rows('shopping_lists').single, newer);
         for (final db in [a, b]) {
-          expect((await downloader(db).run()).complete, isTrue);
+          expect((await downloader(db).run()).deferred, 0);
           await expectBothItems(db, aId);
         }
       },
@@ -222,7 +222,8 @@ void main() {
         'added_at': now.toIso8601String(),
       },
     ], 'id');
-    expect((await downloader(b).run()).complete, isFalse);
+    // Lista u konfliktu i njena stavka.
+    expect((await downloader(b).run()).deferred, 2);
     expect(
       (await b.select(b.shoppingLists).get()).map((list) => list.id),
       unorderedEquals(['local-week', 'independent-list']),
@@ -239,11 +240,51 @@ void main() {
     await (b.delete(
       b.shoppingLists,
     )..where((t) => t.id.equals('local-week'))).go();
-    expect((await downloader(b).run()).complete, isTrue);
+    expect((await downloader(b).run()).deferred, 0);
     expect((await b.select(b.shoppingItems).getSingle()).id, 'dependent');
     expect(
       (await b.select(b.shoppingLists).get()).map((list) => list.id),
       unorderedEquals(['server-week', 'independent-list']),
     );
+  });
+
+  test('a permanently deferred row still records the pull', () async {
+    await insertLegacyWeek(a, 'server-week');
+    await writer(a).upsert('shopping_list', 'server-week');
+    await uploader(a).run();
+    // Bez lokalnog kreiranja u redu za slanje: konflikt ostaje nerešen.
+    await insertLegacyWeek(b, 'local-week');
+
+    var clock = now;
+    final engine = SyncEngine(
+      db: b,
+      scope: scope,
+      downloader: downloader(b),
+      uploader: uploader(b),
+      clock: () => clock,
+    );
+    addTearDown(engine.stop);
+    final phases = <SyncPhase?>[];
+    engine.watchPhase().listen(phases.add);
+
+    for (var pull = 0; pull < 2; pull++) {
+      await engine.pull();
+      final account = await b.select(b.accounts).getSingle();
+      expect(account.initialDownloadDone, isTrue);
+      expect(account.lastPullAt!.isAtSameMomentAs(clock), isTrue);
+      expect(engine.pullDeferred, 1);
+      expect(
+        await (b.select(
+          b.syncCursors,
+        )..where((t) => t.entity.equals('shopping_list'))).getSingleOrNull(),
+        isNull,
+      );
+      clock = clock.add(const Duration(minutes: 1));
+    }
+    expect(phases.where((p) => p == SyncPhase.downloading), hasLength(1));
+
+    backend.server.calls.clear();
+    await engine.onResume();
+    expect(backend.server.calls.where((c) => c.startsWith('fetch')), isEmpty);
   });
 }

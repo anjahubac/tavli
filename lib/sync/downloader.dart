@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift/isolate.dart' show DriftRemoteException;
 import 'package:drift/native.dart' show SqliteException;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
 import '../account/auth_controller.dart';
 import '../data/database.dart';
@@ -31,11 +32,12 @@ class Downloader {
   static const _deletions = 'deletions';
 
   /// Baca [SyncError] za greške mreže. Neprimenljivi redovi ostaju ispred
-  /// sačuvane pozicije, a nezavisni podaci se ipak preuzimaju.
-  Future<({bool complete, bool adoptedWeek})> run() async {
+  /// sačuvane pozicije, a nezavisni podaci se ipak preuzimaju. `deferred`
+  /// je broj takvih redova (0 = sve je primenjeno).
+  Future<({int deferred, bool adoptedWeek})> run() async {
     var adoptedWeek = false;
     final deferred = <(String, String)>{};
-    var complete = await _pull(
+    var skipped = await _pull(
       key: profileEntity,
       table: 'profiles',
       apply: (row) async {
@@ -44,7 +46,7 @@ class Downloader {
       },
     );
     for (final e in syncEntities) {
-      final applied = await _pull(
+      skipped += await _pull(
         key: e.name,
         table: e.remoteTable,
         idColumn: e.remoteId,
@@ -60,9 +62,8 @@ class Downloader {
         },
         onDeferred: (id) => deferred.add((e.name, id)),
       );
-      complete = applied && complete;
     }
-    final deletionsApplied = await _pull(
+    skipped += await _pull(
       key: _deletions,
       table: _deletions,
       timeColumn: 'deleted_at',
@@ -71,10 +72,11 @@ class Downloader {
         return true;
       },
     );
-    return (complete: deletionsApplied && complete, adoptedWeek: adoptedWeek);
+    return (deferred: skipped, adoptedWeek: adoptedWeek);
   }
 
-  Future<bool> _pull({
+  /// Vraća broj odloženih redova.
+  Future<int> _pull({
     required String key,
     required String table,
     required Future<bool> Function(Map<String, Object?>) apply,
@@ -91,7 +93,7 @@ class Downloader {
         ? null
         : _iso(cursor.updatedAt.subtract(overlap));
     String? afterId;
-    var complete = true;
+    var skipped = 0;
     while (true) {
       final rows = await _remote.fetchSince(
         table,
@@ -101,17 +103,17 @@ class Downloader {
         timeColumn: timeColumn,
         idColumn: idColumn,
       );
-      if (rows.isEmpty) return complete;
+      if (rows.isEmpty) return skipped;
       final last = rows.last;
       since = _iso(DateTime.parse(last[timeColumn]! as String));
       afterId = last[idColumn]! as String;
       await _db.transaction(() async {
         Map<String, Object?>? checkpoint;
         for (final row in rows) {
-          if (await _tryApply(apply, row)) {
-            if (complete) checkpoint = row;
+          if (await _tryApply(key, apply, row)) {
+            if (skipped == 0) checkpoint = row;
           } else {
-            complete = false;
+            skipped++;
             onDeferred?.call(row[idColumn]! as String);
           }
         }
@@ -129,20 +131,23 @@ class Downloader {
               );
         }
       });
-      if (rows.length < pageSize) return complete;
+      if (rows.length < pageSize) return skipped;
     }
   }
 
   Future<bool> _tryApply(
+    String entity,
     Future<bool> Function(Map<String, Object?>) apply,
     Map<String, Object?> row,
   ) async {
     try {
       // Savepoint: ako jedan zapis ne prođe, poništi i njegove pomoćne izmene.
       return await _db.transaction(() => apply(row));
-    } on FormatException {
+    } on FormatException catch (error) {
+      _logDeferred(entity, error.runtimeType.toString());
       return false;
-    } on InvalidDataException {
+    } on InvalidDataException catch (error) {
+      _logDeferred(entity, error.runtimeType.toString());
       return false;
     } on Object catch (error) {
       final cause = switch (error) {
@@ -151,10 +156,17 @@ class Downloader {
         _ => error,
       };
       if (cause is SqliteException && cause.resultCode == 19) {
-        return false; // SQLITE_CONSTRAINT
+        // SQLITE_CONSTRAINT; prošireni kod razlikuje UNIQUE, FK, NOT NULL...
+        _logDeferred(entity, 'SQLITE_CONSTRAINT ${cause.extendedResultCode}');
+        return false;
       }
       rethrow;
     }
+  }
+
+  /// Samo entitet i vrsta greške: poruke mogu da sadrže lične podatke.
+  static void _logDeferred(String entity, String reason) {
+    if (kDebugMode) debugPrint('Preuzimanje: odložen zapis $entity ($reason)');
   }
 
   static String _iso(DateTime d) => d.toUtc().toIso8601String();

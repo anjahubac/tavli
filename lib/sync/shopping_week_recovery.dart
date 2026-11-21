@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../account/auth_controller.dart';
 import '../data/database.dart';
 import 'entities.dart';
+import 'sync_remote.dart';
 import 'synced_writer.dart';
 
 /// Usvaja serverski ID nedeljne liste koju je drugi uređaj već napravio.
@@ -70,12 +71,14 @@ Future<bool> adoptShoppingWeek(
     ..where(db.pantryItems.sourceShoppingItemId.isInQuery(items));
 
   // Ponovo šaljemo zavisne upise koje je server odbio zbog stranog ključa.
+  // Samo upsert: DELETE deteta ne može da prekrši strani ključ, a brisanje
+  // roditelja kaskadno briše ili prazni (set null) zavisne redove.
   await (db.update(outbox)..where(
         (t) =>
             t.accountId.equals(scope.userId) &
             t.op.equals(OutboxOp.upsert) &
             t.state.equals(OutboxState.rejected) &
-            t.lastError.equals('23503') &
+            t.lastError.equals(pgForeignKeyViolation) &
             ((t.entity.equals('shopping_item') & t.recordId.isInQuery(items)) |
                 (t.entity.equals('shopping_source') &
                     t.recordId.isInQuery(sources)) |

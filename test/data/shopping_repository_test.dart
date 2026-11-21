@@ -293,6 +293,18 @@ void main() {
     final mon = CivilDate(2026, 11, 2);
     const kupus = Ingredient(name: 'Kupus', quantity: 300, unit: 'g');
 
+    test(
+      'ID nedeljne liste je zakucan: sha256(["shopping-week",plan,dan])',
+      () {
+        // Vrednost izračunata van aplikacije; promena znači nove ID-jeve
+        // za iste nedelje između verzija.
+        expect(
+          weekListId('plan', CivilDate(2026, 11, 2)),
+          '17e00dbdb9e30ab05520ab03dbf4363fa5cf87ed2167e5ab9b5b4aa4e11a37ce',
+        );
+      },
+    );
+
     test('kanonska nedeljna lista: ista za isti plan i nedelju, mesec do 6 '
         'delova, odvojeno po domaćinstvu', () async {
       final range = DateRange(CivilDate(2026, 11, 1), CivilDate(2026, 11, 30));

@@ -59,7 +59,7 @@ DateTime _date(Object? v) {
 DateTime? _dateOrNull(Object? v) => v == null ? null : _date(v);
 
 /// Kalendarski dan za `date` kolonu na serveru: `YYYY-MM-DD`.
-String _day(DateTime d) => CivilDate.fromWire(d).toString();
+String _day(DateTime d) => CivilDate.fromWire(d).isoDate;
 String? _dayOrNull(DateTime? d) => d == null ? null : _day(d);
 String? _tsOrNull(DateTime? d) => d == null ? null : _ts(d);
 String _json(Object? v) => jsonEncode(v);
@@ -174,6 +174,12 @@ class RecipeVersionEntity
       );
 }
 
+/// Nedeljna lista plana (`meal_plan_id` i `period_start` postavljeni) se
+/// posle kreiranja ne menja: ID je izveden iz plana i dana
+/// (`weekListId`), a uploader je šalje sa `ignoreDuplicates`, pa server
+/// tiho odbacuje svaki kasniji upsert istog ID-ja. Izmena takve liste
+/// (naziv, arhiviranje, `period_end`) traži da se sa `ignoreDuplicates`
+/// šalje samo kreiranje.
 class ShoppingListEntity
     extends SyncEntity<$ShoppingListsTable, ShoppingListRow> {
   const ShoppingListEntity();

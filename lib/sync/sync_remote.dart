@@ -67,6 +67,11 @@ abstract interface class PhotoRemote {
   Future<void> remove(List<String> objectKeys);
 }
 
+/// Postgres SQLSTATE za prekršen strani ključ. [classifySyncError] ga
+/// prosleđuje kao [SyncError.code], a uploader ga čuva u
+/// `sync_outbox.last_error` odbijenog upisa.
+const pgForeignKeyViolation = '23503';
+
 /// Kod Postgres/PostgREST/HTTP greške → vrsta greške (research R7).
 SyncError classifySyncError(String code) {
   if (code == '401' || code.startsWith('PGRST3')) {

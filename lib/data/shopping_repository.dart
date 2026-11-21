@@ -29,6 +29,14 @@ const _source = 'shopping_source';
 const _contribution = 'shopping_contribution';
 const _allocation = 'supply_allocation';
 
+/// Trajni ID nedeljne liste: SHA-256 od JSON niza
+/// `["shopping-week", planId, "yyyy-MM-dd"]` (početak nedelje, ISO datum).
+/// Isti plan i dan daju isti ID i kada oba uređaja rade offline. Format je
+/// deo ugovora sa serverom i drugim verzijama aplikacije; ne menja se.
+String weekListId(String planId, CivilDate start) => sha256
+    .convert(utf8.encode(jsonEncode(['shopping-week', planId, start.isoDate])))
+    .toString();
+
 /// Zajednička stanja i pozivi između delova [ShoppingRepository]
 /// (`shopping_sources.dart`, `shopping_items.dart`, `shopping_reconcile.dart`).
 abstract class _ShoppingBase {
@@ -240,6 +248,8 @@ class ShoppingRepository extends _ShoppingBase
   Future<String> recipeList() => _ensureList();
 
   /// Kanonska lista za nedeljni deo plana: ista za isti plan i nedelju.
+  /// Posle kreiranja se ne menja (videti `ShoppingListEntity`): server
+  /// odbacuje kasnije upsertove istog ID-ja.
   @override
   Future<String> weekList(String planId, WeekPeriod period) =>
       _db.transaction(() async {
@@ -253,18 +263,7 @@ class ShoppingRepository extends _ShoppingBase
                 ))
                 .getSingleOrNull();
         if (existing != null) return existing.id;
-        // Isti plan i dan daju isti ID i kada oba uređaja rade offline.
-        final id = sha256
-            .convert(
-              utf8.encode(
-                jsonEncode([
-                  'shopping-week',
-                  planId,
-                  period.range.start.toString(),
-                ]),
-              ),
-            )
-            .toString();
+        final id = weekListId(planId, period.range.start);
         await _db
             .into(_db.shoppingLists)
             .insert(

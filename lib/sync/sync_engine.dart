@@ -172,6 +172,12 @@ class SyncEngine {
   )..where((t) => t.userId.equals(_scope.userId))).getSingleOrNull();
 
   Completer<void>? _pullFinished;
+  var _pullDeferred = 0;
+
+  /// Broj redova koje poslednje preuzimanje nije moglo da primeni (0 = sve
+  /// je primenjeno). Odvojeno od `lastPullAt`, koji beleži da je preuzimanje
+  /// prošlo do kraja.
+  int get pullDeferred => _pullDeferred;
 
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
   Future<void> pull() async {
@@ -190,16 +196,19 @@ class SyncEngine {
       adoptedWeek = result.adoptedWeek;
       if (_stopped) return;
       await afterPull?.call();
-      if (result.complete) {
-        await (_db.update(
-          _db.accounts,
-        )..where((t) => t.userId.equals(_scope.userId))).write(
-          AccountsCompanion(
-            initialDownloadDone: const Value(true),
-            lastPullAt: Value(_clock()),
-          ),
-        );
-      }
+      // Preuzimanje je stiglo do kraja i kad je neki red odložen: taj red
+      // ostaje ispred sačuvane pozicije i ponovo se pokušava pri sledećem
+      // preuzimanju, bez trake "Preuzimam…" i bez preuzimanja pri svakom
+      // povratku u aplikaciju.
+      _pullDeferred = result.deferred;
+      await (_db.update(
+        _db.accounts,
+      )..where((t) => t.userId.equals(_scope.userId))).write(
+        AccountsCompanion(
+          initialDownloadDone: const Value(true),
+          lastPullAt: Value(_clock()),
+        ),
+      );
       setPhase(null);
       // Recepti su već upotrebljivi; slike stižu posle.
       await _photoSync?.fetchMissing();
@@ -217,7 +226,7 @@ class SyncEngine {
     if (adoptedWeek && !_stopped) await push();
   }
 
-  Future<({bool complete, bool adoptedWeek})> _download(
+  Future<({int deferred, bool adoptedWeek})> _download(
     Downloader downloader,
   ) async {
     try {

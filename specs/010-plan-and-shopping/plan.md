@@ -192,7 +192,12 @@ canonical plan ID and civil date into a deterministic ID within the server's
 64-character limit. Existing server IDs remain valid. Downloads adopt the
 server identity for a conflicting unsent week, reparent local shopping items
 and sources, and requeue dependent foreign-key rejections. A repeated weekly
-list creation does not overwrite the existing server row. Mutable user-data
+list creation does not overwrite the existing server row: weekly lists are
+immutable after creation, so the uploader sends them with `ignoreDuplicates`.
+A future edit to a weekly list (name, archive flag, `period_end`) must send only
+the creating entry that way. The ID is SHA-256 of
+`["shopping-week", planId, "yyyy-MM-dd"]` and is pinned by a test; changing it
+would split the same week between app versions. Mutable user-data
 writes still use the existing last-server-write rule. Exactly-once delivery of
 mutable operations needs server-side operation identity and acknowledgement.
 

@@ -143,7 +143,7 @@ class FakeServer {
       }
       if (name == 'shopping_items' &&
           !table('shopping_lists').containsKey(r['list_id'])) {
-        throw const PermanentSyncError('23503');
+        throw const PermanentSyncError(pgForeignKeyViolation);
       }
       final row = {...?table(name)[id], ...r, 'updated_at': _now()};
       // Kao kolona koju računa baza (generated always).
