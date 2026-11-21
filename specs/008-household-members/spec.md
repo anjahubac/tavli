@@ -40,6 +40,8 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-108**: Members may like or dislike catalog foods, the existing `DishKind` values and reviewed cuisine codes, and add an optional short planning note. These are soft preferences. No dietary-mode setting or custom style category is included.
 - **FR-109**: A favorite is a personal user/recipe pair. Only selected participants' favorites for accessible household recipes contribute to planning; delete the pair when the recipe is deleted or the user loses access on leaving the household.
 - **FR-110**: The planner receives a purpose-limited aggregate of selected members' restrictions, preferences and favorite counts, not their personal rows, profiles or diary.
+- **FR-111**: Each member explicitly opts in, per field (`allergens`, `preferences`, `planningNote`), to sharing with household planning; defaults are off, only the owner can change them, and withdrawal takes effect on the next request and invalidates caches. The server omits unshared fields; a member's own data is always returned to that member. See the contract's Disclosure and consent section.
+- **FR-112**: A single-participant request returns only that person's consented fields, with no name or ID. AI output is untrusted: a leak guard rejects responses that echo names, emails, notes or attributed allergies, and prompts use pseudonymous labels and are never logged.
 
 ## User scenarios and acceptance
 
@@ -49,6 +51,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **US4 / SC-004**: With two members selected, either member's allergen excludes a mapped candidate even when AI suggests it. An unresolved ingredient is marked unknown. Selecting one member omits the other's inputs.
 - **US5 / SC-005**: One member likes a food and another dislikes it; the conflict affects ranking without becoming a safety ban. A deleted recipe or departing member stops contributing favorites.
 - **US6 / SC-006**: Co-members cannot read one another's raw personal settings; a foreign or removed participant ID yields no partial aggregate.
+- **US7 / SC-007**: A field a member has not shared never appears in another member's plan inputs, prompt or UI, for one or several participants; withdrawing consent removes it. An AI response that echoes a name, note or attributed allergy is rejected and never shown or stored.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
