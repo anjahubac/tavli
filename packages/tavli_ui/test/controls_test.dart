@@ -60,12 +60,12 @@ void main() {
           ],
         ),
       );
-      expect(sizeOf(tester, 'Glavno').height, 56);
-      expect(sizeOf(tester, 'Sporedno').height, 56);
+      expect(sizeOf(tester, 'Glavno').height, 48);
+      expect(sizeOf(tester, 'Sporedno').height, 48);
       expect(sizeOf(tester, 'Tekst').height, 48);
       expect(sizeOf(tester, 'Obriši').height, 48);
-      expect(radiusOf(tester, 'Glavno'), BorderRadius.circular(18));
-      expect(radiusOf(tester, 'Sporedno'), BorderRadius.circular(18));
+      expect(radiusOf(tester, 'Glavno'), BorderRadius.circular(16));
+      expect(radiusOf(tester, 'Sporedno'), BorderRadius.circular(16));
       expect(radiusOf(tester, 'Tekst'), BorderRadius.circular(14));
 
       final style = tester.widget<Text>(find.text('Glavno'));
@@ -125,12 +125,12 @@ void main() {
         ),
       );
       expect(find.byIcon(Icons.add), findsOneWidget);
-      expect(sizeOf(tester, 'Dodaj recept').height, 56);
+      expect(sizeOf(tester, 'Dodaj recept').height, 48);
     });
   });
 
   group('TavliButtonRow', () {
-    testWidgets('sporedno pored glavnog je iste visine, 56', (tester) async {
+    testWidgets('sporedno pored glavnog je iste visine, 48', (tester) async {
       await pump(
         tester,
         TavliButtonRow(
@@ -140,11 +140,13 @@ void main() {
           ],
         ),
       );
-      expect(sizeOf(tester, 'Skuvano').height, 56);
-      expect(sizeOf(tester, 'Kuvaj').height, 56);
+      expect(sizeOf(tester, 'Skuvano').height, 48);
+      expect(sizeOf(tester, 'Kuvaj').height, 48);
     });
 
-    testWidgets('tekstualno pored sporednog raste na 56', (tester) async {
+    testWidgets('tekstualno pored sporednog je iste visine, 48', (
+      tester,
+    ) async {
       await pump(
         tester,
         TavliButtonRow(
@@ -154,8 +156,8 @@ void main() {
           ],
         ),
       );
-      expect(sizeOf(tester, 'Otkaži').height, 56);
-      expect(sizeOf(tester, 'Preskoči').height, 56);
+      expect(sizeOf(tester, 'Otkaži').height, 48);
+      expect(sizeOf(tester, 'Preskoči').height, 48);
     });
 
     testWidgets('samo tekstualna dugmad su visine 48', (tester) async {
@@ -195,14 +197,14 @@ void main() {
         );
         final a = sizeOf(tester, 'Ponovo predloži sve obroke');
         final b = sizeOf(tester, 'Kuvaj');
-        expect(a.height, greaterThanOrEqualTo(56));
+        expect(a.height, greaterThanOrEqualTo(48));
         expect(a.height, b.height);
         expect(a.width, b.width);
         expect(tester.takeException(), isNull);
       });
     }
 
-    testWidgets('u traci sa akcijama sva dugmad su 56', (tester) async {
+    testWidgets('u traci sa akcijama sva dugmad su 48', (tester) async {
       await pump(
         tester,
         SizedBox(
@@ -215,8 +217,8 @@ void main() {
           ),
         ),
       );
-      expect(sizeOf(tester, 'A').height, 56);
-      expect(sizeOf(tester, 'B').height, 56);
+      expect(sizeOf(tester, 'A').height, 48);
+      expect(sizeOf(tester, 'B').height, 48);
     });
   });
 

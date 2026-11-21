@@ -208,6 +208,7 @@ class TavliSearchField extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.autofocus = false,
+    this.focusNode,
   });
 
   /// Npr. „Pretraži recepte“; čita ga i čitač ekrana.
@@ -216,6 +217,9 @@ class TavliSearchField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final bool autofocus;
+
+  /// Za prečicu ⌘F, koja premešta fokus u pretragu.
+  final FocusNode? focusNode;
 
   @override
   State<TavliSearchField> createState() => _TavliSearchFieldState();
@@ -264,6 +268,7 @@ class _TavliSearchFieldState extends State<TavliSearchField> {
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
       autofocus: widget.autofocus,
+      focusNode: widget.focusNode,
       textInputAction: TextInputAction.search,
       style: _textStyle(context),
       decoration: _decoration(

@@ -122,6 +122,7 @@ void main() {
     );
     // Kanvas: na koraku sa kodom gore je "Nazad" umesto znaka.
     expect(button('Nazad'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(app.backend.auth.sentCodes, ['ana@mail.com']);
 
     await tester.enterText(field('Kod iz poruke'), FakeServer.code);

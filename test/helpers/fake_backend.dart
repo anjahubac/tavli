@@ -81,6 +81,7 @@ class FakeServer {
     'pantry_items': 'pantry_item',
     'meal_plans': 'meal_plan',
     'meal_plan_entries': 'meal_plan_entry',
+    'cooked_events': 'cooked_event',
     'shopping_sources': 'shopping_source',
     'shopping_contributions': 'shopping_contribution',
     'supply_allocations': 'supply_allocation',
@@ -93,6 +94,7 @@ class FakeServer {
     'recipe_versions': [('recipe', 'recipe_id')],
     'shopping_items': [('shopping_list', 'list_id')],
     'meal_plan_entries': [('meal_plan', 'plan_id')],
+    'cooked_events': [('meal_plan_entry', 'plan_entry_id')],
     'ratings': [('recipe', 'recipe_id')],
     'shopping_sources': [
       ('shopping_list', 'list_id'),
@@ -205,6 +207,7 @@ class FakeServer {
         setNull('shopping_lists', 'meal_plan_id');
       case 'meal_plan_entries':
         cascade('shopping_sources', 'plan_entry_id');
+        cascade('cooked_events', 'plan_entry_id');
       case 'shopping_items':
         setNull('shopping_contributions', 'shopping_item_id');
         setNull('pantry_items', 'source_shopping_item_id');

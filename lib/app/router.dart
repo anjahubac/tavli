@@ -11,6 +11,7 @@ import '../features/home/home_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
 import '../features/planning/plan_setup_screen.dart';
+import '../features/recipes/cooking_mode_screen.dart';
 import '../features/recipes/from_name_screen.dart';
 import '../features/recipes/from_photo_screen.dart';
 import '../features/recipes/recipe_chat_screen.dart';
@@ -22,6 +23,7 @@ import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
 import '../features/shopping/shopping_screen.dart';
 import 'animations/empty_fridge.dart';
+import 'app_menu.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
@@ -72,10 +74,12 @@ GoRouter createRouter({
   String initialLocation = homeLocation,
   AuthState Function()? auth,
   Listenable? refresh,
+  MenuPopupTracker? menuPopups,
   bool debugTools = kDebugMode,
 }) => GoRouter(
   initialLocation: initialLocation,
   refreshListenable: refresh,
+  observers: [?menuPopups?.root],
   redirect: auth == null
       ? null
       : (context, state) =>
@@ -100,6 +104,19 @@ GoRouter createRouter({
       path: signUpPath,
       builder: (context, state) => const SignUpScreen(),
     ),
+    // Režim kuvanja je preko celog ekrana, bez glavne navigacije (021 FR-010).
+    GoRoute(
+      path: '/cook/recipe/:id',
+      builder: (context, state) =>
+          RecipeCookingRoute(id: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/cook/meal/:planId/:entryId',
+      builder: (context, state) => MealCookingRoute(
+        planId: state.pathParameters['planId']!,
+        entryId: state.pathParameters['entryId']!,
+      ),
+    ),
     // Profil i podešavanja su iznad tabova; otvaraju se preko avatara.
     GoRoute(
       path: '/profile',
@@ -123,6 +140,7 @@ GoRouter createRouter({
       builder: (context, state, shell) => HomeShell(shell: shell),
       branches: [
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('plan')],
           routes: [
             GoRoute(
               path: '/plan',
@@ -150,6 +168,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('shopping')],
           routes: [
             GoRoute(
               path: '/shopping',
@@ -158,6 +177,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('home')],
           routes: [
             GoRoute(
               path: homeLocation,
@@ -166,6 +186,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('recipes')],
           routes: [
             GoRoute(
               path: '/recipes',
@@ -215,6 +236,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('pantry')],
           routes: [
             GoRoute(
               path: '/pantry',
