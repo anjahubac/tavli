@@ -924,6 +924,71 @@ void main() {
       expect(draft.proposals.containsKey(lunch), isFalse);
     });
 
+    test('zadržan jak doručak: popravlja se nov jak ručak', () async {
+      final breakfast = MealSlot(monday, MealType.breakfast);
+      final request = PlanRequest(
+        range: DateRange(monday, monday),
+        mealTypes: const {MealType.breakfast, MealType.lunch},
+        only: {lunch},
+        kept: {
+          breakfast: const MealFacts(
+            recipeKey: 'r9',
+            title: 'Prebranac',
+            weight: DishWeight.hearty,
+          ),
+        },
+      );
+      var outlines = 0;
+      client.handler = (r) {
+        if (!isOutline(r)) return goodAnswer(r);
+        outlines++;
+        return outlineOf(r, {
+          'lunch': outlines == 1
+              ? ('Sarma', 'hearty', 'cooked')
+              : ('Piletina sa povrćem', 'medium', 'cooked'),
+        });
+      };
+
+      final draft = await ai.propose(request);
+
+      expect(outlines, 2);
+      expect(draft.proposals[lunch]!.title, 'Piletina sa povrćem');
+      expect(draft.proposals.containsKey(breakfast), isFalse);
+    });
+
+    test('Zameni jelo: isti recept kao zadržan sutrašnji se menja', () async {
+      final tuesday = monday.addDays(1);
+      final tuesdayLunch = MealSlot(tuesday, MealType.lunch);
+      final request = PlanRequest(
+        range: DateRange(monday, tuesday),
+        mealTypes: const {MealType.lunch},
+        only: {lunch},
+        kept: {
+          tuesdayLunch: MealFacts(
+            recipeKey: draftRecipeKey('Sarma'),
+            title: 'Sarma',
+            weight: DishWeight.hearty,
+          ),
+        },
+      );
+      var outlines = 0;
+      client.handler = (r) {
+        if (!isOutline(r)) return goodAnswer(r);
+        outlines++;
+        return outlineOf(r, {
+          'lunch': outlines == 1
+              ? ('Sarma', 'hearty', 'cooked')
+              : ('Pasulj', 'hearty', 'cooked'),
+        });
+      };
+
+      final draft = await ai.propose(request);
+
+      expect(outlines, 2);
+      expect(draft.proposals[lunch]!.title, 'Pasulj');
+      expect(draft.proposals.containsKey(tuesdayLunch), isFalse);
+    });
+
     test('izostavljena ili nepoznata oznaka se ne odbija', () {
       final r = parseOutline(
         {

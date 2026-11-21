@@ -73,6 +73,43 @@ void main() {
       });
     });
 
+    test('zadržan jak doručak: krši nov jak ručak, ne doručak', () {
+      final breaks = mealRuleBreaks(
+        {
+          slot(0, MealType.breakfast): dish('a', DishWeight.hearty),
+          slot(0, MealType.lunch): dish('b', DishWeight.hearty),
+        },
+        movable: {slot(0, MealType.lunch)},
+      );
+      expect(breaks, {
+        slot(0, MealType.lunch): {MealRule.secondHearty},
+      });
+    });
+
+    test('zadržan isti recept kasnije: krši raniji nov predlog', () {
+      final breaks = mealRuleBreaks(
+        {
+          slot(2, MealType.lunch): dish('x'),
+          slot(3, MealType.lunch): dish('x'),
+        },
+        movable: {slot(2, MealType.lunch)},
+      );
+      expect(breaks, {
+        slot(2, MealType.lunch): {MealRule.repeated},
+      });
+    });
+
+    test('oba mesta smeju da se menjaju: ostaje staro pravilo', () {
+      final meals = {
+        slot(0, MealType.breakfast): dish('a', DishWeight.hearty),
+        slot(0, MealType.lunch): dish('a', DishWeight.hearty),
+      };
+      expect(
+        mealRuleBreaks(meals, movable: meals.keys.toSet()),
+        mealRuleBreaks(meals),
+      );
+    });
+
     test('jak obrok u različite dane je u redu', () {
       final breaks = mealRuleBreaks({
         slot(0, MealType.lunch): dish('a', DishWeight.hearty),

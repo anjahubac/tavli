@@ -229,7 +229,7 @@ class MealPlanAI {
     required List<Recipe> library,
   }) async {
     List<MealSlot> broken() {
-      final breaks = mealRuleBreaks(facts());
+      final breaks = mealRuleBreaks(facts(), movable: movable);
       return [
         for (final s in movable)
           if (breaks[s]?.isNotEmpty ?? false) s,
@@ -252,7 +252,7 @@ class MealPlanAI {
 
     bad = broken();
     for (final slot in bad) {
-      final before = mealRuleBreaks(facts());
+      final before = mealRuleBreaks(facts(), movable: movable);
       for (final r in library) {
         final weight = r.labels.weightValue;
         if (weight == null) continue;
@@ -262,7 +262,10 @@ class MealPlanAI {
           weight: weight,
           dishKind: r.labels.dishKindValue,
         );
-        final after = mealRuleBreaks({...facts(), slot: candidate.facts});
+        final after = mealRuleBreaks({
+          ...facts(),
+          slot: candidate.facts,
+        }, movable: movable);
         final fits =
             (after[slot]?.isEmpty ?? true) &&
             after.entries.every(

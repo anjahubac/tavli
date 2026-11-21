@@ -82,11 +82,20 @@ Set<MealRule> slotRuleBreaks(MealType type, MealFacts facts) => {
 };
 
 /// Prekršena pravila po mestu, za ceo [meals] (predlozi i jela koja
-/// ostaju). Kod dva jaka obroka u danu krši pravilo onaj koji nije ručak;
-/// kod ponovljenog recepta kasnije mesto.
-Map<MealSlot, Set<MealRule>> mealRuleBreaks(Map<MealSlot, MealFacts> meals) {
+/// ostaju).
+///
+/// Kada sukob uključuje jelo koje ostaje i jelo koje sme da se menja
+/// ([movable]), krši ga ono koje sme da se menja, da bi popravka uopšte
+/// bila moguća. Inače: kod dva jaka obroka u danu krši pravilo onaj koji
+/// nije ručak, kod ponovljenog recepta kasnije mesto. Bez [movable] sva
+/// mesta smeju da se menjaju.
+Map<MealSlot, Set<MealRule>> mealRuleBreaks(
+  Map<MealSlot, MealFacts> meals, {
+  Set<MealSlot>? movable,
+}) {
   final result = <MealSlot, Set<MealRule>>{};
   void add(MealSlot s, MealRule r) => (result[s] ??= {}).add(r);
+  bool kept(MealSlot s) => movable != null && !movable.contains(s);
 
   for (final e in meals.entries) {
     for (final r in slotRuleBreaks(e.key.type, e.value)) {
@@ -103,9 +112,12 @@ Map<MealSlot, Set<MealRule>> mealRuleBreaks(Map<MealSlot, MealFacts> meals) {
   }
   for (final day in heartyByDay.values) {
     if (day.length < 2) continue;
-    final keep = day.firstWhere(
+    // Ostaje: zadržan ručak, pa bilo koje zadržano jelo, pa ručak.
+    final keptDay = day.where(kept).toList();
+    final pool = keptDay.isEmpty ? day : keptDay;
+    final keep = pool.firstWhere(
       (s) => s.type == MealType.lunch,
-      orElse: () => day.first,
+      orElse: () => pool.first,
     );
     for (final s in day) {
       if (s != keep) add(s, MealRule.secondHearty);
@@ -117,6 +129,10 @@ Map<MealSlot, Set<MealRule>> mealRuleBreaks(Map<MealSlot, MealFacts> meals) {
       final a = slots[j], b = slots[i];
       if (meals[a]!.recipeKey == meals[b]!.recipeKey &&
           a.date.daysUntil(b.date) < repeatWindowDays) {
+        if (kept(b) && !kept(a)) {
+          add(a, MealRule.repeated);
+          continue;
+        }
         add(b, MealRule.repeated);
         break;
       }

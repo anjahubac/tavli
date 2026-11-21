@@ -31,6 +31,11 @@ from the card text is out of scope for this slice.
 The same recipe means the same library id, or the same `draftRecipeKey` for
 a new dish. An unknown label (`null`) never breaks a rule.
 
+When a conflict involves a kept meal and a proposed one, the proposed slot
+breaks the rule, so it can be fixed: a kept hearty breakfast makes a proposed
+hearty lunch break `secondHearty`, and a kept Thursday recipe makes the same
+recipe proposed on Wednesday break `repeated`.
+
 These two rules replace the card and FR-102 wording, as recorded in the
 [recipe labels contract](recipe-labels-contract.md#notes-for-meal-rules-39):
 lunch is any `medium`/`hearty` dish (not only cooked or roast), and the
