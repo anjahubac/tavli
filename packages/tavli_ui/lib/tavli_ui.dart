@@ -8,6 +8,7 @@ export 'src/content/tavli_data_table.dart';
 export 'src/content/tavli_list.dart';
 export 'src/content/tavli_media.dart';
 export 'src/content/tavli_notice.dart';
+export 'src/content/tavli_plan.dart';
 export 'src/content/tavli_states.dart';
 export 'src/content/tavli_tag.dart';
 export 'src/controls/tavli_button.dart' hide TavliButtonScope;
