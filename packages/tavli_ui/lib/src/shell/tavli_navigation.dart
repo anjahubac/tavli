@@ -7,6 +7,7 @@ import '../motion/motion.dart';
 import '../platform.dart';
 import '../theme/tavli_colors.dart';
 import 'shell_parts.dart';
+import 'tavli_window_frame.dart';
 
 /// Jedan tab glavne navigacije.
 @immutable
@@ -199,7 +200,9 @@ class _SideBar extends StatelessWidget {
     final platform = TavliPlatform.of(context);
     final windows = platform == TavliPlatform.windows;
     // macOS: semafori prozora stoje u vrhu bočne trake.
-    final top = platform == TavliPlatform.macos ? 52.0 : 12.0;
+    final top = platform == TavliPlatform.macos
+        ? TavliWindowFrame.macosTitleBarHeight
+        : 12.0;
     final order = [
       for (final (i, d) in nav.destinations.indexed)
         if (d.home) i,

@@ -10,6 +10,7 @@ import '../domain/theme_choice.dart';
 import '../features/account/sync_banner.dart';
 import '../providers.dart';
 import 'animations/intro_overlay.dart';
+import 'app_menu.dart';
 import 'router.dart';
 import 'theme_controller.dart';
 
@@ -112,7 +113,8 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       darkTheme: darkTheme,
       themeMode: mode,
       routerConfig: _router,
-      builder: _textScaling,
+      builder: (context, child) =>
+          appMenuBar(_router, ref, _textScaling(context, child)),
       scaffoldMessengerKey: _messenger,
     );
   }
@@ -120,8 +122,16 @@ class _TavliAppState extends ConsumerState<TavliApp> {
 
 /// Veliki naslovi rastu sporije od običnog teksta kad je u sistemu
 /// uključen veći tekst.
-Widget _textScaling(BuildContext context, Widget? child) =>
-    TavliTextScaling(child: child ?? const SizedBox.shrink());
+///
+/// Na macOS-u sadržaj ide i ispod providne naslovne trake, pa ekrani bez
+/// bočne navigacije dobijaju mesto za semafore (`TavliWindowFrame`). Na
+/// Windows-u za sada ostaje sistemska naslovna traka.
+Widget _textScaling(BuildContext context, Widget? child) {
+  final scaled = TavliTextScaling(child: child ?? const SizedBox.shrink());
+  return TavliPlatform.of(context) == TavliPlatform.macos
+      ? TavliWindowFrame(child: scaled)
+      : scaled;
+}
 
 class _Refresh extends ChangeNotifier {
   void ping() => notifyListeners();

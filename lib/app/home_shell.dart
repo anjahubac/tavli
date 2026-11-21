@@ -117,13 +117,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           else
             const SizedBox.shrink(),
           Expanded(
-            child: Focus.withExternalFocusNode(
-              focusNode: _contentFocus,
-              child: Column(
-                children: [
-                  const SyncBanner(),
-                  Expanded(child: widget.shell),
-                ],
+            child: _beside(
+              wide,
+              Focus.withExternalFocusNode(
+                focusNode: _contentFocus,
+                child: Column(
+                  children: [
+                    const SyncBanner(),
+                    Expanded(child: widget.shell),
+                  ],
+                ),
               ),
             ),
           ),
@@ -158,6 +161,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
 /// Dva reda na krajevima ostavljaju mesta za pune nazive, a Početna ostaje
 /// u sredini. Čitač ekrana i tastatura prate redosled tabova.
+/// Pored bočne trake sadržaj počinje od vrha prozora i na macOS-u.
+Widget _beside(bool wide, Widget child) =>
+    wide ? TavliBesideNavigation(child: child) : child;
+
 class _LargeTextNavigation extends StatelessWidget {
   const _LargeTextNavigation({
     required this.selected,

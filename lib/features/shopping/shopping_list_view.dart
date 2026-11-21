@@ -279,22 +279,35 @@ class ShoppingItemTile extends ConsumerWidget {
     final showSources = item.isManual || onSelect != null
         ? null
         : () => unawaited(showItemSources(context, ref, item));
-    return TavliCheckRow(
-      title: item.name,
-      detail: detail.isEmpty ? null : detail,
-      checked: item.isBought,
-      onChanged: received ? null : (_) => toggle(),
-      onSelect: onSelect,
-      selected: selected,
-      onLongPress: showSources,
-      longPressLabel: showSources == null ? null : 'Za koje obroke',
-      trailing: item.isManual && !item.isBought
-          ? TavliIconButton(
-              glyph: TavliIcons.delete,
-              semanticLabel: 'Obriši',
-              onPressed: () => unawaited(delete()),
-            )
-          : null,
+    return TavliContextMenu(
+      // Desni klik (računar): isto što i dugi pritisak.
+      actions: [
+        if (showSources != null)
+          TavliMenuAction('Za koje obroke', onSelected: showSources),
+        if (item.isManual && !item.isBought)
+          TavliMenuAction(
+            'Obriši',
+            isDestructive: true,
+            onSelected: () => unawaited(delete()),
+          ),
+      ],
+      child: TavliCheckRow(
+        title: item.name,
+        detail: detail.isEmpty ? null : detail,
+        checked: item.isBought,
+        onChanged: received ? null : (_) => toggle(),
+        onSelect: onSelect,
+        selected: selected,
+        onLongPress: showSources,
+        longPressLabel: showSources == null ? null : 'Za koje obroke',
+        trailing: item.isManual && !item.isBought
+            ? TavliIconButton(
+                glyph: TavliIcons.delete,
+                semanticLabel: 'Obriši',
+                onPressed: () => unawaited(delete()),
+              )
+            : null,
+      ),
     );
   }
 }

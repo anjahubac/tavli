@@ -205,6 +205,10 @@ void main() {
             );
             app.picker.failure = Exception('synthetic-picker-failure');
             final picker = button('Izaberi iz galerije');
+            // Na macOS-u je iznad sadržaja mesto za semafore, pa uzan
+            // prozor sa tekstom 2× dugme drži ispod vidljivog dela.
+            await tester.ensureVisible(picker);
+            await tester.pumpAndSettle();
             expect(
               tester.getSemantics(picker),
               matchesSemantics(

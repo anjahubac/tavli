@@ -2,6 +2,7 @@ import 'package:flutter/semantics.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../icons/tavli_icons.dart';
+import '../platform.dart';
 import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 
@@ -103,7 +104,10 @@ class TavliCheckRow extends StatelessWidget {
     final onSelect = this.onSelect;
     final onLongPress = this.onLongPress;
     final trailing = this.trailing;
-    void toggle() => onChanged!(!checked);
+    void toggle() {
+      TavliPlatform.selectionFeedback(context);
+      onChanged!(!checked);
+    }
 
     final box = _CheckBox(checked: checked, enabled: enabled);
     final texts = <Widget>[
