@@ -11,6 +11,7 @@ import 'package:tavli/data/shopping_repository.dart';
 import 'package:tavli/domain/meal_plan.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli/domain/shopping_demand.dart';
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/sync/synced_writer.dart';
@@ -114,6 +115,48 @@ void main() {
     )..orderBy([(t) => OrderingTerm.asc(t.seq)])).get())
       r.entity,
   ];
+
+  test('nov recept iz plana dobija AI oznake; biblioteka se ne menja '
+      '(TRELLO-39)', () async {
+    final request = PlanRequest(
+      range: DateRange(monday, monday),
+      mealTypes: const {MealType.lunch, MealType.dinner},
+    );
+    final lunch = MealSlot(monday, MealType.lunch);
+    final dinner = MealSlot(monday, MealType.dinner);
+    final plan = PlanDraft(
+      request: request,
+      proposals: {
+        lunch: const SlotProposal(
+          title: 'Pasulj',
+          libraryRecipeId: 'r1',
+          weight: DishWeight.light,
+        ),
+        dinner: const SlotProposal(
+          title: 'Omlet',
+          draftRecipeKey: 'omlet',
+          weight: DishWeight.light,
+          dishKind: DishKind.eggsBreakfast,
+        ),
+      },
+      libraryRecipes: {'r1': snapshot('Pasulj')},
+      newRecipes: {'omlet': snapshot('Omlet')},
+    );
+
+    await repo.approve(plan);
+
+    final rows = {
+      for (final r in await db.select(db.recipes).get()) r.title: r,
+    };
+    final omlet = rows['Omlet']!;
+    expect(omlet.mealTypesJson, '["dinner"]');
+    expect(omlet.weight, 'light');
+    expect(omlet.dishKind, 'eggs_breakfast');
+    expect(omlet.labelsSource, 'ai');
+    final pasulj = rows['Pasulj']!;
+    expect(pasulj.weight, isNull, reason: 'recept iz biblioteke se ne dira');
+    expect(pasulj.labelsSource, isNull);
+  });
 
   test('odobren nacrt čuva plan, obroke sa snimkom i porcijama, '
       'nabavku i outbox redom roditelj pa dete', () async {
@@ -612,6 +655,49 @@ void main() {
       expect(first.recipeId, isNull);
       expect(first.snapshot!.title, 'Pasulj');
       expect(first.servings, 2);
+    });
+
+    test('osveži iz recepta: novi sastojci i koraci, iste porcije, '
+        'nabavka se usklađuje; skuvan i tuđ recept se ne menjaju', () async {
+      final library = Recipe(
+        id: 'r1',
+        title: 'Pasulj',
+        servings: 4,
+        ingredients: const [
+          Ingredient(name: 'krompir', quantity: 2, unit: 'kg'),
+        ],
+        steps: const ['Skuvaj.'],
+        source: RecipeSource.manual,
+        createdAt: DateTime.utc(2026),
+      );
+      final before = (await meal(meals[0].id)).snapshot!;
+      expect(before.ingredientsDifferFrom(library), isTrue);
+      await db.delete(db.syncOutbox).go();
+
+      await repo.refreshFromRecipe(meals[0].id, library);
+
+      final after = await meal(meals[0].id);
+      expect(after.servings, 2, reason: 'porcije obroka ostaju');
+      expect(after.snapshot!.ingredientsDifferFrom(library), isFalse);
+      expect(after.snapshot!.steps, ['Skuvaj.']);
+      // 2 kg × 2/4 + 0,5 + 0,5.
+      expect(await open(), toMicros(2000));
+      final outbox = await db.select(db.syncOutbox).get();
+      expect(
+        outbox.map((r) => (r.entity, r.recordId)),
+        contains(('meal_plan_entry', meals[0].id)),
+      );
+
+      await expectLater(
+        repo.refreshFromRecipe(meals[1].id, library),
+        throwsA(isA<MealNotFoundException>()),
+        reason: 'obrok nije iz tog recepta',
+      );
+      await repo.setCooked(meals[0].id, cooked: true);
+      await expectLater(
+        repo.refreshFromRecipe(meals[0].id, library),
+        throwsA(isA<ProtectedMealException>()),
+      );
     });
 
     test('tuđi obrok se ne menja', () async {

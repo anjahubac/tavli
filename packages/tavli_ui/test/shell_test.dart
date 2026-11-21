@@ -66,7 +66,7 @@ class _Screen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             nav,
-            Expanded(child: content),
+            Expanded(child: TavliBesideNavigation(child: content)),
           ],
         ),
       );
@@ -246,6 +246,24 @@ void main() {
       expect(taps, [2, 0]);
     });
 
+    testWidgets('macOS: bočna traka se pomera ispod prostora za semafore', (
+      tester,
+    ) async {
+      await pumpNav(
+        tester,
+        platform: TavliPlatform.macos,
+        size: const Size(800, 200),
+      );
+      final scrollView = find.byType(CustomScrollView);
+      expect(
+        tester.getTopLeft(scrollView).dy,
+        TavliWindowFrame.macosTitleBarHeight,
+      );
+      await tester.drag(scrollView, const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(find.text('Profil').hitTestable(), findsOneWidget);
+    });
+
     testWidgets('bez zadatog rasporeda: širok telefon dobija bočnu', (
       tester,
     ) async {
@@ -322,8 +340,8 @@ void main() {
       final a = tester.getSize(find.byType(OutlinedButton));
       final b = tester.getSize(find.byType(FilledButton));
       expect(a.width, b.width);
-      expect(a.height, 56);
-      expect(b.height, 56);
+      expect(a.height, 48);
+      expect(b.height, 48);
     });
 
     testWidgets('tekst dugmadi staje u jedan red na telefonu', (tester) async {
@@ -386,6 +404,33 @@ void main() {
         );
       });
     }
+  });
+
+  testWidgets('macOS: mesto za semafore iznad sadržaja, ne pored bočne '
+      'trake', (tester) async {
+    await pump(
+      tester,
+      const TavliWindowFrame(
+        child: Column(
+          children: [
+            SafeArea(child: Text('prijava')),
+            Expanded(
+              child: TavliBesideNavigation(child: SafeArea(child: Text('tab'))),
+            ),
+          ],
+        ),
+      ),
+      platform: TavliPlatform.macos,
+      size: const Size(1200, 800),
+    );
+    expect(
+      tester.getTopLeft(find.text('prijava')).dy,
+      TavliWindowFrame.macosTitleBarHeight,
+    );
+    expect(
+      tester.getTopLeft(find.text('tab')).dy,
+      tester.getBottomLeft(find.text('prijava')).dy,
+    );
   });
 
   // Ceo kostur na telefonu i računaru, sa tekstom 1x i 2x, svetlo i tamno.

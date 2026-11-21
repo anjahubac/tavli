@@ -31,9 +31,10 @@ This is code evidence, not a declaration of production QA or successful tests.
    preferences and Home/cooking can proceed against approved contracts.
 3. Catalog consumers: shopping/pantry, nutrition per portion, allergies/favorites,
    plan inputs and realtime invalidation (009), preserving the existing ledger.
-4. Extensions: prices/QR spike, cookbook RAG, personal tracker, voice, Linux
-   desktop support, calorie strip and store-ready website links. Split large work and review
-   remaining effort by person/phase; counts are not capacity estimates.
+4. Extensions: prices/QR spike, cookbook RAG, fasts and holidays (035),
+   personal tracker, voice, Linux desktop support, calorie strip and store-ready
+   website links. Split large work and review remaining effort by person/phase.
+   Counts are not capacity estimates.
 5. Cycle: opt-in device-only data, approved hints and local indicator.
 6. Nutritionist import: reviewed image/text then PDF/alternatives/repeats;
    preserve grams, original wording and locked meals.

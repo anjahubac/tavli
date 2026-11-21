@@ -357,6 +357,9 @@ class _IngredientDialogState extends State<_IngredientDialog> {
         'unit': _unit.text,
         'category': _category,
         'note': _note.text,
+        // Veza sa katalogom ostaje; ako se naziv promeni, prestaje da važi
+        // sama (matchedKey se više ne poklapa, ugovor #30).
+        ...?widget.initial?.link?.toJson(),
       }),
     );
   }

@@ -429,4 +429,15 @@ void main() {
       }
     });
   });
+  test('AI ne može da postavi vezu sastojka', () {
+    final i = aiIngredient({
+      'name': 'jaja',
+      'quantity': 2,
+      'unit': 'kom',
+      'foodId': '00000000-0000-4000-8000-000000000001',
+      'matchedKey': 'jaja',
+      'linkSource': 'confirmed',
+    });
+    expect(i.link, isNull);
+  });
 }

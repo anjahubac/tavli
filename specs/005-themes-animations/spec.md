@@ -157,7 +157,7 @@ can be seen in a debug-only "Animacije" gallery in "Profil":
 - **FR-003**: Theme and mode MUST be saved locally and restored at start; changes apply immediately without restart.
 - **FR-004**: All screens MUST take colours only from the active theme; no fixed colours outside the theme definitions and the animation artwork (ingredient colours such as basil green or saffron red).
 - **FR-005**: Typography MUST use the bundled Plus Jakarta Sans; main headings weight 800, secondary headings weight 700, body text 16 with generous line height.
-- **FR-006**: Component styling MUST follow the mockup: flat bordered cards (radius 16–24, no elevation), pill chips (selected = primary fill), filled buttons 56 high with radius 18, search field at least 50 high, growing with text scale, with radius 16, navigation bar with surface background, top line and a container pill indicator with on-container label, extended FAB radius 20.
+- **FR-006**: Component styling MUST follow the mockup: flat bordered cards (radius 16–24, no elevation), pill chips (selected = primary fill), filled buttons 48 high with radius 16 (same as outlined buttons; Anja, 2026-11-21), search field at least 50 high, growing with text scale, with radius 16, navigation bar with surface background, top line and a container pill indicator with on-container label, extended FAB radius 20.
 - **FR-007**: "Profil" MUST contain "Izgled" with theme cards ("Bosiljak", "Šafran", "Borovnica") showing a colour preview, and a mode selector ("Svetla", "Tamna", "Kao sistem").
 - **FR-008**: The nine animations (intro motif ×3, photo scan with ingredient chips, simmering pot with rotating messages, ingredient check with flying chip and badge bump, filled shopping bag, empty fridge, spoon pull-to-refresh, plate on plan day, egg timer) MUST exist as reusable pieces.
 - **FR-009**: Every animation MUST show a static end state when the platform asks for reduced motion.
@@ -230,6 +230,15 @@ na tanjiru", "Jaje se kuva".
 
 - The branded intro is visible only while restoring the account session. Ready
   screens are available immediately, with no minimum intro or refresh delay.
+- The approved Superdesign intro places the skillet inside the active theme's
+  circle above the Tavli wordmark. Basil leaves, two saffron blossoms or
+  blueberries fall from inside the top of the circle and disappear behind the
+  rim before the two curls of steam rise. The single sequence ends in a
+  still frame, which also appears immediately with Reduce Motion. Keep the
+  theme color inside the circle, use the neutral Bosiljak background for
+  each brightness, keep the existing subtitle and expose the wordmark as “Tavli”.
+  The skillet scene is decorative, and the wordmark reserves its space while loading.
+  [Approved Superdesign draft](https://p.superdesign.dev/draft/84b5fd33-5056-48bc-bf99-b3cdb47b2bb3)
 - Frequent ingredient feedback lasts 180 ms; the badge grows by at most 8% for
   240 ms. Long recognised-ingredient lists finish revealing within 360 ms.
 - Shopping demo commits the difference before confirming it, blocks overlapping

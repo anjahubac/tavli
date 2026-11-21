@@ -87,6 +87,9 @@ settings (secrets external), future windows/, reviewed release workflow and
 redacted release evidence under docs/releases/ (proposed). Do not create a
 placeholder publishing pipeline with access to production secrets.
 
+Dev 4 maintains `android/settings.gradle.kts`: pin Android Gradle Plugin 9.1.1
+to meet Flutter 3.50.0's minimum with the existing Gradle 9.3.1 wrapper.
+
 Same-SHA CI gate is implemented once with 012 T007/T008 and 013 T010. Platform
 runner work remains in 013/028. Namespace migration remains 012 T011/T012.
 This spec owns the release sequence and evidence, avoiding parallel competing
