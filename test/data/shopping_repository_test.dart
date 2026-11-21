@@ -293,6 +293,18 @@ void main() {
     final mon = CivilDate(2026, 11, 2);
     const kupus = Ingredient(name: 'Kupus', quantity: 300, unit: 'g');
 
+    test(
+      'ID nedeljne liste je zakucan: sha256(["shopping-week",plan,dan])',
+      () {
+        // Vrednost izračunata van aplikacije; promena znači nove ID-jeve
+        // za iste nedelje između verzija.
+        expect(
+          weekListId('plan', CivilDate(2026, 11, 2)),
+          '17e00dbdb9e30ab05520ab03dbf4363fa5cf87ed2167e5ab9b5b4aa4e11a37ce',
+        );
+      },
+    );
+
     test('kanonska nedeljna lista: ista za isti plan i nedelju, mesec do 6 '
         'delova, odvojeno po domaćinstvu', () async {
       final range = DateRange(CivilDate(2026, 11, 1), CivilDate(2026, 11, 30));
@@ -385,6 +397,287 @@ void main() {
       expect(c.id, contribution.id);
       expect(c.micros, 450000000);
     });
+
+    test('stari doprinos sa grupom unit:dl prelazi u grupu volume, bez '
+        'duplirane stavke', () async {
+      await plan('p1', mon, mon.addDays(6));
+      const mleko = Ingredient(name: 'Mleko', quantity: 5, unit: 'dl');
+      await entry('e1', mon, ingredients: const [mleko]);
+      await shop.reconcilePlan('p1');
+
+      // Stanje pre izmene: dl je bio zasebna grupa jedinica.
+      final c = (await db.select(db.shoppingContributions).get()).single;
+      await (db.update(
+        db.shoppingContributions,
+      )..where((t) => t.id.equals(c.id))).write(
+        const ShoppingContributionsCompanion(
+          unitGroup: Value('unit:dl'),
+          baseUnit: Value('dl'),
+          micros: Value(5000000),
+        ),
+      );
+      await db
+          .update(db.shoppingItems)
+          .write(
+            const ShoppingItemsCompanion(quantity: Value(5), unit: Value('dl')),
+          );
+
+      await shop.reconcilePlan('p1');
+
+      final week = await shop.weekList(
+        'p1',
+        weekPeriods(DateRange(mon, mon.addDays(6))).first,
+      );
+      expect(await open(week), hasLength(1));
+      final after = (await db.select(db.shoppingContributions).get()).single;
+      expect(after.unitGroup, 'volume');
+      expect(after.micros, 500000000);
+      expect(await db.select(db.shoppingItems).get(), hasLength(1));
+    });
+
+    test('stara raspodela u dl na zatvorenom izvoru se preračunava u ml, '
+        'pa zaliha ne postaje opet slobodna', () async {
+      await plan('p1', mon, mon.addDays(6));
+      await entry(
+        'e1',
+        mon,
+        ingredients: const [Ingredient(name: 'Mleko', quantity: 5, unit: 'dl')],
+      );
+      await pantry('o1', 'Mleko', 10, 'dl');
+      await shop.reconcilePlan('p1');
+
+      // Stanje pre izmene: dl je bio zasebna grupa, pa su doprinos i
+      // raspodela čuvani u dl. Izvor je zatvoren (skuvano) i ne preračunava se.
+      final c = (await db.select(db.shoppingContributions).get()).single;
+      await (db.update(
+        db.shoppingContributions,
+      )..where((t) => t.id.equals(c.id))).write(
+        const ShoppingContributionsCompanion(
+          unitGroup: Value('unit:dl'),
+          baseUnit: Value('dl'),
+          micros: Value(5000000),
+        ),
+      );
+      await db
+          .update(db.supplyAllocations)
+          .write(const SupplyAllocationsCompanion(micros: Value(5000000)));
+      await entry(
+        'e1',
+        mon,
+        ingredients: const [Ingredient(name: 'Mleko', quantity: 5, unit: 'dl')],
+        cooked: true,
+      );
+
+      // Novi obrok traži 700 ml; od 1000 ml ostaje 500 ml, pa fali 200 ml.
+      await entry(
+        'e2',
+        mon.addDays(1),
+        ingredients: const [
+          Ingredient(name: 'Mleko', quantity: 700, unit: 'ml'),
+        ],
+      );
+      await shop.reconcilePlan('p1');
+
+      final week = await shop.weekList(
+        'p1',
+        weekPeriods(DateRange(mon, mon.addDays(6))).first,
+      );
+      expect(await open(week), ['Mleko 200.0 ml']);
+      final legacy = await (db.select(
+        db.shoppingContributions,
+      )..where((t) => t.id.equals(c.id))).getSingle();
+      expect(legacy.unitGroup, 'volume');
+      expect(legacy.micros, 500000000);
+
+      // Ponovljeno usklađivanje ne preračunava dvaput.
+      await shop.reconcilePlan('p1');
+      expect(await open(week), ['Mleko 200.0 ml']);
+      final again = await (db.select(
+        db.shoppingContributions,
+      )..where((t) => t.id.equals(c.id))).getSingle();
+      expect(again.micros, 500000000);
+    });
+
+    test('stari dl doprinos se spaja sa novim iz iste zalihe bez sudara '
+        'raspodela', () async {
+      await plan('p1', mon, mon.addDays(6));
+      await entry(
+        'e1',
+        mon,
+        ingredients: const [Ingredient(name: 'Mleko', quantity: 5, unit: 'dl')],
+      );
+      await pantry('o1', 'Mleko', 10, 'dl');
+      await shop.reconcilePlan('p1');
+
+      // Isti izvor ima i stari doprinos u dl (pre zajedničkog rečnika), sa
+      // raspodelom iz iste stavke ostave kao novi doprinos.
+      final c = (await db.select(db.shoppingContributions).get()).single;
+      final a = (await db.select(db.supplyAllocations).get()).single;
+      await db
+          .into(db.shoppingContributions)
+          .insert(
+            ShoppingContributionsCompanion.insert(
+              id: 'legacy-dl',
+              householdId: Value(c.householdId),
+              sourceId: c.sourceId,
+              ingredientKey: c.ingredientKey,
+              unitGroup: 'unit:dl',
+              baseUnit: 'dl',
+              micros: const Value(2000000),
+              name: c.name,
+              category: c.category,
+            ),
+          );
+      await db
+          .into(db.supplyAllocations)
+          .insert(
+            SupplyAllocationsCompanion.insert(
+              id: 'legacy-alloc',
+              householdId: Value(a.householdId),
+              contributionId: 'legacy-dl',
+              pantryItemId: Value(a.pantryItemId),
+              micros: const Value(2000000),
+              createdAt: a.createdAt,
+            ),
+          );
+      await entry(
+        'e1',
+        mon,
+        ingredients: const [Ingredient(name: 'Mleko', quantity: 5, unit: 'dl')],
+        cooked: true,
+      );
+
+      await shop.reconcilePlan('p1');
+
+      // Stari doprinos je spojen u novi, a raspodele iz iste zalihe u jednu.
+      final contributions = await db.select(db.shoppingContributions).get();
+      expect(contributions.map((r) => r.id), [c.id]);
+      expect(contributions.single.micros, 700000000);
+      final allocations = await db.select(db.supplyAllocations).get();
+      expect(allocations, hasLength(1));
+      expect(allocations.single.contributionId, c.id);
+      expect(allocations.single.micros, 700000000);
+
+      // Sledeće usklađivanje i dalje radi.
+      await shop.reconcilePlan('p1');
+      expect(await db.select(db.supplyAllocations).get(), hasLength(1));
+    });
+
+    test(
+      'spajanje raspodela: poznata količina se ne gubi uz celu nepoznatu',
+      () async {
+        await plan('p1', mon, mon.addDays(6));
+        await entry(
+          'e1',
+          mon,
+          ingredients: const [
+            Ingredient(name: 'Mleko', quantity: 5, unit: 'dl'),
+          ],
+        );
+        await pantry('o1', 'Mleko', 10, 'dl');
+        await shop.reconcilePlan('p1');
+        final c = (await db.select(db.shoppingContributions).get()).single;
+        final a = (await db.select(db.supplyAllocations).get()).single;
+        await db
+            .into(db.shoppingContributions)
+            .insert(
+              ShoppingContributionsCompanion.insert(
+                id: 'legacy-dl',
+                householdId: Value(c.householdId),
+                sourceId: c.sourceId,
+                ingredientKey: c.ingredientKey,
+                unitGroup: 'unit:dl',
+                baseUnit: 'dl',
+                name: c.name,
+                category: c.category,
+              ),
+            );
+        await db
+            .into(db.supplyAllocations)
+            .insert(
+              SupplyAllocationsCompanion.insert(
+                id: 'legacy-whole',
+                householdId: Value(a.householdId),
+                contributionId: 'legacy-dl',
+                pantryItemId: Value(a.pantryItemId),
+                coversWholeUnknown: const Value(true),
+                createdAt: a.createdAt,
+              ),
+            );
+        await entry(
+          'e1',
+          mon,
+          ingredients: const [
+            Ingredient(name: 'Mleko', quantity: 5, unit: 'dl'),
+          ],
+          cooked: true,
+        );
+
+        await shop.reconcilePlan('p1');
+
+        final merged = (await db.select(db.supplyAllocations).get()).single;
+        expect(merged.coversWholeUnknown, isFalse);
+        expect(merged.micros, 500000000);
+      },
+    );
+
+    test('dva izvora istog obroka (npr. sa drugog uređaja) ostaju jedan, '
+        'bez duple potrebe', () async {
+      final end = mon.addDays(13);
+      await plan('p1', mon, end);
+      await entry('e1', mon, ingredients: const [kupus]);
+      await shop.reconcilePlan('p1');
+      final weeks = weekPeriods(DateRange(mon, end));
+      final week1 = await shop.weekList('p1', weeks.first);
+      final week2 = await shop.weekList('p1', weeks.last);
+
+      // Drugi izvor za isti obrok u drugoj nedelji, kao posle preuzimanja.
+      await db
+          .into(db.shoppingSources)
+          .insert(
+            ShoppingSourcesCompanion.insert(
+              id: 'stray',
+              listId: week2,
+              kind: ShoppingSourceKind.planEntry.name,
+              planEntryId: const Value('e1'),
+              createdAt: DateTime.utc(2026, 11),
+              householdId: const Value('home-one'),
+            ),
+          );
+      await shop.reconcilePlan('p1');
+
+      final sources = await (db.select(
+        db.shoppingSources,
+      )..where((t) => t.planEntryId.equals('e1'))).get();
+      expect(sources, hasLength(1));
+      expect(sources.single.listId, week1);
+      expect(await open(week1), ['Kupus 300.0 g']);
+      expect(await open(week2), isEmpty);
+    });
+
+    test(
+      'obrok premešten u drugu nedelju: stari izvor se briše jednom',
+      () async {
+        final end = mon.addDays(13);
+        await plan('p1', mon, end);
+        await entry('e1', mon, ingredients: const [kupus]);
+        await shop.reconcilePlan('p1');
+        final old = (await db.select(db.shoppingSources).get()).single.id;
+
+        await entry('e1', mon.addDays(8), ingredients: const [kupus]);
+        await shop.reconcilePlan('p1');
+
+        final deletes =
+            await (db.select(db.syncOutbox)..where(
+                  (t) =>
+                      t.entity.equals('shopping_source') &
+                      t.recordId.equals(old) &
+                      t.op.equals('delete'),
+                ))
+                .get();
+        expect(deletes, hasLength(1));
+      },
+    );
 
     test('ostava 400 g na 300/100/200 hronološki: dve nedelje, kupuje se '
         'samo 200 g u drugoj', () async {

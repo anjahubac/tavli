@@ -107,7 +107,7 @@ operations. See [full spec index](../specs/README.md) and
 | CATALOG | Dev 1 | Date/unit contracts | UUID/slug, alias scope, seed review, nutrition provenance/licenses |
 | HOUSEHOLD (008) | Dev 3 | Auth/member contract | Inviting rights, transfer/leave semantics, purpose-limited personal aggregates |
 | REALTIME (009) | Dev 3 | Household transitions | Authorized invalidation/reconnect/conflicts |
-| MEAL-RULES | Dev 2 | AI schema/member aggregate | Snack identity, suitability/intensity/kind enums, favorites aggregation |
+| MEAL-RULES | Dev 2 | AI schema/member aggregate | Snack identity, suitability/intensity/kind enums, review of selected-member favorites contract |
 | SHOPPING-FOODS | Dev 1 | Catalog/supply contract | Dictionary versions, legacy snapshots and conversions |
 | EVERYDAY-UX | Dev 4 | Routes/cooking operation | Home route/order, existing-route compatibility |
 | PANTRY | Dev 4 | Catalog, supply/cooking contract | Known/unknown quantity, explicit transfer, reversible consumption |
@@ -120,7 +120,7 @@ operations. See [full spec index](../specs/README.md) and
 | LINUX | Dev 3 (Matija), platform review Dev 4 (Anja) | Flutter GTK scaffold and plugin audit | Ubuntu 24.04 x86_64 smoke, libsecret/keyring, Linux build CI and required-check settings |
 | CYCLE | Dev 3, Dev 2 hints, Dev 4 indicator | Preferences/hint boundary | Consent, stale rules, six source-proposal questions |
 | PLAN-IMPORT | Dev 2; Dev 1/3/4 consumers | Slots/catalog/nutrition | Ten source-proposal questions, crop/retention, exact quantities/alternatives |
-| UI-PACKAGE | Dev 4; deferred | Current UI standard | Explicit team start, six source questions and verified external repo access |
+| UI-PACKAGE | Dev 4; started 2026-11-19 | Design canvas and UI standard | Local `packages/tavli_ui` in this repository; icon set source |
 
 ## Decisions still required
 
@@ -128,8 +128,10 @@ The linked Claude proposals were not supplied in full. Counts of seven/ten/six
 questions above are source references, not questions invented or resolved here.
 Retrieve them or clarify explicit requirements before the affected feature starts.
 
-1. Creator-only versus all-member favorites: recommendation is all diners,
-   but no broad access to private profiles/diaries is approved by inference.
+1. Favorites decision (Matija, 2026-11-20): only explicitly selected plan
+   participants contribute, defaulting to all current household members.
+   The [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
+   still needs Dev 1/Dev 2 review; no broad access to private profiles/diaries.
 2. Initial cookbook real-text PDF/EPUB versus scanned OCR.
 3. Allergen vocabulary: reviewed canonical codes, distinct lactose avoidance
    and dietary preferences; do not turn a draft label into a medical claim.
@@ -140,9 +142,8 @@ Retrieve them or clarify explicit requirements before the affected feature start
    GitHub ruleset availability and four reviewers' verified GitHub handles.
 
 Word/Excel/share-sheet import and Apple Health/Health Connect remain later
-additions. Reuse the local `packages/tavli_ui` package and gallery now. Moving
-them to an external repository waits for team agreement under
-[031](../specs/031-external-ui-library/spec.md).
+additions. Use the existing local `packages/tavli_ui` package and gallery for
+the rollout described in [031](../specs/031-external-ui-library/spec.md).
 
 ## Cross-cutting security work — added after source review
 

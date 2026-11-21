@@ -11,6 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Sistemski dijalozi i akcioni listovi na iOS-u i macOS-u; material_ui ga
+  # već povlači (isti paket u pubspec.lock), ovde se samo uvozi direktno.
+  cupertino_ui: ^1.1.5
   material_ui: ^1.9.0
 
 dev_dependencies:

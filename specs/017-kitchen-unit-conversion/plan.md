@@ -48,6 +48,25 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 4. Integrate consumers after producer merge, preserving offline/replay and previous
    UI/quantity behavior. Run relevant 012/013 gates and update real evidence.
 
+## Calculation preparation
+
+PR #41 prepares the optional calculation, a review flag for unsupported units,
+and approximate amount formatting. The app keeps the option disabled pending
+agreement on the unit contract. Enabling it also requires conversion provenance
+to survive storage and allocation and to reach shopping display. This slice has
+no schema or stored payload change.
+
+The exact conversions (`dl` = 100 ml, `dkg` = 10 g) are already enabled for all
+shopping sources. Unit recognition now uses the shared vocabulary in
+`lib/ai/ai_units.dart` (`canonicalUnit`), so forms such as `gr`, `dag`, `litar`
+and `kasika` resolve to one unit. A stored contribution of a closed or
+superseded source keeps the group it had before (for example `unit:dl`) and
+skips recalculation, while supply capacity is counted in the base unit. The
+next reconcile therefore converts such a contribution and its allocations to
+the base unit once (idempotent), merging into an existing row of the new group
+when there is one; otherwise already allocated stock would become available
+again.
+
 ## Constitution check (3.0.0)
 
 | Gate | Required response before implementation |
@@ -76,5 +95,5 @@ tests do not contact a network; explicit guarded integration uses local services
 No speculative hosted deployment or publication. Record old-client/snapshot
 compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
-limits from open questions remain release gates. UI checks use current theme/
-motion components; do not redesign screens or extract a package incidentally.
+limits from open questions remain release gates. UI follows the design canvas and the
+UI standard; do not invent layouts or move components into the package incidentally.

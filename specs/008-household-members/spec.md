@@ -35,12 +35,23 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-103**: Owner may remove a member or transfer ownership; member may leave. Last-owner and last-member behavior must be resolved before destructive operations.
 - **FR-104**: Each person chooses tastes, structured allergens, favorites and recipe ratings. Same-household membership does not grant broad access to private records.
 - **FR-105**: Preserve existing email-code/name/confirmation flow and close confirmed defects with regression tests; use canonical reviewed allergen/avoidance vocabulary.
+- **FR-106**: Planning takes an explicit nonempty set of participating member IDs, defaulting in the UI to all current household members. Only those members' inputs contribute; unknown, foreign or removed IDs fail the whole request.
+- **FR-107**: Members select canonical allergen groups, distinct from catalog foods and taste dislikes. Catalog foods carry reviewed group mappings; unresolved ingredients have unknown allergen status, never an implicit safe status.
+- **FR-108**: Members may like or dislike catalog foods, the existing `DishKind` values and reviewed cuisine codes, and add an optional short planning note. These are soft preferences. No dietary-mode setting or custom style category is included.
+- **FR-109**: A favorite is a personal user/recipe pair. Only selected participants' favorites for accessible household recipes contribute to planning; delete the pair when the recipe is deleted or the user loses access on leaving the household.
+- **FR-110**: The planner receives a purpose-limited aggregate of selected members' restrictions, preferences and favorite counts, not their personal rows, profiles or diary.
+- **FR-111**: Each member explicitly opts in, per field (`allergens`, `preferences`, `planningNote`), to sharing with household planning; defaults are off, only the owner can change them, and withdrawal takes effect on the next request and invalidates caches. The server omits unshared fields; a member's own data is always returned to that member. See the contract's Disclosure and consent section.
+- **FR-112**: A single-participant request returns only that person's consented fields, with no name or ID. AI output is untrusted: a leak guard rejects responses that echo names, emails, notes or attributed allergies, and prompts use pseudonymous labels and are never logged.
 
 ## User scenarios and acceptance
 
 - **US1 / SC-001**: An expired/revoked invite cannot join; a valid invite previews the household before applying exactly one membership change.
 - **US2 / SC-002**: A removed member reconnects with queued writes: server denies old-household access; another member retains shared data.
 - **US3 / SC-003**: Two co-members can share recipes but cannot read each other's diary or personal settings outside the agreed planning aggregate.
+- **US4 / SC-004**: With two members selected, either member's allergen excludes a mapped candidate even when AI suggests it. An unresolved ingredient is marked unknown. Selecting one member omits the other's inputs.
+- **US5 / SC-005**: One member likes a food and another dislikes it; the conflict affects ranking without becoming a safety ban. A deleted recipe or departing member stops contributing favorites.
+- **US6 / SC-006**: Co-members cannot read one another's raw personal settings; a foreign or removed participant ID yields no partial aggregate.
+- **US7 / SC-007**: A field a member has not shared never appears in another member's plan inputs, prompt or UI, for one or several participants; withdrawing consent removes it. An AI response that echoes a name, note or attributed allergy is rejected and never shown or stored.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
@@ -53,7 +64,7 @@ Household membership/invites are server-authorized; preferences, allergens, favo
 
 ## Exact UI copy carried forward
 
-“Domaćinstvo”, “Pozovi člana”, “Pridruži se”, “Ukusi i sklonosti”, “Omiljeni”.
+“Domaćinstvo”, “Pozovi člana”, “Pridruži se”, “Ukusi i sklonosti”, “Omiljeni”, “Alergeni”, “Volim”, “Ne volim”, “Opis”.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
@@ -62,7 +73,7 @@ that UI task becomes Ready. English is used for engineering documents only.
 Producer specs: Existing baseline; no new producer feature required for the first slice.
 
 - **Q1** (Dev 3 with reviewer): Who may invite, recipe-transfer semantics for shared recipes, last-owner/leave recovery and offline transition handling?
-- **Q2** (Dev 3 with reviewer): Creator-only versus participating-members favorites aggregation remains open; clarify purpose/consent and allergy vocabulary.
+- **Q2**: Matija decided on 2026-11-20 that selected participants contribute favorites and all household members are selected by default. Allergens are separate groups linked to users and catalog foods; dislikes remain soft. Dev 1 and Dev 2 still review the canonical vocabulary, food mappings, privacy boundary and consumer response before implementation. See [member planning inputs contract](contracts/member-planning-inputs.md).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

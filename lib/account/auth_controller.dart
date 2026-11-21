@@ -132,6 +132,8 @@ class AuthController extends Notifier<AuthState> {
       final session = await gateway.restore(json);
       await store.write(session.json);
       _set(_signedIn(await service.loadOrFetch(session)));
+    } on SecretStorageException {
+      await _lockSession(gateway);
     } on AuthFailure {
       _set(const SignedOut());
     }
@@ -140,13 +142,13 @@ class AuthController extends Notifier<AuthState> {
   /// Obnavlja sačuvanu sesiju (start, povratak u aplikaciju). Bez mreže
   /// ostaje prijavljen; odbijena obnova vraća na prijavu.
   Future<void> restoreSession() async {
-    if (!ref.mounted) return;
+    if (!ref.mounted || !_hasAccount) return;
     final store = _store, gateway = _gateway;
     final String? json;
     try {
       json = await store.read();
     } on SecretStorageException {
-      _set(const SignedOut(SignOutReason.storageUnavailable));
+      await _lockSession(gateway);
       return;
     }
     if (json == null) return;
@@ -154,7 +156,7 @@ class AuthController extends Notifier<AuthState> {
       final session = await gateway.restore(json);
       if (ref.mounted) await store.write(session.json);
     } on SecretStorageException {
-      _set(const SignedOut(SignOutReason.storageUnavailable));
+      await _lockSession(gateway);
     } on Offline {
       // Pokušava se ponovo pri povratku u aplikaciju.
     } on Unavailable {
@@ -177,12 +179,12 @@ class AuthController extends Notifier<AuthState> {
   Future<void> verify(String code) async {
     final s = state;
     if (s is! CodeSent) return;
-    final store = _store, service = _service;
-    final session = await _gateway.verifyCode(s.email, normalizeCode(code));
+    final store = _store, service = _service, gateway = _gateway;
+    final session = await gateway.verifyCode(s.email, normalizeCode(code));
     try {
       await store.write(session.json);
     } on SecretStorageException {
-      await _gateway.signOutLocal();
+      await gateway.signOutLocal();
       throw const SecureStorageUnavailable();
     }
     _set(_signedIn(await service.loadOrFetch(session)));
@@ -209,15 +211,21 @@ class AuthController extends Notifier<AuthState> {
 
   AuthState _signedIn(Account a) => a.hasName ? SignedIn(a) : NeedsName(a);
 
+  bool get _hasAccount => state is SignedIn || state is NeedsName;
+
   Future<void> _onSessionChanged(AuthSession? session) async {
-    if (session == null) return;
-    if (state is SignedIn || state is NeedsName) {
-      try {
-        await _store.write(session.json);
-      } on SecretStorageException {
-        _set(const SignedOut(SignOutReason.storageUnavailable));
-      }
+    if (session == null || !_hasAccount) return;
+    final gateway = _gateway;
+    try {
+      await _store.write(session.json);
+    } on SecretStorageException {
+      await _lockSession(gateway);
     }
+  }
+
+  Future<void> _lockSession(AuthGateway gateway) async {
+    _set(const SignedOut(SignOutReason.storageUnavailable));
+    await gateway.signOutLocal();
   }
 
   /// "Odjavi se": briše se samo sesija. Keš, izmene koje čekaju, AI

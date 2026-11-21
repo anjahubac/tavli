@@ -154,7 +154,9 @@ unawaited futures and context-after-await are errors).
 - Keep generated `lib/data/database.g.dart` committed and in sync.
 - UI reads from drift (the offline cache); never from the network directly.
   Every synced business-data write goes through a repository that writes the row and an
-  outbox entry in one transaction. Record ids are client-generated (UUID).
+  outbox entry in one transaction. Use client-generated IDs. If devices can
+  create the same unique logical record offline, follow the identity, replay and
+  two-client regression rules in [quality gates](docs/development/quality-gates.md#sync-changes).
 - Backend access only through the data layer (Supabase client wrapped behind an
   interface so tests can fake it); no Supabase calls from widgets.
 - Follow `flutter_lints`; no `// ignore:` without a reason in the comment.
@@ -192,8 +194,13 @@ never from another feature branch, and its PR targets `dev`; full git rules are 
   feature providers stay under `lib/features/`; do not invent a replacement layout.
 - Follow [AI development](docs/development/ai-development.md) for briefs, untrusted
   input, validation and handoff; an agent's claim is not test or review evidence.
-- Reuse [UI standards](docs/development/ui-standard.md) and existing theme/motion
-  components. Validate phone, wide screen, 2× text and reduced motion.
+- Build UI exactly as the design canvas shows it, following the
+  [UI standard](docs/development/ui-standard.md): its measurements, icon style
+  and no-fixed-sizes rule, with existing theme/motion components. Never invent a
+  layout the canvas does not show. Validate phone, wide screen, 2× text and
+  reduced motion.
+- Before connecting two flows (plan, shopping, pantry, cooking, nutrition,
+  household), read the [flow map](docs/flows.md) and the producer's contract.
 - Device-only settings/secrets and the planned cycle privacy exception follow
   constitution II; do not route them into the user-data outbox.
 - Read [quality gates](docs/development/quality-gates.md). Documentation changes

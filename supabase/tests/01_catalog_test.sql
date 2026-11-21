@@ -28,9 +28,11 @@ select is(
           and has_table_privilege('authenticated', c.oid, p)
         order by 1),
   array[
+    'cooked_events:delete', 'cooked_events:insert', 'cooked_events:select', 'cooked_events:update',
     'deletions:select', 'household_members:select', 'households:select',
     'meal_plan_entries:delete', 'meal_plan_entries:insert', 'meal_plan_entries:select', 'meal_plan_entries:update',
     'meal_plans:delete', 'meal_plans:insert', 'meal_plans:select', 'meal_plans:update',
+    'pantry_consumptions:delete', 'pantry_consumptions:insert', 'pantry_consumptions:select', 'pantry_consumptions:update',
     'pantry_items:delete', 'pantry_items:insert', 'pantry_items:select', 'pantry_items:update',
     'profiles:select',
     'ratings:delete', 'ratings:insert', 'ratings:select', 'ratings:update',
@@ -68,8 +70,10 @@ select is(
         where n.nspname in ('public', 'private')
           and has_function_privilege('authenticated', p.oid, 'execute')
         order by 1),
-  array['private.is_member'],
-  'authenticated izvršava samo private.is_member'
+  -- recipe_meal_types_valid: CHECK na public.recipes je poziva sa pravima
+  -- korisnika koji upisuje (20261118120000_recipe_labels.sql).
+  array['private.is_member', 'private.recipe_meal_types_valid'],
+  'authenticated izvršava samo private.is_member i proveru obroka recepta'
 );
 
 select is(

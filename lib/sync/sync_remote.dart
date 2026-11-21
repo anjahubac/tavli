@@ -39,6 +39,7 @@ abstract interface class SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   });
 
   Future<void> delete(String table, List<String> ids, {String idColumn = 'id'});
@@ -65,6 +66,11 @@ abstract interface class PhotoRemote {
 
   Future<void> remove(List<String> objectKeys);
 }
+
+/// Postgres SQLSTATE za prekršen strani ključ. [classifySyncError] ga
+/// prosleđuje kao [SyncError.code], a uploader ga čuva u
+/// `sync_outbox.last_error` odbijenog upisa.
+const pgForeignKeyViolation = '23503';
 
 /// Kod Postgres/PostgREST/HTTP greške → vrsta greške (research R7).
 SyncError classifySyncError(String code) {
@@ -117,8 +123,11 @@ class SupabaseSyncRemote implements SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   }) => _guard(() async {
-    await _from(table).upsert(rows, onConflict: onConflict);
+    await _from(
+      table,
+    ).upsert(rows, onConflict: onConflict, ignoreDuplicates: ignoreDuplicates);
   });
 
   @override

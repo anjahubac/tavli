@@ -79,6 +79,10 @@ class PantryItems extends Table {
   /// Prijem kupljene stavke: ista zaliha kao ta kupovina, ne nova (v5).
   TextColumn get sourceShoppingItemId => text().nullable()();
 
+  /// Poslednje ručno brojanje količine (v7): kuvanje pre ovog trenutka se
+  /// više ne oduzima, jer upisana količina već pokazuje stanje.
+  DateTimeColumn get quantitySetAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -268,6 +272,51 @@ class SupplyAllocations extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Obrok označen kao skuvan (v7). Poništavanje upisuje [undoneAt] i ne briše
+/// zapis; ponovno kuvanje je novi zapis. Važeći je najraniji neponišten.
+@DataClassName('CookedEventRow')
+class CookedEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get planEntryId => text().references(MealPlanEntries, #id)();
+
+  /// Datum obroka (kalendarski, kao `meal_plan_entries.date`) i vrsta.
+  DateTimeColumn get mealDate => dateTime()();
+  TextColumn get mealType => text()();
+  TextColumn get actorUserId => text()();
+  IntColumn get servings => integer()();
+  DateTimeColumn get cookedAt => dateTime()();
+  DateTimeColumn get undoneAt => dateTime().nullable()();
+
+  /// `user` (jedina vrednost koju server prihvata).
+  TextColumn get undoReason => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Koliko je jedno kuvanje uzelo iz jedne stavke ostave (v7), u milionitim
+/// delovima osnovne jedinice stavke. Količina u ostavi se ne prepisuje, pa
+/// dva uređaja ne gube umanjenje; ponovljen upis istog para je isti red.
+@DataClassName('PantryConsumptionRow')
+@TableIndex(
+  name: 'pantry_consumptions_identity',
+  columns: {#eventId, #pantryItemId},
+  unique: true,
+)
+class PantryConsumptions extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get eventId => text().references(CookedEvents, #id)();
+  TextColumn get pantryItemId => text()();
+  TextColumn get baseUnit => text()();
+  IntColumn get micros => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DataClassName('RatingRow')
 class Ratings extends Table {
   TextColumn get id => text()();
@@ -388,6 +437,8 @@ class SyncCursors extends Table {
     ShoppingSources,
     ShoppingContributions,
     SupplyAllocations,
+    CookedEvents,
+    PantryConsumptions,
     Ratings,
     UserProfiles,
     AppSettings,
@@ -402,7 +453,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -420,6 +471,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) await transaction(() => _migrateToAccounts(m));
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
       if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
+      if (from < 7) await transaction(() => _migrateToCookedEvents(m));
     },
   );
 
@@ -447,6 +499,22 @@ class AppDatabase extends _$AppDatabase {
     ).get();
     if (columns.any((r) => r.read<String>('name') == c.$name)) return;
     await m.addColumn(table, c);
+  }
+
+  /// v7: zapis skuvanog obroka, potrošnja iz ostave i vreme ručnog
+  /// brojanja. Samo dodaje; ponovljen korak (vraćen user_version) ne pada.
+  Future<void> _migrateToCookedEvents(Migrator m) async {
+    await _addMissingColumn(m, pantryItems, pantryItems.quantitySetAt);
+    await m.createTable(cookedEvents);
+    await m.createTable(pantryConsumptions);
+    final indexes = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    ).get();
+    if (!indexes.any(
+      (r) => r.read<String>('name') == pantryConsumptionsIdentity.entityName,
+    )) {
+      await m.createIndex(pantryConsumptionsIdentity);
+    }
   }
 
   /// v5: porcije i odobren recept u planu, nedeljni delovi listi, poreklo

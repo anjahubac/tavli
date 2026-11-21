@@ -15,8 +15,10 @@ class TavliThumbnail extends StatelessWidget {
     this.image,
     this.tintIndex = 0,
     this.icon = Icons.restaurant_rounded,
+    this.photo,
   }) : width = 56,
-       height = 56;
+       height = 56,
+       rounded = true;
 
   /// Puna širina i visina 120, na vrhu kartice recepta na računaru.
   const TavliThumbnail.banner({
@@ -24,11 +26,30 @@ class TavliThumbnail extends StatelessWidget {
     this.image,
     this.tintIndex = 0,
     this.icon = Icons.restaurant_rounded,
+    this.photo,
   }) : width = double.infinity,
-       height = 120;
+       height = 120,
+       rounded = true;
+
+  /// Vrh kartice recepta u mreži na računaru: puna širina, visina 120, bez
+  /// svog radijusa (zaobljava je kartica).
+  const TavliThumbnail.cardTop({
+    super.key,
+    this.image,
+    this.tintIndex = 0,
+    this.icon = Icons.restaurant_rounded,
+    this.photo,
+  }) : width = double.infinity,
+       height = 120,
+       rounded = false;
 
   /// Fotografija recepta; `null` crta ikonicu.
   final ImageProvider? image;
+
+  /// Gotov prikaz fotografije (npr. slika iz keša aplikacije) umesto
+  /// [image]; popunjava ceo okvir.
+  final Widget? photo;
+  final bool rounded;
 
   /// Koja od tri meke boje teme (recepti se smenjuju).
   final int tintIndex;
@@ -41,6 +62,7 @@ class TavliThumbnail extends StatelessWidget {
     final c = Theme.of(context).colorScheme;
     final x = TavliColors.of(context);
     final image = this.image;
+    final photo = this.photo;
     final placeholder = ColoredBox(
       color: x.tint(tintIndex),
       child: Center(
@@ -56,8 +78,12 @@ class TavliThumbnail extends StatelessWidget {
         width: width,
         height: height,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(TavliRadius.compact),
-          child: image == null
+          borderRadius: rounded
+              ? BorderRadius.circular(TavliRadius.compact)
+              : BorderRadius.zero,
+          child: photo != null
+              ? SizedBox.expand(child: photo)
+              : image == null
               ? placeholder
               : Image(
                   image: image,
@@ -87,6 +113,9 @@ class TavliAvatar extends StatelessWidget {
   /// Prečnik; `null` bira 40 (36 na iOS-u).
   final double? size;
 
+  /// Prečnik velikog avatara u zaglavlju profila.
+  static const double large = 56;
+
   /// Ime osobe za čitač ekrana; bez njega avatar je ukras.
   final String? semanticLabel;
 
@@ -96,6 +125,7 @@ class TavliAvatar extends StatelessWidget {
     final size =
         this.size ?? (TavliPlatform.of(context) == TavliPlatform.ios ? 36 : 40);
     final fontSize = switch (size) {
+      >= large => 20.0,
       >= 40 => 14.0,
       >= 36 => 13.0,
       _ => 12.0,

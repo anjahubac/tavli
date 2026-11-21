@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/account_api.dart';
 import 'package:tavli/account/session_store.dart';
 import 'package:tavli/ai/ai_models.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
@@ -15,8 +15,8 @@ void main() {
       'može da se poništi.';
 
   Finder redButton() => find.descendant(
-    of: find.byType(AlertDialog),
-    matching: button('Obriši nalog'),
+    of: find.byType(TavliDialog<bool>),
+    matching: find.widgetWithText(TavliButton, 'Obriši nalog'),
   );
 
   Future<void> openDialog(WidgetTester tester) async {
@@ -35,7 +35,7 @@ void main() {
     final delete = tester.getRect(find.text('Obriši nalog'));
     expect(delete.top, greaterThan(settings.bottom));
     expect(delete.top - signOut.bottom, greaterThan(100));
-    expect(find.text('Brisanje naloga'), findsOneWidget);
+    expect(find.text('BRISANJE NALOGA'), findsOneWidget);
   });
 
   testTavli('dijalog: tekst, crveno dugme, "Odustani" ne menja ništa', (
@@ -45,11 +45,9 @@ void main() {
     await openDialog(tester);
     expect(find.text('Obrisati nalog?'), findsOneWidget);
     expect(find.text(dialogText), findsOneWidget);
-    final style = tester.widget<FilledButton>(redButton()).style!;
-    final context = tester.element(find.byType(AlertDialog));
     expect(
-      style.backgroundColor!.resolve({}),
-      Theme.of(context).colorScheme.error,
+      tester.widget<TavliButton>(redButton()).variant,
+      TavliButtonVariant.destructive,
     );
     await tester.tap(button('Odustani'));
     await tester.pumpAndSettle();
@@ -82,17 +80,11 @@ void main() {
     expect(app.secrets.values.containsKey(SessionStore.key), isFalse);
 
     // Ista adresa ponovo: nov prazan nalog i korak sa imenom.
-    await tester.enterText(
-      find.widgetWithText(TextField, 'E-pošta'),
-      testEmail,
-    );
+    await tester.enterText(textField('E-pošta'), testEmail);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Kod iz poruke'),
-      FakeServer.code,
-    );
+    await tester.enterText(textField('Kod iz poruke'), FakeServer.code);
     await tester.pumpAndSettle();
     expect(find.text('Kako da te zovemo?'), findsOneWidget);
   });

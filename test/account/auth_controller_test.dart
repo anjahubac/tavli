@@ -71,6 +71,19 @@ void main() {
     expect((state() as SignedOut).reason, SignOutReason.storageUnavailable);
   });
 
+  test('odbijeno čuvanje obnovljene sesije zatvara pristup nalogu', () async {
+    final session = backend.auth.sessionFor('ana@mail.com');
+    secrets.values[SessionStore.key] = session.json;
+    secrets.deniedWrites.add(SessionStore.key);
+
+    await ctrl().start();
+
+    expect((state() as SignedOut).reason, SignOutReason.storageUnavailable);
+    expect(backend.auth.current, isNull);
+    expect(secrets.values[SessionStore.key], session.json);
+    expect(await db.select(db.accounts).get(), isEmpty);
+  });
+
   test('sačuvana sesija i keširan nalog: prijavljen bez mreže', () async {
     final s = backend.auth.sessionFor('ana@mail.com');
     secrets.values[SessionStore.key] = s.json;
@@ -130,6 +143,7 @@ void main() {
     );
 
     expect(state(), isA<CodeSent>());
+    expect(backend.auth.current, isNull);
     expect(secrets.values, isEmpty);
     expect(await db.select(db.accounts).get(), isEmpty);
   });

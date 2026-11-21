@@ -71,9 +71,16 @@ class TavliTextField extends StatelessWidget {
     this.inputFormatters,
     this.autofocus = false,
     this.obscureText = false,
+    this.minLines = 1,
     this.maxLines = 1,
     this.autofillHints,
-  }) : assert(controller == null || initialValue == null);
+    this.focusNode,
+    this.autocorrect = true,
+    this.isCode = false,
+    this.trailing,
+    this.textCapitalization = TextCapitalization.none,
+  }) : assert(controller == null || initialValue == null),
+       assert(minLines <= maxLines);
 
   /// Naziv iznad polja, npr. „Naziv recepta“.
   final String? label;
@@ -96,11 +103,30 @@ class TavliTextField extends StatelessWidget {
 
   /// Više redova za duži tekst (npr. napomena); polje raste do toliko.
   final int maxLines;
+
+  /// Koliko redova polje ima i kad je prazno (npr. koraci pripreme).
+  final int minLines;
   final Iterable<String>? autofillHints;
+  final FocusNode? focusNode;
+
+  /// `false` za e-poštu, kodove i nazive koje ne treba ispravljati.
+  final bool autocorrect;
+
+  /// Jednokratni kod iz poruke: veće cifre sa razmakom između njih.
+  final bool isCode;
+
+  /// Dugme na desnom kraju polja, npr. `TavliIconButton` „Prikaži“.
+  final Widget? trailing;
+
+  /// npr. [TextCapitalization.words] za ime.
+  final TextCapitalization textCapitalization;
 
   @override
   Widget build(BuildContext context) {
+    final style = _textStyle(context, enabled: enabled);
     final field = TextFormField(
+      focusNode: focusNode,
+      autocorrect: autocorrect,
       controller: controller,
       initialValue: initialValue,
       onChanged: onChanged,
@@ -111,15 +137,28 @@ class TavliTextField extends StatelessWidget {
       inputFormatters: inputFormatters,
       autofocus: autofocus,
       obscureText: obscureText,
-      minLines: 1,
+      textCapitalization: textCapitalization,
+      minLines: obscureText ? 1 : minLines,
       maxLines: obscureText ? 1 : maxLines,
       autofillHints: autofillHints,
-      style: _textStyle(context, enabled: enabled),
+      style: isCode
+          ? style?.copyWith(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 8,
+              height: 1.2,
+            )
+          : style,
       decoration: _decoration(
         context,
         hint: hint,
         error: errorText,
         enabled: enabled,
+        // Svoj čvor za čitač ekrana: bez njega dugme u polju koje je
+        // izašlo iz vidnog dela liste ostaje kao nevidljiv čvor.
+        suffix: trailing == null
+            ? null
+            : Semantics(container: true, child: trailing),
       ),
     );
     final label = this.label;

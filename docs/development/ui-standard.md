@@ -4,6 +4,107 @@ Applies to new and changed screens. Use the Claude “Tavli: ekrani po uređajim
 canvas as the visual reference and the rules below for interactive behavior.
 The local `packages/tavli_ui` package holds the theme, tokens and reusable UI.
 
+## Design source
+
+The design canvas **"Tavli: ekrani po uređajima"**
+(<https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7>) is the canonical Tavli
+design. It is the app's original design, not a redesign: Tavli has no released
+version whose look must be preserved. The canvas shows Plan, Nabavka, Početna,
+Recepti and Ostava for Android, iOS, macOS and Windows.
+
+- Build screens and components exactly as the canvas shows them: layout,
+  hierarchy, copy, colors, typography, radii, spacing and icons.
+- Do not invent layouts, controls or screens that the canvas does not show.
+  When a needed screen or state is missing (an error state, a dialog, a screen
+  not drawn yet), add it to the canvas first, or describe it in the feature spec
+  with a reference to the nearest canvas pattern, and get Dev 4 review before
+  implementation.
+- When code, an older spec or an older mockup disagrees with the canvas, the
+  canvas wins. Earlier visual references (for example the mockup linked from
+  `specs/005-themes-animations`) are history only.
+- When the canvas look and an accessibility rule below conflict (for example a
+  hit area under 48×48), keep the look and meet the rule (larger hit area,
+  wrapping text). Record the deviation in the PR.
+- The canvas is drawn on fixed artboards (390×844 phone, 1200×760 desktop).
+  Those are drawing frames, not layout sizes; see Sizing.
+
+## Sizing: no fixed sizes
+
+- Never give a screen, section, card, list, row or text container a fixed width
+  or height. Width comes from the available space (parent constraints,
+  `Expanded`/`Flexible`, the breakpoints below); height follows content.
+- Control heights in the table below are **minimum** heights (`minHeight`
+  constraints), never fixed heights. At 2× text controls grow; long Serbian copy
+  wraps or the actions stack.
+- A readable maximum width for text-heavy content, dialogs and sheets is allowed
+  as a `maxWidth` constraint taken from a package token.
+- Icons, avatars, checkboxes and thumbnails use token sizes.
+- No number literals for spacing, radius, size or color in `lib/features/`; use
+  package tokens. A missing token is added to the UI package with light/dark
+  values and a gallery example in the same PR as its first consumer.
+
+## Measurements from the canvas
+
+Values are logical pixels. Heights are minimums.
+
+| Element | Canvas value |
+| --- | --- |
+| Screen edge / between sections | 20 horizontal padding; 14 between sections |
+| Inside cards and rows | 8 between small elements; 14 between cards; card padding 16–18 |
+| Card | radius 20, no elevation; white surface with 1 px divider-color border, or a tinted container for the highlighted meal |
+| Compact card, thumbnail, text button | radius 14 |
+| Cooked meal card | muted surface, muted text, check icon, label "· skuvano" |
+| Primary (filled) button | height 56, radius 18, label 15/700, optional 18 icon |
+| Secondary (outlined) button | height 56, radius 18, 1 px outline, label 15/700; same height as a primary button (Anja, 2026-11-20). Buttons in one row always share one height |
+| Floating action button | radius 20 |
+| Segmented control | height 40, radius 20, 1 px outline |
+| Filter chip | height 36, radius 10 |
+| Text field, notice | radius 16 |
+| List group / row | group radius 20 with 1 px dividers; row height 52, padding 16, gap 14 |
+| Checkbox | 22, radius 6; checked = primary fill with white check |
+| Status badge | 18 |
+| Avatar (profile) | 40 on Android, 36 on iOS |
+| Dialog, bottom sheet | radius 24 |
+| Top bar | 64 on Android (title left, 22/700), 56 on iOS (title centered, 17/700) |
+| Bottom navigation | 80 on Android; 98 on iOS including the home-indicator area; selected indicator 60×32, radius 16 |
+
+Typography is Plus Jakarta Sans (bundled in the UI package): page title 28/800
+(letter spacing −0.02em), highlighted card title 20/800, body 16, secondary text
+14, section labels 12/700 uppercase (letter spacing 0.06em), navigation labels
+12 (500, selected 700). Body text stays at least 16; preparation steps need
+generous line spacing.
+
+Colors come only from the palettes (Bosiljak default, Šafran, Borovnica; light
+and dark). The canvas is drawn in Bosiljak light; other palettes map the same
+roles. Never copy hex values into feature code.
+
+Desktop layouts (macOS and Windows rows of the canvas) use the window frame,
+page header, action bar, week strip, month calendar, card grid, list group,
+data table and thumbnail components shown there.
+
+## Icons
+
+The canvas uses one icon style, and it applies to the whole app:
+
+- outline line icons on a 24×24 grid, stroke 2, round line caps and joins,
+  color from the surrounding text color; no filled, two-tone or emoji icons;
+- the check mark in a status is stroke 2.4, inside a filled checkbox stroke 3;
+- sizes: 22 in navigation, 18 inside buttons, 20 for status marks, 16 inside a
+  checkbox.
+
+Icons drawn on the canvas: Plan (calendar), Nabavka (cart), Početna (house),
+Recepti (book), Ostava (box), Kuvaj (pot), Skuvano and checkbox (check mark).
+A needed icon that is not on the canvas is drawn in the same style.
+
+Screens use one Tavli icon set exported by the UI package and never reference
+Material `Icons` directly. Current Material icons are a known deviation, replaced
+when each screen moves to the library. All icons are drawn in-house
+(`TavliIcons` and `TavliIcon` in the UI package, decided in the
+[UI library spec](../../specs/031-external-ui-library/spec.md) Q1); a missing
+icon is added there in the same style, with a gallery entry.
+Decorative icons are excluded from semantics; icon-only buttons have a Serbian
+label and tooltip.
+
 ## Reuse the current implementation
 
 Use `buildTavliTheme`, `TavliColors`, `TavliPalette`, `TavliStatusColors`,
@@ -41,7 +142,7 @@ scrolling, permissions and platform window controls.
 | Component | Required behavior |
 | --- | --- |
 | Card grid | Cards align to equal row heights for ordinary text; at 2× text use adaptive height/list layout instead of clipping |
-| Buttons | Same-row actions have consistent height; long Serbian copy wraps or stacks; every interactive target is at least 48×48 dp |
+| Buttons | Use the canvas minimum for each button variant; long Serbian copy wraps or stacks; every interactive target is at least 48×48 dp |
 | Fields | Use existing theme styles; label, help and validation remain visible; keyboard does not hide the focused field or submit action |
 | Dialog/sheet | Use current adaptive patterns; bounded readable width, focus restored on close, accessible dismissal |
 | Search/list | Loading, empty, error and populated states; preserve query/scroll on retry and return |

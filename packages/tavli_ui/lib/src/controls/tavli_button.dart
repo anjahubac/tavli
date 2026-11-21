@@ -1,14 +1,16 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../icons/tavli_icons.dart';
 import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 
 /// Vrsta dugmeta iz standarda komponenti.
 enum TavliButtonVariant {
-  /// Glavno: visina 56, radijus 18, tekst 16 podebljan, boja teme.
+  /// Glavno: visina 56, radijus 18, tekst 15 podebljan, boja teme.
   primary,
 
-  /// Sporedno: visina 48 (56 pored glavnog), radijus 16, ivica 1 px.
+  /// Sporedno: visina 56 i radijus 18 kao glavno (iste visine u redu),
+  /// ivica 1 px.
   secondary,
 
   /// Tekstualno: visina 48, radijus 14, bez pozadine.
@@ -21,29 +23,35 @@ enum TavliButtonVariant {
 /// Dugme iz biblioteke. Ekran bira samo vrstu, tekst i ikonicu; boja,
 /// radijus i visina dolaze iz standarda.
 ///
-/// Dva ili više dugmadi u istom redu idu u [TavliButtonRow], da budu iste
-/// visine (sporedno pored glavnog dobija 56).
+/// Dva ili više dugmadi u istom redu idu u [TavliButtonRow]; glavno i
+/// sporedno su iste visine (56), kao „Kuvaj“ i „Skuvano“.
 class TavliButton extends StatelessWidget {
   const TavliButton.primary({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.primary;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.primary;
 
   const TavliButton.secondary({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.secondary;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.secondary;
 
   const TavliButton.text({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.text;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.text;
 
   /// Tekstualno dugme za brisanje („Obriši ceo dnevnik ishrane“). Potvrdu
   /// pre brisanja pravi ekran.
@@ -52,17 +60,25 @@ class TavliButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.destructive;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.destructive;
 
   final TavliButtonVariant variant;
   final String label;
   final IconData? icon;
 
+  /// Ikonica iz Tavli seta ([TavliIcons]); zamenjuje [icon].
+  final TavliIconData? glyph;
+
   /// `null` isključuje dugme.
   final VoidCallback? onPressed;
 
-  /// Visina bez obzira na red: 56 za glavno, 48 za ostala.
-  double get baseHeight => variant == TavliButtonVariant.primary ? 56 : 48;
+  /// Visina bez obzira na red: 56 za glavno i sporedno, 48 za tekstualna.
+  double get baseHeight => switch (variant) {
+    TavliButtonVariant.primary || TavliButtonVariant.secondary => 56,
+    TavliButtonVariant.text || TavliButtonVariant.destructive => 48,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -75,15 +91,14 @@ class TavliButton extends StatelessWidget {
 
     final radius = switch (variant) {
       TavliButtonVariant.primary => TavliRadius.button,
-      TavliButtonVariant.secondary => TavliRadius.field,
+      TavliButtonVariant.secondary => TavliRadius.button,
       TavliButtonVariant.text ||
       TavliButtonVariant.destructive => TavliRadius.compact,
     };
+    // Kanvas: tekst dugmeta 15, podebljan, za sve vrste.
     final textStyle = theme.textTheme.labelLarge?.copyWith(
-      fontSize: compact ? 15 : 16,
-      fontWeight: variant == TavliButtonVariant.primary || compact
-          ? FontWeight.w700
-          : FontWeight.w600,
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
       height: 1.25,
     );
     final style = ButtonStyle(
@@ -118,13 +133,17 @@ class TavliButton extends StatelessWidget {
     );
 
     final text = Text(label, textAlign: TextAlign.center);
-    final child = icon == null
+    final glyph = this.glyph;
+    final Widget? iconWidget = glyph != null
+        ? TavliIcon(glyph, size: 20)
+        : (icon == null ? null : Icon(icon, size: 20));
+    final child = iconWidget == null
         ? text
         : Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20),
+              iconWidget,
               const SizedBox(width: TavliSpacing.small),
               Flexible(child: text),
             ],
@@ -162,11 +181,12 @@ extension on TavliButtonVariant {
       this == TavliButtonVariant.text || this == TavliButtonVariant.destructive;
 }
 
-/// Dugmad u jednom redu, uvek iste visine.
+/// Dugmad u jednom redu.
 ///
-/// Ako je u redu glavno dugme, sva dugmad su visine 56 (sporedno pored
-/// glavnog), inače 48. Kada veći tekst ili prelom poveća jedno dugme, i
-/// ostala rastu sa njim.
+/// Sva dugmad u redu su iste visine: visina najvišeg dugmeta po vrsti
+/// (56 kad u redu ima glavno ili sporedno, inače 48). Kada veći tekst ili
+/// prelom poveća jedno dugme, i ostala rastu sa njim. U traci sa akcijama
+/// sva dugmad su 56.
 ///
 /// [expand] deli širinu podjednako (traka sa akcijama, „Kuvaj“ i
 /// „Skuvano“ na kartici); bez njega dugmad su široka koliko tekst traži.
@@ -186,12 +206,13 @@ class TavliButtonRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = children.any((b) => b.variant == TavliButtonVariant.primary)
-        ? 56.0
-        : 48.0;
+    final outer = _TavliButtonScope.maybeOf(context);
+    final height = children
+        .map((b) => b.baseHeight)
+        .fold<double>(0, (a, b) => a > b ? a : b);
     return _TavliButtonScope(
-      height: _TavliButtonScope.maybeOf(context)?.height ?? height,
-      compact: _TavliButtonScope.maybeOf(context)?.compact ?? false,
+      height: outer?.height ?? height,
+      compact: outer?.compact ?? false,
       child: IntrinsicHeight(
         child: Row(
           mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,

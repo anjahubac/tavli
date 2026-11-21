@@ -1,5 +1,7 @@
+import 'package:flutter/semantics.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../icons/tavli_icons.dart';
 import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 
@@ -9,8 +11,8 @@ const _rowPadding = EdgeInsets.symmetric(
 );
 const _rowRadius = BorderRadius.all(Radius.circular(TavliRadius.field));
 
-/// Polje za štikliranje: 22 x 22, radijus 8. Samo crtež; dodir i opis za
-/// čitač ekrana daje red koji ga sadrži.
+/// Polje za štikliranje: 22 x 22, radijus 6, kvačica iz Tavli seta (linija
+/// 3). Samo crtež; dodir i opis za čitač ekrana daje red koji ga sadrži.
 class _CheckBox extends StatelessWidget {
   const _CheckBox({required this.checked, required this.enabled});
 
@@ -31,7 +33,13 @@ class _CheckBox extends StatelessWidget {
           border: checked ? null : Border.all(color: x.boxLine, width: 2),
         ),
         child: checked
-            ? Icon(Icons.check_rounded, size: 16, color: c.onPrimary)
+            ? Center(
+                child: TavliIcon(
+                  TavliIcons.check.withStroke(3),
+                  size: 16,
+                  color: c.onPrimary,
+                ),
+              )
             : null,
       ),
     );
@@ -39,9 +47,17 @@ class _CheckBox extends StatelessWidget {
 }
 
 /// Red sa poljem za štikliranje (stavka nabavke). Štiklirana stavka je
-/// precrtana i prigušena. Ceo red je polje za dodir, visina najmanje 52.
+/// precrtana i prigušena. Visina najmanje 52.
 ///
 /// Red nema pozadinu ni ivicu: stavlja se u grupisanu listu ili karticu.
+///
+/// - Bez [onSelect] ceo red štiklira.
+/// - Sa [onSelect] (lista i detalj na računaru) dodir na red bira stavku za
+///   detalj, a štiklira se samo poljem (polje za dodir 48). Izabran red ima
+///   meku pozadinu boje teme ([selected]).
+/// - [onLongPress] (npr. „Za koje obroke“ na telefonu) se otvara dugim
+///   pritiskom; čitač ekrana ga dobija kao radnju [longPressLabel].
+/// - [trailing]: dugme desno (npr. „Obriši“ za ručnu stavku).
 class TavliCheckRow extends StatelessWidget {
   const TavliCheckRow({
     super.key,
@@ -49,7 +65,15 @@ class TavliCheckRow extends StatelessWidget {
     required this.checked,
     required this.onChanged,
     this.detail,
-  });
+    this.onSelect,
+    this.selected = false,
+    this.onLongPress,
+    this.longPressLabel,
+    this.trailing,
+  }) : assert(
+         (onLongPress == null) == (longPressLabel == null),
+         'dug pritisak traži i naziv radnje',
+       );
 
   final String title;
 
@@ -57,8 +81,17 @@ class TavliCheckRow extends StatelessWidget {
   final String? detail;
   final bool checked;
 
-  /// `null` isključuje red.
+  /// `null` isključuje štikliranje.
   final ValueChanged<bool>? onChanged;
+
+  /// Bira red za detalj (lista i detalj); tada štiklira samo polje.
+  final VoidCallback? onSelect;
+
+  /// Red je izabran za detalj.
+  final bool selected;
+  final VoidCallback? onLongPress;
+  final String? longPressLabel;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -67,54 +100,118 @@ class TavliCheckRow extends StatelessWidget {
     final enabled = onChanged != null;
     final muted = checked || !enabled;
     final detail = this.detail;
-    return MergeSemantics(
-      child: Semantics(
-        checked: checked,
-        enabled: enabled,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: enabled ? () => onChanged!(!checked) : null,
-            borderRadius: _rowRadius,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 52),
-              child: Padding(
-                padding: _rowPadding,
-                child: Row(
-                  children: [
-                    _CheckBox(checked: checked, enabled: enabled),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: t.bodyLarge?.copyWith(
-                          fontSize: 16,
-                          height: 1.35,
-                          color: muted ? c.onSurfaceVariant : c.onSurface,
-                          decoration: checked
-                              ? TextDecoration.lineThrough
-                              : null,
-                          decorationColor: c.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    if (detail != null) ...[
-                      const SizedBox(width: TavliSpacing.small),
-                      Text(
-                        detail,
-                        style: t.bodyMedium?.copyWith(
-                          fontSize: 15,
-                          height: 1.35,
-                          color: c.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
+    final onSelect = this.onSelect;
+    final onLongPress = this.onLongPress;
+    final trailing = this.trailing;
+    void toggle() => onChanged!(!checked);
+
+    final box = _CheckBox(checked: checked, enabled: enabled);
+    final texts = <Widget>[
+      Expanded(
+        child: Text(
+          title,
+          style: t.bodyLarge?.copyWith(
+            fontSize: 16,
+            height: 1.35,
+            color: muted ? c.onSurfaceVariant : c.onSurface,
+            decoration: checked ? TextDecoration.lineThrough : null,
+            decorationColor: c.onSurfaceVariant,
+          ),
+        ),
+      ),
+      if (detail != null) ...[
+        const SizedBox(width: TavliSpacing.small),
+        Text(
+          detail,
+          style: t.bodyMedium?.copyWith(
+            fontSize: 15,
+            height: 1.35,
+            color: c.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ];
+    final actions = onLongPress == null
+        ? null
+        : {CustomSemanticsAction(label: longPressLabel!): onLongPress};
+
+    if (onSelect == null) {
+      final row = MergeSemantics(
+        child: Semantics(
+          checked: checked,
+          enabled: enabled,
+          customSemanticsActions: actions,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: enabled ? toggle : null,
+              onLongPress: onLongPress,
+              borderRadius: _rowRadius,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 52),
+                child: Padding(
+                  padding: _rowPadding,
+                  child: Row(
+                    children: [box, const SizedBox(width: 12), ...texts],
+                  ),
                 ),
               ),
             ),
           ),
         ),
+      );
+      if (trailing == null) return row;
+      // Dugme desno je posebna radnja, ne deo reda za čitač ekrana.
+      return Row(
+        children: [
+          Expanded(child: row),
+          trailing,
+        ],
+      );
+    }
+
+    // Lista i detalj: polje štiklira, ostatak reda bira.
+    return Material(
+      color: selected ? c.primaryContainer : Colors.transparent,
+      child: Row(
+        children: [
+          Semantics(
+            checked: checked,
+            enabled: enabled,
+            label: title,
+            child: InkWell(
+              onTap: enabled ? toggle : null,
+              customBorder: const CircleBorder(),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
+                child: Center(child: box),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Semantics(
+              button: true,
+              selected: selected,
+              customSemanticsActions: actions,
+              child: InkWell(
+                onTap: onSelect,
+                onLongPress: onLongPress,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 52),
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(
+                      end: TavliSpacing.medium,
+                      top: TavliSpacing.small,
+                      bottom: TavliSpacing.small,
+                    ),
+                    child: Row(children: texts),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          ?trailing,
+        ],
       ),
     );
   }

@@ -81,29 +81,36 @@ class MealEntryDetail extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 12),
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Expanded(child: Text('Broj porcija')),
-            IconButton(
-              tooltip: 'Manje porcija',
-              onPressed: meal.isCooked || meal.servings <= 1
-                  ? null
-                  : () => runMealEdit(
-                      context,
-                      () => repo.changeServings(meal.id, meal.servings - 1),
-                    ),
-              icon: const Icon(Icons.remove),
-            ),
-            Text('${meal.servings}', style: theme.textTheme.titleMedium),
-            IconButton(
-              tooltip: 'Više porcija',
-              onPressed: meal.isCooked || meal.servings >= maxServings
-                  ? null
-                  : () => runMealEdit(
-                      context,
-                      () => repo.changeServings(meal.id, meal.servings + 1),
-                    ),
-              icon: const Icon(Icons.add),
+            const Text('Broj porcija'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Manje porcija',
+                  onPressed: meal.isCooked || meal.servings <= 1
+                      ? null
+                      : () => runMealEdit(
+                          context,
+                          () => repo.changeServings(meal.id, meal.servings - 1),
+                        ),
+                  icon: const Icon(Icons.remove),
+                ),
+                Text('${meal.servings}', style: theme.textTheme.titleMedium),
+                IconButton(
+                  tooltip: 'Više porcija',
+                  onPressed: meal.isCooked || meal.servings >= maxServings
+                      ? null
+                      : () => runMealEdit(
+                          context,
+                          () => repo.changeServings(meal.id, meal.servings + 1),
+                        ),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
             ),
           ],
         ),
@@ -130,10 +137,12 @@ class MealEntryDetail extends ConsumerWidget {
               label: Text(meal.isLocked ? 'Otključaj' : 'Zaključaj'),
             ),
             OutlinedButton.icon(
-              onPressed: () => runMealEdit(
-                context,
-                () => repo.setCooked(meal.id, cooked: !meal.isCooked),
-              ),
+              onPressed: () => runMealEdit(context, () async {
+                final cooking = ref.read(cookingRepositoryProvider);
+                meal.isCooked
+                    ? await cooking.undoCooked(meal.id)
+                    : await cooking.markCooked(meal.id);
+              }),
               icon: Icon(
                 meal.isCooked ? Icons.undo : Icons.check_circle_outline,
               ),

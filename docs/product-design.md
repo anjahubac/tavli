@@ -131,8 +131,10 @@ can leave. Review offline queues and account scope before switching household.
 
 Household shares recipes, plans, shopping and pantry. Taste preferences,
 favorites, ratings, diary/targets and cycle data are personal. Planning receives
-only the authorized minimum aggregate; the open choice between creator/all-member
-favorites must be clarified before that consumer is implemented. Do not solve
+only the authorized minimum aggregate. Planning defaults to all current members
+but passes explicit participant IDs; only selected members' favorites contribute.
+The [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
+remains pending producer/consumer review. Do not solve
 this by granting broad access to personal rows. Allergy codes are structured;
 separate the fixed allergen vocabulary from lactose avoidance and other dietary
 preferences, with the final vocabulary/provenance reviewed before implementation.
@@ -158,7 +160,8 @@ preferences, with the final vocabulary/provenance reviewed before implementation
 
 Use [UI standards](development/ui-standard.md): phone/wide, light/dark, 2× text,
 keyboard/screen reader, reduced motion, safe areas and offline/error states.
-Existing warm palette and typography stay; accessibility fixes are not a redesign.
+The [design canvas](https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7) is the
+canonical design (see the UI standard); accessibility fixes keep its look.
 From a saved plan to weekly shopping and from today's meal to available cooking
 steps should require at most two actions. Record additional generation/review
 steps honestly when steps are missing.

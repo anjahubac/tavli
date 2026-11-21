@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../account/account_api.dart';
 import '../../account/auth_gateway.dart';
 
@@ -14,7 +16,10 @@ String authErrorText(AuthFailure f) => switch (f) {
 
 const sessionExpiredText = 'Sesija je istekla. Prijavi se ponovo.';
 const accountDeletedText = 'Nalog je obrisan.';
-const storageUnavailableText = 'Funkcija nije dostupna na ovom uređaju.';
+String get storageUnavailableText =>
+    defaultTargetPlatform == TargetPlatform.linux
+    ? 'Bezbedno skladište sesije nije dostupno. Proveri da li je sistemski keyring pokrenut i otključan, pa pokušaj ponovo.'
+    : 'Funkcija nije dostupna na ovom uređaju.';
 
 /// Poruka za neuspelo brisanje naloga.
 String deleteErrorText(DeleteFailure f) => switch (f) {

@@ -9,6 +9,8 @@ import '../tokens.dart';
 import 'content_sections.dart';
 import 'controls_sections.dart';
 import 'gallery_section.dart';
+import 'icon_sections.dart';
+import 'overlay_sections.dart';
 import 'shell_sections.dart';
 
 /// Naziv teme kako ga vidi korisnik.
@@ -200,7 +202,8 @@ class _Controls extends StatelessWidget {
 
 /// Sadržaj galerije bez prekidača: osnova (boje, tekst, mere, tema na
 /// Material elementima), komponente kostura ekrana, kontrole (dugmad,
-/// polja i izbori) i sadržaj (kartice, liste, napomene, stanja).
+/// polja i izbori), sadržaj (kartice, liste, napomene, stanja) i
+/// dijalozi, donji list, kratke poruke i meni akcija.
 ///
 /// Svaka nova komponenta iz biblioteke dobija svoj odeljak ovde.
 class TavliGallerySections extends StatelessWidget {
@@ -212,9 +215,11 @@ class TavliGallerySections extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TavliFoundationGallerySections(),
+        TavliIconGallerySections(),
         TavliShellGallerySections(),
         TavliControlsGallerySections(),
         TavliContentGallerySections(),
+        TavliOverlayGallerySections(),
       ],
     );
   }

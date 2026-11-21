@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/ids.dart';
 import '../../domain/recipe.dart';
@@ -198,45 +199,27 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          TextField(
+                          TavliTextField(
+                            label: 'Naziv',
+                            hint: 'npr. Sarma',
                             controller: _title,
                             onChanged: (_) => _changed(),
-                            decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              labelText: 'Naziv',
-                              errorText: _titleError,
-                            ),
+                            errorText: _titleError,
                           ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              SizedBox(
-                                width: 160,
-                                child: TextField(
-                                  controller: _servings,
-                                  onChanged: (_) => _changed(),
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    labelText: 'Broj porcija',
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 200,
-                                child: TextField(
-                                  controller: _prep,
-                                  onChanged: (_) => _changed(),
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    labelText: 'Vreme pripreme (min)',
-                                  ),
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: TavliSpacing.medium),
+                          _NumberFields(
+                            servings: TavliTextField(
+                              label: 'Broj porcija',
+                              controller: _servings,
+                              onChanged: (_) => _changed(),
+                              keyboardType: TextInputType.number,
+                            ),
+                            prep: TavliTextField(
+                              label: 'Vreme pripreme (min)',
+                              controller: _prep,
+                              onChanged: (_) => _changed(),
+                              keyboardType: TextInputType.number,
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Text('Sastojci', style: theme.textTheme.titleMedium),
@@ -274,16 +257,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          TextField(
+                          TavliTextField(
+                            label: 'Koraci pripreme (jedan po redu)',
                             controller: _steps,
                             onChanged: (_) => _changed(),
+                            keyboardType: TextInputType.multiline,
                             minLines: 4,
-                            maxLines: null,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              labelText: 'Koraci pripreme (jedan po redu)',
-                              alignLabelWithHint: true,
-                            ),
+                            maxLines: 16,
                           ),
                         ],
                       ),
@@ -292,6 +272,42 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// Porcije i minuti jedno pored drugog; uz krupan tekst ili na uskom ekranu
+/// jedno ispod drugog, da se nazivi ne seku.
+class _NumberFields extends StatelessWidget {
+  const _NumberFields({required this.servings, required this.prep});
+
+  final Widget servings;
+  final Widget prep;
+
+  @override
+  Widget build(BuildContext context) {
+    final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (largeText || constraints.maxWidth < 320) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              servings,
+              const SizedBox(height: TavliSpacing.medium),
+              prep,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: servings),
+            const SizedBox(width: TavliSpacing.medium),
+            Expanded(child: prep),
+          ],
+        );
+      },
     );
   }
 }

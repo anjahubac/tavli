@@ -63,3 +63,6 @@ macos/Runner/Configs/Local.xcconfig
 
 # Razlike iz testova izgleda (flutter test pravi ih kada slika ne odgovara).
 **/test/failures/
+
+# Lokalni Android build output
+/android/build/

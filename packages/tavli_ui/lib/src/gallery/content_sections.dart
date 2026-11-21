@@ -8,6 +8,7 @@ import '../content/tavli_notice.dart';
 import '../content/tavli_states.dart';
 import '../content/tavli_tag.dart';
 import '../controls/tavli_button.dart';
+import '../controls/tavli_icon_button.dart';
 import '../controls/tavli_rows.dart';
 import '../tokens.dart';
 import 'gallery_section.dart';
@@ -23,6 +24,7 @@ class TavliContentGallerySections extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         GallerySection(title: 'Kartice', child: _Cards()),
+        GallerySection(title: 'Mreža kartica', child: _Grid()),
         GallerySection(title: 'Liste', child: _Lists()),
         GallerySection(title: 'Tabela za računar', child: _Table()),
         GallerySection(
@@ -162,6 +164,57 @@ class _Cards extends StatelessWidget {
   }
 }
 
+class _Grid extends StatelessWidget {
+  const _Grid();
+
+  static const _recipes = [
+    ('Musaka od krompira', '75 min · 4 porcije'),
+    ('Pasulj prebranac', '120 min · 6 porcija'),
+    ('Čorba od povrća', '40 min · 4 porcije'),
+    ('Proja', '35 min · 8 porcija'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return GalleryLabeled(
+      'Recepti na računaru · tri kolone, kartice u redu iste visine',
+      TavliCardGrid(
+        columns: 3,
+        spacing: TavliSpacing.small,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _recipes.length,
+        itemBuilder: (context, i) => TavliCard(
+          padding: EdgeInsets.zero,
+          selected: i == 1,
+          onTap: () {},
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TavliThumbnail.cardTop(tintIndex: i),
+              Padding(
+                padding: const EdgeInsets.all(TavliSpacing.small),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_recipes[i].$1, style: t.titleSmall),
+                    Text(
+                      _recipes[i].$2,
+                      style: t.bodySmall?.copyWith(color: muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Lists extends StatefulWidget {
   const _Lists();
 
@@ -211,6 +264,37 @@ class _ListsState extends State<_Lists> {
                 title: 'Gibanica',
                 subtitle: '1 h 10 min · 8 porcija',
                 showChevron: true,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+        gap,
+        GalleryLabeled(
+          'Sa ikonicom, dugmadima desno i za brisanje',
+          TavliListGroup(
+            children: [
+              TavliListRow(
+                leading: const Icon(Icons.key_outlined),
+                title: '••••7Lm2',
+                subtitle: 'Dodat 14.11.2026 · Radi',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TavliButton.text(label: 'Proveri', onPressed: () {}),
+                    TavliIconButton(
+                      icon: Icons.delete_outline_rounded,
+                      semanticLabel: 'Obriši ključ',
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+              ),
+              TavliListRow(
+                leading: const Icon(Icons.delete_forever_outlined),
+                title: 'Obriši nalog',
+                subtitle: 'Trajno briše nalog i sve podatke',
+                destructive: true,
                 onTap: () {},
               ),
             ],

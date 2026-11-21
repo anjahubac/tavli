@@ -93,10 +93,14 @@ explicit operation through `delete-account`, then local cleanup after success.
 2. Repository validates current state and computes domain changes.
 3. One drift transaction writes rows and outbox entries through `SyncedWriter`.
 4. UI immediately observes the local result; `SyncEngine.kick()` schedules upload.
-5. `Uploader` reads current payloads for queued identities; UUID identities make
-   retry idempotent. Rejected entries are reported rather than blocking all work.
-6. `Downloader` applies account-scoped pages/cursors, preserving pending local
-   edits. Photos synchronize separately so a photo cannot block ordinary data.
+5. `Uploader` reads current payloads for queued identities. Primary-key upserts
+   protect against duplicate rows, while replaying a mutable upsert can still
+   overwrite a newer server value. Rejected entries are reported and other work
+   continues.
+6. `Downloader` preserves pending local edits. A row with invalid data or a local
+   constraint violation rolls back independently. Later independent rows and
+   tables are applied. The stored cursor stays before the first failing or
+   dependent row so both are retried. Photos synchronize separately.
 
 Current scheduler pushes on start/login/resume/local change, debounces local
 writes for 1 s and retries offline at 5/10/30 s. Pull runs on start/login and
@@ -199,8 +203,10 @@ until removed. Those are future semantics to implement with a ledger contract.
 Household member preferences/allergies/favorites need a purpose-limited aggregate
 for planning. Do not expose personal profile or nutrition diary rows to all
 members merely to build an AI prompt. The exact aggregate/consent boundary must
-be accepted in the household contract before migrations. Favorites aggregation
-remains an open product decision. Cycle dates never leave the device; only an
+be accepted in the household contract before migrations. The product decision
+is to use selected participants' favorites, defaulting to all current members;
+the [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
+still needs producer/consumer review. Cycle dates never leave the device; only an
 explicitly approved generic dietary hint can enter a request.
 
 Nutrition is optional, off by default, computed from attributed reference values,
