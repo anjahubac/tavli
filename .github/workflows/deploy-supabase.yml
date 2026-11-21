@@ -43,9 +43,12 @@ jobs:
         with:
           version: 2.116.0
       - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      # --include-all: a reviewed migration whose timestamp is older than the
+      # last one applied (PRs merged in a different order) is applied instead
+      # of failing the deploy with MigrationMissingRemoteError.
       - name: Pending migrations
-        run: supabase db push --dry-run
-      - run: supabase db push --yes
+        run: supabase db push --include-all --dry-run
+      - run: supabase db push --include-all --yes
       - run: supabase functions deploy delete-account --project-ref "$SUPABASE_PROJECT_REF"
       - name: Deploy Auth email templates
         run: python3 scripts/deploy_auth_email_templates.py

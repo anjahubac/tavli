@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../ai/ai_errors.dart';
 import '../../ai/ai_models.dart';
@@ -10,6 +11,7 @@ import '../../ai/model_check.dart';
 import '../../domain/recipe_format.dart';
 import '../../providers.dart';
 import 'ai_error_text.dart';
+import 'settings_page.dart';
 
 enum _KeyStatus {
   works('Radi'),
@@ -193,23 +195,13 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
   }
 
   Future<void> _remove(StoredKey key) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Obrisati ključ ${key.masked}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Otkaži'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Obriši'),
-          ),
-        ],
-      ),
+    final confirmed = await showTavliConfirm(
+      context,
+      title: 'Obrisati ključ ${key.masked}?',
+      confirmLabel: 'Obriši',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       await ref.read(keyStoreProvider).remove(key.id);
     } on SecretStorageException {
@@ -228,182 +220,148 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final keys = _keys;
     final detected = detectProvider(_input.text);
     final hasText = _input.text.trim().isNotEmpty;
-    return Scaffold(
-      appBar: AppBar(title: const Text('AI ključevi')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Ključevi se čuvaju samo na ovom uređaju, u sistemskom '
-                    'sigurnom skladištu. Možeš dodati više ključeva: kad se '
-                    'jednom potroši besplatni limit, Tavli koristi sledeći.',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  SelectableText(
-                    'Ključ praviš na aistudio.google.com/apikey, '
-                    'console.groq.com/keys ili openrouter.ai/keys.',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextField(
-                            controller: _input,
-                            obscureText: _obscure,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              labelText: 'API ključ',
-                              suffixIcon: IconButton(
-                                tooltip: _obscure ? 'Prikaži' : 'Sakrij',
-                                icon: Icon(
-                                  _obscure
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _obscure = !_obscure),
-                              ),
-                            ),
-                            onSubmitted: (_) => _add(),
-                          ),
-                          if (hasText && detected != null) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              'Prepoznat servis: ${detected.label}',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                          if (hasText && detected == null) ...[
-                            const SizedBox(height: 12),
-                            DropdownButtonFormField<AIProvider>(
-                              initialValue: _chosen,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Izaberi servis',
-                              ),
-                              items: [
-                                for (final p in AIProvider.values)
-                                  DropdownMenuItem(
-                                    value: p,
-                                    child: Text(p.label),
-                                  ),
-                              ],
-                              onChanged: (p) => setState(() => _chosen = p),
-                            ),
-                          ],
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: FilledButton.icon(
-                              onPressed: _busy || !hasText || _provider == null
-                                  ? null
-                                  : _add,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Dodaj ključ'),
-                            ),
-                          ),
-                          if (_busy) ...[
-                            const SizedBox(height: 12),
-                            const LinearProgressIndicator(),
-                          ],
-                          if (_message case final message?) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              message,
-                              style: TextStyle(
-                                color: _messageIsError
-                                    ? theme.colorScheme.error
-                                    : theme.colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Dodati ključevi', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  if (_loadError case final error?) ...[
-                    Text(
-                      'Ključevi nisu učitani iz sigurnog skladišta ($error).',
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: () {
-                          setState(() => _loadError = null);
-                          unawaited(_load());
-                        },
-                        child: const Text('Pokušaj ponovo'),
-                      ),
-                    ),
-                  ] else if (keys == null)
-                    const Column(
-                      children: [
-                        Center(child: CircularProgressIndicator()),
-                        SizedBox(height: 8),
-                        Text(
-                          'Ako macOS traži lozinku za Keychain, izaberi '
-                          '„Always Allow“.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    )
-                  else if (keys.isEmpty)
-                    const Text('Još nema dodatih ključeva.')
-                  else
-                    for (final p in AIProvider.values)
-                      if (keys.any((k) => k.provider == p)) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            p.label,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                        for (final k in keys.where((k) => k.provider == p))
-                          _SavedKeyTile(
-                            storedKey: k,
-                            status: _status[k.id],
-                            models: _models[k.id] ?? const [],
-                            checking: _checking.contains(k.id),
-                            onCheck: () => _check(k),
-                            onRemove: () => _remove(k),
-                          ),
-                      ],
-                ],
+    final message = _message;
+    final newKey = SettingsSection(
+      title: 'Novi ključ',
+      children: [
+        const TavliNotice(
+          title:
+              'Ključevi se čuvaju samo na ovom uređaju, u sistemskom '
+              'sigurnom skladištu.',
+          message:
+              'Možeš dodati više ključeva: kad se jednom potroši besplatni '
+              'limit, Tavli koristi sledeći. Ključ praviš na '
+              'aistudio.google.com/apikey, console.groq.com/keys ili '
+              'openrouter.ai/keys.',
+        ),
+        TavliCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: TavliSpacing.medium,
+            children: [
+              TavliTextField(
+                label: 'API ključ',
+                controller: _input,
+                obscureText: _obscure,
+                autocorrect: false,
+                onSubmitted: (_) => _add(),
+                trailing: TavliIconButton(
+                  icon: _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  semanticLabel: _obscure ? 'Prikaži' : 'Sakrij',
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
               ),
-            ),
+              if (hasText && detected != null)
+                Text(
+                  'Prepoznat servis: ${detected.label}',
+                  style: _muted(context),
+                ),
+              if (hasText && detected == null) ...[
+                Text('Izaberi servis', style: _muted(context)),
+                TavliChoice<AIProvider?>.chips(
+                  options: [
+                    for (final p in AIProvider.values) TavliOption(p, p.label),
+                  ],
+                  selected: _chosen,
+                  onChanged: (p) => setState(() => _chosen = p),
+                ),
+              ],
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TavliButton.primary(
+                  label: 'Dodaj ključ',
+                  icon: Icons.add_rounded,
+                  onPressed: _busy || !hasText || _provider == null
+                      ? null
+                      : _add,
+                ),
+              ),
+              if (_busy) const TavliLoading(message: 'Proveravam ključ…'),
+              if (message != null)
+                TavliNotice(
+                  message: message,
+                  tone: _messageIsError
+                      ? TavliNoticeTone.error
+                      : TavliNoticeTone.success,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+    return SettingsPage(
+      title: 'AI ključevi',
+      backLabel: 'Profil',
+      fallbackLocation: '/profile',
+      children: [
+        SettingsColumns(
+          start: [newKey],
+          end: [
+            SettingsSection(title: 'Dodati ključevi', children: _savedKeys()),
+          ],
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _savedKeys() {
+    final keys = _keys;
+    if (_loadError case final error?) {
+      return [
+        TavliNotice(
+          tone: TavliNoticeTone.error,
+          message: 'Ključevi nisu učitani iz sigurnog skladišta ($error).',
+          linkLabel: 'Pokušaj ponovo',
+          onLink: () {
+            setState(() => _loadError = null);
+            unawaited(_load());
+          },
+        ),
+      ];
+    }
+    if (keys == null) {
+      return const [
+        TavliLoading(
+          message:
+              'Ako macOS traži lozinku za Keychain, izaberi „Always Allow“.',
+        ),
+      ];
+    }
+    if (keys.isEmpty) {
+      return [Text('Još nema dodatih ključeva.', style: _muted(context))];
+    }
+    return [
+      for (final p in AIProvider.values)
+        if (keys.any((k) => k.provider == p)) ...[
+          TavliSectionHeader(p.label, style: TavliSectionHeaderStyle.bold),
+          TavliListGroup(
+            children: [
+              for (final k in keys.where((k) => k.provider == p))
+                _SavedKeyRow(
+                  storedKey: k,
+                  status: _status[k.id],
+                  models: _models[k.id] ?? const [],
+                  checking: _checking.contains(k.id),
+                  onCheck: () => _check(k),
+                  onRemove: () => _remove(k),
+                ),
+            ],
           ),
         ],
-      ),
-    );
+    ];
   }
 }
 
-class _SavedKeyTile extends StatelessWidget {
-  const _SavedKeyTile({
+TextStyle? _muted(BuildContext context) =>
+    Theme.of(context).textTheme.bodyMedium
+        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+
+class _SavedKeyRow extends StatelessWidget {
+  const _SavedKeyRow({
     required this.storedKey,
     required this.status,
     required this.models,
@@ -421,69 +379,53 @@ class _SavedKeyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     final added = formatDateTime(storedKey.addedAt.toLocal()).split(' ').first;
     final s = status;
-    return Card(
-      margin: const EdgeInsets.only(top: 8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  s == _KeyStatus.rejected
-                      ? Icons.error_outline
-                      : s == _KeyStatus.works
-                      ? Icons.check_circle
-                      : Icons.key,
-                  color: s == _KeyStatus.rejected
-                      ? colors.error
-                      : colors.primary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(storedKey.masked, style: theme.textTheme.bodyLarge),
-                      Text(
-                        ['Dodat $added', if (s != null) s.label].join(' · '),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: s == _KeyStatus.rejected ? colors.error : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton(
-                  onPressed: checking ? null : onCheck,
-                  child: const Text('Proveri'),
-                ),
-                IconButton(
-                  tooltip: 'Obriši ključ',
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ],
-            ),
-            if (checking) const LinearProgressIndicator(),
-            for (final m in models)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 36),
-                child: Text(
-                  m.listed
-                      ? '✓ ${m.spec.label}'
-                      : '? ${m.spec.label}: nije na listi (alias ili ukinut model)',
-                  style: theme.textTheme.bodySmall,
-                ),
+    final modelLines = [
+      for (final m in models)
+        m.listed
+            ? '✓ ${m.spec.label}'
+            : '? ${m.spec.label}: nije na listi (alias ili ukinut model)',
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TavliListRow(
+          title: storedKey.masked,
+          subtitle: ['Dodat $added', if (s != null) s.label].join(' · '),
+          destructive: s == _KeyStatus.rejected,
+          leading: Icon(
+            s == _KeyStatus.rejected
+                ? Icons.error_outline_rounded
+                : s == _KeyStatus.works
+                ? Icons.check_circle_outline_rounded
+                : Icons.key_outlined,
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TavliButton.text(
+                label: 'Proveri',
+                onPressed: checking ? null : onCheck,
               ),
-          ],
+              TavliIconButton(
+                icon: Icons.delete_outline_rounded,
+                semanticLabel: 'Obriši ključ',
+                onPressed: onRemove,
+              ),
+            ],
+          ),
         ),
-      ),
+        if (checking) const TavliLoading(message: 'Proveravam ključ…'),
+        for (final line in modelLines)
+          Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: TavliSpacing.medium,
+            ),
+            child: Text(line, style: _muted(context)),
+          ),
+        if (modelLines.isNotEmpty) const SizedBox(height: TavliSpacing.small),
+      ],
     );
   }
 }

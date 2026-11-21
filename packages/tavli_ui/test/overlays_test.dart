@@ -227,6 +227,31 @@ void main() {
     });
   });
 
+  group('showTavliMessage sa čitačem ekrana', () {
+    testWidgets('ostaje dok se ne zatvori i ima „Zatvori“', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(accessibleNavigation: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpOpener(
+        tester,
+        (context) => showTavliMessage(
+          context,
+          'Kupljeno: krompir',
+          actionLabel: 'Poništi',
+          onAction: () {},
+        ),
+      );
+      await openIt(tester);
+      await tester.pump(const Duration(seconds: 10));
+      expect(find.text('Kupljeno: krompir'), findsOneWidget);
+      await tester.tap(find.text('Zatvori'));
+      await tester.pumpAndSettle();
+      expect(find.text('Kupljeno: krompir'), findsNothing);
+    });
+  });
+
   group('showTavliActionMenu', () {
     List<TavliMenuAction> actions(List<String> log) => [
       TavliMenuAction('Izmeni', onSelected: () => log.add('izmeni')),

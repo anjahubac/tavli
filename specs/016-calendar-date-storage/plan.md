@@ -1,6 +1,6 @@
 # Implementation plan: Calendar dates without time-zone drift
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: server columns and sync writer implemented (see [cutover](cutover-proposal.md#implemented-cutover)).
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 1 / Dev 2
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
@@ -19,9 +19,13 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 
 ## Contract and data plan
 
-Calendar days use CivilDate/Postgres date; event timestamps remain UTC instants. New SQL and coordinated drift migration preserve old rows and queued payloads.
+Calendar days use CivilDate/Postgres date; event timestamps remain UTC instants. New SQL converts old rows in place and accepts queued timestamp payloads; the drift cache keeps UTC-midnight `DateTime`, so no drift migration is needed.
 
 Producer dependencies: [013](../013-testing-strategy/spec.md)
+
+The [calendar-date cutover](cutover-proposal.md) records the evidence and the
+implemented migration (see its Implemented cutover section), including the
+minimum supported client build.
 
 Use [shared boundaries](../011-team-development/contracts/shared-boundaries.md)
 and the [contract template](../../.specify/templates/contract-template.md).

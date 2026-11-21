@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
+import 'package:tavli/features/shopping/shopping_counts.dart';
 import 'package:tavli/features/shopping/shopping_providers.dart';
-import 'package:tavli/features/shopping/shopping_screen.dart';
 
 void main() {
   test(
