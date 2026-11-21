@@ -109,16 +109,20 @@ FR-010, FR-105 and FR-107.
   large card, and the ingredients that step uses. A line says the screen stays
   on. The wake lock follows 007 and is released on exit.
 - **Navigation**: “Prethodni” (secondary) and “Sledeći” (primary) share one
-  row, the same height (48) and the same width. On the last step “Skuvano”
-  replaces “Sledeći” and calls the shared cooked operation exactly once.
+  row, the same height (48) and the same width. On the last step, a planned
+  meal shows “Skuvano”, which calls the shared cooked operation once for its
+  plan entry and closes the session on success. A library recipe shows
+  “Gotovo”, which closes the session without recording a cooked event.
 - **Ingredients**: on phones “Sastojci” in the top bar opens a sheet with all
   ingredients and checkboxes. On macOS and Windows the ingredients are always
   visible in a side panel with the same checkboxes. Checks are local to the
   cooking session and are not saved.
 - **Servings are fixed** (Anja, 2026-11-21): cooking mode shows the planned or
   recipe servings and does not offer a servings control.
-- **Recipe without steps**: the notice “Koraci pripreme nisu uneti.” with a
-  “Dodaj korake” link, the ingredient list and one “Skuvano” button.
+- **Recipe without steps**: show “Koraci pripreme nisu uneti.”, the ingredient
+  list and a “Dodaj korake” link when the session has a library recipe to edit.
+  Show one completion button with the same behavior as the last step:
+  “Skuvano” for a planned meal or “Gotovo” for a library recipe.
 
 Additional UI copy: “Kuvanje”, “Recept”, “Sastojci”, “Gotovo”, “Korak N od M”,
 “U ovom koraku”, “Ekran ostaje upaljen dok kuvaš.”, “Koraci pripreme nisu
