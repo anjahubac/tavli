@@ -317,6 +317,54 @@ class PantryConsumptions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Namirnica kataloga (v8, 018). `householdId == null` = deljeni pregledani
+/// katalog, inače kućna namirnica. Sirove vrednosti sa servera; tumačenje
+/// (osnovna jedinica, povučenost) je u domenu. Samo za čitanje u ovom koraku.
+@DataClassName('FoodRow')
+class Foods extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get slug => text()();
+  TextColumn get name => text()();
+  TextColumn get category => text()();
+
+  /// `piece`, `gram` ili `milliliter` (čuva se kako je stiglo).
+  TextColumn get baseUnit => text()();
+  TextColumn get source => text().nullable()();
+  DateTimeColumn get reviewedAt => dateTime().nullable()();
+  DateTimeColumn get withdrawnAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Alias namirnice (v8, 018). Kućni aliasi namerno nemaju jedinstven ključ
+/// (zamena = upis pa brisanje, a trag brisanja može da stigne kasnije);
+/// deljeni je jedinstven dok je aktivan. Bez stranog ključa: alias može da
+/// stigne pre ili posle svoje namirnice.
+@DataClassName('FoodAliasRow')
+@TableIndex.sql(
+  'CREATE UNIQUE INDEX food_aliases_shared_active ON food_aliases '
+  '(alias_normalized) WHERE household_id IS NULL AND withdrawn_at IS NULL',
+)
+class FoodAliases extends Table {
+  TextColumn get id => text()();
+  TextColumn get foodId => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get alias => text()();
+
+  /// Izlaz `ingredientKey`, kako je sačuvan na serveru.
+  TextColumn get aliasNormalized => text()();
+  DateTimeColumn get withdrawnAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DataClassName('RatingRow')
 class Ratings extends Table {
   TextColumn get id => text()();
@@ -439,6 +487,8 @@ class SyncCursors extends Table {
     SupplyAllocations,
     CookedEvents,
     PantryConsumptions,
+    Foods,
+    FoodAliases,
     Ratings,
     UserProfiles,
     AppSettings,
@@ -453,7 +503,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -472,6 +522,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
       if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
       if (from < 7) await transaction(() => _migrateToCookedEvents(m));
+      if (from < 8) await transaction(() => _migrateToFoodCatalog(m));
     },
   );
 
@@ -499,6 +550,24 @@ class AppDatabase extends _$AppDatabase {
     ).get();
     if (columns.any((r) => r.read<String>('name') == c.$name)) return;
     await m.addColumn(table, c);
+  }
+
+  /// v8: keš kataloga namirnica (samo dodaje). Ponovljen korak (vraćen
+  /// user_version) ne pada.
+  Future<void> _migrateToFoodCatalog(Migrator m) async {
+    final existing = {
+      for (final r in await customSelect(
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'index')",
+      ).get())
+        r.read<String>('name'),
+    };
+    if (!existing.contains(foods.actualTableName)) await m.createTable(foods);
+    if (!existing.contains(foodAliases.actualTableName)) {
+      await m.createTable(foodAliases);
+    }
+    if (!existing.contains(foodAliasesSharedActive.entityName)) {
+      await m.createIndex(foodAliasesSharedActive);
+    }
   }
 
   /// v7: zapis skuvanog obroka, potrošnja iz ostave i vreme ručnog

@@ -154,7 +154,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 7);
+    expect(db.schemaVersion, 8);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
@@ -409,5 +409,40 @@ void main() {
     addTearDown(again.close);
     expect((await again.select(again.cookedEvents).get()).single.id, 'k1');
     expect(await again.select(again.pantryConsumptions).get(), hasLength(1));
+  });
+  test('migracija 7 → 8 dodaje katalog namirnica; ponovljen korak ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v8-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    // v7 struktura: bez tabela kataloga.
+    await first.customStatement('DROP TABLE food_aliases');
+    await first.customStatement('DROP TABLE foods');
+    await first.customStatement(
+      'INSERT INTO pantry_items (id, name, quantity, unit, category, added_at) '
+      "VALUES ('o1', 'brašno', 1000, 'g', 'ostalo', 1)",
+    );
+    await first.customStatement('PRAGMA user_version = 7');
+    await first.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    expect((await db.select(db.pantryItems).get()).single.id, 'o1');
+    expect(await db.select(db.foods).get(), isEmpty);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+    await db.customStatement(
+      'INSERT INTO foods (id, slug, name, category, base_unit, created_at, '
+      "updated_at) VALUES ('f1', 'jaje', 'jaje', 'ostalo', 'piece', 1, 1)",
+    );
+    await db.customStatement(
+      'INSERT INTO food_aliases (id, food_id, alias, alias_normalized, '
+      "created_at, updated_at) VALUES ('a1', 'f1', 'jaja', 'jaja', 1, 1)",
+    );
+    await db.customStatement('PRAGMA user_version = 7');
+    await db.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.foods).get()).single.id, 'f1');
+    expect((await again.select(again.foodAliases).get()).single.id, 'a1');
   });
 }
