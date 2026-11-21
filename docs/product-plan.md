@@ -131,10 +131,12 @@ Retrieve them or clarify explicit requirements before the affected feature start
 1. Favorites decision (Matija, 2026-11-20): only explicitly selected plan
    participants contribute, defaulting to all current household members.
    The [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
-   still needs Dev 1/Dev 2 review; no broad access to private profiles/diaries.
+   records the initial merged design; the implementation boundary still needs
+   Dev 1/Dev 2 review. Personal profiles and diaries remain owner-only.
 2. Initial cookbook real-text PDF/EPUB versus scanned OCR.
-3. Allergen vocabulary: reviewed canonical codes, distinct lactose avoidance
-   and dietary preferences; do not turn a draft label into a medical claim.
+3. Allergen planning decision (Matija, 2026-11-21): member selections stay
+   within the server planner. Dev 1 still reviews canonical codes, mapping
+   coverage and provenance. Lactose avoidance and dietary preferences are separate.
 4. Source/license approval for nutrition values and prices, receipt feasibility,
    permitted retention, device speech quality and actual Edge image timeout.
 5. Legacy expiry data removal is separate; expiry UX is excluded now.

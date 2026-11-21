@@ -43,7 +43,10 @@ select is(
     'shopping_lists:delete', 'shopping_lists:insert', 'shopping_lists:select', 'shopping_lists:update',
     'shopping_sources:delete', 'shopping_sources:insert', 'shopping_sources:select', 'shopping_sources:update',
     'supply_allocations:delete', 'supply_allocations:insert', 'supply_allocations:select', 'supply_allocations:update',
-    'taste_profiles:delete', 'taste_profiles:insert', 'taste_profiles:select', 'taste_profiles:update'
+    'taste_profiles:delete', 'taste_profiles:insert', 'taste_profiles:select', 'taste_profiles:update',
+    'user_allergen_selections:insert', 'user_allergen_selections:select', 'user_allergen_selections:update',
+    'user_favorites:insert', 'user_favorites:select', 'user_favorites:update',
+    'user_planning_sharing:select'
   ],
   'authenticated ima tačno dogovorena prava na tabelama'
 );
@@ -70,10 +73,12 @@ select is(
         where n.nspname in ('public', 'private')
           and has_function_privilege('authenticated', p.oid, 'execute')
         order by 1),
-  -- recipe_meal_types_valid: CHECK na public.recipes je poziva sa pravima
-  -- korisnika koji upisuje (20261118120000_recipe_labels.sql).
-  array['private.is_member', 'private.recipe_meal_types_valid'],
-  'authenticated izvršava samo private.is_member i proveru obroka recepta'
+  -- CHECK funkcije se izvršavaju sa pravima korisnika koji upisuje.
+  array[
+    'private.is_member', 'private.recipe_meal_types_valid',
+    'private.valid_allergen_selection', 'public.set_planning_preferences_sharing'
+  ],
+  'authenticated izvršava samo odobrene pomoćne funkcije i RPC za svoju saglasnost'
 );
 
 select is(

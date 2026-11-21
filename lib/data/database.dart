@@ -378,6 +378,7 @@ class Accounts extends Table {
   TextColumn get householdId => text()();
   TextColumn get householdName => text()();
   TextColumn get role => text()();
+  TextColumn get favoriteMembershipId => text().nullable()();
   BoolColumn get initialDownloadDone =>
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastPullAt => dateTime().nullable()();
@@ -425,6 +426,28 @@ class SyncCursors extends Table {
   Set<Column> get primaryKey => {accountId, entity};
 }
 
+@DataClassName('UserAllergenSelectionRow')
+class UserAllergenSelections extends Table {
+  TextColumn get userId => text()();
+  TextColumn get groupCodesJson => text()();
+
+  @override
+  Set<Column> get primaryKey => {userId};
+}
+
+@DataClassName('UserFavoriteRow')
+class UserFavorites extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get recipeId => text()();
+  TextColumn get recipeHouseholdId => text()();
+  TextColumn get membershipId => text()();
+  BoolColumn get isFavorite => boolean()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Recipes,
@@ -441,6 +464,8 @@ class SyncCursors extends Table {
     PantryConsumptions,
     Ratings,
     UserProfiles,
+    UserAllergenSelections,
+    UserFavorites,
     AppSettings,
     ModelStatuses,
     Accounts,
@@ -453,7 +478,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -472,6 +497,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
       if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
       if (from < 7) await transaction(() => _migrateToCookedEvents(m));
+      if (from < 8) await m.createTable(userAllergenSelections);
+      if (from < 9) {
+        await transaction(() async {
+          await _addMissingColumn(m, accounts, accounts.favoriteMembershipId);
+          await m.createTable(userFavorites);
+        });
+      }
     },
   );
 
