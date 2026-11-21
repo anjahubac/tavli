@@ -29,7 +29,10 @@ select is(
         order by 1),
   array[
     'cooked_events:delete', 'cooked_events:insert', 'cooked_events:select', 'cooked_events:update',
-    'deletions:select', 'household_members:select', 'households:select',
+    'deletions:select',
+    'food_aliases:delete', 'food_aliases:insert', 'food_aliases:select', 'food_aliases:update',
+    'foods:delete', 'foods:insert', 'foods:select', 'foods:update',
+    'household_members:select', 'households:select',
     'meal_plan_entries:delete', 'meal_plan_entries:insert', 'meal_plan_entries:select', 'meal_plan_entries:update',
     'meal_plans:delete', 'meal_plans:insert', 'meal_plans:select', 'meal_plans:update',
     'pantry_consumptions:delete', 'pantry_consumptions:insert', 'pantry_consumptions:select', 'pantry_consumptions:update',
