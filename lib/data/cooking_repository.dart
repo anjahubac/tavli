@@ -61,8 +61,10 @@ class CookingRepository {
       actorUserId: _scope.userId,
       // Server prima 1–20; porcije recepta (stari obrok bez porcija) nemaju
       // gornju granicu.
-      servings: (entry.servings ?? _snapshotOf(entry)?.baseServings ?? 2)
-          .clamp(minServings, maxServings),
+      servings: (entry.servings ?? _snapshotOf(entry)?.baseServings ?? 2).clamp(
+        minServings,
+        maxServings,
+      ),
       cookedAt: now,
     );
     await _db
@@ -190,7 +192,7 @@ class CookingRepository {
                 t.householdId.equals(_scope.householdId),
           ))
           .watch()
-          .map((rows) => activeEvent(rows.map(_toEvent)));
+          .map((rows) => activeEvent(rows.map(cookedEventFromRow)));
 
   Future<List<CookedEvent>> _events(String entryId) async => [
     for (final r
@@ -291,15 +293,15 @@ class CookingRepository {
 
 /// Red baze → [CookedEvent].
 CookedEvent cookedEventFromRow(CookedEventRow r) => CookedEvent(
-    id: r.id,
-    planEntryId: r.planEntryId,
-    mealDate: CivilDate.fromWire(r.mealDate),
-    mealType: MealType.tryParse(r.mealType) ?? MealType.lunch,
-    actorUserId: r.actorUserId,
-    servings: r.servings,
-    cookedAt: r.cookedAt,
-    undoneAt: r.undoneAt,
-    undoReason: r.undoReason == null
-        ? null
-        : UndoReason.values.asNameMap()[r.undoReason] ?? UndoReason.user,
-  );
+  id: r.id,
+  planEntryId: r.planEntryId,
+  mealDate: CivilDate.fromWire(r.mealDate),
+  mealType: MealType.tryParse(r.mealType) ?? MealType.lunch,
+  actorUserId: r.actorUserId,
+  servings: r.servings,
+  cookedAt: r.cookedAt,
+  undoneAt: r.undoneAt,
+  undoReason: r.undoReason == null
+      ? null
+      : UndoReason.values.asNameMap()[r.undoReason] ?? UndoReason.user,
+);

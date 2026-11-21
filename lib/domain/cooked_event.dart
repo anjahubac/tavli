@@ -68,7 +68,7 @@ CookedEvent? activeEvent(Iterable<CookedEvent> events) {
 }
 
 /// Jedan red potrošnje: koliko je zapis `eventId` uzeo iz stavke ostave,
-/// u milionitim delovima osnovne jedinice [baseUnit] (g, ml, kom…).
+/// u milionitim delovima osnovne jedinice `baseUnit` (g, ml, kom…).
 typedef Consumption = ({
   String eventId,
   String pantryItemId,

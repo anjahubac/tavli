@@ -98,7 +98,8 @@ class PantryRepository {
     for (final a in allocations) {
       final contribution =
           await (_db.select(_db.shoppingContributions)..where(
-                (t) => t.id.equals(a.contributionId) & t.householdId.equals(hid),
+                (t) =>
+                    t.id.equals(a.contributionId) & t.householdId.equals(hid),
               ))
               .getSingleOrNull();
       if (contribution == null || contribution.unitGroup != unit.group) {

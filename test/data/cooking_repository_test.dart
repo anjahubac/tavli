@@ -427,36 +427,42 @@ void main() {
     expect((await entryRow(meals.first.id)).isCooked, isTrue);
   });
 
-  test('stari obrok bez porcija: porcije recepta se ograničavaju na 1–20',
-      () async {
-    final meal = meals.first.id;
-    final snapshot =
-        jsonDecode((await entryRow(meal)).recipeSnapshotJson!)
-            as Map<String, dynamic>;
-    await (db.update(db.mealPlanEntries)..where((t) => t.id.equals(meal)))
-        .write(
-          MealPlanEntriesCompanion(
-            servings: const Value(null),
-            recipeSnapshotJson: Value(jsonEncode({...snapshot, 'servings': 24})),
-          ),
-        );
-    expect((await cooking.markCooked(meal))!.servings, 20);
-  });
+  test(
+    'stari obrok bez porcija: porcije recepta se ograničavaju na 1–20',
+    () async {
+      final meal = meals.first.id;
+      final snapshot = jsonDecode(
+        (await entryRow(meal)).recipeSnapshotJson!,
+      ) as Map<String, dynamic>;
+      await (db.update(
+        db.mealPlanEntries,
+      )..where((t) => t.id.equals(meal))).write(
+        MealPlanEntriesCompanion(
+          servings: const Value(null),
+          recipeSnapshotJson: Value(jsonEncode({...snapshot, 'servings': 24})),
+        ),
+      );
+      expect((await cooking.markCooked(meal))!.servings, 20);
+    },
+  );
 
-  test('pokvaren zapis recepta (pogrešan tip polja) ne sprečava kuvanje',
-      () async {
-    final meal = meals.first.id;
-    await (db.update(db.mealPlanEntries)..where((t) => t.id.equals(meal)))
-        .write(
-          const MealPlanEntriesCompanion(
-            servings: Value(null),
-            recipeSnapshotJson: Value('{"title": 5}'),
-          ),
-        );
-    final event = await cooking.markCooked(meal);
-    expect(event, isNotNull);
-    expect(event!.servings, 2);
-  });
+  test(
+    'pokvaren zapis recepta (pogrešan tip polja) ne sprečava kuvanje',
+    () async {
+      final meal = meals.first.id;
+      await (db.update(
+        db.mealPlanEntries,
+      )..where((t) => t.id.equals(meal))).write(
+        const MealPlanEntriesCompanion(
+          servings: Value(null),
+          recipeSnapshotJson: Value('{"title": 5}'),
+        ),
+      );
+      final event = await cooking.markCooked(meal);
+      expect(event, isNotNull);
+      expect(event!.servings, 2);
+    },
+  );
 
   test('kuvano pre prijema kupovine: prijem u ostavu odmah oduzima deo '
       'skuvanog obroka', () async {
@@ -467,8 +473,7 @@ void main() {
       writer: writer,
       clock: () => now,
     );
-    await (db.delete(db.pantryItems)..where((t) => t.id.equals('brasno')))
-        .go();
+    await (db.delete(db.pantryItems)..where((t) => t.id.equals('brasno'))).go();
     await shopping.reconcilePlan(meals.first.planId);
     final flour = (await db.select(db.shoppingItems).get()).singleWhere(
       (i) => i.name.toLowerCase().contains('brašno'),
