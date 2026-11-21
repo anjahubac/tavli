@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/meal_plan.dart';
 import '../../domain/recipe_format.dart';
@@ -323,6 +324,16 @@ class _SlotTile extends StatelessWidget {
   /// Jelo koje predlog zamenjuje (pregled izmena).
   final String? previous;
 
+  /// Zajednički unutrašnji razmak redova obroka. Proširena lista sastojaka
+  /// koristi isti vodoravni razmak da bi bila poravnata sa tekstom reda.
+  static const _padding = EdgeInsets.symmetric(
+    horizontal: TavliSpacing.medium,
+    vertical: TavliSpacing.small / 2,
+  );
+  static final _shape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(TavliRadius.compact),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -334,14 +345,16 @@ class _SlotTile extends StatelessWidget {
     final label = Text(slot.type.label, style: theme.textTheme.labelLarge);
     if (proposal == null) {
       return ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: _padding,
+        shape: _shape,
         title: label,
         subtitle: Text('Nije planirano', style: muted),
       );
     }
     if (replacing) {
       return ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: _padding,
+        shape: _shape,
         title: label,
         subtitle: Text('${proposal.title}\nTražim drugo jelo…', style: muted),
         isThreeLine: true,
@@ -371,7 +384,8 @@ class _SlotTile extends StatelessWidget {
     ].join(' · ');
     if (snapshot == null) {
       return ListTile(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: _padding,
+        shape: _shape,
         title: label,
         subtitle: Text(
           '${proposal.title}\n$origin · sastojci još nisu spremni',
@@ -381,15 +395,23 @@ class _SlotTile extends StatelessWidget {
       );
     }
     return ExpansionTile(
-      tilePadding: EdgeInsets.zero,
+      tilePadding: _padding,
+      shape: _shape,
+      collapsedShape: _shape,
       title: label,
       subtitle: Text('${proposal.title}\n$origin', style: muted),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [replace, const Icon(Icons.expand_more)],
       ),
+      expandedAlignment: AlignmentDirectional.centerStart,
       expandedCrossAxisAlignment: CrossAxisAlignment.start,
-      childrenPadding: const EdgeInsets.only(bottom: 8),
+      childrenPadding: const EdgeInsetsDirectional.fromSTEB(
+        TavliSpacing.medium,
+        0,
+        TavliSpacing.medium,
+        TavliSpacing.small,
+      ),
       children: [
         Text(
           'Sastojci za ${servingsLabel(snapshot.baseServings)}'
