@@ -25,6 +25,11 @@ MIGRATED = (
     'lib/features/shopping/shopping_frame.dart',
     'lib/features/shopping/shopping_list_view.dart',
     'lib/features/shopping/shopping_screen.dart',
+    # Card "UI biblioteka 10": Plan.
+    'lib/features/planning/meal_entry_card.dart',
+    'lib/features/planning/meal_entry_detail.dart',
+    'lib/features/planning/plan_calendar.dart',
+    'lib/features/planning/plan_screen.dart',
 )
 
 # Material widgets with a library replacement (Tavli* component or helper).

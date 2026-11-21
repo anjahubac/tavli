@@ -1,15 +1,70 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/meal_plan.dart';
 import '../../domain/plan_calendar.dart';
+import 'meal_entry_card.dart';
 import 'plan_format.dart';
 
-const _weekdayShort = ['Po', 'Ut', 'Sr', 'Če', 'Pe', 'Su', 'Ne'];
+/// Šta čitač ekrana kaže za dan: „Sreda, 4. novembar, 3 obroka, danas“.
+String daySemantics(CivilDate d, int meals, CivilDate today) =>
+    '${dayLabel(d)}, ${mealsCount(meals)}${d == today ? ', danas' : ''}';
 
-/// Mali mesečni pregled plana: nedelje pon–ned, dani plana sa brojem
-/// planiranih obroka. Dodir bira dan; detalji nedelje su ispod kalendara.
+/// Mesec izabranog dana u kalendaru plana: za svaki dan jela redom obroka
+/// (tačke na telefonu, nazivi na računaru). Biraju se samo dani plana.
 class PlanMonthCalendar extends StatelessWidget {
   const PlanMonthCalendar({
+    super.key,
+    required this.plan,
+    required this.meals,
+    required this.selected,
+    required this.today,
+    required this.onSelect,
+    this.detailed = false,
+  });
+
+  final MealPlan plan;
+  final List<PlannedMeal> meals;
+  final CivilDate selected;
+  final CivilDate today;
+  final ValueChanged<CivilDate> onSelect;
+  final bool detailed;
+
+  @override
+  Widget build(BuildContext context) {
+    final perDay = <CivilDate, List<PlannedMeal>>{};
+    for (final m in [...meals]..sort((a, b) => a.slot.compareTo(b.slot))) {
+      (perDay[m.slot.date] ??= []).add(m);
+    }
+    final month = monthOf(selected);
+    final first = weekOf(month.start).start;
+    final count = first.daysUntil(weekOf(month.end).end) + 1;
+    final dates = [for (var i = 0; i < count; i++) first.addDays(i)];
+    return TavliMonthCalendar(
+      weekdays: detailed ? weekdaysShort : weekdaysInitial,
+      detailed: detailed,
+      selectedIndex: dates.indexOf(selected),
+      onSelected: (i) => onSelect(dates[i]),
+      days: [
+        for (final d in dates)
+          TavliCalendarDay(
+            day: '${d.day}',
+            active: month.contains(d) && plan.range.contains(d),
+            semanticLabel: daySemantics(d, perDay[d]?.length ?? 0, today),
+            marks: [
+              for (final m in perDay[d] ?? const <PlannedMeal>[])
+                TavliCalendarMark(mealTitle(m), done: m.isCooked),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// Nedelja izabranog dana na telefonu: sedam dana, izabran istaknut; dani
+/// van plana se ne biraju.
+class PlanWeekStrip extends StatelessWidget {
+  const PlanWeekStrip({
     super.key,
     required this.plan,
     required this.meals,
@@ -26,118 +81,69 @@ class PlanMonthCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final perDay = <CivilDate, int>{};
-    for (final m in meals) {
-      perDay[m.slot.date] = (perDay[m.slot.date] ?? 0) + 1;
-    }
-    final first = weekOf(plan.range.start).start;
-    final weeks = (first.daysUntil(weekOf(plan.range.end).end) + 1) ~/ 7;
-    final selectedWeek = weekOf(selected);
-
-    Widget cell(CivilDate d) {
-      if (!plan.range.contains(d)) return const SizedBox(height: 48);
-      final count = perDay[d] ?? 0;
-      final isSelected = d == selected;
-      final isToday = d == today;
-      return Semantics(
-        button: true,
-        selected: isSelected,
-        label:
-            '${dayLabel(d)}, ${mealsCount(count)}${isToday ? ', danas' : ''}',
-        excludeSemantics: true,
-        child: InkWell(
-          onTap: () => onSelect(d),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? colors.primary
-                  : selectedWeek.contains(d)
-                  ? colors.secondaryContainer
-                  : null,
-              borderRadius: BorderRadius.circular(8),
-              border: isToday && !isSelected
-                  ? Border.all(color: colors.primary, width: 2)
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${d.day}',
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.visible,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: isSelected ? colors.onPrimary : null,
-                    fontWeight: isToday ? FontWeight.bold : null,
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (
-                      var i = 0;
-                      i < count && i < MealType.values.length;
-                      i++
-                    )
-                      Container(
-                        width: 5,
-                        height: 5,
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected ? colors.onPrimary : colors.primary,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+    final days = weekOf(selected).days.toList();
+    return TavliWeekStrip(
+      selectedIndex: days.indexOf(selected),
+      onSelected: (i) => onSelect(days[i]),
+      days: [
+        for (final d in days)
+          TavliStripDay(
+            weekday: weekdayShort(d),
+            day: '${d.day}',
+            enabled: plan.range.contains(d),
+            semanticLabel: daySemantics(
+              d,
+              meals.where((m) => m.slot.date == d).length,
+              today,
             ),
           ),
-        ),
-      );
-    }
+      ],
+    );
+  }
+}
 
-    return Column(
-      children: [
-        Row(
-          children: [
-            for (final w in _weekdayShort)
-              Expanded(
-                child: ExcludeSemantics(
-                  child: Text(
-                    w,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        for (var w = 0; w < weeks; w++)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(
-              children: [
-                for (var d = 0; d < 7; d++)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1),
-                      child: cell(first.addDays(w * 7 + d)),
-                    ),
-                  ),
-              ],
-            ),
+/// Nedelja na računaru: kolona za svaki dan, red za svaki obrok plana.
+class PlanWeekGrid extends StatelessWidget {
+  const PlanWeekGrid({
+    super.key,
+    required this.plan,
+    required this.bySlot,
+    required this.selected,
+    required this.onOpen,
+  });
+
+  final MealPlan plan;
+  final Map<MealSlot, PlannedMeal> bySlot;
+  final CivilDate selected;
+  final ValueChanged<PlannedMeal> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = weekOf(selected).days.toList();
+    return TavliWeekGrid(
+      days: [
+        for (final d in days)
+          TavliWeekDay(
+            weekday: weekdayShort(d),
+            day: '${d.day}',
+            semanticLabel: dayLabel(d),
+            highlighted: d == selected,
           ),
+      ],
+      rows: [
+        for (final type in MealType.values)
+          if (plan.mealTypes.contains(type))
+            [
+              for (final d in days)
+                plan.range.contains(d)
+                    ? MealEntryCard(
+                        slot: MealSlot(d, type),
+                        meal: bySlot[MealSlot(d, type)],
+                        onTap: onOpen,
+                        compact: true,
+                      )
+                    : null,
+            ],
       ],
     );
   }
