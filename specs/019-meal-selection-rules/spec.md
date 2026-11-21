@@ -29,8 +29,8 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-101**: Support breakfast, morning snack, lunch, afternoon snack and dinner without fixed three-field assumptions; include snacks in shopping/Home/intake.
 - **FR-102**: Default lunch medium/hearty cooked/roast, dinner light/medium; at most one hearty meal daily, no same dish kind on consecutive days; household defaults editable.
 - **FR-103**: Snacks are light without cooked dishes. Locked/cooked/imported meals are preserved by regeneration; show restriction conflicts rather than silently rewrite a locked meal.
-- **FR-104**: Allergens constrain selection before approval; taste/favorite aggregation uses only the accepted personal-data contract.
-- **FR-105**: Select suitable saved recipes locally first and use AI for gaps; validate final placement in app code, not just prompt wording.
+- **FR-104**: For household-aware planning, the server planner filters candidate recipes before AI and revalidates proposed entries before returning a draft, including replacement. Unknown ingredient mappings are ineligible. The server retains member allergen data; the client and AI receive only the respective allowlisted results. Taste, notes and favorite counts use the 008 consent-filtered contract.
+- **FR-105**: In initial household-aware planning, the server verifies candidate eligibility and final placement before returning the draft. If the eligible saved pool is exhausted, return an incomplete draft. A later AI-invented candidate remains a draft until its ingredients are resolved and verified by the server.
 
 ## User scenarios and acceptance
 
@@ -45,7 +45,7 @@ until execution evidence is linked.
 
 ## Data and privacy
 
-List-based meal slots and closed suitability/intensity/kind metadata require coordinated cache/server migration and compatibility for saved three-meal plans. Authorized member aggregates come from 008.
+List-based meal slots and closed suitability/intensity/kind metadata require coordinated cache/server migration and compatibility for saved three-meal plans. Authorized member aggregates come from 008. The member inputs exposed to the consumer contain preferences and favorites. Separately consented notes are planned for a later slice. Member allergen selections stay within the server planner; client-facing restriction feedback is generic.
 
 ## Exact UI copy carried forward
 
@@ -55,7 +55,7 @@ that UI task becomes Ready. English is used for engineering documents only.
 
 ## Dependencies and open decisions
 
-Producer specs: [008](../008-household-members/spec.md), [014](../014-ai-response-contracts/spec.md)
+Producer specs: [008](../008-household-members/spec.md), [014](../014-ai-response-contracts/spec.md), [015](../015-ai-server-gateway/spec.md), and [catalog matching](../018-ingredient-catalog/spec.md). Verify the 008 server-only boundary for generation and replacement before integrating personalized planning.
 
 - **Q1** (Dev 2 with reviewer): Finalize enums, existing-recipe backfill, household rule edit UI and repeat rules scope. Matija decided on 2026-11-20 that favorites aggregate across explicitly selected participants, defaulting to all current household members; Dev 2 reviews the [008 producer contract](../008-household-members/contracts/member-planning-inputs.md) before consuming it.
   Labels (enums, backfill, edit UI) proposed 2026-11-18 in

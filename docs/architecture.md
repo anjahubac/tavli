@@ -194,14 +194,14 @@ Pantry has optional quantity, no expiry UX and no “use first” subsystem. Num
 stock is consumed once when cooked and restored on undo; unknown stock persists
 until removed. Those are future semantics to implement with a ledger contract.
 
-Household member preferences/allergies/favorites need a purpose-limited aggregate
-for planning. Do not expose personal profile or nutrition diary rows to all
-members merely to build an AI prompt. The exact aggregate/consent boundary must
-be accepted in the household contract before migrations. The product decision
-is to use selected participants' favorites, defaulting to all current members;
+Household planning targets a consent-filtered aggregate of selected members'
+tastes, notes and favorites, defaulting to all current members. Personal profile
+and diary rows stay owner-only. The 2026-11-21 decision keeps participant
+allergen selections within the future server planner for candidate filtering and
+final checks. The current client planner does not implement this behavior. See
 the [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
-still needs producer/consumer review. Cycle dates never leave the device; only an
-explicitly approved generic dietary hint can enter a request.
+and [logic-first plan](../specs/008-household-members/plan.md). Cycle dates never
+leave the device; only an explicitly approved generic dietary hint can enter a request.
 
 Nutrition is optional, off by default, computed from attributed reference values,
 not numbers invented by AI. Personal intake/targets stay private. Cookbooks and

@@ -31,6 +31,19 @@ implementation/test/review estimates before Ready.
 - [ ] T023 [US1] D3-018 / FR-011, phase 4: **Rate recipes** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 3; reviewer independent domain consumer; depends T022; evidence: spec scenarios, applicable checks and reviewed PR.
 - [ ] T024 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 3; reviewer Dev 1 and Dev 2; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
 
+## Logic-first subtasks
+
+The [implementation plan](plan.md#logic-first-implementation) maps dependencies,
+proposed reviewers and acceptance evidence. These checkpoints refine existing
+source tasks and do not change their historic numbering or phases.
+
+- **T006–T007** implement private dish-kind storage and transactional sync using the existing taste-profile JSON. Verify legacy fields, canonical wires and account isolation.
+- **T006–T007** add reviewed food/cuisine fields and owner-only consent with withdrawal tests. Keep settings screens as a follow-up after repository acceptance. Add the optional note and separate consent after structured preferences and favorites.
+- **T020–T021** implement private favorite storage and lifecycle, with server access checks and outbox replay tests. Add recipe controls after the repository is verified.
+- **FR-106/110–112** implement the authorized resolver and consent fixtures with Dev 2. Add aggregate caching only after a verified invalidation design.
+- **T016–T019** implement personal allergen selection and food metadata with Dev 1. Verify unknown mapping separately from a reviewed empty mapping.
+- **T024** hand off the typed fixture and server-only allergen boundary to Dev 2, then link 015/019 verification evidence. Add UI acceptance evidence separately.
+
 ## Sequencing and effort
 
 Do not treat this file's order as permission to run every task concurrently.

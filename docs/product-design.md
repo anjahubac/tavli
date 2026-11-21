@@ -43,9 +43,10 @@ snacks through a list-based meal contract, not more hard-coded slot fields.
 Defaults remain editable: current week, lunch, two servings unless a saved
 selection supplies them. Never pretend household member count is known.
 
-Prompt context uses authorized household restrictions, explicit wishes and the
-approved preference aggregation contract. Existing saved recipes should be
-selected locally where suitable; AI fills gaps. Recipe suitability, intensity
+Prompt context uses explicit wishes and the approved consent-filtered
+preference aggregate. For household-aware planning, the server applies member
+allergen restrictions to saved candidates and checks the result before returning
+it. AI fills gaps through the server planning boundary. Recipe suitability, intensity
 and dish kind use closed sets, user-editable annotations and post-generation
 validation. Household rules default to substantial lunch, lighter dinner,
 maximum one substantial meal/day and varied dish kinds. Locked meals remain
@@ -131,11 +132,12 @@ can leave. Review offline queues and account scope before switching household.
 
 Household shares recipes, plans, shopping and pantry. Taste preferences,
 favorites, ratings, diary/targets and cycle data are personal. Planning receives
-only the authorized minimum aggregate. Planning defaults to all current members
+only the authorized aggregate of tastes, notes and favorites. Member allergen
+selections stay on the server for planning. Planning defaults to all current members
 but passes explicit participant IDs; only selected members' favorites contribute.
 The [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
-remains pending producer/consumer review. Do not solve
-this by granting broad access to personal rows. Allergy codes are structured;
+records the initial merged design and the pending implementation review.
+Access to personal rows remains owner-only. Allergy codes are structured;
 separate the fixed allergen vocabulary from lactose avoidance and other dietary
 preferences, with the final vocabulary/provenance reviewed before implementation.
 

@@ -1,0 +1,30 @@
+# Data model: member planning inputs
+
+**Status**: proposed implementation shape. Names below are targets from the
+[contract](contracts/member-planning-inputs.md). Allocate migrations with
+Dev 1 after reviewing [the slice plan](plan.md).
+
+| Data | Current | Target and invariants |
+|---|---|---|
+| Personal tastes | Drift `user_profiles(id, profile_json)`; Supabase `taste_profiles(user_id, profile, updated_at)`; user-scoped sync | Keep the existing row/owner. Add typed JSON fields for liked/disliked food IDs, dish-kind wires and reviewed cuisine codes, plus an optional bounded note in a later slice. Missing new fields read as empty; preserve unrelated legacy keys on edits. Resolve conflicts in planning toward dislike for ranking. |
+| Sharing | No separate state | Owner-only `user_planning_sharing(user_id, preferences, planning_note, revision)`; missing row means off. Enable the separate note flag with the later note slice. Authenticated online updates compare the expected revision. Consent mutations stay outside the sync outbox. |
+| Favorite | Ratings are a separate personal entity | Owner-only `user_favorites(user_id, recipe_id)` with unique pairs; use an idempotent sync identity compatible with the outbox. Verify both actor and current recipe access on writes. Remove pairs after deletion or loss of access; stale writes cannot restore them. |
+| Allergen selections | No personal relation | Owner-only `user_allergen_groups(user_id, group_code)` with unique pairs and reviewed canonical codes. An empty selection contributes zero codes and requires no additional confirmation record. The owner settings path may read and modify the owner's own choices. Only the server planner reads participant selections for planning, with verified membership. No participant selection data in member aggregates, client plan responses or AI payloads. |
+| Catalog mapping | Reviewed identity and matching are separate catalog work | `food_allergen_groups(food_id, group_code)` plus an agreed representation of mapping completeness. An empty relation alone cannot distinguish a reviewed mapping with no matching groups from an unknown one. Metadata describes the food; it carries no association with a member. |
+| Planning aggregate | No persisted aggregate or server resolver | Derived from current membership, consent, preferences and visible favorites. Return the allowlisted aggregate without person identifiers, raw personal rows or allergen data. Start with fresh authorized reads and no persisted aggregate. Any later offline cache and queued requests need explicit account/household scope and invalidation. |
+
+## Compatibility and lifecycle
+
+- Reuse the existing account partitioning and transactional outbox for synced
+  personal writes. Ordinary sign-out retains the account's cache; account
+  deletion purges owned records. Verify fresh/upgrade caches and pending writes
+  before enabling new entities. For the dish-kind JSON slice, only the stored
+  JSON and existing sync payload change; the SQL and Drift schemas stay intact.
+- Additive SQL slices need explicit authenticated grants, RLS and local pgTAP
+  tests. A server-side function verifies requester/membership before reading
+  peer data. Include allowed operations alongside denial tests and cover
+  account/recipe deletion and membership transitions.
+- For new Drift entities, coordinate schema version, generator output, sync
+  registry and deletion handling. Specify minimum compatible client behavior
+  and forward recovery in each migration PR. No data reset is required by this
+  proposal.

@@ -37,12 +37,12 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-105**: Preserve existing email-code/name/confirmation flow and close confirmed defects with regression tests; use canonical reviewed allergen/avoidance vocabulary.
 - **FR-106**: Planning takes an explicit nonempty set of participating member IDs, defaulting in the UI to all current household members. Only those members' inputs contribute; unknown, foreign or removed IDs fail the whole request.
 - **FR-107**: Members select canonical allergen groups, distinct from catalog foods and taste dislikes. Catalog foods carry reviewed group mappings; unresolved ingredients have unknown allergen status, never an implicit safe status.
-- **FR-108**: Members may like or dislike catalog foods, the existing `DishKind` values and reviewed cuisine codes, and add an optional short planning note. These are soft preferences. No dietary-mode setting or custom style category is included.
+- **FR-108**: Members may like or dislike catalog foods, the existing `DishKind` values and reviewed cuisine codes, and, in a later slice, add an optional short planning note with separate consent. These are soft preferences. No dietary-mode setting or custom style category is included.
 - **FR-109**: A favorite is a personal user/recipe pair. Only selected participants' favorites for accessible household recipes contribute to planning; delete the pair when the recipe is deleted or the user loses access on leaving the household.
-- **FR-110**: The planner receives a purpose-limited aggregate of selected members' restrictions, preferences and favorite counts, not their personal rows, profiles or diary.
-- **FR-111**: Each member explicitly opts in, per field (`preferences`, `planningNote`), to sharing with household planning; defaults are off, only the owner can change them, and withdrawal takes effect on the next request and invalidates caches. The server omits unshared fields; a member's own data is always returned to that member. See the contract's Disclosure and consent section.
-- **FR-112**: A single-participant request returns only that person's consented fields, with no name or ID. AI output is untrusted: a leak guard rejects responses that echo names, emails, notes or attributed allergies, and prompts use pseudonymous labels and are never logged.
-- **FR-113**: Allergens are used only by the server plan endpoint to exclude recipes (pre-filter and post-check, including AI-invented recipes). They are never sent to an AI provider, returned to a client or logged, and need no sharing consent. Type, import-boundary, outbound-guard and canary regression tests keep it that way. See the contract's Allergen protection section.
+- **FR-110**: The planning consumer receives only the authorized aggregate of selected participants' tastes and favorite counts. Separately consented notes are added in a later slice. The server plan endpoint reads selected participants' allergen restrictions separately. Personal rows, profiles and diary entries are outside the aggregate.
+- **FR-111**: Each member explicitly opts in to sharing structured preferences and favorites with household planning. A separate `planningNote` flag is enabled with the later note slice. Defaults are off, only the owner can change them, and withdrawal takes effect on server acknowledgement. The first release re-reads consent for personalized planning and keeps no aggregate cache. The server omits unshared fields; the caller's own tastes, notes and favorites are returned regardless of flags when the caller is the only participant. See the contract's Disclosure and consent section.
+- **FR-112**: A request for a single other participant returns only that person's consented fields, with no name or ID. AI output is untrusted: a leak guard rejects responses that echo names, emails, notes or attributed allergies, and prompts use pseudonymous labels and are never logged.
+- **FR-113**: For planning, the server plan endpoint uses the selected allergen codes present at request time to pre-filter candidates and check results. An empty selection contributes no codes and does not block planning. A profile reminder is deferred. Planning never sends member allergen selections to an AI provider, returns them to a client or logs them. The owner-only settings path handles the member's own selections; planning needs no allergen-sharing flag. Type, import-boundary, outbound-guard and canary regression tests keep it that way. See the contract's Allergen protection section.
 
 ## User scenarios and acceptance
 
@@ -53,7 +53,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **US5 / SC-005**: One member likes a food and another dislikes it; the conflict affects ranking without becoming a safety ban. A deleted recipe or departing member stops contributing favorites.
 - **US6 / SC-006**: Co-members cannot read one another's raw personal settings; a foreign or removed participant ID yields no partial aggregate.
 - **US7 / SC-007**: A preference or note a member has not shared never appears in another member's plan inputs, prompt or UI, for one or several participants; withdrawing consent removes it. An AI response that echoes a name, note or attributed allergy is rejected and never shown or stored.
-- **US8 / SC-008**: With a member's allergen selected, no AI request, log, cache or client response contains it (canary test across all flows), and neither a pool recipe, an AI-chosen recipe outside the pool nor an invented recipe with that allergen or unresolved ingredients becomes part of the plan.
+- **US8 / SC-008**: With a member's allergen selected, no AI request, log, cache or client response contains it (canary test across all flows), and an allergenic recipe, a recipe with unresolved ingredients or a recipe outside the eligible pool cannot enter the initial personalized draft. If Dev 2 adds invented drafts later, apply the same server checks before any use.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
@@ -72,10 +72,12 @@ that UI task becomes Ready. English is used for engineering documents only.
 
 ## Dependencies and open decisions
 
-Producer specs: Existing baseline; no new producer feature required for the first slice.
+The private dish-kind slice uses the existing taste-profile storage and sync.
+Later slices follow the catalog, membership and [015 gateway](../015-ai-server-gateway/spec.md)
+dependencies in the [implementation plan](plan.md).
 
 - **Q1** (Dev 3 with reviewer): Who may invite, recipe-transfer semantics for shared recipes, last-owner/leave recovery and offline transition handling?
-- **Q2**: Matija decided on 2026-11-20 that selected participants contribute favorites and all household members are selected by default. Allergens are separate groups linked to users and catalog foods; dislikes remain soft. Dev 1 and Dev 2 still review the canonical vocabulary, food mappings, privacy boundary and consumer response before implementation. See [member planning inputs contract](contracts/member-planning-inputs.md).
+- **Q2**: Matija decided on 2026-11-20 that selected participants contribute favorites and all household members are selected by default. Allergens are separate groups linked to users and catalog foods; dislikes remain soft. Matija decided on 2026-11-21 that planner allergen data remains server-only. Dev 1 and Dev 2 still review the vocabulary, food mappings, structured taste limits, consent implementation and server planner boundary. See [member planning inputs contract](contracts/member-planning-inputs.md).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
