@@ -10,6 +10,7 @@ import '../domain/theme_choice.dart';
 import '../features/account/sync_banner.dart';
 import '../providers.dart';
 import 'animations/intro_overlay.dart';
+import 'app_menu.dart';
 import 'router.dart';
 import 'theme_controller.dart';
 
@@ -112,7 +113,8 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       darkTheme: darkTheme,
       themeMode: mode,
       routerConfig: _router,
-      builder: _textScaling,
+      builder: (context, child) =>
+          appMenuBar(_router, ref, _textScaling(context, child)),
       scaffoldMessengerKey: _messenger,
     );
   }

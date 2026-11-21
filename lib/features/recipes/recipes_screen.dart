@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../app/animations/spoon_refresh.dart';
+import '../../app/app_menu.dart';
 import '../../app/tab_app_bar.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
@@ -30,11 +33,17 @@ const _floatingButtonClearance = 88.0;
 /// Tab "Recepti", po platnu. Telefon: pretraga, lista kartica u jednoj
 /// koloni i plutajuće „Dodaj recept“. Računar: zaglavlje sa pretragom i
 /// „Dodaj recept“ i mreža u tri kolone. Recept se otvara kao ceo ekran.
-class RecipesScreen extends StatelessWidget {
+class RecipesScreen extends ConsumerWidget {
   const RecipesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ⌘N iz trake menija na macOS-u.
+    ref.listen(menuRequestsProvider, (_, next) {
+      if (next?.command == MenuCommand.newRecipe) {
+        unawaited(showAddRecipeSheet(context));
+      }
+    });
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= _gridMinWidth;
@@ -80,6 +89,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   // Pretraga prelazi iz liste u zaglavlje kad se prozor raširi; ključ čuva
   // isto polje, pa tekst i fokus ostaju.
   final _searchKey = GlobalKey();
+  final _searchFocus = FocusNode(debugLabel: 'Pretraži recepte');
 
   @override
   void initState() {
@@ -90,6 +100,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   @override
   void dispose() {
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -103,11 +114,18 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
     key: _searchKey,
     hint: 'Pretraži recepte',
     controller: _search,
+    focusNode: _searchFocus,
     onChanged: ref.read(recipeSearchProvider.notifier).set,
   );
 
   @override
   Widget build(BuildContext context) {
+    // ⌘F iz trake menija na macOS-u.
+    ref.listen(menuRequestsProvider, (_, next) {
+      if (next?.command == MenuCommand.searchRecipes) {
+        _searchFocus.requestFocus();
+      }
+    });
     final query = ref.watch(recipeSearchProvider);
     final content = ref
         .watch(recipesProvider)
