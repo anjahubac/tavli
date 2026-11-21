@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -176,10 +178,12 @@ void main() {
   group('preuzimanje', () {
     late SyncEngine full;
     late List<SyncPhase?> phases;
+    Future<void> Function()? afterPull;
     var now = DateTime.utc(2026, 11, 1, 12);
 
     setUp(() async {
       now = DateTime.utc(2026, 11, 1, 12);
+      afterPull = null;
       await db
           .into(db.accounts)
           .insert(
@@ -212,6 +216,7 @@ void main() {
         ),
         timer: timers.call,
         clock: () => now,
+        afterPull: () async => afterPull?.call(),
       );
       writer = SyncedWriter(db, accountId: scope.userId, onChange: full.kick);
       phases = [];
@@ -281,6 +286,47 @@ void main() {
         addTearDown(engine2.stop);
         await engine2.pull();
         expect(after, 1);
+      },
+    );
+
+    test(
+      'provera članstva čeka preuzimanje i pauzira sinhronizaciju',
+      () async {
+        final pulling = Completer<void>();
+        final finishPull = Completer<void>();
+        afterPull = () {
+          pulling.complete();
+          return finishPull.future;
+        };
+        final pull = full.pull();
+        await pulling.future;
+
+        final checking = Completer<void>();
+        final finishCheck = Completer<void>();
+        final check = full.reconcileMembership(() {
+          checking.complete();
+          return finishCheck.future;
+        });
+        try {
+          await pumpQueue();
+          expect(checking.isCompleted, isFalse);
+          finishPull.complete();
+          await checking.future;
+
+          backend.server.calls.clear();
+          await addRecipe('during-check');
+          await full.push();
+          await full.pull();
+          expect(backend.server.calls, isEmpty);
+        } finally {
+          if (!finishPull.isCompleted) finishPull.complete();
+          finishCheck.complete();
+          await pull;
+          await check;
+        }
+
+        await full.push();
+        expect(backend.server.calls, ['upsert:recipes:1']);
       },
     );
 

@@ -124,10 +124,19 @@ inputs feed the same validation/preview/persistence path.
 
 ## Household and personal data
 
-Invitation by link, six-character code or QR: seven-day validity and revocation,
-review household name before joining. Joining moves recipes as specified, not
-old plan/shopping/pantry. Owner can remove members/transfer ownership; member
-can leave. Review offline queues and account scope before switching household.
+The owner shares one reusable invitation as a link, a QR payload or a code
+that the recipient can type. The QR scanner in Tavli reads the same code. The
+invite has no scheduled expiry or owner-facing deactivation. Any signed-in bearer
+can see the destination household name and confirm a direct switch. The
+confirmation offers joining with eligible recipes, joining without recipes,
+or staying. Plans, shopping and pantry stay outside the transfer. If the
+owner leaves, ownership passes automatically to a remaining member. A
+household and its remaining shared data are permanently deleted when the last
+member leaves after acknowledging the warning. The successor is the
+longest-serving remaining member. The recipe option copies recipes created by
+the departing user and recipes with no recorded creator. The current owner
+can also remove members. See [spec 008](../specs/008-household-members/spec.md).
+Review offline queues and account scope before switching household.
 
 Household shares recipes, plans, shopping and pantry. Taste preferences,
 favorites, ratings, diary/targets and cycle data are personal. Planning receives

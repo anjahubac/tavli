@@ -400,6 +400,22 @@ class FakeAccountApi implements AccountApi {
   }
 
   @override
+  Future<String> householdInviteToken() async => throw const Unavailable();
+
+  @override
+  Future<HouseholdPreview> previewHouseholdJoin(String token) async =>
+      throw const Unavailable();
+
+  @override
+  Future<HouseholdJoinResult> confirmHouseholdJoin({
+    required String token,
+    required String expectedSourceHouseholdId,
+    required JoinRecipeChoice recipeChoice,
+    required bool acknowledgeSourceDeletion,
+    required String operationId,
+  }) async => throw const Unavailable();
+
+  @override
   Future<void> deleteAccount() async {
     if (server.offline) throw const DeleteOffline();
     if (deleteFails case final f?) throw f;

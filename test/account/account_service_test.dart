@@ -148,6 +148,66 @@ void main() {
       expect(kicks, 1);
     });
 
+    test('promena opsega čuva profil i izdvaja stare izmene', () async {
+      final account = await service.loadOrFetch(await signIn());
+      await service.saveName(account, 'Ana');
+      await db
+          .into(db.syncOutbox)
+          .insert(
+            SyncOutboxCompanion.insert(
+              accountId: account.userId,
+              entity: 'photo',
+              recordId: 'old.jpg',
+              op: 'photoDelete',
+              createdAt: DateTime.utc(2026),
+            ),
+          );
+      await db
+          .into(db.syncCursors)
+          .insert(
+            SyncCursorsCompanion.insert(
+              accountId: account.userId,
+              entity: 'recipe',
+              updatedAt: DateTime.utc(2026),
+              lastId: 'old',
+            ),
+          );
+      backend.server.households[account.userId] = 'new-home';
+
+      final updated = await service.refreshMembership(account);
+
+      expect(updated.householdId, 'new-home');
+      expect(updated.displayName, 'Ana');
+      expect(await db.select(db.syncCursors).get(), isEmpty);
+      final outbox = await db.select(db.syncOutbox).get();
+      expect(
+        outbox.firstWhere((row) => row.entity == 'photo').state,
+        'rejected',
+      );
+      expect(
+        outbox.firstWhere((row) => row.entity == 'profile').state,
+        'pending',
+      );
+      expect((await service.cached(account.userId))?.householdId, 'new-home');
+    });
+
+    test('potvrda čeka dok postoje neposlate izmene', () async {
+      final account = await service.loadOrFetch(await signIn());
+      await service.saveName(account, 'Ana');
+      final result = await service.confirmHouseholdJoin(
+        account: account,
+        token: 'test-token',
+        recipeChoice: JoinRecipeChoice.leaveRecipes,
+        acknowledgeSourceDeletion: true,
+        operationId: 'test-operation',
+      );
+      expect(result.status, 'pending_sync');
+      expect(
+        (await service.cached(account.userId))?.householdId,
+        account.householdId,
+      );
+    });
+
     test('prazno i predugo ime se odbija', () async {
       final a = await service.loadOrFetch(await signIn());
       expect(() => service.saveName(a, '   '), throwsArgumentError);

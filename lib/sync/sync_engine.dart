@@ -179,10 +179,31 @@ class SyncEngine {
   /// prošlo do kraja.
   int get pullDeferred => _pullDeferred;
 
+  var _membershipCheck = false;
+
+  /// Waits for old-scope work and suspends sync during server reconciliation.
+  Future<T> reconcileMembership<T>(Future<T> Function() action) async {
+    if (_membershipCheck) throw StateError('Membership check in progress');
+    _membershipCheck = true;
+    try {
+      await _inFlight;
+      await _pullFinished?.future;
+      return await action();
+    } finally {
+      _membershipCheck = false;
+      kick();
+    }
+  }
+
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
   Future<void> pull() async {
     final downloader = _downloader;
-    if (_stopped || downloader == null || _pullFinished != null) return;
+    if (_stopped ||
+        _membershipCheck ||
+        downloader == null ||
+        _pullFinished != null) {
+      return;
+    }
     final finished = _pullFinished = Completer<void>();
     var adoptedWeek = false;
     try {
@@ -251,7 +272,7 @@ class SyncEngine {
 
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
-    if (_stopped) return Future.value();
+    if (_stopped || _membershipCheck) return Future.value();
     final pullFinished = _pullFinished;
     if (pullFinished != null) return pullFinished.future.then((_) => push());
     if (_running) {
