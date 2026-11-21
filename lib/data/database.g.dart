@@ -6846,7 +6846,7 @@ class CookedEventRow extends DataClass implements Insertable<CookedEventRow> {
   final DateTime cookedAt;
   final DateTime? undoneAt;
 
-  /// `user` ili `duplicate` (dva uređaja bez mreže).
+  /// `user` (jedina vrednost koju server prihvata).
   final String? undoReason;
   const CookedEventRow({
     required this.id,
@@ -8347,6 +8347,237 @@ class UserProfilesCompanion extends UpdateCompanion<UserProfileRow> {
     return (StringBuffer('UserProfilesCompanion(')
           ..write('id: $id, ')
           ..write('profileJson: $profileJson, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $UserAllergenSelectionsTable extends UserAllergenSelections
+    with TableInfo<$UserAllergenSelectionsTable, UserAllergenSelectionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserAllergenSelectionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _groupCodesJsonMeta = const VerificationMeta(
+    'groupCodesJson',
+  );
+  @override
+  late final GeneratedColumn<String> groupCodesJson = GeneratedColumn<String>(
+    'group_codes_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [userId, groupCodesJson];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_allergen_selections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserAllergenSelectionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('group_codes_json')) {
+      context.handle(
+        _groupCodesJsonMeta,
+        groupCodesJson.isAcceptableOrUnknown(
+          data['group_codes_json']!,
+          _groupCodesJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_groupCodesJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {userId};
+  @override
+  UserAllergenSelectionRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserAllergenSelectionRow(
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      groupCodesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_codes_json'],
+      )!,
+    );
+  }
+
+  @override
+  $UserAllergenSelectionsTable createAlias(String alias) {
+    return $UserAllergenSelectionsTable(attachedDatabase, alias);
+  }
+}
+
+class UserAllergenSelectionRow extends DataClass
+    implements Insertable<UserAllergenSelectionRow> {
+  final String userId;
+  final String groupCodesJson;
+  const UserAllergenSelectionRow({
+    required this.userId,
+    required this.groupCodesJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['user_id'] = Variable<String>(userId);
+    map['group_codes_json'] = Variable<String>(groupCodesJson);
+    return map;
+  }
+
+  UserAllergenSelectionsCompanion toCompanion(bool nullToAbsent) {
+    return UserAllergenSelectionsCompanion(
+      userId: Value(userId),
+      groupCodesJson: Value(groupCodesJson),
+    );
+  }
+
+  factory UserAllergenSelectionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserAllergenSelectionRow(
+      userId: serializer.fromJson<String>(json['userId']),
+      groupCodesJson: serializer.fromJson<String>(json['groupCodesJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'userId': serializer.toJson<String>(userId),
+      'groupCodesJson': serializer.toJson<String>(groupCodesJson),
+    };
+  }
+
+  UserAllergenSelectionRow copyWith({String? userId, String? groupCodesJson}) =>
+      UserAllergenSelectionRow(
+        userId: userId ?? this.userId,
+        groupCodesJson: groupCodesJson ?? this.groupCodesJson,
+      );
+  UserAllergenSelectionRow copyWithCompanion(
+    UserAllergenSelectionsCompanion data,
+  ) {
+    return UserAllergenSelectionRow(
+      userId: data.userId.present ? data.userId.value : this.userId,
+      groupCodesJson: data.groupCodesJson.present
+          ? data.groupCodesJson.value
+          : this.groupCodesJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserAllergenSelectionRow(')
+          ..write('userId: $userId, ')
+          ..write('groupCodesJson: $groupCodesJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(userId, groupCodesJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserAllergenSelectionRow &&
+          other.userId == this.userId &&
+          other.groupCodesJson == this.groupCodesJson);
+}
+
+class UserAllergenSelectionsCompanion
+    extends UpdateCompanion<UserAllergenSelectionRow> {
+  final Value<String> userId;
+  final Value<String> groupCodesJson;
+  final Value<int> rowid;
+  const UserAllergenSelectionsCompanion({
+    this.userId = const Value.absent(),
+    this.groupCodesJson = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UserAllergenSelectionsCompanion.insert({
+    required String userId,
+    required String groupCodesJson,
+    this.rowid = const Value.absent(),
+  }) : userId = Value(userId),
+       groupCodesJson = Value(groupCodesJson);
+  static Insertable<UserAllergenSelectionRow> custom({
+    Expression<String>? userId,
+    Expression<String>? groupCodesJson,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
+      if (groupCodesJson != null) 'group_codes_json': groupCodesJson,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UserAllergenSelectionsCompanion copyWith({
+    Value<String>? userId,
+    Value<String>? groupCodesJson,
+    Value<int>? rowid,
+  }) {
+    return UserAllergenSelectionsCompanion(
+      userId: userId ?? this.userId,
+      groupCodesJson: groupCodesJson ?? this.groupCodesJson,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (groupCodesJson.present) {
+      map['group_codes_json'] = Variable<String>(groupCodesJson.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserAllergenSelectionsCompanion(')
+          ..write('userId: $userId, ')
+          ..write('groupCodesJson: $groupCodesJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10567,6 +10798,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PantryConsumptionsTable(this);
   late final $RatingsTable ratings = $RatingsTable(this);
   late final $UserProfilesTable userProfiles = $UserProfilesTable(this);
+  late final $UserAllergenSelectionsTable userAllergenSelections =
+      $UserAllergenSelectionsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $ModelStatusesTable modelStatuses = $ModelStatusesTable(this);
   late final $AccountsTable accounts = $AccountsTable(this);
@@ -10619,6 +10852,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pantryConsumptions,
     ratings,
     userProfiles,
+    userAllergenSelections,
     appSettings,
     modelStatuses,
     accounts,
@@ -17281,6 +17515,182 @@ typedef $$UserProfilesTableProcessedTableManager =
       UserProfileRow,
       PrefetchHooks Function()
     >;
+typedef $$UserAllergenSelectionsTableCreateCompanionBuilder =
+    UserAllergenSelectionsCompanion Function({
+      required String userId,
+      required String groupCodesJson,
+      Value<int> rowid,
+    });
+typedef $$UserAllergenSelectionsTableUpdateCompanionBuilder =
+    UserAllergenSelectionsCompanion Function({
+      Value<String> userId,
+      Value<String> groupCodesJson,
+      Value<int> rowid,
+    });
+
+class $$UserAllergenSelectionsTableFilterComposer
+    extends Composer<_$AppDatabase, $UserAllergenSelectionsTable> {
+  $$UserAllergenSelectionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupCodesJson => $composableBuilder(
+    column: $table.groupCodesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UserAllergenSelectionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $UserAllergenSelectionsTable> {
+  $$UserAllergenSelectionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupCodesJson => $composableBuilder(
+    column: $table.groupCodesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UserAllergenSelectionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UserAllergenSelectionsTable> {
+  $$UserAllergenSelectionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get groupCodesJson => $composableBuilder(
+    column: $table.groupCodesJson,
+    builder: (column) => column,
+  );
+}
+
+class $$UserAllergenSelectionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UserAllergenSelectionsTable,
+          UserAllergenSelectionRow,
+          $$UserAllergenSelectionsTableFilterComposer,
+          $$UserAllergenSelectionsTableOrderingComposer,
+          $$UserAllergenSelectionsTableAnnotationComposer,
+          $$UserAllergenSelectionsTableCreateCompanionBuilder,
+          $$UserAllergenSelectionsTableUpdateCompanionBuilder,
+          (
+            UserAllergenSelectionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $UserAllergenSelectionsTable,
+              UserAllergenSelectionRow
+            >,
+          ),
+          UserAllergenSelectionRow,
+          PrefetchHooks Function()
+        > {
+  $$UserAllergenSelectionsTableTableManager(
+    _$AppDatabase db,
+    $UserAllergenSelectionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserAllergenSelectionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$UserAllergenSelectionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$UserAllergenSelectionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> userId = const Value.absent(),
+                Value<String> groupCodesJson = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UserAllergenSelectionsCompanion(
+                userId: userId,
+                groupCodesJson: groupCodesJson,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String userId,
+                required String groupCodesJson,
+                Value<int> rowid = const Value.absent(),
+              }) => UserAllergenSelectionsCompanion.insert(
+                userId: userId,
+                groupCodesJson: groupCodesJson,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $UserAllergenSelectionsTable,
+                    UserAllergenSelectionRow
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $UserAllergenSelectionsTable,
+                    UserAllergenSelectionRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UserAllergenSelectionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UserAllergenSelectionsTable,
+      UserAllergenSelectionRow,
+      $$UserAllergenSelectionsTableFilterComposer,
+      $$UserAllergenSelectionsTableOrderingComposer,
+      $$UserAllergenSelectionsTableAnnotationComposer,
+      $$UserAllergenSelectionsTableCreateCompanionBuilder,
+      $$UserAllergenSelectionsTableUpdateCompanionBuilder,
+      (
+        UserAllergenSelectionRow,
+        BaseReferences<
+          _$AppDatabase,
+          $UserAllergenSelectionsTable,
+          UserAllergenSelectionRow
+        >,
+      ),
+      UserAllergenSelectionRow,
+      PrefetchHooks Function()
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       required String key,
@@ -18486,6 +18896,11 @@ class $AppDatabaseManager {
       $$RatingsTableTableManager(_db, _db.ratings);
   $$UserProfilesTableTableManager get userProfiles =>
       $$UserProfilesTableTableManager(_db, _db.userProfiles);
+  $$UserAllergenSelectionsTableTableManager get userAllergenSelections =>
+      $$UserAllergenSelectionsTableTableManager(
+        _db,
+        _db.userAllergenSelections,
+      );
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$ModelStatusesTableTableManager get modelStatuses =>

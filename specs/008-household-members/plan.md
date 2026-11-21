@@ -1,6 +1,6 @@
 # Implementation plan: Household, member preferences and personal choices
 
-**Status**: logic-first implementation plan; runtime work remains pending.
+**Status**: logic-first implementation in progress.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 3 / Dev 1 and Dev 2
 **Baseline**: dev 0c286b6 (PR #77), with the server-only allergen decision
 recorded on this branch. New implementation branches start from current origin/dev.
@@ -24,7 +24,7 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 
 Household membership/invites are server-authorized; preferences, allergens, favorites and ratings are personal. The [member planning inputs contract](contracts/member-planning-inputs.md) specifies the proposed typed boundary, selected participants and fixtures. Planning receives only the agreed minimum aggregate. New grants/RLS and account-scope/outbox transitions require migration and denial tests.
 
-The D3-001 contract PR is documentation and interface design only. Later slices implement personal tastes in the existing `taste_profiles` path, user/allergen-group and user/favorite relations, catalog food/group mappings with Dev 1, then the aggregate consumed by Dev 2. Document current-to-target columns in `data-model.md` before the schema slice; allocate the next drift version after earlier schema PRs merge. No new dependency is proposed.
+The D3-001 contract PR is documentation and interface design only. Later slices implement personal tastes in the existing `taste_profiles` path, owner allergen selections and a user/favorite relation, catalog food/group mappings with Dev 1, then the aggregate consumed by Dev 2. Document current-to-target columns in `data-model.md` before the schema slice; allocate the next drift version after earlier schema PRs merge. No new dependency is proposed.
 
 Producer dependencies: the merged 008 contract and the existing taste-profile
 sync path for the first slice. Later slices depend on catalog identity/mappings,
@@ -105,6 +105,16 @@ No dependency is proposed. File handling is out of scope. Credentials and
 server deployment follow 012/015.
 
 ### Implementation decisions
+
+- **Personal allergen selection.** Drift v8 adds one private selection row
+  per account. The account-scoped repository replaces the entire canonical set
+  and enqueues one upsert in the same transaction. Clearing writes an empty set.
+  The SQL migration checks the vocabulary and uses owner-only RLS. Auth account
+  deletion cascades and local account deletion clears the owner cache.
+  `RecipeAllergens` models public recipe metadata for manual cooking, including
+  unresolved ingredients and linked foods awaiting review. Its personal comparison
+  takes the owner's own selection. Catalog lookup and server planner activation
+  are awaiting the corresponding producer schemas and review.
 
 - **First repository slice.** Add `DishKindPreferences` in
   `lib/domain/dish_kind_preferences.dart` and `TasteProfileRepository` in

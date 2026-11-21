@@ -152,6 +152,9 @@ class AccountService {
         _db.ratings,
       )..where((t) => t.userId.equals(userId))).go();
       await (_db.delete(
+        _db.userAllergenSelections,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
         _db.userProfiles,
       )..where((t) => t.id.equals(userId))).go();
       await (_db.delete(

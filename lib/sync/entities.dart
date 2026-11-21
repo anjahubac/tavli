@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../data/database.dart';
+import '../domain/allergen_group.dart';
 import '../domain/plan_calendar.dart';
 
 /// Pripada li zapis domaćinstvu ili osobi.
@@ -658,6 +659,47 @@ class TasteProfileEntity
       );
 }
 
+/// Owner-only allergen settings, synced as one replaceable selection.
+class AllergenSelectionEntity
+    extends SyncEntity<$UserAllergenSelectionsTable, UserAllergenSelectionRow> {
+  const AllergenSelectionEntity();
+
+  @override
+  String get name => 'allergen_selection';
+  @override
+  String get remoteTable => 'user_allergen_selections';
+  @override
+  String get remoteId => 'user_id';
+  @override
+  EntityScope get scope => EntityScope.user;
+  @override
+  $UserAllergenSelectionsTable table(AppDatabase db) =>
+      db.userAllergenSelections;
+  @override
+  Expression<String> idColumn($UserAllergenSelectionsTable t) => t.userId;
+  @override
+  GeneratedColumn<String> scopeColumn($UserAllergenSelectionsTable t) =>
+      t.userId;
+
+  @override
+  Map<String, Object?> toRemote(UserAllergenSelectionRow row) => {
+    'user_id': row.userId,
+    'group_codes': jsonDecode(row.groupCodesJson),
+  };
+
+  @override
+  UserAllergenSelectionsCompanion fromRemote(Map<String, Object?> json) {
+    final selection = AllergenGroup.parseSelection(json['group_codes']);
+    return UserAllergenSelectionsCompanion.insert(
+      userId: json['user_id']! as String,
+      groupCodesJson: jsonEncode([
+        for (final group in AllergenGroup.values)
+          if (selection.contains(group)) group.code,
+      ]),
+    );
+  }
+}
+
 /// Obrok označen kao skuvan (zapis operacije; poništavanje ga ne briše).
 class CookedEventEntity extends SyncEntity<$CookedEventsTable, CookedEventRow> {
   const CookedEventEntity();
@@ -777,6 +819,7 @@ const List<SyncEntity<Table, Object?>> syncEntities = [
   PantryConsumptionEntity(),
   RatingEntity(),
   TasteProfileEntity(),
+  AllergenSelectionEntity(),
 ];
 
 SyncEntity<Table, Object?>? entityByName(String name) {

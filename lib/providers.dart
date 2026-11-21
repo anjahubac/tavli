@@ -16,6 +16,7 @@ import 'ai/chat_client.dart';
 import 'ai/key_store.dart';
 import 'ai/meal_plan_ai.dart';
 import 'ai/recipe_ai.dart';
+import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'data/shopping_repository.dart';
@@ -239,6 +240,15 @@ final shoppingRepositoryProvider = Provider<ShoppingRepository>(
     clock: ref.watch(clockProvider),
   ),
 );
+
+final allergenRepositoryProvider = Provider<AllergenRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return AllergenRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
 
 final tasteProfileRepositoryProvider = Provider<TasteProfileRepository>((ref) {
   final scope = ref.watch(accountScopeProvider) ?? noAccountScope;

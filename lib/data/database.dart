@@ -425,6 +425,15 @@ class SyncCursors extends Table {
   Set<Column> get primaryKey => {accountId, entity};
 }
 
+@DataClassName('UserAllergenSelectionRow')
+class UserAllergenSelections extends Table {
+  TextColumn get userId => text()();
+  TextColumn get groupCodesJson => text()();
+
+  @override
+  Set<Column> get primaryKey => {userId};
+}
+
 @DriftDatabase(
   tables: [
     Recipes,
@@ -441,6 +450,7 @@ class SyncCursors extends Table {
     PantryConsumptions,
     Ratings,
     UserProfiles,
+    UserAllergenSelections,
     AppSettings,
     ModelStatuses,
     Accounts,
@@ -453,7 +463,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -472,6 +482,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
       if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
       if (from < 7) await transaction(() => _migrateToCookedEvents(m));
+      if (from < 8) await m.createTable(userAllergenSelections);
     },
   );
 
