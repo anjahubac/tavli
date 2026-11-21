@@ -86,7 +86,18 @@ class FakeServer {
     'supply_allocations': 'supply_allocation',
     'ratings': 'rating',
     'taste_profiles': 'taste_profile',
+    'foods': 'food',
+    'food_aliases': 'food_alias',
   };
+
+  /// Katalog namirnica: deljeni redovi (bez domaćinstva) vide svi.
+  static const _catalogTables = {'foods', 'food_aliases'};
+
+  /// Preuzimanje ovih tabela baca PGRST205 (stariji server bez tabele).
+  final missingTables = <String>{};
+
+  /// Preuzimanje ovih tabela baca 42501 (odbijen pristup).
+  final deniedTables = <String>{};
 
   /// Roditelji po stranim ključevima: dete obrisanog roditelja se preskače.
   static const _parentsOf = {
@@ -211,6 +222,8 @@ class FakeServer {
         cascade('supply_allocations', 'purchased_shopping_item_id');
       case 'pantry_items':
         cascade('supply_allocations', 'pantry_item_id');
+      case 'foods':
+        cascade('food_aliases', 'food_id');
       case 'shopping_sources':
         cascade('shopping_contributions', 'source_id');
       case 'shopping_contributions':
@@ -238,12 +251,20 @@ class FakeServer {
       fetchesBeforeFailure = n == 0 ? null : n - 1;
       if (n == 0) throw const TransientSyncError('interrupted');
     }
+    if (missingTables.contains(name)) {
+      throw const PermanentSyncError('PGRST205');
+    }
+    if (deniedTables.contains(name)) {
+      throw const PermanentSyncError('42501');
+    }
     calls.add('fetch:$name');
     final source = name == 'profiles' ? profiles.values : table(name).values;
     final sorted =
         [
           for (final r in source)
-            if (_visible(r, userId)) Map<String, Object?>.of(r),
+            if (_visible(r, userId) ||
+                (_catalogTables.contains(name) && r['household_id'] == null))
+              Map<String, Object?>.of(r),
         ]..sort((a, b) {
           final t = (a[timeColumn]! as String).compareTo(
             b[timeColumn]! as String,

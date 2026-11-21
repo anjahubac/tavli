@@ -6846,7 +6846,7 @@ class CookedEventRow extends DataClass implements Insertable<CookedEventRow> {
   final DateTime cookedAt;
   final DateTime? undoneAt;
 
-  /// `user` ili `duplicate` (dva uređaja bez mreže).
+  /// `user` (jedina vrednost koju server prihvata).
   final String? undoReason;
   const CookedEventRow({
     required this.id,
@@ -7660,6 +7660,1200 @@ class PantryConsumptionsCompanion
           ..write('baseUnit: $baseUnit, ')
           ..write('micros: $micros, ')
           ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FoodsTable extends Foods with TableInfo<$FoodsTable, FoodRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FoodsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _slugMeta = const VerificationMeta('slug');
+  @override
+  late final GeneratedColumn<String> slug = GeneratedColumn<String>(
+    'slug',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseUnitMeta = const VerificationMeta(
+    'baseUnit',
+  );
+  @override
+  late final GeneratedColumn<String> baseUnit = GeneratedColumn<String>(
+    'base_unit',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reviewedAtMeta = const VerificationMeta(
+    'reviewedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> reviewedAt = GeneratedColumn<DateTime>(
+    'reviewed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _withdrawnAtMeta = const VerificationMeta(
+    'withdrawnAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> withdrawnAt = GeneratedColumn<DateTime>(
+    'withdrawn_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    householdId,
+    slug,
+    name,
+    category,
+    baseUnit,
+    source,
+    reviewedAt,
+    withdrawnAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'foods';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FoodRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('slug')) {
+      context.handle(
+        _slugMeta,
+        slug.isAcceptableOrUnknown(data['slug']!, _slugMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_slugMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('base_unit')) {
+      context.handle(
+        _baseUnitMeta,
+        baseUnit.isAcceptableOrUnknown(data['base_unit']!, _baseUnitMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_baseUnitMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('reviewed_at')) {
+      context.handle(
+        _reviewedAtMeta,
+        reviewedAt.isAcceptableOrUnknown(data['reviewed_at']!, _reviewedAtMeta),
+      );
+    }
+    if (data.containsKey('withdrawn_at')) {
+      context.handle(
+        _withdrawnAtMeta,
+        withdrawnAt.isAcceptableOrUnknown(
+          data['withdrawn_at']!,
+          _withdrawnAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FoodRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FoodRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      ),
+      slug: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}slug'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      baseUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_unit'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      ),
+      reviewedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reviewed_at'],
+      ),
+      withdrawnAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}withdrawn_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FoodsTable createAlias(String alias) {
+    return $FoodsTable(attachedDatabase, alias);
+  }
+}
+
+class FoodRow extends DataClass implements Insertable<FoodRow> {
+  final String id;
+  final String? householdId;
+  final String slug;
+  final String name;
+  final String category;
+
+  /// `piece`, `gram` ili `milliliter` (čuva se kako je stiglo).
+  final String baseUnit;
+  final String? source;
+  final DateTime? reviewedAt;
+  final DateTime? withdrawnAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const FoodRow({
+    required this.id,
+    this.householdId,
+    required this.slug,
+    required this.name,
+    required this.category,
+    required this.baseUnit,
+    this.source,
+    this.reviewedAt,
+    this.withdrawnAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || householdId != null) {
+      map['household_id'] = Variable<String>(householdId);
+    }
+    map['slug'] = Variable<String>(slug);
+    map['name'] = Variable<String>(name);
+    map['category'] = Variable<String>(category);
+    map['base_unit'] = Variable<String>(baseUnit);
+    if (!nullToAbsent || source != null) {
+      map['source'] = Variable<String>(source);
+    }
+    if (!nullToAbsent || reviewedAt != null) {
+      map['reviewed_at'] = Variable<DateTime>(reviewedAt);
+    }
+    if (!nullToAbsent || withdrawnAt != null) {
+      map['withdrawn_at'] = Variable<DateTime>(withdrawnAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  FoodsCompanion toCompanion(bool nullToAbsent) {
+    return FoodsCompanion(
+      id: Value(id),
+      householdId: householdId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(householdId),
+      slug: Value(slug),
+      name: Value(name),
+      category: Value(category),
+      baseUnit: Value(baseUnit),
+      source: source == null && nullToAbsent
+          ? const Value.absent()
+          : Value(source),
+      reviewedAt: reviewedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reviewedAt),
+      withdrawnAt: withdrawnAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(withdrawnAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory FoodRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FoodRow(
+      id: serializer.fromJson<String>(json['id']),
+      householdId: serializer.fromJson<String?>(json['householdId']),
+      slug: serializer.fromJson<String>(json['slug']),
+      name: serializer.fromJson<String>(json['name']),
+      category: serializer.fromJson<String>(json['category']),
+      baseUnit: serializer.fromJson<String>(json['baseUnit']),
+      source: serializer.fromJson<String?>(json['source']),
+      reviewedAt: serializer.fromJson<DateTime?>(json['reviewedAt']),
+      withdrawnAt: serializer.fromJson<DateTime?>(json['withdrawnAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'householdId': serializer.toJson<String?>(householdId),
+      'slug': serializer.toJson<String>(slug),
+      'name': serializer.toJson<String>(name),
+      'category': serializer.toJson<String>(category),
+      'baseUnit': serializer.toJson<String>(baseUnit),
+      'source': serializer.toJson<String?>(source),
+      'reviewedAt': serializer.toJson<DateTime?>(reviewedAt),
+      'withdrawnAt': serializer.toJson<DateTime?>(withdrawnAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  FoodRow copyWith({
+    String? id,
+    Value<String?> householdId = const Value.absent(),
+    String? slug,
+    String? name,
+    String? category,
+    String? baseUnit,
+    Value<String?> source = const Value.absent(),
+    Value<DateTime?> reviewedAt = const Value.absent(),
+    Value<DateTime?> withdrawnAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => FoodRow(
+    id: id ?? this.id,
+    householdId: householdId.present ? householdId.value : this.householdId,
+    slug: slug ?? this.slug,
+    name: name ?? this.name,
+    category: category ?? this.category,
+    baseUnit: baseUnit ?? this.baseUnit,
+    source: source.present ? source.value : this.source,
+    reviewedAt: reviewedAt.present ? reviewedAt.value : this.reviewedAt,
+    withdrawnAt: withdrawnAt.present ? withdrawnAt.value : this.withdrawnAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  FoodRow copyWithCompanion(FoodsCompanion data) {
+    return FoodRow(
+      id: data.id.present ? data.id.value : this.id,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      slug: data.slug.present ? data.slug.value : this.slug,
+      name: data.name.present ? data.name.value : this.name,
+      category: data.category.present ? data.category.value : this.category,
+      baseUnit: data.baseUnit.present ? data.baseUnit.value : this.baseUnit,
+      source: data.source.present ? data.source.value : this.source,
+      reviewedAt: data.reviewedAt.present
+          ? data.reviewedAt.value
+          : this.reviewedAt,
+      withdrawnAt: data.withdrawnAt.present
+          ? data.withdrawnAt.value
+          : this.withdrawnAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FoodRow(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('slug: $slug, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('baseUnit: $baseUnit, ')
+          ..write('source: $source, ')
+          ..write('reviewedAt: $reviewedAt, ')
+          ..write('withdrawnAt: $withdrawnAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    householdId,
+    slug,
+    name,
+    category,
+    baseUnit,
+    source,
+    reviewedAt,
+    withdrawnAt,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FoodRow &&
+          other.id == this.id &&
+          other.householdId == this.householdId &&
+          other.slug == this.slug &&
+          other.name == this.name &&
+          other.category == this.category &&
+          other.baseUnit == this.baseUnit &&
+          other.source == this.source &&
+          other.reviewedAt == this.reviewedAt &&
+          other.withdrawnAt == this.withdrawnAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FoodsCompanion extends UpdateCompanion<FoodRow> {
+  final Value<String> id;
+  final Value<String?> householdId;
+  final Value<String> slug;
+  final Value<String> name;
+  final Value<String> category;
+  final Value<String> baseUnit;
+  final Value<String?> source;
+  final Value<DateTime?> reviewedAt;
+  final Value<DateTime?> withdrawnAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const FoodsCompanion({
+    this.id = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.slug = const Value.absent(),
+    this.name = const Value.absent(),
+    this.category = const Value.absent(),
+    this.baseUnit = const Value.absent(),
+    this.source = const Value.absent(),
+    this.reviewedAt = const Value.absent(),
+    this.withdrawnAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FoodsCompanion.insert({
+    required String id,
+    this.householdId = const Value.absent(),
+    required String slug,
+    required String name,
+    required String category,
+    required String baseUnit,
+    this.source = const Value.absent(),
+    this.reviewedAt = const Value.absent(),
+    this.withdrawnAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       slug = Value(slug),
+       name = Value(name),
+       category = Value(category),
+       baseUnit = Value(baseUnit),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<FoodRow> custom({
+    Expression<String>? id,
+    Expression<String>? householdId,
+    Expression<String>? slug,
+    Expression<String>? name,
+    Expression<String>? category,
+    Expression<String>? baseUnit,
+    Expression<String>? source,
+    Expression<DateTime>? reviewedAt,
+    Expression<DateTime>? withdrawnAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (householdId != null) 'household_id': householdId,
+      if (slug != null) 'slug': slug,
+      if (name != null) 'name': name,
+      if (category != null) 'category': category,
+      if (baseUnit != null) 'base_unit': baseUnit,
+      if (source != null) 'source': source,
+      if (reviewedAt != null) 'reviewed_at': reviewedAt,
+      if (withdrawnAt != null) 'withdrawn_at': withdrawnAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FoodsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? householdId,
+    Value<String>? slug,
+    Value<String>? name,
+    Value<String>? category,
+    Value<String>? baseUnit,
+    Value<String?>? source,
+    Value<DateTime?>? reviewedAt,
+    Value<DateTime?>? withdrawnAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FoodsCompanion(
+      id: id ?? this.id,
+      householdId: householdId ?? this.householdId,
+      slug: slug ?? this.slug,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      baseUnit: baseUnit ?? this.baseUnit,
+      source: source ?? this.source,
+      reviewedAt: reviewedAt ?? this.reviewedAt,
+      withdrawnAt: withdrawnAt ?? this.withdrawnAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (slug.present) {
+      map['slug'] = Variable<String>(slug.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (baseUnit.present) {
+      map['base_unit'] = Variable<String>(baseUnit.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (reviewedAt.present) {
+      map['reviewed_at'] = Variable<DateTime>(reviewedAt.value);
+    }
+    if (withdrawnAt.present) {
+      map['withdrawn_at'] = Variable<DateTime>(withdrawnAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FoodsCompanion(')
+          ..write('id: $id, ')
+          ..write('householdId: $householdId, ')
+          ..write('slug: $slug, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('baseUnit: $baseUnit, ')
+          ..write('source: $source, ')
+          ..write('reviewedAt: $reviewedAt, ')
+          ..write('withdrawnAt: $withdrawnAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FoodAliasesTable extends FoodAliases
+    with TableInfo<$FoodAliasesTable, FoodAliasRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FoodAliasesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _foodIdMeta = const VerificationMeta('foodId');
+  @override
+  late final GeneratedColumn<String> foodId = GeneratedColumn<String>(
+    'food_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _aliasMeta = const VerificationMeta('alias');
+  @override
+  late final GeneratedColumn<String> alias = GeneratedColumn<String>(
+    'alias',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _aliasNormalizedMeta = const VerificationMeta(
+    'aliasNormalized',
+  );
+  @override
+  late final GeneratedColumn<String> aliasNormalized = GeneratedColumn<String>(
+    'alias_normalized',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _withdrawnAtMeta = const VerificationMeta(
+    'withdrawnAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> withdrawnAt = GeneratedColumn<DateTime>(
+    'withdrawn_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    foodId,
+    householdId,
+    alias,
+    aliasNormalized,
+    withdrawnAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'food_aliases';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FoodAliasRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('food_id')) {
+      context.handle(
+        _foodIdMeta,
+        foodId.isAcceptableOrUnknown(data['food_id']!, _foodIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_foodIdMeta);
+    }
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('alias')) {
+      context.handle(
+        _aliasMeta,
+        alias.isAcceptableOrUnknown(data['alias']!, _aliasMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_aliasMeta);
+    }
+    if (data.containsKey('alias_normalized')) {
+      context.handle(
+        _aliasNormalizedMeta,
+        aliasNormalized.isAcceptableOrUnknown(
+          data['alias_normalized']!,
+          _aliasNormalizedMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_aliasNormalizedMeta);
+    }
+    if (data.containsKey('withdrawn_at')) {
+      context.handle(
+        _withdrawnAtMeta,
+        withdrawnAt.isAcceptableOrUnknown(
+          data['withdrawn_at']!,
+          _withdrawnAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FoodAliasRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FoodAliasRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      foodId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}food_id'],
+      )!,
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      ),
+      alias: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alias'],
+      )!,
+      aliasNormalized: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alias_normalized'],
+      )!,
+      withdrawnAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}withdrawn_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $FoodAliasesTable createAlias(String alias) {
+    return $FoodAliasesTable(attachedDatabase, alias);
+  }
+}
+
+class FoodAliasRow extends DataClass implements Insertable<FoodAliasRow> {
+  final String id;
+  final String foodId;
+  final String? householdId;
+  final String alias;
+
+  /// Izlaz `ingredientKey`, kako je sačuvan na serveru.
+  final String aliasNormalized;
+  final DateTime? withdrawnAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const FoodAliasRow({
+    required this.id,
+    required this.foodId,
+    this.householdId,
+    required this.alias,
+    required this.aliasNormalized,
+    this.withdrawnAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['food_id'] = Variable<String>(foodId);
+    if (!nullToAbsent || householdId != null) {
+      map['household_id'] = Variable<String>(householdId);
+    }
+    map['alias'] = Variable<String>(alias);
+    map['alias_normalized'] = Variable<String>(aliasNormalized);
+    if (!nullToAbsent || withdrawnAt != null) {
+      map['withdrawn_at'] = Variable<DateTime>(withdrawnAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  FoodAliasesCompanion toCompanion(bool nullToAbsent) {
+    return FoodAliasesCompanion(
+      id: Value(id),
+      foodId: Value(foodId),
+      householdId: householdId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(householdId),
+      alias: Value(alias),
+      aliasNormalized: Value(aliasNormalized),
+      withdrawnAt: withdrawnAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(withdrawnAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory FoodAliasRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FoodAliasRow(
+      id: serializer.fromJson<String>(json['id']),
+      foodId: serializer.fromJson<String>(json['foodId']),
+      householdId: serializer.fromJson<String?>(json['householdId']),
+      alias: serializer.fromJson<String>(json['alias']),
+      aliasNormalized: serializer.fromJson<String>(json['aliasNormalized']),
+      withdrawnAt: serializer.fromJson<DateTime?>(json['withdrawnAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'foodId': serializer.toJson<String>(foodId),
+      'householdId': serializer.toJson<String?>(householdId),
+      'alias': serializer.toJson<String>(alias),
+      'aliasNormalized': serializer.toJson<String>(aliasNormalized),
+      'withdrawnAt': serializer.toJson<DateTime?>(withdrawnAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  FoodAliasRow copyWith({
+    String? id,
+    String? foodId,
+    Value<String?> householdId = const Value.absent(),
+    String? alias,
+    String? aliasNormalized,
+    Value<DateTime?> withdrawnAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => FoodAliasRow(
+    id: id ?? this.id,
+    foodId: foodId ?? this.foodId,
+    householdId: householdId.present ? householdId.value : this.householdId,
+    alias: alias ?? this.alias,
+    aliasNormalized: aliasNormalized ?? this.aliasNormalized,
+    withdrawnAt: withdrawnAt.present ? withdrawnAt.value : this.withdrawnAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  FoodAliasRow copyWithCompanion(FoodAliasesCompanion data) {
+    return FoodAliasRow(
+      id: data.id.present ? data.id.value : this.id,
+      foodId: data.foodId.present ? data.foodId.value : this.foodId,
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      alias: data.alias.present ? data.alias.value : this.alias,
+      aliasNormalized: data.aliasNormalized.present
+          ? data.aliasNormalized.value
+          : this.aliasNormalized,
+      withdrawnAt: data.withdrawnAt.present
+          ? data.withdrawnAt.value
+          : this.withdrawnAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FoodAliasRow(')
+          ..write('id: $id, ')
+          ..write('foodId: $foodId, ')
+          ..write('householdId: $householdId, ')
+          ..write('alias: $alias, ')
+          ..write('aliasNormalized: $aliasNormalized, ')
+          ..write('withdrawnAt: $withdrawnAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    foodId,
+    householdId,
+    alias,
+    aliasNormalized,
+    withdrawnAt,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FoodAliasRow &&
+          other.id == this.id &&
+          other.foodId == this.foodId &&
+          other.householdId == this.householdId &&
+          other.alias == this.alias &&
+          other.aliasNormalized == this.aliasNormalized &&
+          other.withdrawnAt == this.withdrawnAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FoodAliasesCompanion extends UpdateCompanion<FoodAliasRow> {
+  final Value<String> id;
+  final Value<String> foodId;
+  final Value<String?> householdId;
+  final Value<String> alias;
+  final Value<String> aliasNormalized;
+  final Value<DateTime?> withdrawnAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const FoodAliasesCompanion({
+    this.id = const Value.absent(),
+    this.foodId = const Value.absent(),
+    this.householdId = const Value.absent(),
+    this.alias = const Value.absent(),
+    this.aliasNormalized = const Value.absent(),
+    this.withdrawnAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FoodAliasesCompanion.insert({
+    required String id,
+    required String foodId,
+    this.householdId = const Value.absent(),
+    required String alias,
+    required String aliasNormalized,
+    this.withdrawnAt = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       foodId = Value(foodId),
+       alias = Value(alias),
+       aliasNormalized = Value(aliasNormalized),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<FoodAliasRow> custom({
+    Expression<String>? id,
+    Expression<String>? foodId,
+    Expression<String>? householdId,
+    Expression<String>? alias,
+    Expression<String>? aliasNormalized,
+    Expression<DateTime>? withdrawnAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (foodId != null) 'food_id': foodId,
+      if (householdId != null) 'household_id': householdId,
+      if (alias != null) 'alias': alias,
+      if (aliasNormalized != null) 'alias_normalized': aliasNormalized,
+      if (withdrawnAt != null) 'withdrawn_at': withdrawnAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FoodAliasesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? foodId,
+    Value<String?>? householdId,
+    Value<String>? alias,
+    Value<String>? aliasNormalized,
+    Value<DateTime?>? withdrawnAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FoodAliasesCompanion(
+      id: id ?? this.id,
+      foodId: foodId ?? this.foodId,
+      householdId: householdId ?? this.householdId,
+      alias: alias ?? this.alias,
+      aliasNormalized: aliasNormalized ?? this.aliasNormalized,
+      withdrawnAt: withdrawnAt ?? this.withdrawnAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (foodId.present) {
+      map['food_id'] = Variable<String>(foodId.value);
+    }
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (alias.present) {
+      map['alias'] = Variable<String>(alias.value);
+    }
+    if (aliasNormalized.present) {
+      map['alias_normalized'] = Variable<String>(aliasNormalized.value);
+    }
+    if (withdrawnAt.present) {
+      map['withdrawn_at'] = Variable<DateTime>(withdrawnAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FoodAliasesCompanion(')
+          ..write('id: $id, ')
+          ..write('foodId: $foodId, ')
+          ..write('householdId: $householdId, ')
+          ..write('alias: $alias, ')
+          ..write('aliasNormalized: $aliasNormalized, ')
+          ..write('withdrawnAt: $withdrawnAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10565,6 +11759,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CookedEventsTable cookedEvents = $CookedEventsTable(this);
   late final $PantryConsumptionsTable pantryConsumptions =
       $PantryConsumptionsTable(this);
+  late final $FoodsTable foods = $FoodsTable(this);
+  late final $FoodAliasesTable foodAliases = $FoodAliasesTable(this);
   late final $RatingsTable ratings = $RatingsTable(this);
   late final $UserProfilesTable userProfiles = $UserProfilesTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
@@ -10596,6 +11792,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'pantry_consumptions_identity',
     'CREATE UNIQUE INDEX pantry_consumptions_identity ON pantry_consumptions (event_id, pantry_item_id)',
   );
+  late final Index foodAliasesSharedActive = Index(
+    'food_aliases_shared_active',
+    'CREATE UNIQUE INDEX food_aliases_shared_active ON food_aliases (alias_normalized) WHERE household_id IS NULL AND withdrawn_at IS NULL',
+  );
   late final Index syncOutboxAccountStateSeq = Index(
     'sync_outbox_account_state_seq',
     'CREATE INDEX sync_outbox_account_state_seq ON sync_outbox (account_id, state, seq)',
@@ -10617,6 +11817,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     supplyAllocations,
     cookedEvents,
     pantryConsumptions,
+    foods,
+    foodAliases,
     ratings,
     userProfiles,
     appSettings,
@@ -10630,6 +11832,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     shoppingContributionsIdentity,
     supplyAllocationsIdentity,
     pantryConsumptionsIdentity,
+    foodAliasesSharedActive,
     syncOutboxAccountStateSeq,
   ];
 }
@@ -16774,6 +17977,598 @@ typedef $$PantryConsumptionsTableProcessedTableManager =
       PantryConsumptionRow,
       PrefetchHooks Function({bool eventId})
     >;
+typedef $$FoodsTableCreateCompanionBuilder = FoodsCompanion Function({
+  required String id,
+  Value<String?> householdId,
+  required String slug,
+  required String name,
+  required String category,
+  required String baseUnit,
+  Value<String?> source,
+  Value<DateTime?> reviewedAt,
+  Value<DateTime?> withdrawnAt,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$FoodsTableUpdateCompanionBuilder = FoodsCompanion Function({
+  Value<String> id,
+  Value<String?> householdId,
+  Value<String> slug,
+  Value<String> name,
+  Value<String> category,
+  Value<String> baseUnit,
+  Value<String?> source,
+  Value<DateTime?> reviewedAt,
+  Value<DateTime?> withdrawnAt,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$FoodsTableFilterComposer extends Composer<_$AppDatabase, $FoodsTable> {
+  $$FoodsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get slug => $composableBuilder(
+    column: $table.slug,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseUnit => $composableBuilder(
+    column: $table.baseUnit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get withdrawnAt => $composableBuilder(
+    column: $table.withdrawnAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FoodsTableOrderingComposer
+    extends Composer<_$AppDatabase, $FoodsTable> {
+  $$FoodsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get slug => $composableBuilder(
+    column: $table.slug,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseUnit => $composableBuilder(
+    column: $table.baseUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get withdrawnAt => $composableBuilder(
+    column: $table.withdrawnAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FoodsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FoodsTable> {
+  $$FoodsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get slug =>
+      $composableBuilder(column: $table.slug, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get baseUnit =>
+      $composableBuilder(column: $table.baseUnit, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get reviewedAt => $composableBuilder(
+    column: $table.reviewedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get withdrawnAt => $composableBuilder(
+    column: $table.withdrawnAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$FoodsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FoodsTable,
+          FoodRow,
+          $$FoodsTableFilterComposer,
+          $$FoodsTableOrderingComposer,
+          $$FoodsTableAnnotationComposer,
+          $$FoodsTableCreateCompanionBuilder,
+          $$FoodsTableUpdateCompanionBuilder,
+          (FoodRow, BaseReferences<_$AppDatabase, $FoodsTable, FoodRow>),
+          FoodRow,
+          PrefetchHooks Function()
+        > {
+  $$FoodsTableTableManager(_$AppDatabase db, $FoodsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FoodsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FoodsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FoodsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> householdId = const Value.absent(),
+                Value<String> slug = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<String> baseUnit = const Value.absent(),
+                Value<String?> source = const Value.absent(),
+                Value<DateTime?> reviewedAt = const Value.absent(),
+                Value<DateTime?> withdrawnAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FoodsCompanion(
+                id: id,
+                householdId: householdId,
+                slug: slug,
+                name: name,
+                category: category,
+                baseUnit: baseUnit,
+                source: source,
+                reviewedAt: reviewedAt,
+                withdrawnAt: withdrawnAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> householdId = const Value.absent(),
+                required String slug,
+                required String name,
+                required String category,
+                required String baseUnit,
+                Value<String?> source = const Value.absent(),
+                Value<DateTime?> reviewedAt = const Value.absent(),
+                Value<DateTime?> withdrawnAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FoodsCompanion.insert(
+                id: id,
+                householdId: householdId,
+                slug: slug,
+                name: name,
+                category: category,
+                baseUnit: baseUnit,
+                source: source,
+                reviewedAt: reviewedAt,
+                withdrawnAt: withdrawnAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FoodsTable, FoodRow>(table),
+                  BaseReferences<_$AppDatabase, $FoodsTable, FoodRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FoodsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FoodsTable,
+      FoodRow,
+      $$FoodsTableFilterComposer,
+      $$FoodsTableOrderingComposer,
+      $$FoodsTableAnnotationComposer,
+      $$FoodsTableCreateCompanionBuilder,
+      $$FoodsTableUpdateCompanionBuilder,
+      (FoodRow, BaseReferences<_$AppDatabase, $FoodsTable, FoodRow>),
+      FoodRow,
+      PrefetchHooks Function()
+    >;
+typedef $$FoodAliasesTableCreateCompanionBuilder =
+    FoodAliasesCompanion Function({
+      required String id,
+      required String foodId,
+      Value<String?> householdId,
+      required String alias,
+      required String aliasNormalized,
+      Value<DateTime?> withdrawnAt,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FoodAliasesTableUpdateCompanionBuilder =
+    FoodAliasesCompanion Function({
+      Value<String> id,
+      Value<String> foodId,
+      Value<String?> householdId,
+      Value<String> alias,
+      Value<String> aliasNormalized,
+      Value<DateTime?> withdrawnAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$FoodAliasesTableFilterComposer
+    extends Composer<_$AppDatabase, $FoodAliasesTable> {
+  $$FoodAliasesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get foodId => $composableBuilder(
+    column: $table.foodId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alias => $composableBuilder(
+    column: $table.alias,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get aliasNormalized => $composableBuilder(
+    column: $table.aliasNormalized,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get withdrawnAt => $composableBuilder(
+    column: $table.withdrawnAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FoodAliasesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FoodAliasesTable> {
+  $$FoodAliasesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get foodId => $composableBuilder(
+    column: $table.foodId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get alias => $composableBuilder(
+    column: $table.alias,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get aliasNormalized => $composableBuilder(
+    column: $table.aliasNormalized,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get withdrawnAt => $composableBuilder(
+    column: $table.withdrawnAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FoodAliasesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FoodAliasesTable> {
+  $$FoodAliasesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get foodId =>
+      $composableBuilder(column: $table.foodId, builder: (column) => column);
+
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get alias =>
+      $composableBuilder(column: $table.alias, builder: (column) => column);
+
+  GeneratedColumn<String> get aliasNormalized => $composableBuilder(
+    column: $table.aliasNormalized,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get withdrawnAt => $composableBuilder(
+    column: $table.withdrawnAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$FoodAliasesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FoodAliasesTable,
+          FoodAliasRow,
+          $$FoodAliasesTableFilterComposer,
+          $$FoodAliasesTableOrderingComposer,
+          $$FoodAliasesTableAnnotationComposer,
+          $$FoodAliasesTableCreateCompanionBuilder,
+          $$FoodAliasesTableUpdateCompanionBuilder,
+          (
+            FoodAliasRow,
+            BaseReferences<_$AppDatabase, $FoodAliasesTable, FoodAliasRow>,
+          ),
+          FoodAliasRow,
+          PrefetchHooks Function()
+        > {
+  $$FoodAliasesTableTableManager(_$AppDatabase db, $FoodAliasesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FoodAliasesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FoodAliasesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FoodAliasesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> foodId = const Value.absent(),
+                Value<String?> householdId = const Value.absent(),
+                Value<String> alias = const Value.absent(),
+                Value<String> aliasNormalized = const Value.absent(),
+                Value<DateTime?> withdrawnAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FoodAliasesCompanion(
+                id: id,
+                foodId: foodId,
+                householdId: householdId,
+                alias: alias,
+                aliasNormalized: aliasNormalized,
+                withdrawnAt: withdrawnAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String foodId,
+                Value<String?> householdId = const Value.absent(),
+                required String alias,
+                required String aliasNormalized,
+                Value<DateTime?> withdrawnAt = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => FoodAliasesCompanion.insert(
+                id: id,
+                foodId: foodId,
+                householdId: householdId,
+                alias: alias,
+                aliasNormalized: aliasNormalized,
+                withdrawnAt: withdrawnAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FoodAliasesTable, FoodAliasRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $FoodAliasesTable,
+                    FoodAliasRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FoodAliasesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FoodAliasesTable,
+      FoodAliasRow,
+      $$FoodAliasesTableFilterComposer,
+      $$FoodAliasesTableOrderingComposer,
+      $$FoodAliasesTableAnnotationComposer,
+      $$FoodAliasesTableCreateCompanionBuilder,
+      $$FoodAliasesTableUpdateCompanionBuilder,
+      (
+        FoodAliasRow,
+        BaseReferences<_$AppDatabase, $FoodAliasesTable, FoodAliasRow>,
+      ),
+      FoodAliasRow,
+      PrefetchHooks Function()
+    >;
 typedef $$RatingsTableCreateCompanionBuilder = RatingsCompanion Function({
   required String id,
   required String recipeId,
@@ -18482,6 +20277,10 @@ class $AppDatabaseManager {
       $$CookedEventsTableTableManager(_db, _db.cookedEvents);
   $$PantryConsumptionsTableTableManager get pantryConsumptions =>
       $$PantryConsumptionsTableTableManager(_db, _db.pantryConsumptions);
+  $$FoodsTableTableManager get foods =>
+      $$FoodsTableTableManager(_db, _db.foods);
+  $$FoodAliasesTableTableManager get foodAliases =>
+      $$FoodAliasesTableTableManager(_db, _db.foodAliases);
   $$RatingsTableTableManager get ratings =>
       $$RatingsTableTableManager(_db, _db.ratings);
   $$UserProfilesTableTableManager get userProfiles =>

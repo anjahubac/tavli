@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../account/auth_controller.dart';
 import '../data/database.dart';
+import 'catalog_status.dart';
 import 'downloader.dart';
 import 'legacy_mover.dart';
 import 'photo_sync.dart';
@@ -226,7 +227,7 @@ class SyncEngine {
     if (adoptedWeek && !_stopped) await push();
   }
 
-  Future<({int deferred, bool adoptedWeek})> _download(
+  Future<({int deferred, bool adoptedWeek, CatalogStatus catalog})> _download(
     Downloader downloader,
   ) async {
     try {

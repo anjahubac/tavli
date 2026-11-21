@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
 import '../account/auth_controller.dart';
 import '../data/database.dart';
+import 'catalog_status.dart';
 import 'entities.dart';
 import 'shopping_week_recovery.dart';
 import 'sync_remote.dart';
@@ -33,8 +34,10 @@ class Downloader {
 
   /// Baca [SyncError] za greške mreže. Neprimenljivi redovi ostaju ispred
   /// sačuvane pozicije, a nezavisni podaci se ipak preuzimaju. `deferred`
-  /// je broj takvih redova (0 = sve je primenjeno).
-  Future<({int deferred, bool adoptedWeek})> run() async {
+  /// je broj takvih redova (0 = sve je primenjeno). `catalog` je ishod
+  /// preuzimanja kataloga namirnica; njegova greška ne zaustavlja ostalo.
+  Future<({int deferred, bool adoptedWeek, CatalogStatus catalog})>
+  run() async {
     var adoptedWeek = false;
     final deferred = <(String, String)>{};
     var skipped = await _pull(
@@ -63,6 +66,8 @@ class Downloader {
         onDeferred: (id) => deferred.add((e.name, id)),
       );
     }
+    final catalog = await _pullCatalog(deferred);
+    skipped += catalog.skipped;
     skipped += await _pull(
       key: _deletions,
       table: _deletions,
@@ -72,8 +77,77 @@ class Downloader {
         return true;
       },
     );
-    return (deferred: skipped, adoptedWeek: adoptedWeek);
+    return (
+      deferred: skipped,
+      adoptedWeek: adoptedWeek,
+      catalog: catalog.status,
+    );
   }
+
+  /// Katalog namirnica (018, data-model.md „Rollout“ korak 3): samo čitanje.
+  /// Stariji server bez tabela nije greška za korisnika. Kad je pristup
+  /// domaćinstvu odbijen, kućni redovi tog domaćinstva i pozicija kataloga
+  /// se brišu (sledeće uspešno preuzimanje ih vraća), a deljeni ostaju.
+  /// Greške mreže i istekla sesija idu dalje kao i do sada.
+  Future<({int skipped, CatalogStatus status})> _pullCatalog(
+    Set<(String, String)> deferred,
+  ) async {
+    var skipped = 0;
+    try {
+      for (final e in catalogEntities) {
+        skipped += await _pull(
+          key: e.name,
+          table: e.remoteTable,
+          idColumn: e.remoteId,
+          apply: (row) async {
+            if (e.parentKeys.any((key) {
+              final id = row[key.$2];
+              return id is String && deferred.contains((key.$1, id));
+            })) {
+              return false;
+            }
+            await _applyRow(e, row);
+            return true;
+          },
+          onDeferred: (id) => deferred.add((e.name, id)),
+          // Ispravka deljenog zapisa: povlačenje starog reda i zamena pod
+          // istim ključem mogu da stignu bilo kojim redom (isto vreme izmene
+          // u istoj migraciji). Povučeni deljeni redovi strane se primenjuju
+          // prvi, pa zamena ne udari u lokalni jedinstveni indeks. Ponovna
+          // primena istog reda u nastavku je upis po id-ju (bez štete).
+          beforePage: (page) async {
+            for (final row in page) {
+              if (row['household_id'] == null && row['withdrawn_at'] != null) {
+                await _tryApply(e.name, (r) async {
+                  await _applyRow(e, r);
+                  return true;
+                }, row);
+              }
+            }
+          },
+        );
+      }
+    } on PermanentSyncError catch (error) {
+      final status = catalogStatusFor(error);
+      if (status == CatalogStatus.accessDenied) await _dropHouseholdCatalog();
+      return (skipped: skipped, status: status);
+    }
+    return (skipped: skipped, status: CatalogStatus.available);
+  }
+
+  Future<void> _dropHouseholdCatalog() => _db.transaction(() async {
+    final hid = _scope.householdId;
+    await (_db.delete(
+      _db.foodAliases,
+    )..where((t) => t.householdId.equals(hid))).go();
+    await (_db.delete(_db.foods)..where((t) => t.householdId.equals(hid))).go();
+    await (_db.delete(_db.syncCursors)..where(
+          (t) =>
+              t.accountId.equals(_scope.userId) &
+              t.entity.isIn([for (final e in catalogEntities) e.name]),
+        ))
+        .go();
+  });
 
   /// Vraća broj odloženih redova.
   Future<int> _pull({
@@ -81,6 +155,7 @@ class Downloader {
     required String table,
     required Future<bool> Function(Map<String, Object?>) apply,
     void Function(String id)? onDeferred,
+    Future<void> Function(List<Map<String, Object?>> page)? beforePage,
     String timeColumn = 'updated_at',
     String idColumn = 'id',
   }) async {
@@ -108,6 +183,7 @@ class Downloader {
       since = _iso(DateTime.parse(last[timeColumn]! as String));
       afterId = last[idColumn]! as String;
       await _db.transaction(() async {
+        await beforePage?.call(rows);
         Map<String, Object?>? checkpoint;
         for (final row in rows) {
           if (await _tryApply(key, apply, row)) {
