@@ -221,6 +221,8 @@ void main() {
       'fetch:pantry_consumptions',
       'fetch:ratings',
       'fetch:taste_profiles',
+      'fetch:foods',
+      'fetch:food_aliases',
       'fetch:deletions',
     ]);
     final recipe = (await db.select(db.recipes).get()).single;
