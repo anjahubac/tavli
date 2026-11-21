@@ -84,17 +84,16 @@ class MealCookingRoute extends ConsumerWidget {
       if (m.id == entryId) meal = m;
     }
     final snapshot = meal?.snapshot;
-    // Koraci iz recepta u biblioteci, da se vide i oni dodati posle
-    // planiranja; sastojci ostaju iz plana (nabavka).
-    final recipeId = meal?.recipeId;
-    final library = recipeId == null
-        ? null
-        : ref.watch(recipeProvider(recipeId)).value;
     if (meal == null || snapshot == null) {
       return meals.isLoading
           ? const _Loading()
           : const _Missing('Obrok nije pronađen.');
     }
+    // Neskuvan obrok prati korake iz biblioteke; skuvan koristi snimak.
+    final recipeId = meal.recipeId;
+    final library = recipeId == null || meal.isCooked
+        ? null
+        : ref.watch(recipeProvider(recipeId)).value;
     return CookingModeScreen(
       recipe: CookingRecipe(
         title: snapshot.title,
@@ -114,7 +113,7 @@ class MealCookingRoute extends ConsumerWidget {
             ),
         ],
         steps: library?.steps ?? snapshot.steps,
-        recipeId: meal.recipeId,
+        recipeId: recipeId,
         mealId: meal.id,
       ),
     );

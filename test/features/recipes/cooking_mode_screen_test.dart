@@ -7,6 +7,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/recipe_version.dart';
+import 'package:tavli/providers.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
@@ -81,6 +83,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Kuvanje'), findsNothing);
     expect(app.wakeLock.on, isFalse);
+    expect(await app.db.select(app.db.cookedEvents).get(), isEmpty);
   });
 
   testTavli('Prethodni i Sledeći su iste veličine', (tester) async {
@@ -150,7 +153,7 @@ void main() {
   }
 
   testTavli('recept bez koraka: napomena i sastojci', (tester) async {
-    await pumpTavli(
+    final app = await pumpTavli(
       tester,
       location: '/cook/recipe/m',
       recipes: [musaka(steps: const [])],
@@ -159,7 +162,10 @@ void main() {
     expect(find.text('Dodaj korake'), findsOneWidget);
     expect(find.text('Krompir'), findsOneWidget);
     expect(button('Prethodni'), findsNothing);
-    expect(button('Gotovo'), findsOneWidget);
+    await tester.tap(button('Gotovo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kuvanje'), findsNothing);
+    expect(await app.db.select(app.db.cookedEvents).get(), isEmpty);
   });
 
   testTavli('obrok iz plana: Skuvano jednom, pa Poništi', (tester) async {
@@ -270,5 +276,69 @@ void main() {
     expect(enabled(tester, 'Prethodni'), isFalse);
     expect(button('Sledeći'), findsNothing);
     expect(enabled(tester, 'Skuvano'), isTrue);
+  });
+
+  testTavli('skuvan obrok prikazuje odobreni snimak posle izmene recepta', (
+    tester,
+  ) async {
+    late String planId;
+    final app = await pumpTavli(
+      tester,
+      location: '/plan',
+      overrides: [syncEngineProvider.overrideWithValue(null)],
+      setup: (db) async {
+        planId = await seedPlan(
+          db,
+          DateRange(CivilDate(2026, 11, 2), CivilDate(2026, 11, 2)),
+        );
+        await db
+            .update(db.mealPlanEntries)
+            .write(
+              const MealPlanEntriesCompanion(
+                recipeSnapshotJson: Value(
+                  '{"title":"Ručak 2.11.","servings":2,'
+                  '"ingredients":[{"name":"krompir","quantity":1,"unit":"kg"}],'
+                  '"steps":["Skuvajte krompir."]}',
+                ),
+              ),
+            );
+      },
+    );
+    final entry = await app.db.select(app.db.mealPlanEntries).getSingle();
+    final router = GoRouter.of(tester.element(find.byType(Scaffold).first));
+    unawaited(router.push<void>('/plan/$planId/entries/${entry.id}'));
+    await tester.pumpAndSettle();
+
+    final markCooked = button('Označi kao skuvano');
+    await tester.ensureVisible(markCooked);
+    await tester.tap(markCooked);
+    await tester.pumpAndSettle();
+    final cooked = await app.db.select(app.db.mealPlanEntries).getSingle();
+    expect(cooked.isCooked, isTrue);
+
+    final libraryRecipe = (await app.repo.get(entry.recipeId!))!;
+    await app.repo.update(
+      libraryRecipe.copyWith(
+        steps: const ['Ispecite krompir.'],
+        ingredients: const [
+          Ingredient(name: 'krompir', quantity: 2, unit: 'kg'),
+        ],
+        servings: 4,
+      ),
+      kind: ChangeKind.manual,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1. Skuvajte krompir.'), findsOneWidget);
+    expect(find.text('1. Ispecite krompir.'), findsNothing);
+    expect(find.text('• 1 kg krompir'), findsOneWidget);
+    expect(find.text('Osveži iz recepta'), findsNothing);
+
+    unawaited(router.push<void>('/cook/meal/$planId/${entry.id}'));
+    await tester.pumpAndSettle();
+    expect(find.text('Skuvajte krompir.'), findsOneWidget);
+    expect(find.text('Ispecite krompir.'), findsNothing);
+    expect(find.text('Ručak 2.11. · 2 porcije'), findsOneWidget);
+    expect(find.text('1 kg'), findsOneWidget);
   });
 }

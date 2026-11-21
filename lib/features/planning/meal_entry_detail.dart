@@ -40,14 +40,13 @@ class MealEntryDetail extends ConsumerWidget {
     final muted = t.bodyMedium?.copyWith(color: c.onSurfaceVariant);
     final body = t.bodyLarge?.copyWith(color: c.onSurface);
     final recipeId = meal.recipeId;
-    final library = recipeId == null
+    final library = recipeId == null || meal.isCooked
         ? null
         : ref.watch(recipeProvider(recipeId)).value;
     final steps = library?.steps ?? snapshot?.steps ?? const <String>[];
     final ingredientsChanged =
         library != null &&
         snapshot != null &&
-        !meal.isCooked &&
         snapshot.ingredientsDifferFrom(library);
 
     Future<void> remove() async {

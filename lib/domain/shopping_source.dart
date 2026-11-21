@@ -80,7 +80,7 @@ class RecipeSnapshot {
       );
 
   /// Da li recept iz biblioteke ima druge sastojke ili osnovne porcije od
-  /// ovog snimka. Koraci se ne gledaju: plan ih uvek čita iz recepta.
+  /// ovog snimka. Koraci ne utiču na ponudu za osvežavanje sastojaka.
   bool ingredientsDifferFrom(Recipe recipe) =>
       baseServings != recipe.servings ||
       jsonEncode([for (final i in ingredients) i.toJson()]) !=
