@@ -15,6 +15,7 @@ is stale; full acceptance, pantry/preferences/cooking/UI evaluation remain open.
 | Three fixed meal kinds | List-based slots with morning/afternoon snacks; lock/import compatibility | Dev 2; Dev 4 rendering |
 | Text ingredient identity | UUID/slug catalog with original text and unresolved fallback | Dev 1; Dev 2/3/4 consumers |
 | Existing local built-in provider keys | Planned authenticated Supabase Edge gateway, own keys still device-only | Dev 2 |
+| FR-009: approved meal keeps recipe content independent of later library edits | Steps are read live from the library recipe while it exists (plan detail and cooking mode); ingredients/servings stay in the snapshot, and a changed library recipe offers “Osveži iz recepta” (decided 2026-11-21; cooked meals unchanged; deleted recipe keeps the snapshot) | Dev 4 |
 | Legacy original plan tasks describe all work in one spec | Completed slices retained; new behavior gets focused spec/contracts and linked tasks | All owners |
 
 Still binding: reviewed drafts, snapshots/servings, delta-only repeat Add,
