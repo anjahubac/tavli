@@ -11,6 +11,7 @@ import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/features/settings/ai_keys_screen.dart';
 import 'package:tavli/providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/fake_adapter.dart';
 
@@ -42,13 +43,19 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: AiKeysScreen()),
+        child: MaterialApp(
+          theme: buildTavliTheme(TavliMotif.bosiljak, Brightness.light),
+          home: const AiKeysScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  Finder keyField() => find.widgetWithText(TextField, 'API ključ');
+  Finder keyField() => find.descendant(
+    of: find.widgetWithText(TavliTextField, 'API ključ'),
+    matching: find.byType(TextField),
+  );
   Finder button(String text) => find.ancestor(
     of: find.text(text),
     matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
@@ -201,7 +208,11 @@ void main() {
     await pumpScreen(tester);
     expect(find.text('••••7777'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Obriši ključ'));
+    await tester.tap(
+      find.byWidgetPredicate(
+        (w) => w is TavliIconButton && w.semanticLabel == 'Obriši ključ',
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Obrisati ključ ••••7777?'), findsOneWidget);
     await tester.tap(button('Obriši'));
