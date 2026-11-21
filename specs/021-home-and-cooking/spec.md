@@ -121,3 +121,40 @@ layouts. In the app, test `lib/app/home_shell.dart`,
 Device-level keyboard and assistive technology validation follows the
 [UI standard](../../docs/development/ui-standard.md). Runtime acceptance needs
 independent review and a merged PR.
+
+## Home today's meals slice — 2026-11-21
+
+Owner and Home UI coordinator: Anja (Dev 4). Proposed independent reviewer:
+Ceviz (Dev 2). Covers FR-008 (D4-010, T016/T017) and the matching parts of
+FR-102, FR-107 and FR-108, following the canvas Početna boards (phone and
+wide). The cooking operation is provided by the
+[merged producer PR](https://github.com/anjahubac/tavli/pull/83).
+
+- Home reads approved plan data only (`lib/features/home/home_today.dart`,
+  `homeDayProvider`); no new store, schema, migration or dependency. For each
+  day it uses the newest plan containing that day.
+- Today's meals are listed in day order. Cooked meals use the muted cooked
+  card with the green check and “· skuvano” in text. The first uncooked meal
+  is the highlighted card “Sledeće · <obrok>” with “Kuvaj”, which opens the
+  planned meal with its saved steps on the existing meal detail route.
+  Other meals use the plain card. Tomorrow's titles follow under
+  “Sutra” (phone: one line; wide: card on the right, at most a third of the
+  content width).
+- States: no plan at all shows “Napravi plan”; a plan without meals today
+  shows “Otvori plan”; all cooked shows “Svi današnji obroci su skuvani.”; a
+  read failure shows retry, never the no-plan state.
+- “Skuvano” next to “Kuvaj” (same height) marks the next meal through the
+  shared `CookingRepository` operation and shows “Skuvano: <jelo>” with
+  “Poništi”; undo also stays in the meal detail.
+- Not in this slice: the single “Na umu” notice (FR-009) and cooking mode.
+
+New UI copy: “Danas”, “Skuvano: <jelo>”, “Sledeće”, “Sutra”, “· skuvano”, “Još nema plana
+obroka”, “Napravi plan i ovde ćeš videti šta se danas kuva.”, “Za danas nema
+obroka u planu”, “Pogledaj plan ili napravi nov za ove dane.”, “Otvori plan”,
+“Današnji obroci trenutno ne mogu da se prikažu.”, “Pokušaj ponovo”.
+
+Privacy: Home reads existing account-scoped plan data and writes cooked/undo
+through the existing repository and outbox. Abuse, credentials, file access and
+deployment: N/A. `test/features/home/home_screen_test.dart` covers the display
+states, phone and wide navigation, 2× text, reduced motion, and cook/undo replay
+with a fake backend.
