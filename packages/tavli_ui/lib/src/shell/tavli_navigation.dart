@@ -199,10 +199,14 @@ class _SideBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final platform = TavliPlatform.of(context);
     final windows = platform == TavliPlatform.windows;
+    final macos = platform == TavliPlatform.macos;
     // macOS: semafori prozora stoje u vrhu bočne trake.
-    final top = platform == TavliPlatform.macos
-        ? TavliWindowFrame.macosTitleBarHeight
-        : 12.0;
+    final titleBar = macos
+        ? TavliWindowFrame.macosTitleBarInsetOf(context)
+        : 0.0;
+    final top = titleBar > 0
+        ? titleBar
+        : 12.0 + (macos ? MediaQuery.paddingOf(context).top : 0);
     final order = [
       for (final (i, d) in nav.destinations.indexed)
         if (d.home) i,

@@ -19,10 +19,12 @@ class TavliWindowFrame extends StatelessWidget {
   const TavliWindowFrame({
     super.key,
     this.title = 'Tavli',
+    this.macosFullScreen = false,
     required this.child,
   });
 
   final String title;
+  final bool macosFullScreen;
   final Widget child;
 
   /// Visina naslovne trake na Windows-u.
@@ -31,6 +33,11 @@ class TavliWindowFrame extends StatelessWidget {
   /// Prostor za semafore prozora na macOS-u, iznad sadržaja ili u vrhu
   /// bočne navigacije.
   static const macosTitleBarHeight = 52.0;
+
+  /// Prostor za semafore nestaje kada prozor pređe preko celog ekrana.
+  static double macosTitleBarInsetOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_MacosWindowChrome>()?.inset ??
+      macosTitleBarHeight;
 
   /// Širina tri dugmeta prozora na Windows-u (3 x 46).
   static const _windowsButtons = 138.0;
@@ -43,12 +50,17 @@ class TavliWindowFrame extends StatelessWidget {
       EdgeInsets top(EdgeInsets e) => e.copyWith(
         top: e.top < macosTitleBarHeight ? macosTitleBarHeight : e.top,
       );
-      return MediaQuery(
-        data: media.copyWith(
-          padding: top(media.padding),
-          viewPadding: top(media.viewPadding),
+      return _MacosWindowChrome(
+        inset: macosFullScreen ? 0 : macosTitleBarHeight,
+        child: MediaQuery(
+          data: macosFullScreen
+              ? media
+              : media.copyWith(
+                  padding: top(media.padding),
+                  viewPadding: top(media.viewPadding),
+                ),
+          child: child,
         ),
-        child: child,
       );
     }
     if (platform != TavliPlatform.windows) return child;
@@ -95,6 +107,16 @@ class TavliWindowFrame extends StatelessWidget {
   }
 }
 
+class _MacosWindowChrome extends InheritedWidget {
+  const _MacosWindowChrome({required this.inset, required super.child});
+
+  final double inset;
+
+  @override
+  bool updateShouldNotify(_MacosWindowChrome oldWidget) =>
+      inset != oldWidget.inset;
+}
+
 /// Sadržaj pored bočne navigacije. Na macOS-u semafori stoje u vrhu bočne
 /// trake, pa sadržaj pored nje počinje od vrha prozora, bez gornje margine
 /// koju dodaje [TavliWindowFrame].
@@ -106,7 +128,9 @@ class TavliBesideNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MediaQuery.removePadding(
     context: context,
-    removeTop: TavliPlatform.of(context) == TavliPlatform.macos,
+    removeTop:
+        TavliPlatform.of(context) == TavliPlatform.macos &&
+        TavliWindowFrame.macosTitleBarInsetOf(context) > 0,
     child: child,
   );
 }

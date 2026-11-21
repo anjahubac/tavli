@@ -21,6 +21,7 @@ import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
 import '../features/shopping/shopping_screen.dart';
 import 'animations/empty_fridge.dart';
+import 'app_menu.dart';
 import 'home_shell.dart';
 import 'placeholder_screen.dart';
 
@@ -61,10 +62,12 @@ GoRouter createRouter({
   String initialLocation = homeLocation,
   AuthState Function()? auth,
   Listenable? refresh,
+  MenuPopupTracker? menuPopups,
   bool debugTools = kDebugMode,
 }) => GoRouter(
   initialLocation: initialLocation,
   refreshListenable: refresh,
+  observers: [?menuPopups?.root],
   redirect: auth == null
       ? null
       : (context, state) =>
@@ -108,6 +111,7 @@ GoRouter createRouter({
       builder: (context, state, shell) => HomeShell(shell: shell),
       branches: [
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('plan')],
           routes: [
             GoRoute(
               path: '/plan',
@@ -135,6 +139,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('shopping')],
           routes: [
             GoRoute(
               path: '/shopping',
@@ -143,6 +148,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('home')],
           routes: [
             GoRoute(
               path: homeLocation,
@@ -151,6 +157,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('recipes')],
           routes: [
             GoRoute(
               path: '/recipes',
@@ -200,6 +207,7 @@ GoRouter createRouter({
           ],
         ),
         StatefulShellBranch(
+          observers: [?menuPopups?.branch('pantry')],
           routes: [
             GoRoute(
               path: '/pantry',

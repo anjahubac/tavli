@@ -40,7 +40,8 @@ class RecipesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // ⌘N iz trake menija na macOS-u.
     ref.listen(menuRequestsProvider, (_, next) {
-      if (next?.command == MenuCommand.newRecipe) {
+      if (next?.command == MenuCommand.newRecipe &&
+          ModalRoute.isCurrentOf(context) == true) {
         unawaited(showAddRecipeSheet(context));
       }
     });
@@ -339,7 +340,6 @@ class _RecipeGrid extends StatelessWidget {
   }
 }
 
-/// Prazno stanje koje se pomera kad uz veći tekst i navigaciju nema mesta.
 /// Desni klik na recept (računar): iste radnje kao na ekranu recepta.
 class _RecipeMenu extends StatelessWidget {
   const _RecipeMenu(this.recipe, {required this.child});
@@ -364,6 +364,7 @@ class _RecipeMenu extends StatelessWidget {
   );
 }
 
+/// Prazno stanje koje se pomera kad uz veći tekst i navigaciju nema mesta.
 class _ScrollableMessage extends StatelessWidget {
   const _ScrollableMessage(this.child);
 
