@@ -284,17 +284,103 @@ void main() {
   });
 
   group('uvodni motiv tokom učitavanja', () {
-    for (final theme in TavliMotif.values) {
-      testWidgets('${theme.name}: prikazuje aktivan motiv', (tester) async {
-        await pumpArt(tester, const IntroScreen(), theme: theme, still: true);
-        expect(find.text('Tavli'), findsOneWidget);
-        expect(
-          find.bySemanticsLabel(IntroMotif.labelFor(theme)),
-          findsOneWidget,
+    final logo = find.byWidgetPredicate(
+      (widget) => widget is Image && widget.semanticLabel == 'Tavli',
+    );
+
+    for (final motif in TavliMotif.values) {
+      for (final brightness in Brightness.values) {
+        testWidgets('${motif.name} ${brightness.name}: motiv i logotip', (
+          tester,
+        ) async {
+          await pumpArt(
+            tester,
+            const IntroScreen(),
+            theme: motif,
+            brightness: brightness,
+            still: true,
+          );
+          expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
+          expect(
+            tester.widget<Image>(logo).color,
+            Theme.of(tester.element(logo)).colorScheme.onSurface,
+          );
+          expect(
+            find.bySemanticsLabel(IntroMotif.labelFor(motif)),
+            findsNothing,
+          );
+          expect(tester.hasRunningAnimations, isFalse);
+          expect(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is Image &&
+                  widget.image is AssetImage &&
+                  (widget.image as AssetImage).assetName.contains(
+                    'assets/branding/intro/${motif.name}-',
+                  ),
+            ),
+            findsNothing,
+          );
+        });
+      }
+    }
+    for (final size in [const Size(320, 568), const Size(1200, 760)]) {
+      testWidgets('logotip na širini ${size.width} i sa 2× tekstom', (
+        tester,
+      ) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        PaintingBinding.instance.imageCache
+          ..clear()
+          ..clearLiveImages();
+
+        await pumpArt(tester, const IntroScreen(), still: true);
+
+        expect(logo, findsOneWidget);
+        final image = find.descendant(
+          of: logo,
+          matching: find.byType(RawImage),
         );
-        expect(tester.hasRunningAnimations, isFalse);
+        expect(tester.widget<RawImage>(image).image, isNull);
+        final bounds = tester.getRect(logo);
+        expect(bounds.right, lessThanOrEqualTo(size.width));
+        expect(bounds.height, closeTo(bounds.width * 250 / 629, 0.01));
+        expect(tester.takeException(), isNull);
       });
     }
+    testWidgets('oba cveta padaju pre nego što se pojavi para', (tester) async {
+      Image layer(String name) => tester.widget<Image>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image == AssetImage('assets/branding/intro/$name.png'),
+        ),
+      );
+
+      await pumpArt(tester, const IntroScreen(), theme: TavliMotif.safran);
+      expect(
+        find.bySemanticsLabel(IntroMotif.labelFor(TavliMotif.safran)),
+        findsNothing,
+      );
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(layer('safran-1').opacity!.value, greaterThan(0));
+      expect(layer('safran-2').opacity!.value, greaterThan(0));
+      expect(layer('steam-1').opacity!.value, 0);
+
+      await tester.pump(const Duration(milliseconds: 2300));
+      expect(layer('safran-1').opacity!.value, 0);
+      expect(layer('safran-2').opacity!.value, 0);
+      expect(layer('steam-1').opacity!.value, greaterThan(0));
+      expect(layer('steam-2').opacity!.value, 0);
+
+      await tester.pump(const Duration(milliseconds: 1300));
+      expect(layer('steam-2').opacity!.value, 1);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
   });
 
   testWidgets('20 prepoznatih sastojaka vidljivo je unutar 360 ms', (

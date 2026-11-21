@@ -6,6 +6,7 @@ import '../../account/auth_controller.dart';
 import '../../ai/meal_plan_ai.dart';
 import '../../data/meal_plan_repository.dart';
 import '../../domain/meal_plan.dart';
+import '../../domain/meal_rules.dart';
 import '../../domain/plan_calendar.dart';
 import '../../domain/recipe.dart';
 import '../../domain/shopping_source.dart';
@@ -230,6 +231,7 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
       planId: plan.id,
       fingerprint: await repo.fingerprint(plan.id),
     );
+    final library = await ref.read(recipeRepositoryProvider).getAll();
     final request = PlanRequest(
       range: plan.range,
       mealTypes: plan.mealTypes,
@@ -239,6 +241,10 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
           ? await repo.confirmedPantryNames()
           : const [],
       only: slots,
+      // Zaključana, skuvana i prošla jela ostaju; pravila ih gledaju.
+      kept: plannedMealFacts(meals.where((m) => !slots.contains(m.slot)), {
+        for (final r in library) r.id: r.labels,
+      }),
     );
     _run++;
     state = PlanGenerationState(

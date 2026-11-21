@@ -340,8 +340,8 @@ void main() {
       final a = tester.getSize(find.byType(OutlinedButton));
       final b = tester.getSize(find.byType(FilledButton));
       expect(a.width, b.width);
-      expect(a.height, 56);
-      expect(b.height, 56);
+      expect(a.height, 48);
+      expect(b.height, 48);
     });
 
     testWidgets('tekst dugmadi staje u jedan red na telefonu', (tester) async {

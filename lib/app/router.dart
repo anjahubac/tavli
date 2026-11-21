@@ -10,6 +10,7 @@ import '../features/home/home_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
 import '../features/planning/plan_setup_screen.dart';
+import '../features/recipes/cooking_mode_screen.dart';
 import '../features/recipes/from_name_screen.dart';
 import '../features/recipes/from_photo_screen.dart';
 import '../features/recipes/recipe_chat_screen.dart';
@@ -87,6 +88,19 @@ GoRouter createRouter({
       routes: [
         GoRoute(path: 'name', builder: (context, state) => const NameScreen()),
       ],
+    ),
+    // Režim kuvanja je preko celog ekrana, bez glavne navigacije (021 FR-010).
+    GoRoute(
+      path: '/cook/recipe/:id',
+      builder: (context, state) =>
+          RecipeCookingRoute(id: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/cook/meal/:planId/:entryId',
+      builder: (context, state) => MealCookingRoute(
+        planId: state.pathParameters['planId']!,
+        entryId: state.pathParameters['entryId']!,
+      ),
     ),
     // Profil i podešavanja su iznad tabova; otvaraju se preko avatara.
     GoRoute(

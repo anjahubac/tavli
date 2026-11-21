@@ -1,16 +1,20 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
-import 'intro_motif.dart';
+import 'intro_skillet.dart';
 
 /// Uvodni ekran: motiv teme, naziv i podnaslov.
 class IntroScreen extends StatelessWidget {
   const IntroScreen({super.key});
 
+  static const _logoWidth = 112.0;
+  static const _logoAspectRatio = 629 / 250;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Material(
-      color: theme.scaffoldBackgroundColor,
+      color: TavliPalette.of(TavliMotif.bosiljak, theme.brightness).bg,
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -18,15 +22,18 @@ class IntroScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                LayoutBuilder(
-                  builder: (context, c) =>
-                      IntroMotif(size: c.maxWidth.clamp(120, 260)),
-                ),
+                const IntroSkillet(),
                 const SizedBox(height: 28),
-                Text(
-                  'Tavli',
-                  style: theme.textTheme.displayMedium?.copyWith(
-                    color: theme.colorScheme.onSurface,
+                SizedBox(
+                  width: _logoWidth,
+                  child: AspectRatio(
+                    aspectRatio: _logoAspectRatio,
+                    child: Image.asset(
+                      'assets/branding/tavli-wordmark.png',
+                      fit: BoxFit.contain,
+                      color: theme.colorScheme.onSurface,
+                      semanticLabel: 'Tavli',
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),

@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/key_store.dart';
+import 'package:win32/win32.dart' as win32;
 
 class MapSecretStorage implements SecretStorage {
   final data = <String, String>{};
@@ -26,6 +29,54 @@ class MapSecretStorage implements SecretStorage {
 }
 
 void main() {
+  group('KeychainSecretStorage.guard', () {
+    Future<SecretStorageException> failure(Exception error) async {
+      try {
+        await KeychainSecretStorage.guard<void>(() async => throw error);
+      } on SecretStorageException catch (e) {
+        return e;
+      }
+      fail('greška nije pretvorena u SecretStorageException');
+    }
+
+    test('PlatformException (Keychain, Keystore, libsecret)', () async {
+      final e = await failure(PlatformException(code: '-25293'));
+      expect(e.code, '-25293');
+    });
+
+    test('WindowsException iz CryptProtectData', () async {
+      final e = await failure(
+        win32.WindowsException(
+          win32.ERROR_ACCESS_DENIED.toHRESULT(),
+          message: 'C:\\Users\\ana',
+        ),
+      );
+      expect(e.code, 'windows:0x80070005');
+      expect(e.toString(), isNot(contains('ana')));
+    });
+
+    test('FileSystemException pri pisanju fajla', () async {
+      final e = await failure(
+        const FileSystemException(
+          'Cannot create file',
+          'C:\\Users\\ana\\flutter_secure_storage.dat',
+          OSError('Access is denied.', 5),
+        ),
+      );
+      expect(e.code, 'fs:5');
+      expect(e.toString(), isNot(contains('ana')));
+    });
+
+    test('ostale greške prolaze neizmenjene', () async {
+      await expectLater(
+        KeychainSecretStorage.guard<void>(
+          () async => throw const FormatException('x'),
+        ),
+        throwsFormatException,
+      );
+    });
+  });
+
   test('servis se prepoznaje po početku ključa', () {
     expect(detectProvider('AIzaSyFAKE'), AIProvider.gemini);
     expect(detectProvider('  gsk_fake'), AIProvider.groq);

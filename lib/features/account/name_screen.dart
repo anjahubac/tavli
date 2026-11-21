@@ -1,9 +1,11 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../domain/account.dart';
+import 'auth_brand.dart';
 
 /// "Kako da te zovemo?" — obavezan korak posle prve prijave (FR-011).
 /// Nema nazad ni preskakanja.
@@ -51,6 +53,8 @@ class _NameScreenState extends ConsumerState<NameScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const AuthBrand(),
+                    const SizedBox(height: TavliSpacing.medium),
                     Text('Kako da te zovemo?', style: text.headlineMedium),
                     const SizedBox(height: 24),
                     TextField(

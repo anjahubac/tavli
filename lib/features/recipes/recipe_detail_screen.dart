@@ -124,14 +124,28 @@ class _Detail extends ConsumerWidget {
             const SizedBox(height: TavliSpacing.medium),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TavliButton.secondary(
-                label: 'Proveri sastojke',
-                icon: Icons.checklist,
-                onPressed: () => showIngredientReview(
-                  context,
-                  snapshot: RecipeSnapshot.fromRecipe(recipe),
-                  originKey: 'recipe:${recipe.id}',
-                  recipeId: recipe.id,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: TavliButtonRow(
+                  expand: true,
+                  children: [
+                    TavliButton.primary(
+                      label: 'Kuvaj',
+                      glyph: TavliIcons.cook,
+                      onPressed: () =>
+                          context.push('/cook/recipe/${recipe.id}'),
+                    ),
+                    TavliButton.secondary(
+                      label: 'Proveri sastojke',
+                      icon: Icons.checklist,
+                      onPressed: () => showIngredientReview(
+                        context,
+                        snapshot: RecipeSnapshot.fromRecipe(recipe),
+                        originKey: 'recipe:${recipe.id}',
+                        recipeId: recipe.id,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

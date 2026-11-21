@@ -8,8 +8,10 @@ See [review findings](development/review-2026-11-13.md) and
 
 ## 1. Current stack and repository layout
 
-One Flutter application targets Android, iOS and macOS. Windows is a planned
-fourth target; this baseline has no `windows/` folder. Dart's constraint is
+One Flutter application targets Android, iOS, macOS and Windows. The Windows x64
+runner and local MSIX packaging are documented in
+[Windows development](development/windows.md); public distribution is not yet
+claimed. Dart's constraint is
 `^3.13.7` in `pubspec.yaml`; obtain exact packages from `pubspec.lock`, not this
 prose. Material 3, Riverpod, go_router, drift/SQLite, dio, the pure-Dart Supabase
 client, secure storage and image_picker are already used. No new framework,
