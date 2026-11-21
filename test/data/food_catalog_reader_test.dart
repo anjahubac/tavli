@@ -54,8 +54,10 @@ void main() {
       );
 
   Future<FoodMatchResult> find(String text) async =>
-      (await FoodCatalogReader(db).matcherFor(home))
-          .findByName(originalText: text, scope: home);
+      (await FoodCatalogReader(db).matcherFor(
+        home,
+        status: CatalogStatus.available,
+      )).findByName(originalText: text, scope: home);
 
   String? matchedId(FoodMatchResult r) => r is Matched ? r.food.id : null;
 
@@ -114,8 +116,10 @@ void main() {
           },
         ], 'id');
     Future<FoodMatchResult> findHere() async =>
-        (await FoodCatalogReader(db).matcherFor(scope))
-            .findByName(originalText: 'ajvar', scope: scope);
+        (await FoodCatalogReader(db).matcherFor(
+          scope,
+          status: CatalogStatus.available,
+        )).findByName(originalText: 'ajvar', scope: scope);
 
     serverFood('x');
     serverFood('y');

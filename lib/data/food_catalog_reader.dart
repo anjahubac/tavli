@@ -16,7 +16,7 @@ class FoodCatalogReader {
 
   Future<FoodMatcher> matcherFor(
     FoodLookupScope scope, {
-    CatalogStatus status = CatalogStatus.available,
+    required CatalogStatus status,
   }) async {
     if (status == CatalogStatus.notOnServer) return AliasFoodMatcher(const []);
     final hid = scope.householdId;

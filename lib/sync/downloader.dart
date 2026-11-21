@@ -113,8 +113,20 @@ class Downloader {
 
   /// Domaćinstvo je vidljivo samo članu (RLS na `households`).
   Future<bool> _isMember() async {
-    final rows = await _remote.fetchSince('households', limit: 50);
-    return rows.any((r) => r['id'] == _scope.householdId);
+    String? since;
+    String? afterId;
+    while (true) {
+      final rows = await _remote.fetchSince(
+        'households',
+        limit: 50,
+        since: since,
+        afterId: afterId,
+      );
+      if (rows.any((r) => r['id'] == _scope.householdId)) return true;
+      if (rows.length < 50) return false;
+      since = rows.last['updated_at']! as String;
+      afterId = rows.last['id']! as String;
+    }
   }
 
   /// Jedan prolaz, pa (ako je nešto odloženo) još jedan: ispravka deljenog
