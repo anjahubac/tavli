@@ -9,7 +9,7 @@ select gen_random_uuid() as operation \gset
 
 select tests.authenticate_as(:'target_user');
 select public.household_invite_token() as code \gset
-select ok(:'code' ~ '^[0-9A-HJKMNP-TV-Z]{16}$', 'novi poziv koristi 16 znakova');
+select ok(:'code' ~ '^[0-9A-HJKMNP-TV-Z]{12}$', 'novi poziv koristi 12 znakova');
 select lower(regexp_replace(:'code', '(.{4})(?=.)', '\1-', 'g')) as grouped \gset
 select tests.clear_auth();
 

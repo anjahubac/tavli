@@ -2,14 +2,16 @@
 final class HouseholdInviteCode {
   const HouseholdInviteCode._(this.value);
 
-  static final _current = RegExp(r'^[0-9A-HJKMNP-TV-Z]{16}$');
+  static final _groupedCode = RegExp(
+    r'^(?:[0-9A-HJKMNP-TV-Z]{12}|[0-9A-HJKMNP-TV-Z]{16})$',
+  );
   static final _legacy = RegExp(r'^[0-9a-f]{64}$');
 
   static HouseholdInviteCode? parse(String input) {
     if (input.length > 80) return null;
     if (_legacy.hasMatch(input)) return HouseholdInviteCode._(input);
     final normalized = input.toUpperCase().replaceAll(RegExp(r'[-\s]'), '');
-    return _current.hasMatch(normalized)
+    return _groupedCode.hasMatch(normalized)
         ? HouseholdInviteCode._(normalized)
         : null;
   }
