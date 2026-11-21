@@ -1,0 +1,104 @@
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/data/database.dart';
+import 'package:tavli/data/meal_plan_repository.dart';
+import 'package:tavli/data/shopping_repository.dart';
+import 'package:tavli/domain/meal_plan.dart';
+import 'package:tavli/domain/plan_calendar.dart';
+import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/shopping_source.dart';
+import 'package:tavli/features/shopping/shopping_providers.dart';
+import 'package:tavli/sync/synced_writer.dart';
+import 'package:tavli_ui/tavli_ui.dart';
+
+import '../../helpers/test_app.dart';
+import 'shopping_screen_test.dart' show pumpShopping, scopeOf, tileOf, today;
+
+const _pantryId = 'fixture-kupus';
+const _name = 'kupus';
+
+Future<void> _seedPlanAndPantry(AppDatabase db) async {
+  final scope = await scopeOf(db);
+  final writer = SyncedWriter(db, accountId: scope.userId);
+  final time = today.toUtc();
+  await db
+      .into(db.pantryItems)
+      .insert(
+        PantryItemsCompanion.insert(
+          id: _pantryId,
+          name: _name,
+          quantity: const Value(100),
+          unit: const Value('g'),
+          category: 'voće i povrće',
+          addedAt: time,
+          confirmedAt: Value(time),
+          householdId: Value(scope.householdId),
+        ),
+      );
+
+  final plans = MealPlanRepository(
+    db,
+    scope: scope,
+    writer: writer,
+    shopping: ShoppingRepository(db, scope: scope, writer: writer),
+    clock: () => time,
+  );
+  final day = CivilDate(today.year, today.month, today.day);
+  final request = PlanRequest(
+    range: DateRange(day, day),
+    mealTypes: const {MealType.lunch},
+    servings: 2,
+  );
+  await plans.approve(
+    PlanDraft(
+      request: request,
+      proposals: {
+        request.slots.single: const SlotProposal(
+          title: 'Ručak sa kupusom',
+          draftRecipeKey: 'fixture-recipe',
+        ),
+      },
+      newRecipes: const {
+        'fixture-recipe': RecipeSnapshot(
+          title: 'Ručak sa kupusom',
+          baseServings: 2,
+          ingredients: [
+            Ingredient(
+              name: _name,
+              quantity: 300,
+              unit: 'g',
+              category: 'voće i povrće',
+            ),
+          ],
+        ),
+      },
+    ),
+  );
+}
+
+void main() {
+  testTavli('nabavka se osvežava kad količina u ostavi postane nepoznata', (
+    tester,
+  ) async {
+    final app = await pumpShopping(tester, setup: _seedPlanAndPantry);
+    final row = tileOf(_name);
+    expect(tester.widget<TavliCheckRow>(row).detail, '200 g');
+
+    final container = ProviderScope.containerOf(tester.element(row));
+    await container.read(pantryRepositoryProvider).setQuantity(_pantryId, null);
+    await tester.pumpAndSettle();
+
+    final pantryItem = await app.db.select(app.db.pantryItems).getSingle();
+    expect(pantryItem.quantity, isNull);
+    expect(pantryItem.confirmedAt, isNotNull);
+    expect(
+      tester.widget<TavliCheckRow>(row).detail,
+      allOf(
+        contains('300 g'),
+        contains('Imaš u ostavi, proveri'),
+        isNot(contains('200 g')),
+      ),
+    );
+  });
+}

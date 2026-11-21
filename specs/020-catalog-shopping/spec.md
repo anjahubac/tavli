@@ -61,6 +61,26 @@ Preserve existing shopping sources/contributions/allocations, integer micros and
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
+## Pantry live-update acceptance
+
+For [Trello #27](https://trello.com/c/7vjSMCs1), the
+[shopping screen fixture](fixtures/shopping_pantry_live_update_test.dart.txt)
+opens “Po planu” with 300 g of demand and 100 g of confirmed pantry stock.
+It checks that the row shows 200 g, then clears the pantry quantity through
+`PantryRepository.setQuantity` while the screen stays open. The pantry item
+remains present and confirmed. The row should show 300 g and “Imaš u ostavi,
+proveri” without a navigation or refresh action.
+
+On team `dev` at `85521da`, the fixture passed the initial 200 g check
+and confirmed that the pantry write succeeded. The row stayed at 200 g.
+An explicit reconciliation in a separate diagnostic run restored 300 g
+without the note. All 73 existing shopping and supply-allocation tests passed.
+
+To run the fixture, copy it to
+`test/features/shopping/shopping_pantry_live_update_fixture_test.dart` and run
+`flutter test test/features/shopping/shopping_pantry_live_update_fixture_test.dart`.
+The fixture is stored as text until the live update and note are implemented.
+
 ## Dependencies and open decisions
 
 Producer specs: [017](../017-kitchen-unit-conversion/spec.md), [018](../018-ingredient-catalog/spec.md)
