@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
 
 import 'auth_gateway.dart';
+import 'household_invite_code.dart';
 
 /// Profil i domaćinstvo prijavljene osobe kako ih vidi server.
 class RemoteAccount {
@@ -162,8 +163,11 @@ class SupabaseAccountApi implements AccountApi {
 
   @override
   Future<HouseholdPreview> previewHouseholdJoin(String token) async {
+    final code = HouseholdInviteCode.parse(token);
+    if (code == null) throw const Unavailable();
     final result = await _joinRpc(
-      () => _client.rpc('preview_household_join', params: {'token': token}),
+      () =>
+          _client.rpc('preview_household_join', params: {'token': code.value}),
     );
     return switch (result) {
       {
@@ -189,11 +193,14 @@ class SupabaseAccountApi implements AccountApi {
     required bool acknowledgeSourceDeletion,
     required String operationId,
   }) async {
-    final result = await _joinRpc(
-      () => _client.rpc(
-        'confirm_household_join',
-        params: {
-          'token': token,
+    final code = HouseholdInviteCode.parse(token);
+    if (code == null) return const HouseholdJoinResult(status: 'unavailable');
+    final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(
+        'household-join',
+        body: {
+          'token': code.value,
           'expected_source_household_id': expectedSourceHouseholdId,
           'recipe_choice': switch (recipeChoice) {
             JoinRecipeChoice.bringRecipes => 'bring_recipes',
@@ -202,8 +209,19 @@ class SupabaseAccountApi implements AccountApi {
           'source_deletion_ack': acknowledgeSourceDeletion,
           'operation_id': operationId,
         },
-      ),
-    );
+      );
+    } on FunctionException catch (error) {
+      if (error.status == 401) throw const SessionRevoked();
+      throw const Unavailable();
+    } on SocketException {
+      throw const Offline();
+    } on TimeoutException {
+      throw const Offline();
+    } on http.ClientException {
+      throw const Offline();
+    }
+    final result = response.data;
+    if (result is! Map) throw const Unavailable();
     final status = result['status'];
     if (status is! String) throw const Unavailable();
     if (status != 'joined') return HouseholdJoinResult(status: status);

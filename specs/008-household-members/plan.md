@@ -122,13 +122,25 @@ from a successful switch with a different request yields a conflict.
 
 ### Implementation status
 
-The SQL slice implements reusable links, preview, membership and owner changes,
-and recipe copies with version history. The migration returns
-`photo_transfer_pending` before any membership mutation when private objects
-would need copying or deleting. Preview permits 60 requests per account per minute and confirmation permits
-15. Storage staging and cleanup remain release gates. The account and sync
-consumer reconciles verified membership and retains old household writes in
-the rejected queue. Profile, deep links and QR remain consumer work.
+New households generate a 16-character invite code. Existing 64-character
+credentials remain valid. The HTTPS share URL uses the configured project's
+`/functions/v1/household-invite` endpoint and carries the credential in a URL
+fragment. A fixed redirect points to `tavli://household/join`. The server
+handles the code only in authenticated request bodies. Native link delivery
+and browser behavior must be verified with the UI and platform changes.
+
+The confirmation Edge Function verifies the caller and consults the existing
+rate-limited RPC. When photos are required it receives an authorized manifest,
+copies the objects through the Storage API, and submits that manifest to the
+service-only finalization RPC. The database rechecks membership and manifest
+before publishing copies and applying the switch. A durable cleanup record
+tracks old household objects. Confirmation attempts retry pending cleanup for
+the same user. Prepared copies are unreadable to app users before commit.
+
+Preview permits 60 requests per account per minute and confirmation permits
+15. The account and sync consumer reconciles verified membership and retains
+old household writes in the rejected queue. Profile, platform links, QR
+generation and scanning, and the manual input screen are consumer work.
 
 ### Verification before rollout
 

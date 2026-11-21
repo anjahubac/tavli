@@ -66,7 +66,7 @@ score or proof of exploitation. No credential exposure incident is asserted.
 - Define recent-auth protection for account deletion and future owner transfer.
   Do not add repeated prompts to normal shopping/cooking. Team/admin accounts
   should use MFA and least privilege; consumer MFA is a separate UX decision.
-- The reusable household link in [008](../../specs/008-household-members/spec.md)
+- The reusable household invite in [008](../../specs/008-household-members/spec.md)
   is a bearer credential with no scheduled expiry or user-facing revocation.
   Use secure high-entropy randomness, restrict token access to the owner and
   authorized server operations, and keep tokens out of logs and analytics.

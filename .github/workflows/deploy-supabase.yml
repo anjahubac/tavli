@@ -47,5 +47,7 @@ jobs:
         run: supabase db push --dry-run
       - run: supabase db push --yes
       - run: supabase functions deploy delete-account --project-ref "$SUPABASE_PROJECT_REF"
+      - run: supabase functions deploy household-invite --project-ref "$SUPABASE_PROJECT_REF"
+      - run: supabase functions deploy household-join --project-ref "$SUPABASE_PROJECT_REF"
       - name: Deploy Auth email templates
         run: python3 scripts/deploy_auth_email_templates.py
