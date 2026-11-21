@@ -146,6 +146,17 @@ class TavliControlsGallerySections extends StatelessWidget {
                 enabled: false,
               ),
               gap,
+              TavliTextField(
+                label: 'API ključ',
+                initialValue: 'gsk_primer',
+                obscureText: true,
+                trailing: TavliIconButton(
+                  icon: Icons.visibility_outlined,
+                  semanticLabel: 'Prikaži',
+                  onPressed: _noop,
+                ),
+              ),
+              gap,
               TavliSearchField(hint: 'Pretraži recepte'),
             ],
           ),
@@ -271,3 +282,5 @@ class _RowsDemoState extends State<_RowsDemo> {
     );
   }
 }
+
+void _noop() {}

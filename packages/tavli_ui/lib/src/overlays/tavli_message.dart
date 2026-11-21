@@ -13,11 +13,16 @@ class TavliMessageBar extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onAction,
+    this.onClose,
   });
 
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// Tekstualno dugme „Zatvori“ na kraju trake: kada poruka ne nestaje sama (čitač
+  /// ekrana).
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -67,8 +72,24 @@ class TavliMessageBar extends StatelessWidget {
                   ),
                   child: Text(actionLabel),
                 )
-              else
+              else if (onClose == null)
                 const SizedBox(width: TavliSpacing.small),
+              if (onClose case final close?)
+                TextButton(
+                  onPressed: close,
+                  style: TextButton.styleFrom(
+                    foregroundColor: c.onInverseSurface,
+                    minimumSize: const Size(48, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(TavliRadius.compact),
+                    ),
+                    textStyle: t.labelLarge?.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('Zatvori'),
+                ),
             ],
           ),
         ),
@@ -78,7 +99,9 @@ class TavliMessageBar extends StatelessWidget {
 }
 
 /// Kratka poruka na dnu ekrana sa opcionom akcijom. Nestaje posle 5 s,
-/// i kada ima akciju; nova poruka zamenjuje prethodnu.
+/// i kada ima akciju; nova poruka zamenjuje prethodnu. Sa čitačem ekrana
+/// (pristupačna navigacija) ostaje dok se ne zatvori dugmetom „Zatvori“,
+/// da akcija („Poništi“) ne nestane pre nego što se pročita.
 void showTavliMessage(
   BuildContext context,
   String message, {
@@ -99,13 +122,15 @@ void showTavliMessageOn(
   String? actionLabel,
   VoidCallback? onAction,
 }) {
+  final stays =
+      MediaQuery.maybeAccessibleNavigationOf(messenger.context) ?? false;
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
         duration: tavliMessageDuration,
-        persist: false,
+        persist: stays,
         backgroundColor: Colors.transparent,
         elevation: 0,
         padding: EdgeInsets.zero,
@@ -120,6 +145,11 @@ void showTavliMessageOn(
                   );
                   onAction();
                 },
+          onClose: stays
+              ? () => messenger.hideCurrentSnackBar(
+                  reason: SnackBarClosedReason.dismiss,
+                )
+              : null,
         ),
       ),
     );

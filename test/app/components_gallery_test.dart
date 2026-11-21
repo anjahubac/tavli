@@ -11,6 +11,8 @@ void main() {
     tester,
   ) async {
     await pumpTavli(tester, location: '/profile');
+    await tester.ensureVisible(find.text('Komponente'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Komponente'));
     await tester.pumpAndSettle();
     expect(find.byType(TavliGallery), findsOneWidget);

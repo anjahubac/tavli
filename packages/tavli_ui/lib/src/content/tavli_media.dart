@@ -113,6 +113,9 @@ class TavliAvatar extends StatelessWidget {
   /// Prečnik; `null` bira 40 (36 na iOS-u).
   final double? size;
 
+  /// Prečnik velikog avatara u zaglavlju profila.
+  static const double large = 56;
+
   /// Ime osobe za čitač ekrana; bez njega avatar je ukras.
   final String? semanticLabel;
 
@@ -122,6 +125,7 @@ class TavliAvatar extends StatelessWidget {
     final size =
         this.size ?? (TavliPlatform.of(context) == TavliPlatform.ios ? 36 : 40);
     final fontSize = switch (size) {
+      >= large => 20.0,
       >= 40 => 14.0,
       >= 36 => 13.0,
       _ => 12.0,
