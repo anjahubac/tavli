@@ -4,30 +4,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light only" />
-    <title>Tvoj Tavli kod</title>
+    <title>Tvoj kod za prijavu</title>
   </head>
   <body style="margin:0;padding:0;background:#F8F7F2;">
     <!-- Pregled u listi poruka -->
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-      Tvoj kod za prijavu je {{ .Token }}. Važi 10 minuta.
+      Tvoj kod za prijavu u Tavli: {{ .Token }}. Važi 10 minuta.
     </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8F7F2;">
       <tr>
         <td align="center" style="padding:32px 16px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
-            <!-- Zaglavlje: znak sa našeg Supabase Storage-a -->
+            <!-- Zaglavlje: zelena traka sa krem logoom (slika sa našeg Supabase Storage-a) i sloganom -->
             <tr>
-              <td style="padding:0 8px 20px;">
-                <img src="http://127.0.0.1:55321/storage/v1/object/public/email-assets/tavli-znak.png" width="48" height="48" alt="Tavli" style="display:block;width:48px;height:48px;border:0;" />
+              <td align="center" bgcolor="#2D483B" style="background:#2D483B;border-radius:20px 20px 0 0;padding:28px 24px 24px;">
+                <img src="http://127.0.0.1:55321/storage/v1/object/public/email-assets/tavli-logo-krem.png" width="128" height="32" alt="Tavli" style="display:block;width:128px;height:32px;border:0;" />
+                <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.4;color:#C9D8CD;padding-top:10px;">Od plana do tanjira.</div>
               </td>
             </tr>
             <!-- Kartica -->
             <tr>
-              <td style="background:#FFFFFF;border:1px solid #E5E3DB;border-radius:20px;padding:32px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1B1F1C;">
-                <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;font-weight:800;color:#1B1F1C;">
-                  Evo tvog ključa za kuhinju
+              <td style="background:#FFFFFF;border:1px solid #E5E3DB;border-top:none;border-radius:0 0 20px 20px;padding:32px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1B1F1C;">
+                <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;font-weight:800;color:#1B1F1C;text-align:center;">
+                  Tvoj kod za prijavu
                 </h1>
-                <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#5C6660;">
+                <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#5C6660;text-align:center;">
                   Upiši ovaj kod u aplikaciju Tavli da se prijaviš. Lozinka ti nije potrebna.
                 </p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -41,15 +42,15 @@
                   Kod važi 10 minuta i može da se iskoristi samo jednom.
                 </p>
                 <hr style="border:none;border-top:1px solid #E5E3DB;margin:28px 0 20px;" />
-                <p style="margin:0;font-size:14px;line-height:1.5;color:#5C6660;">
-                  Ako ovaj kod nije za tebe, slobodno zanemari poruku. Bez koda niko ne može da uđe u tvoj nalog.
+                <p style="margin:0;font-size:14px;line-height:1.5;color:#5C6660;text-align:center;">
+                  Nisi tražio/la prijavu? Slobodno zanemari poruku. Bez koda niko ne može da uđe u tvoj nalog.
                 </p>
               </td>
             </tr>
             <!-- Podnožje -->
             <tr>
-              <td style="padding:20px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#8E9892;text-align:center;">
-                Tavli · recepti, planovi obroka i spisak za kupovinu
+              <td style="padding:20px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#7A857F;text-align:center;">
+                Tavli · recepti, plan obroka i nabavka za celo domaćinstvo
                 <br />
                 Ova poruka je poslata na {{ .Email }} jer je za tu adresu zatražena prijava.
               </td>

@@ -57,7 +57,7 @@ class AuthEmailTemplatesTest(unittest.TestCase):
         self.assertEqual(markup.links, ["{{ .ConfirmationURL }}"])
         self.assertIn("Potvrdi adresu", text)
         self.assertIn("{{ .Token }}", text)
-        self.assertIn("Ili upiši ovaj kod u aplikaciju Tavli", text)
+        self.assertIn("Tavli ti je na drugom uređaju? Upiši ovaj kod tamo", text)
         self.assertIn("važe 10 minuta", text)
         # The link is built by GoTrue (PKCE); no hand-made auth links.
         for placeholder in ("TokenHash", "SiteURL", "RedirectTo"):
@@ -134,7 +134,7 @@ class DeployAuthEmailTemplatesTest(unittest.TestCase):
         }
         for value in templates.values():
             self.assertNotIn("127.0.0.1", value)
-        self.assertIn(hosted_storage + "email-assets/tavli-znak.png",
+        self.assertIn(hosted_storage + "email-assets/tavli-logo-krem.png",
                       templates["mailer_templates_confirmation_content"])
         original = self.hosted_settings | {"mailer_subjects_confirmation": "Old subject"}
         updated = self.hosted_settings | templates
