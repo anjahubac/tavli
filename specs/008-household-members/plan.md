@@ -36,6 +36,24 @@ allocate drift version only after preceding schema merges. New SQL is additive
 where possible, with RLS/grants and local two-account tests. Applied SQL is immutable.
 If no schema change is needed, explicitly record that decision in the slice PR.
 
+## Recipe ratings data slice
+
+D3-018 / FR-011 reuses the existing owner-only ratings table and sync outbox.
+The server uses a unique user and recipe pair and keeps the existing server
+ID when an offline write arrives from another device. The Drift v7 to v8
+upgrade keeps the latest rating per pair and adds a local cache for the
+household average and count. Dev 3 owns the ratings repository and SQL.
+Coordinate changes to `lib/data/database.dart`, its generated output and
+`lib/sync/` with Dev 1 before integration. The UI follows the agreed
+[ratings contract](contracts/recipe-ratings.md) in a later slice.
+
+The summary endpoint checks current membership and returns only recipe
+identifiers, counts and averages, paged through the data layer. The average
+uses one decimal place. In a small household, the count and average may allow
+someone to infer a score. Private notes are available only to their authors.
+Credential and file impacts are N/A. Deploy the migration through the
+existing workflow before distributing a client that uses the new sync contract.
+
 ## Delivery slices
 
 1. Resolve only blocking decisions; map each source requirement to existing code,

@@ -9,6 +9,31 @@ import '../helpers/v3_schema.dart';
 import '../helpers/v4_schema.dart';
 
 void main() {
+  test(
+    'v7 to v8 keeps the latest rating and creates the summary cache',
+    () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute(
+              'CREATE TABLE ratings (id TEXT PRIMARY KEY, user_id TEXT, '
+              'recipe_id TEXT NOT NULL, stars INTEGER NOT NULL, cooked_at INTEGER '
+              'NOT NULL, comment TEXT, is_comfort_food INTEGER NOT NULL DEFAULT 0)',
+            );
+            raw.execute(
+              'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+              "VALUES ('old', 'u', 'r', 1, 1), ('new', 'u', 'r', 4, 2)",
+            );
+            raw.execute('PRAGMA user_version = 7');
+          },
+        ),
+      );
+      addTearDown(db.close);
+      expect((await db.select(db.ratings).get()).single.id, 'new');
+      expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    },
+  );
+
   test('postojeća v4 struktura označena kao v3 čuva id-jeve i outbox pri otvaranju', () async {
     final directory = await Directory.systemTemp.createTemp(
       'tavli-migration-test-',
@@ -154,7 +179,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 7);
+    expect(db.schemaVersion, 8);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));

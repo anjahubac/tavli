@@ -203,6 +203,12 @@ class RecipeRepository {
       for (final r in ratings) {
         if (r.userId == _scope.userId) await _writer.delete('rating', r.id);
       }
+      await (_db.delete(_db.ratingSummaries)..where(
+            (t) =>
+                t.householdId.equals(_scope.householdId) &
+                t.recipeId.equals(id),
+          ))
+          .go();
       final entries = await (_db.select(
         _db.mealPlanEntries,
       )..where((t) => t.recipeId.equals(id))).get();
