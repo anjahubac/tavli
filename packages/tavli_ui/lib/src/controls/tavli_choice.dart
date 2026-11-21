@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../motion/motion.dart';
+import '../platform.dart';
 import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 
@@ -82,9 +83,9 @@ class _Segmented<T> extends StatelessWidget {
     List<Widget> segments({required bool expand}) => [
       for (final o in choice.options)
         if (expand)
-          Expanded(child: _segment(o, enabled))
+          Expanded(child: _segment(context, o, enabled))
         else
-          _segment(o, enabled),
+          _segment(context, o, enabled),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -134,11 +135,17 @@ class _Segmented<T> extends StatelessWidget {
 
   static const double _inset = 3;
 
-  Widget _segment(TavliOption<T> o, bool enabled) => _Segment(
-    label: o.label,
-    selected: o.value == choice.selected,
-    onTap: enabled ? () => choice.onChanged!(o.value) : null,
-  );
+  Widget _segment(BuildContext context, TavliOption<T> o, bool enabled) =>
+      _Segment(
+        label: o.label,
+        selected: o.value == choice.selected,
+        onTap: enabled
+            ? () {
+                TavliPlatform.selectionFeedback(context);
+                choice.onChanged!(o.value);
+              }
+            : null,
+      );
 
   /// Širina dugmeta u jednom redu: svi segmenti široki kao najduži naziv.
   double _rowWidth(BuildContext context) {
@@ -264,7 +271,10 @@ class _Chips<T> extends StatelessWidget {
                   ),
                   child: InkWell(
                     onTap: enabled && !selected
-                        ? () => choice.onChanged!(o.value)
+                        ? () {
+                            TavliPlatform.selectionFeedback(context);
+                            choice.onChanged!(o.value);
+                          }
                         : null,
                     borderRadius: radius,
                     child: ConstrainedBox(
