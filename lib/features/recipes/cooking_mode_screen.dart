@@ -179,6 +179,17 @@ class _CookingModeScreenState extends ConsumerState<CookingModeScreen> {
   }
 
   @override
+  void didUpdateWidget(CookingModeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final stepCount = _recipe.steps.length;
+    if (stepCount == 0) {
+      _step = 0;
+    } else if (_step >= stepCount) {
+      _step = stepCount - 1;
+    }
+  }
+
+  @override
   void dispose() {
     unawaited(_wake(on: false));
     super.dispose();

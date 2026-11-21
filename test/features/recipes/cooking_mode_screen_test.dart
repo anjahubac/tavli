@@ -242,6 +242,8 @@ void main() {
     expect(find.text('• 2 kg krompir'), findsOneWidget);
     final row = await app.db.select(app.db.mealPlanEntries).getSingle();
     expect(row.recipeSnapshotJson, contains('Skuvajte.'));
+    await tester.pump(tavliMessageDuration);
+    await tester.pumpAndSettle();
 
     unawaited(
       GoRouter.of(tester.element(find.byType(Scaffold).first))
@@ -250,5 +252,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Ogulite krompir.'), findsOneWidget);
     expect(find.text('KORAK 1 OD 2'), findsOneWidget);
+
+    await tester.tap(button('Sledeći'));
+    await tester.pumpAndSettle();
+    expect(find.text('KORAK 2 OD 2'), findsOneWidget);
+
+    await (app.db.update(
+      app.db.recipes,
+    )..where((t) => t.id.equals(entry.recipeId!))).write(
+      const RecipesCompanion(stepsJson: Value('["Ispecite krompir."]')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('KORAK 1 OD 1'), findsOneWidget);
+    expect(find.text('Ispecite krompir.'), findsOneWidget);
+    expect(enabled(tester, 'Prethodni'), isFalse);
+    expect(button('Sledeći'), findsNothing);
+    expect(enabled(tester, 'Skuvano'), isTrue);
   });
 }
