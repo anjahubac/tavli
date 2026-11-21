@@ -49,7 +49,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **US1 / SC-001**: An expired/revoked invite cannot join; a valid invite previews the household before applying exactly one membership change.
 - **US2 / SC-002**: A removed member reconnects with queued writes: server denies old-household access; another member retains shared data.
 - **US3 / SC-003**: Two co-members can share recipes but cannot read each other's diary or personal settings outside the agreed planning aggregate.
-- **US4 / SC-004**: With two members selected, either member's allergen excludes a mapped candidate even when AI suggests it. An unresolved ingredient is marked unknown. Selecting one member omits the other's inputs.
+- **US4 / SC-004**: With two members selected, either member's allergen excludes a mapped candidate even when AI suggests it. With seven reviewed ingredients and one unresolved ingredient, automatic recommendations omit the recipe. Opening it for manual cooking shows “Mogući alergeni: nepoznata namirnica”. Selecting one member omits the other's inputs.
 - **US5 / SC-005**: One member likes a food and another dislikes it; the conflict affects ranking without becoming a safety ban. A deleted recipe or departing member stops contributing favorites.
 - **US6 / SC-006**: Co-members cannot read one another's raw personal settings; a foreign or removed participant ID yields no partial aggregate.
 - **US7 / SC-007**: A preference or note a member has not shared never appears in another member's plan inputs, prompt or UI, for one or several participants; withdrawing consent removes it. An AI response that echoes a name, note or attributed allergy is rejected and never shown or stored.
@@ -66,7 +66,7 @@ Household membership/invites are server-authorized; preferences, allergens, favo
 
 ## Exact UI copy carried forward
 
-“Domaćinstvo”, “Pozovi člana”, “Pridruži se”, “Ukusi i sklonosti”, “Omiljeni”, “Alergeni”, “Volim”, “Ne volim”, “Opis”.
+“Domaćinstvo”, “Pozovi člana”, “Pridruži se”, “Ukusi i sklonosti”, “Omiljeni”, “Alergeni”, “Volim”, “Ne volim”, “Opis”, “Mogući alergeni: nepoznata namirnica”.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
@@ -77,7 +77,7 @@ Later slices follow the catalog, membership and [015 gateway](../015-ai-server-g
 dependencies in the [implementation plan](plan.md).
 
 - **Q1** (Dev 3 with reviewer): Who may invite, recipe-transfer semantics for shared recipes, last-owner/leave recovery and offline transition handling?
-- **Q2**: Matija decided on 2026-11-20 that selected participants contribute favorites and all household members are selected by default. Allergens are separate groups linked to users and catalog foods; dislikes remain soft. Matija decided on 2026-11-21 that planner allergen data remains server-only. Dev 1 and Dev 2 still review the vocabulary, food mappings, structured taste limits, consent implementation and server planner boundary. See [member planning inputs contract](contracts/member-planning-inputs.md).
+- **Q2**: Matija decided on 2026-11-20 that selected participants contribute favorites and all household members are selected by default. Allergens are separate groups linked to users and catalog foods; dislikes remain soft. Matija decided on 2026-11-21 that planner allergen data remains server-only. Matija confirmed using the existing catalog checker codes and keeping catalog mapping review with Dev 1. Food mappings, structured taste limits, consent implementation and server integration still require coordination. See [member planning inputs contract](contracts/member-planning-inputs.md).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

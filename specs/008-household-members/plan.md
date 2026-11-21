@@ -84,7 +84,7 @@ migration names, reviewers and effort per PR before marking a slice Ready.
 | 2. Structured profile and sharing, D3-004 / T006–T007, FR-108/111 | Extend the same repository with catalog food IDs and reviewed cuisine codes. Add owner-only opt-in for preferences/favorites through authenticated online writes with revision checks. Test default-off, server-acknowledged withdrawal, stale devices and old-client sync. Schedule the optional note and its separate consent after structured preferences and favorites. | Dev 3 / Dev 2 for consent, Dev 1 for catalog and migrations |
 | 3. Private favorites, D3-011 / T020–T021 | Add owner-scoped favorite storage, repository and sync. Use unique user/recipe pairs and server-verified recipe access. Test repeat add/remove, recipe deletion, account deletion, membership loss and stale outbox replay. Storage can precede the planner. Coordinate membership-loss cleanup with the household transition owner. | Dev 3 / Dev 1 for schema, Dev 2 for recipe access and consumer |
 | 4. Authorized member inputs, FR-106/110–112 and 019 D2-009/D2-012 | Add a server resolver and typed consumer boundary. Derive requester identity from auth; verify the entire nonempty participant set; apply consent per participant; resolve like/dislike conflicts toward dislike for ranking; count only visible favorites. Shared note normalization and deduplication belong to the later note slice. Test self, another member, multiple members, foreign/removed IDs and revocation. Start with a fresh authorized read per request; defer aggregate caching and queued personalized requests until invalidation is specified and tested. Dev 2 can prepare fake-backed consumer tests before producer merge. | Dev 3 producer, Dev 2 consumer / reciprocal review |
-| 5. Personal allergen selection and catalog metadata, D3-009/D3-010 / T016–T019 | After Dev 1 approves vocabulary and mappings, add owner-only selection storage and a separate catalog mapping with explicit unknown coverage. The member can manage their own selections through the owner-only settings path. An empty selection contributes no codes and requires no confirmation or onboarding step. Public recipe metadata may describe ingredients; it carries no member selections. Test two-account RLS, catalog identity, and unknown versus verified absence. | Dev 3 personal selection, Dev 1 catalog / reciprocal review |
+| 5. Personal allergen selection and catalog metadata, D3-009/D3-010 / T016–T019 | Use Dev 1's existing allergen codes for owner-only selection storage. Integrate catalog mappings with explicit unknown coverage as Dev 1 reviews them. The member can manage their own selections through the owner-only settings path. An empty selection contributes no codes and requires no confirmation or onboarding step. Public recipe metadata may describe ingredients; it carries no member selections. Test two-account RLS, catalog identity, and unknown versus verified absence. | Dev 3 personal selection, Dev 1 catalog / reciprocal review |
 | 6. Planner integration handoff, 019 D2-009/D2-011/D2-012/D2-013 | Dev 3 delivers the reviewed member-input contract, access/consent fixtures and a server-only interface for selected allergen codes. Dev 2 owns gateway, generation, replacement and candidate exhaustion in 015/019. Review the privacy boundary and verify shared fixtures before enabling household-aware planning. | Dev 2 consumer / Dev 3 for privacy and Dev 1 for mapping |
 | 7. UI and end-to-end acceptance, D3-004/D3-009–D3-011 and 019 | Connect the verified repositories to the profile and recipe UI. Participant selection and server-planner UI are separate Dev 2 work. Verify Serbian Latin copy, consent and pending withdrawal feedback, generic restriction errors, empty/offline states, phone/wide, 2× text and reduced motion. | Existing feature owners / independent reviewer per PR |
 
@@ -150,17 +150,17 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
 - Dev 1 supplies catalog food IDs, visibility rules and reviewed allergen
   mappings with a completeness signal. Dev 3 and Dev 2 agree the cuisine
   vocabulary and collection bounds before the structured-profile slice. Dev 1
-  coordinates any shared migrations. For catalog decision D10, the proposed 008
-  handoff keeps ingredient links embedded in recipe JSON. The server planner
+  coordinates any shared migrations. For catalog decision D10, Matija confirmed keeping ingredient links embedded in
+  recipe JSON. The server planner
   reads each authorized recipe's `foodId` links and resolves them against
-  reviewed catalog mappings. Confirm eligibility and mapping coverage with
-  Dev 1 and Dev 2 before adding storage. The dish-kind slice can start separately.
+  reviewed catalog mappings. Dev 1 owns the checker and mapping review. Automatic
+  recommendations require complete ingredient mapping and review coverage. Manual
+  cooking shows a warning for incomplete allergen information.
 - Dev 3 supplies Dev 2 with a typed selected-participant fixture and expected
   authorization, consent and favorite counts. Dev 2 reviews the request/response
   shape and typed error mapping and owns planner consumption. The note's length
   and leak-check fixtures are decisions for the later note slice.
-- Dev 3 owns personal allergen selection and reviews the shared vocabulary with
-  Dev 1. Reuse the household transition work to verify favorite cleanup and stale
+- Dev 3 owns personal allergen selection using the existing catalog checker codes. Reuse the household transition work to verify favorite cleanup and stale
   writes when recipe access changes. Finalize the cleanup hook before favorite
   sync is enabled.
 - Dev 2 owns 015/019 endpoint limits, replacement, batch behavior, favorite
