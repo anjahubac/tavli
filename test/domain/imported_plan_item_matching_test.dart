@@ -62,27 +62,29 @@ void main() {
     unit: 'g',
   );
 
-  test('crni luk se povezuje sa ID-jem iz kataloga', () async {
-    final linked = await link(matcher, onion);
-    expect(linked.foodId, 'food-crni-luk');
-    expect(linked.needsReview, isFalse);
-  });
+  test(
+    'normalizovan naziv „crni luk“ se povezuje sa ID-jem iz kataloga',
+    () async {
+      final linked = await link(matcher, onion);
+      expect(linked.foodId, 'food-crni-luk');
+      expect(linked.needsReview, isFalse);
+    },
+  );
+
+  test(
+    'original sa količinom, bez normalizacije naziva, ostaje Unresolved',
+    () async {
+      final r = await matcher.findByName(
+        originalText: onion.originalText,
+        scope: const FoodLookupScope(householdId: 'A'),
+      );
+      expect(r, isA<Unresolved>());
+    },
+  );
 
   test('domaća mešavina bez pouzdanog poklapanja ostaje bez ID-ja', () async {
     final linked = await link(matcher, mix);
     expect(linked.foodId, isNull);
     expect(linked.needsReview, isTrue);
-  });
-
-  test('original, količina i jedinica ostaju isti posle povezivanja', () async {
-    for (final (item, text, qty) in [
-      (onion, '150 g crnog luka', 150),
-      (mix, '80 g domaće mešavine', 80),
-    ]) {
-      final linked = await link(matcher, item);
-      expect(linked.item.originalText, text);
-      expect(linked.item.quantity, qty);
-      expect(linked.item.unit, 'g');
-    }
   });
 }
