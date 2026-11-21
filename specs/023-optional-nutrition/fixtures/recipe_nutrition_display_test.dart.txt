@@ -1,0 +1,109 @@
+import 'package:drift/drift.dart' show Value;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/data/database.dart';
+import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/features/foods/nutrition_line.dart';
+import 'package:tavli/providers.dart';
+
+import '../../helpers/test_app.dart';
+
+const _foodNames = [
+  'krompir',
+  'šargarepa',
+  'tikvica',
+  'paprika',
+  'grašak',
+  'karfiol',
+  'brokoli',
+  'blitva',
+];
+
+Future<void> _seedFoods(AppDatabase db, int covered) async {
+  for (final (index, name) in _foodNames.indexed) {
+    final hasNutrition = index < covered;
+    await db
+        .into(db.foods)
+        .insert(
+          FoodsCompanion.insert(
+            id: 'food-$index',
+            name: name,
+            category: 'ostalo',
+            baseUnit: 'g',
+            kcal100: hasNutrition ? const Value(100) : const Value.absent(),
+            protein100: hasNutrition ? const Value(10) : const Value.absent(),
+            fat100: hasNutrition ? const Value(2) : const Value.absent(),
+            carbs100: hasNutrition ? const Value(15) : const Value.absent(),
+            nutritionSource: hasNutrition
+                ? const Value('synthetic')
+                : const Value.absent(),
+            nutritionRef: hasNutrition
+                ? Value('sample-$index')
+                : const Value.absent(),
+          ),
+        );
+  }
+}
+
+Future<void> _openRecipe(WidgetTester tester, {required int covered}) async {
+  await pumpTavli(
+    tester,
+    location: '/recipes/nutrition-test',
+    setup: (db) => _seedFoods(db, covered),
+    recipes: [
+      Recipe(
+        id: 'nutrition-test',
+        title: 'Testni recept',
+        servings: 2,
+        ingredients: [
+          for (final (index, name) in _foodNames.indexed)
+            Ingredient(
+              name: name,
+              foodId: 'food-$index',
+              quantity: 100,
+              unit: 'g',
+            ),
+        ],
+        source: RecipeSource.manual,
+        createdAt: DateTime.utc(2026, 11, 21),
+      ),
+    ],
+  );
+  expect(find.text('Testni recept'), findsWidgets);
+  expect(find.textContaining('blitva'), findsOneWidget);
+  final nutrition = tester.element(find.byType(NutritionLine));
+  final catalog = ProviderScope.containerOf(nutrition)
+      .read(foodCatalogProvider)
+      .requireValue;
+  expect(
+    catalog.foods.where((food) => food.id.startsWith('food-')),
+    hasLength(8),
+  );
+}
+
+void main() {
+  testTavli('detalj recepta prikazuje procenu za 7 od 8 sastojaka', (
+    tester,
+  ) async {
+    await _openRecipe(tester, covered: 7);
+
+    // Seven 100 g contributions divided by two servings.
+    expect(
+      find.text(
+        'Po porciji ~350 kcal · proteini 35 g · masti 7 g'
+        ' · ugljeni hidrati 52,5 g',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Računato za 7 od 8 sastojaka.'), findsOneWidget);
+  });
+
+  testTavli('detalj recepta skriva nutritivni blok pri nultoj pokrivenosti', (
+    tester,
+  ) async {
+    await _openRecipe(tester, covered: 0);
+
+    expect(find.textContaining('Po porciji'), findsNothing);
+    expect(find.textContaining('Računato'), findsNothing);
+  });
+}

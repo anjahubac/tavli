@@ -62,6 +62,17 @@ calculation incomplete. Check that each displayed subtotal equals the sum of
 the seven contributions divided by the recipe servings. The missing ingredient
 must remain identifiable and must not be treated as a zero-nutrition entry.
 
+The [recipe-detail widget fixture](fixtures/recipe_nutrition_display_test.dart.txt)
+for [Trello #28](https://trello.com/c/BX76Fv3o) opens the recipe route with eight
+linked foods and a loaded synthetic catalog. With seven 100 g contributions and
+two servings, the screen shows `~350 kcal`, 35 g protein, 7 g fat and 52.5 g
+carbohydrates per serving with “Računato za 7 od 8 sastojaka.” With all eight
+nutrition records absent, the recipe stays visible and both nutrition lines
+are hidden. Both cases passed against prototype `f74d08e`, together with
+twelve existing nutrition tests. To rerun on that prototype, copy the fixture
+to `test/features/foods/recipe_nutrition_display_fixture_test.dart` and run
+`flutter test test/features/foods/recipe_nutrition_display_fixture_test.dart`.
+
 Review the display copy and whether partial totals appear in the nutrition
 diary with Dev 3. Repeat this case against the accepted Tavli catalog, alongside
 a complete control and an unknown-quantity case, before treating the workflow
