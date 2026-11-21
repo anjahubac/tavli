@@ -91,10 +91,10 @@ flutter:
 
   # Font Plus Jakarta Sans je u paketu tavli_ui.
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/branding/tavli-auth-icon.png
+    - assets/branding/tavli-wordmark.png
+    - assets/branding/intro/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

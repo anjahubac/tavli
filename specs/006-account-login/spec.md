@@ -67,6 +67,10 @@ becomes available after 30 seconds (counter "Pošalji ponovo za {s} s").
 "Promeni e-poštu" goes back to the email step. The same flow is used for a new
 and an existing account; there is no password.
 
+The Tavli skillet badge appears above the existing headings on both steps of
+“Prijava” and on “Kako da te zovemo?” for new accounts. The badge reserves
+its space while the bundled image loads.
+
 **Why this priority**: the app cannot be used without an account; every other part of the app needs it.
 
 **Independent Test**: on a fresh install, enter an email, enter the code received, enter a name and land on the "Recepti" tab; restart the app and stay signed in.

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_gateway.dart';
 import 'package:tavli/account/session_store.dart';
+import 'package:tavli/features/account/auth_brand.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_backend.dart';
@@ -33,9 +34,22 @@ void main() {
     return app;
   }
 
+  testWidgets('znak zadržava prostor dok se slika učitava', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: AuthBrand())),
+    );
+
+    final image = find.byType(RawImage);
+    expect(tester.widget<RawImage>(image).image, isNull);
+    final size = tester.getSize(image);
+    expect(size.width, greaterThan(0));
+    expect(size.height, size.width);
+  });
+
   testTavli('bez naloga: samo "Prijava", nijedan tab', (tester) async {
     await pumpTavli(tester, signedIn: false);
     expect(find.text('Prijava'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(
       find.text(
         'Prijavi se e-poštom. Poslaćemo ti kod, lozinka nije potrebna.',
@@ -75,6 +89,7 @@ void main() {
   ) async {
     final app = await toCodeStep(tester);
     expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(app.backend.auth.sentCodes, ['ana@mail.com']);
 
     await tester.enterText(field('Kod iz poruke'), FakeServer.code);
