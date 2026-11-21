@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../controls/tavli_button.dart';
 import '../controls/tavli_choice.dart';
+import '../icons/tavli_icons.dart';
 import '../platform.dart';
 import '../shell/tavli_action_bar.dart';
 import '../shell/tavli_app_bar.dart';
@@ -15,32 +16,11 @@ import 'gallery_section.dart';
 
 /// Tabovi iz platna, u redosledu donje navigacije.
 const galleryDestinations = [
-  TavliDestination(
-    icon: Icons.calendar_month_outlined,
-    selectedIcon: Icons.calendar_month,
-    label: 'Plan',
-  ),
-  TavliDestination(
-    icon: Icons.shopping_basket_outlined,
-    selectedIcon: Icons.shopping_basket,
-    label: 'Nabavka',
-  ),
-  TavliDestination(
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
-    label: 'Početna',
-    home: true,
-  ),
-  TavliDestination(
-    icon: Icons.menu_book_outlined,
-    selectedIcon: Icons.menu_book,
-    label: 'Recepti',
-  ),
-  TavliDestination(
-    icon: Icons.kitchen_outlined,
-    selectedIcon: Icons.kitchen,
-    label: 'Ostava',
-  ),
+  TavliDestination(icon: TavliIcons.plan, label: 'Plan'),
+  TavliDestination(icon: TavliIcons.shopping, label: 'Nabavka'),
+  TavliDestination(icon: TavliIcons.home, label: 'Početna', home: true),
+  TavliDestination(icon: TavliIcons.recipes, label: 'Recepti'),
+  TavliDestination(icon: TavliIcons.pantry, label: 'Ostava'),
 ];
 
 /// Odeljci galerije za kostur ekrana i navigaciju.

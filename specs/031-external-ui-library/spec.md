@@ -91,5 +91,7 @@ Gallery copy is Serbian Latin. Screen copy follows the canvas and each feature s
 
 Producer specs: [021](../021-home-and-cooking/spec.md) for the Home screen route.
 
-- **Q1** (Dev 4): source of the icon set: drawn in-house to the canvas geometry,
-  or an open-source outline set with the same geometry (licence recorded).
+- **Q1** (Dev 4), decided 2026-11-20: every icon is drawn in-house. The set is
+  `TavliIcons` in `packages/tavli_ui`, copied from the canvas SVG paths; a new
+  icon is drawn in the same style (24 grid, stroke 2, round caps and joins).
+  No third-party icon set or icon dependency.

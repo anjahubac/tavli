@@ -21,6 +21,10 @@ MIGRATED = (
     'lib/features/settings/profile_account_section.dart',
     'lib/features/settings/profile_screen.dart',
     'lib/features/settings/settings_page.dart',
+    # Card "UI biblioteka 9": Nabavka.
+    'lib/features/shopping/shopping_frame.dart',
+    'lib/features/shopping/shopping_list_view.dart',
+    'lib/features/shopping/shopping_screen.dart',
 )
 
 # Material widgets with a library replacement (Tavli* component or helper).

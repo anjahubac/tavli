@@ -44,4 +44,12 @@ abstract final class TavliWidth {
 
   /// Najveća širina sadržaja ekrana sa podešavanjima na širokom ekranu.
   static const double page = 880;
+
+  /// Lista i detalj (Nabavka na računaru): detalj desno je najviše ove
+  /// širine i najviše trećina sadržaja.
+  static const double detail = 300;
+
+  /// Najmanja širina sadržaja od koje lista dobija detalj desno; uže od
+  /// toga detalj se otvara kao donji list.
+  static const double listDetail = 840;
 }

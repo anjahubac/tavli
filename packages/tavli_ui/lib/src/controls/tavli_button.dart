@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../icons/tavli_icons.dart';
 import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 
@@ -30,21 +31,27 @@ class TavliButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.primary;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.primary;
 
   const TavliButton.secondary({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.secondary;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.secondary;
 
   const TavliButton.text({
     super.key,
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.text;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.text;
 
   /// Tekstualno dugme za brisanje („Obriši ceo dnevnik ishrane“). Potvrdu
   /// pre brisanja pravi ekran.
@@ -53,11 +60,16 @@ class TavliButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon,
-  }) : variant = TavliButtonVariant.destructive;
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.destructive;
 
   final TavliButtonVariant variant;
   final String label;
   final IconData? icon;
+
+  /// Ikonica iz Tavli seta ([TavliIcons]); zamenjuje [icon].
+  final TavliIconData? glyph;
 
   /// `null` isključuje dugme.
   final VoidCallback? onPressed;
@@ -121,13 +133,17 @@ class TavliButton extends StatelessWidget {
     );
 
     final text = Text(label, textAlign: TextAlign.center);
-    final child = icon == null
+    final glyph = this.glyph;
+    final Widget? iconWidget = glyph != null
+        ? TavliIcon(glyph, size: 20)
+        : (icon == null ? null : Icon(icon, size: 20));
+    final child = iconWidget == null
         ? text
         : Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20),
+              iconWidget,
               const SizedBox(width: TavliSpacing.small),
               Flexible(child: text),
             ],

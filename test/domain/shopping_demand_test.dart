@@ -7,11 +7,13 @@ DemandSource source(
   List<Ingredient> ingredients, {
   int baseServings = 2,
   int servings = 2,
+  bool kitchenMeasures = false,
 }) => DemandSource(
   id: id,
   baseServings: baseServings,
   servings: servings,
   ingredients: ingredients,
+  kitchenMeasures: kitchenMeasures,
 );
 
 void main() {
@@ -42,6 +44,35 @@ void main() {
       ));
     });
 
+    test('dl i dkg su tačne jedinice, bez uključenih kuhinjskih mera', () {
+      expect(normalizeUnit('dl'), (group: 'volume', base: 'ml', factor: 100));
+      expect(normalizeUnit(' DKG '), (group: 'mass', base: 'g', factor: 10));
+    });
+
+    test('dl se sabira sa l, a dkg sa g, u jednu tačnu stavku', () {
+      final milk = demandFor(
+        source('e1', [
+          const Ingredient(name: 'mleko', quantity: 5, unit: 'dl'),
+          const Ingredient(name: 'mleko', quantity: 0.5, unit: 'l'),
+        ]),
+      );
+      expect(milk, hasLength(1));
+      expect(milk.single.micros, toMicros(1000));
+      expect(milk.single.baseUnit, 'ml');
+      expect(milk.single.approximate, isFalse);
+
+      final cheese = demandFor(
+        source('e1', [
+          const Ingredient(name: 'sir', quantity: 20, unit: 'dkg'),
+          const Ingredient(name: 'sir', quantity: 100, unit: 'g'),
+        ]),
+      );
+      expect(cheese, hasLength(1));
+      expect(cheese.single.micros, toMicros(300));
+      expect(cheese.single.baseUnit, 'g');
+      expect(cheese.single.approximate, isFalse);
+    });
+
     test('ostale jedinice su uporedive samo kad su iste', () {
       expect(normalizeUnit('Kašika'), (
         group: 'unit:kašika',
@@ -49,8 +80,122 @@ void main() {
         factor: 1,
       ));
       expect(normalizeUnit('kašika'), normalizeUnit('KAŠIKA'));
-      expect(normalizeUnit('kašika') == normalizeUnit('kasika'), isFalse);
+      // Oblici iz zajedničkog rečnika (lib/ai/ai_units.dart) su ista jedinica.
+      expect(normalizeUnit('kašika'), normalizeUnit('kasika'));
+      expect(normalizeUnit('kašike'), normalizeUnit('kašika'));
+      expect(normalizeUnit('dag'), normalizeUnit('dkg'));
+      expect(normalizeUnit('litar'), normalizeUnit('l'));
+      expect(normalizeUnit('komada'), normalizeUnit('kom'));
+      expect(normalizeUnit('gr'), normalizeUnit('g'));
       expect(normalizeUnit(null), (group: 'unit:', base: '', factor: 1));
+    });
+  });
+
+  group('kuhinjske mere — opciono računanje', () {
+    test('dve kašike i kašičica su približno 35 ml', () {
+      final lines = demandFor(
+        source('e1', kitchenMeasures: true, [
+          const Ingredient(name: 'ulje', quantity: 2, unit: 'kašika'),
+          const Ingredient(name: 'ulje', quantity: 1, unit: 'kašičica'),
+        ]),
+      );
+      expect(lines, hasLength(1));
+      expect(lines.single.micros, toMicros(35));
+      expect(lines.single.baseUnit, 'ml');
+      expect(lines.single.approximate, isTrue);
+      expect(summarize(lines).single.approximate, isTrue);
+    });
+
+    test('podrazumevane mere i oblici naziva', () {
+      for (final (unit, expected) in [
+        ('čaša', 200),
+        ('casa', 200),
+        ('šolja', 250),
+        ('solje', 250),
+        ('kašike', 15),
+        ('kasika', 15),
+        ('kašičice', 5),
+        ('kasicica', 5),
+      ]) {
+        final lines = demandFor(
+          source('e1', kitchenMeasures: true, [
+            Ingredient(name: 'mleko', quantity: 1, unit: unit),
+          ]),
+        );
+        expect(
+          lines.single.micros,
+          toMicros(expected.toDouble()),
+          reason: unit,
+        );
+        expect(lines.single.approximate, isTrue, reason: unit);
+      }
+    });
+
+    test('podrazumevano ponašanje i nepoznata gustina ostaju bezbedni', () {
+      const ingredients = [
+        Ingredient(name: 'brašno', quantity: 1, unit: 'šolja'),
+        Ingredient(name: 'brašno', quantity: 100, unit: 'g'),
+        Ingredient(name: 'so', unit: 'kašika'),
+      ];
+      final legacy = demandFor(source('e1', ingredients));
+      expect(legacy.first.baseUnit, 'šolja');
+      expect(legacy.first.approximate, isFalse);
+      final proposed = demandFor(
+        source('e1', kitchenMeasures: true, ingredients),
+      );
+      expect(proposed, hasLength(3));
+      expect(proposed[0].micros, toMicros(250));
+      expect(proposed[0].baseUnit, 'ml');
+      expect(proposed[1].micros, toMicros(100));
+      expect(proposed[1].baseUnit, 'g');
+      expect(proposed[2].micros, isNull);
+      expect(proposed[2].needsReview, isTrue);
+    });
+
+    test('prstohvat ostaje zasebna mera i traži proveru', () {
+      const ingredients = [
+        Ingredient(name: 'so', quantity: 1, unit: 'prstohvat'),
+        Ingredient(name: 'so', quantity: 5, unit: 'g'),
+      ];
+      final legacy = demandFor(source('e1', ingredients));
+      expect(legacy.first.needsReview, isFalse);
+
+      final lines = demandFor(source('e1', kitchenMeasures: true, ingredients));
+      expect(lines, hasLength(2));
+      expect(lines.first.baseUnit, 'prstohvat');
+      expect(lines.first.micros, toMicros(1));
+      expect(lines.first.needsReview, isTrue);
+      expect(lines.last.needsReview, isFalse);
+      expect(summarize(lines).first.needsReview, isTrue);
+    });
+
+    test('zbir više izvora čuva oznaku približne mere', () {
+      final needs = summarize([
+        ...demandFor(
+          source('prvi', kitchenMeasures: true, [
+            const Ingredient(name: 'mleko', quantity: 1, unit: 'l'),
+          ]),
+        ),
+        ...demandFor(
+          source('drugi', kitchenMeasures: true, [
+            const Ingredient(name: 'mleko', quantity: 1, unit: 'šolja'),
+          ]),
+        ),
+      ]);
+      expect(needs.single.micros, toMicros(1250));
+      expect(needs.single.baseUnit, 'ml');
+      expect(needs.single.approximate, isTrue);
+      expect(needs.single.sourceIds, ['prvi', 'drugi']);
+      expect(
+        summarize(
+          demandFor(
+            source('treći', kitchenMeasures: true, [
+              const Ingredient(name: 'mleko', quantity: 1, unit: 'l'),
+            ]),
+          ),
+        ).single.approximate,
+        isFalse,
+      );
     });
   });
 

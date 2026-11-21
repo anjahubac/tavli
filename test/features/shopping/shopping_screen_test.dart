@@ -15,9 +15,11 @@ import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/features/planning/planning_providers.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli/features/shopping/shopping_list_view.dart';
 import 'package:tavli/features/shopping/shopping_providers.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -108,8 +110,14 @@ Future<TestApp> pumpShopping(
   overrides: [clockProvider.overrideWithValue(() => today)],
 );
 
-Finder tileOf(String name) =>
-    find.ancestor(of: find.text(name), matching: find.byType(ListTile)).first;
+Finder tileOf(String name) => find
+    .ancestor(of: find.text(name), matching: find.byType(TavliCheckRow))
+    .first;
+
+/// Dugme samo sa ikonicom iz biblioteke, po opisu.
+Finder iconButton(String label) => find.byWidgetPredicate(
+  (w) => w is TavliIconButton && w.semanticLabel == label,
+);
 
 Future<void> tapIn(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
@@ -119,6 +127,12 @@ Future<void> tapIn(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  test('oznaka približne količine se prikazuje samo kada je zadata', () {
+    expect(amountLabel(35, 'ml', approximate: true), '~35 ml');
+    expect(amountLabel(35, 'ml'), '35 ml');
+    expect(amountLabel(null, 'ml', approximate: true), isNull);
+  });
+
   for (final failPlans in [true, false]) {
     testTavli('greška ${failPlans ? 'planova' : 'nabavke'} nije prazno stanje; '
         'ponovni pokušaj učitava podatke', (tester) async {
@@ -271,8 +285,8 @@ void main() {
     expect(find.text('Po planu'), findsOneWidget);
     expect(find.text('Po receptu'), findsOneWidget);
     expect(find.text('2–8. novembar 2026.'), findsOneWidget);
-    expect(find.text('Voće i povrće'), findsOneWidget);
-    expect(find.text('Začini i sosovi'), findsOneWidget);
+    expect(find.text('VOĆE I POVRĆE'), findsOneWidget);
+    expect(find.text('ZAČINI I SOSOVI'), findsOneWidget);
     expect(find.text('krompir'), findsOneWidget);
     expect(find.text('7 kg'), findsOneWidget);
     // Nepoznata količina se ne izmišlja.
@@ -284,7 +298,13 @@ void main() {
     expect(find.byTooltip('Za koje obroke'), findsNothing);
     final semantics = tester.widget<Semantics>(
       find
-          .ancestor(of: tileOf('krompir'), matching: find.byType(Semantics))
+          .descendant(
+            of: tileOf('krompir'),
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is Semantics && w.properties.customSemanticsActions != null,
+            ),
+          )
           .first,
     );
     expect(
@@ -293,13 +313,31 @@ void main() {
     );
     await tester.longPress(tileOf('krompir'));
     await tester.pumpAndSettle();
-    expect(find.text('Potrebno za:'), findsOneWidget);
+    expect(find.text('ZA KOJE OBROKE'), findsOneWidget);
     expect(find.text('Ručak 2.11.'), findsOneWidget);
     expect(
       find.text('Ponedeljak, 2. novembar · Ručak · 2 porcije'),
       findsOneWidget,
     );
     expect(find.text('Ručak 9.11.'), findsNothing);
+  });
+
+  testTavli('širok ekran: lista i detalj „Za koje obroke“', (tester) async {
+    await pumpShopping(tester, size: wide);
+    expect(find.text('Nabavka'), findsWidgets);
+    // Kao na platnu: prva stavka je izabrana i detalj je desno.
+    expect(find.text('ZA KOJE OBROKE'), findsOneWidget);
+    expect(find.text('7 kg ukupno'), findsOneWidget);
+    expect(
+      find.text('Ponedeljak, 2. novembar · Ručak · 2 porcije'),
+      findsOneWidget,
+    );
+
+    // Dodir na red bira stavku; štiklira se samo polje.
+    await tapIn(tester, find.text('so'));
+    expect(find.text('Kupljeno · 1'), findsNothing);
+    expect(find.text('7 kg ukupno'), findsNothing);
+    expect(find.text('ZA KOJE OBROKE'), findsOneWidget);
   });
 
   testTavli('štikliranje odmah prebacuje u Kupljeno, Poništi vraća; prijem '
@@ -319,10 +357,7 @@ void main() {
     expect(find.text('Prebačeno u ostavu: 1'), findsOneWidget);
     expect(find.text('7 kg · U ostavi'), findsOneWidget);
     expect(find.textContaining('Prebaci u ostavu'), findsNothing);
-    final checkbox = tester.widget<Checkbox>(
-      find.descendant(of: tileOf('krompir'), matching: find.byType(Checkbox)),
-    );
-    expect(checkbox.onChanged, isNull);
+    expect(tester.widget<TavliCheckRow>(tileOf('krompir')).onChanged, isNull);
   });
 
   testTavli('ručna stavka: brzo dodavanje i brisanje', (tester) async {
@@ -330,15 +365,12 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Deterdžent');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
-    expect(find.text('Ostalo'), findsOneWidget);
+    expect(find.text('OSTALO'), findsOneWidget);
     expect(find.text('Deterdžent'), findsOneWidget);
 
     await tapIn(
       tester,
-      find.descendant(
-        of: tileOf('Deterdžent'),
-        matching: find.byTooltip('Obriši'),
-      ),
+      find.descendant(of: tileOf('Deterdžent'), matching: iconButton('Obriši')),
     );
     expect(find.text('Deterdžent'), findsNothing);
     expect(find.text('Obrisano: Deterdžent'), findsOneWidget);
@@ -371,7 +403,7 @@ void main() {
         tester,
         find.descendant(
           of: tileOf('Deterdžent'),
-          matching: find.byTooltip('Obriši'),
+          matching: iconButton('Obriši'),
         ),
       );
       await tester.pump(const Duration(seconds: 6));
@@ -540,7 +572,7 @@ void main() {
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
 
-    await tapIn(tester, find.byTooltip('Ukloni iz nabavke'));
+    await tapIn(tester, iconButton('Ukloni iz nabavke'));
     expect(find.text('Recepti u nabavci'), findsNothing);
     expect(find.text('mleko'), findsNothing);
     expect(find.text('patlidžan'), findsOneWidget);
