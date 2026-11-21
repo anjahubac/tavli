@@ -65,3 +65,12 @@ class TavliTextScaling extends StatelessWidget {
     );
   }
 }
+
+/// Da li je tekst uvećan toliko (više od 1,25×) da raspored u više kolona
+/// treba zameniti jednom kolonom.
+bool isLargeText(BuildContext context) =>
+    MediaQuery.textScalerOf(context).scale(TavliTextScaler.bodySize) >
+    TavliTextScaler.bodySize * largeTextFactor;
+
+/// Prag uvećanja za [isLargeText].
+const double largeTextFactor = 1.25;

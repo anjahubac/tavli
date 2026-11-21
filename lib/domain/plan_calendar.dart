@@ -76,11 +76,15 @@ class CivilDate implements Comparable<CivilDate> {
   @override
   int get hashCode => Object.hash(year, month, day);
 
-  @override
-  String toString() =>
+  /// ISO 8601 datum (`yyyy-MM-dd`). Format je deo trajnih ID-jeva i zapisa
+  /// na serveru, pa se ne menja.
+  String get isoDate =>
       '${year.toString().padLeft(4, '0')}-'
       '${month.toString().padLeft(2, '0')}-'
       '${day.toString().padLeft(2, '0')}';
+
+  @override
+  String toString() => isoDate;
 }
 
 /// Raspon datuma, oba kraja uključena.

@@ -12,6 +12,7 @@ import '../../account/auth_gateway.dart';
 import '../../app/router.dart';
 import '../../domain/account.dart';
 import '../../providers.dart';
+import 'auth_brand.dart';
 import 'auth_error_text.dart';
 
 /// Posle koliko sekundi može ponovo da se pošalje kod (FR-005).
@@ -31,6 +32,8 @@ class SignInScreen extends ConsumerWidget {
     final notice = switch (auth) {
       SignedOut(reason: SignOutReason.sessionExpired) => sessionExpiredText,
       SignedOut(reason: SignOutReason.accountDeleted) => accountDeletedText,
+      SignedOut(reason: SignOutReason.storageUnavailable) =>
+        storageUnavailableText,
       _ => null,
     };
     return Scaffold(
@@ -63,6 +66,8 @@ class _Heading extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const AuthBrand(),
+        const SizedBox(height: TavliSpacing.medium),
         const TavliPageHeader(title: 'Prijava'),
         const SizedBox(height: TavliSpacing.small),
         Text(

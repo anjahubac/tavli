@@ -7,6 +7,7 @@ import '../domain/ids.dart';
 import '../domain/meal_plan.dart';
 import '../domain/plan_calendar.dart';
 import '../domain/recipe.dart';
+import '../domain/recipe_labels.dart';
 import '../domain/shopping_demand.dart' show maxServings, minServings;
 import '../domain/shopping_source.dart';
 import '../sync/synced_writer.dart';
@@ -76,6 +77,11 @@ class MealPlanRepository {
       .watch()
       .map((rows) => [for (final r in rows) ?_mealFromRow(r)]..sort(_bySlot));
 
+  /// Obroci plana jednom, hronološki (npr. ostala jela kod zamene jednog).
+  Future<List<PlannedMeal>> meals(String planId) async =>
+      [for (final r in await _entriesQuery(planId).get()) ?_mealFromRow(r)]
+        ..sort(_bySlot);
+
   /// Nazivi potvrđene zalihe domaćinstva (za predlog plana; samo čitanje).
   Future<List<String>> confirmedPantryNames() async => [
     for (final p
@@ -134,11 +140,16 @@ class MealPlanRepository {
       };
       // Novi recepti iz predloga idu i u Recepte (sažetak, bez koraka);
       // isti recept na više mesta je jedan recept.
+      // AI oznake (TRELLO-39) idu uz recept sa izvorom `ai`, pa ih sledeći
+      // plan zna, a korisnik ih može ispraviti.
       final created = <String, String>{};
       for (final slot in ready) {
         final key = draft.proposals[slot]!.draftRecipeKey;
         if (key == null || created.containsKey(key)) continue;
-        created[key] = await _insertRecipe(draft.newRecipes[key]!);
+        created[key] = await _insertRecipe(
+          draft.newRecipes[key]!,
+          labels: _aiLabels(draft, ready, key),
+        );
       }
       final today = CivilDate.today(_clock);
       for (final slot in ready) {
@@ -200,13 +211,31 @@ class MealPlanRepository {
     });
   }
 
+  /// Uzima sastojke iz recepta u biblioteci kad ih je osoba izmenila
+  /// posle planiranja („Osveži iz recepta“). Porcije obroka ostaju iste,
+  /// a nabavka se usklađuje. Skuvan obrok se ne menja.
+  Future<void> refreshFromRecipe(String entryId, Recipe recipe) =>
+      _edit(entryId, (e) async {
+        if (e.isCooked) throw const ProtectedMealException();
+        if (e.recipeId != recipe.id) throw const MealNotFoundException();
+        final servings = _mealFromRow(e)?.servings ?? recipe.servings;
+        return MealPlanEntriesCompanion(
+          recipeSnapshotJson: Value(
+            jsonEncode(RecipeSnapshot.fromRecipe(recipe).toJson()),
+          ),
+          servings: Value(servings),
+        );
+      });
+
   /// Zaključan obrok ponovni predlog ne menja.
   Future<void> setLocked(String entryId, {required bool locked}) => _edit(
     entryId,
     (_) async => MealPlanEntriesCompanion(isLocked: Value(locked)),
   );
 
-  /// Skuvan obrok više ne traži kupovinu; kupljeno i zaliha ostaju.
+  /// Skuvan obrok više ne traži kupovinu; kupljeno i zaliha ostaju. Samo
+  /// oznaka obroka: ekrani idu kroz `CookingRepository`, koji uz nju beleži
+  /// zapis kuvanja i potrošnju iz ostave.
   Future<void> setCooked(String entryId, {required bool cooked}) => _edit(
     entryId,
     (_) async => MealPlanEntriesCompanion(isCooked: Value(cooked)),
@@ -257,7 +286,34 @@ class MealPlanRepository {
     await _shopping.reconcilePlan(e.planId);
   });
 
-  Future<String> _insertRecipe(RecipeSnapshot r) async {
+  /// Oznake novog recepta iz plana: obroci na kojima je predložen i
+  /// težina/vrsta koje je AI dao (null kad ih AI nije dao).
+  static RecipeLabels _aiLabels(
+    PlanDraft draft,
+    List<MealSlot> ready,
+    String key,
+  ) {
+    final slots = [
+      for (final s in ready)
+        if (draft.proposals[s]!.draftRecipeKey == key) s,
+    ];
+    final first = draft.proposals[slots.first]!;
+    final meals = {for (final s in slots) suitabilityFor(s.type)};
+    return RecipeLabels(
+      meals: [
+        for (final m in MealSuitability.values)
+          if (meals.contains(m)) m.wire,
+      ],
+      weight: first.weight?.wire,
+      dishKind: first.dishKind?.wire,
+      source: LabelsSource.ai.name,
+    );
+  }
+
+  Future<String> _insertRecipe(
+    RecipeSnapshot r, {
+    RecipeLabels labels = RecipeLabels.none,
+  }) async {
     final id = newId();
     final now = _clock().toUtc();
     await _db
@@ -273,6 +329,12 @@ class MealPlanRepository {
               for (final i in r.ingredients) i.toJson(),
             ]),
             stepsJson: jsonEncode(r.steps),
+            mealTypesJson: Value(
+              labels.meals == null ? null : jsonEncode(labels.meals),
+            ),
+            weight: Value(labels.weight),
+            dishKind: Value(labels.dishKind),
+            labelsSource: Value(labels.source),
             createdAt: now,
             updatedAt: now,
             householdId: Value(_scope.householdId),

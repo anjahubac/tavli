@@ -163,6 +163,27 @@ void main() {
       return taps;
     }
 
+    testWidgets('smanjeno kretanje: oznaka izabranog taba bez animacije', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpNav(tester);
+      final pills = tester.widgetList<AnimatedContainer>(
+        find.descendant(
+          of: find.byType(TavliNavigation),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      expect(pills, isNotEmpty);
+      for (final pill in pills) {
+        expect(pill.duration, Duration.zero);
+      }
+    });
+
     testWidgets('telefon: donja traka, Početna u sredini', (tester) async {
       final taps = await pumpNav(tester);
       final xs = [
@@ -301,8 +322,8 @@ void main() {
       final a = tester.getSize(find.byType(OutlinedButton));
       final b = tester.getSize(find.byType(FilledButton));
       expect(a.width, b.width);
-      expect(a.height, 56);
-      expect(b.height, 56);
+      expect(a.height, 48);
+      expect(b.height, 48);
     });
 
     testWidgets('tekst dugmadi staje u jedan red na telefonu', (tester) async {
@@ -390,4 +411,32 @@ void main() {
       }
     }
   }
+
+  testWidgets('TavliListDetail: detalj najviše 300 i najviše trećina', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    Future<double> detailWidth(double width) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: width,
+              height: 400,
+              child: const TavliListDetail(
+                list: SizedBox.expand(),
+                detail: SizedBox(key: Key('detalj'), height: 40),
+              ),
+            ),
+          ),
+        ),
+      );
+      return tester.getSize(find.byKey(const Key('detalj'))).width;
+    }
+
+    expect(await detailWidth(1200), 300);
+    expect(await detailWidth(840), 280);
+  });
 }

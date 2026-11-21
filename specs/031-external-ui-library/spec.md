@@ -31,9 +31,12 @@ quantity, snapshot, offline and account invariants.
   parameters.
 - **D5 Parallel work**: phases 1–2 run in parallel with meal plan work.
 - **D6 Canvas over the earlier standard** (Anja): where the two differed, the
-  canvas wins. A secondary button stays 48 high beside a 56 primary button
-  ("Skuvano" beside "Kuvaj"), button labels are 15/700, and the checkbox radius
-  is 6.
+  canvas wins. Button labels are 15/700 and the checkbox radius is 6.
+  Button height (Anja, 2026-11-20, updated 2026-11-21): primary and secondary
+  buttons are both 48 high with radius 16. Uneven buttons side by side look
+  wrong, and a primary button does not need extra height because its fill
+  already draws attention. Buttons in one row always share one height. The
+  floating action button keeps its own size.
 
 ## Delivery order (Trello "UI biblioteka 1–14")
 
@@ -90,5 +93,7 @@ Gallery copy is Serbian Latin. Screen copy follows the canvas and each feature s
 
 Producer specs: [021](../021-home-and-cooking/spec.md) for the Home screen route.
 
-- **Q1** (Dev 4): source of the icon set: drawn in-house to the canvas geometry,
-  or an open-source outline set with the same geometry (licence recorded).
+- **Q1** (Dev 4), decided 2026-11-20: every icon is drawn in-house. The set is
+  `TavliIcons` in `packages/tavli_ui`, copied from the canvas SVG paths; a new
+  icon is drawn in the same style (24 grid, stroke 2, round caps and joins).
+  No third-party icon set or icon dependency.

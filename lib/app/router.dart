@@ -10,6 +10,7 @@ import '../features/home/home_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
 import '../features/planning/plan_setup_screen.dart';
+import '../features/recipes/cooking_mode_screen.dart';
 import '../features/recipes/from_name_screen.dart';
 import '../features/recipes/from_photo_screen.dart';
 import '../features/recipes/recipe_chat_screen.dart';
@@ -84,6 +85,19 @@ GoRouter createRouter({
       routes: [
         GoRoute(path: 'name', builder: (context, state) => const NameScreen()),
       ],
+    ),
+    // Režim kuvanja je preko celog ekrana, bez glavne navigacije (021 FR-010).
+    GoRoute(
+      path: '/cook/recipe/:id',
+      builder: (context, state) =>
+          RecipeCookingRoute(id: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/cook/meal/:planId/:entryId',
+      builder: (context, state) => MealCookingRoute(
+        planId: state.pathParameters['planId']!,
+        entryId: state.pathParameters['entryId']!,
+      ),
     ),
     // Profil i podešavanja su iznad tabova; otvaraju se preko avatara.
     GoRoute(
@@ -217,25 +231,21 @@ GoRouter createRouter({
 );
 
 class TabSpec {
-  const TabSpec(this.path, this.label, this.icon, this.selectedIcon);
+  const TabSpec(this.path, this.label, this.icon);
 
   final String path;
   final String label;
-  final IconData icon;
-  final IconData selectedIcon;
+
+  /// Ikonica sa platna; izabran tab ima istu ikonicu, drugom bojom.
+  final TavliIconData icon;
 }
 
 const tabs = [
-  TabSpec('/plan', 'Plan', Icons.calendar_month_outlined, Icons.calendar_month),
-  TabSpec(
-    '/shopping',
-    'Nabavka',
-    Icons.shopping_basket_outlined,
-    Icons.shopping_basket,
-  ),
-  TabSpec(homeLocation, 'Početna', Icons.home_outlined, Icons.home),
-  TabSpec('/recipes', 'Recepti', Icons.menu_book_outlined, Icons.menu_book),
-  TabSpec('/pantry', 'Ostava', Icons.kitchen_outlined, Icons.kitchen),
+  TabSpec('/plan', 'Plan', TavliIcons.plan),
+  TabSpec('/shopping', 'Nabavka', TavliIcons.shopping),
+  TabSpec(homeLocation, 'Početna', TavliIcons.home),
+  TabSpec('/recipes', 'Recepti', TavliIcons.recipes),
+  TabSpec('/pantry', 'Ostava', TavliIcons.pantry),
 ];
 
 /// Bočni meni (širok ekran): Početna na vrhu, ostali tabovi istim redom kao

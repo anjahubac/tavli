@@ -20,6 +20,56 @@ const ingredientCategories = [
   'ostalo',
 ];
 
+/// Ko je postavio vezu sastojka sa namirnicom (ugovor #30).
+enum LinkSource { matched, confirmed }
+
+/// Veza sastojka sa namirnicom kataloga (ugovor #30). Važi dok je
+/// `ingredientKey(name)` jednak [matchedKey] i namirnica nije povučena; to
+/// proverava potrošač. Ovaj build vezu samo čuva, ništa je još ne upisuje.
+final class IngredientLink {
+  const IngredientLink({
+    required this.foodId,
+    required this.matchedKey,
+    required this.linkSource,
+  });
+
+  final String foodId;
+  final String matchedKey;
+  final LinkSource linkSource;
+
+  /// Blago čitanje sačuvanog sastojka: nepotpuna ili neispravna veza je
+  /// `null`, a sastojak ostaje čitljiv.
+  static IngredientLink? fromJson(Map<String, dynamic> json) {
+    final foodId = json['foodId'];
+    final matchedKey = json['matchedKey'];
+    final source = LinkSource.values.asNameMap()[json['linkSource']];
+    if (foodId is! String || foodId.trim().isEmpty) return null;
+    if (matchedKey is! String || matchedKey.trim().isEmpty) return null;
+    if (source == null) return null;
+    return IngredientLink(
+      foodId: foodId.trim(),
+      matchedKey: matchedKey.trim(),
+      linkSource: source,
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'foodId': foodId,
+    'matchedKey': matchedKey,
+    'linkSource': linkSource.name,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is IngredientLink &&
+      other.foodId == foodId &&
+      other.matchedKey == matchedKey &&
+      other.linkSource == linkSource;
+
+  @override
+  int get hashCode => Object.hash(foodId, matchedKey, linkSource);
+}
+
 class Ingredient {
   const Ingredient({
     required this.name,
@@ -27,6 +77,7 @@ class Ingredient {
     this.unit,
     this.category = 'ostalo',
     this.note,
+    this.link,
   });
 
   final String name;
@@ -34,6 +85,26 @@ class Ingredient {
   final String? unit;
   final String category;
   final String? note;
+
+  /// Veza sa katalogom; `null` = nepovezan sastojak (važeće stanje).
+  final IngredientLink? link;
+
+  /// Izmena koja zadržava vezu. Ako se promeni naziv, veza prestaje da važi
+  /// sama ([IngredientLink.matchedKey] se više ne poklapa).
+  Ingredient copyWith({
+    String? name,
+    double? quantity,
+    String? unit,
+    String? category,
+    String? note,
+  }) => Ingredient(
+    name: name ?? this.name,
+    quantity: quantity ?? this.quantity,
+    unit: unit ?? this.unit,
+    category: category ?? this.category,
+    note: note ?? this.note,
+    link: link,
+  );
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     final name = (json['name'] as String?)?.trim() ?? '';
@@ -45,6 +116,7 @@ class Ingredient {
       unit: _blankToNull(json['unit']),
       category: ingredientCategories.contains(category) ? category! : 'ostalo',
       note: _blankToNull(json['note']),
+      link: IngredientLink.fromJson(json),
     );
   }
 
@@ -54,6 +126,7 @@ class Ingredient {
     'unit': unit,
     'category': category,
     'note': note,
+    ...?link?.toJson(),
   };
 }
 

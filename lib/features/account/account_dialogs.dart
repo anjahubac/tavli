@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/account.dart';
 
@@ -28,33 +29,29 @@ class _EditNameDialogState extends State<_EditNameDialog> {
     super.dispose();
   }
 
-  void _save() {
-    final n = normalizeName(_name.text);
-    if (n != null) Navigator.of(context).pop(n);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final valid = normalizeName(_name.text) != null;
-    return AlertDialog(
-      title: const Text('Izmeni ime'),
-      content: TextField(
+    final name = normalizeName(_name.text);
+    return TavliDialog<String?>(
+      title: 'Izmeni ime',
+      content: TavliTextField(
+        label: 'Ime',
         controller: _name,
         autofocus: true,
         textCapitalization: TextCapitalization.words,
         inputFormatters: [LengthLimitingTextInputFormatter(maxNameLength)],
-        decoration: const InputDecoration(labelText: 'Ime'),
         onChanged: (_) => setState(() {}),
-        onSubmitted: (_) => _save(),
+        onSubmitted: (_) {
+          if (name != null) Navigator.of(context).pop(name);
+        },
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Odustani'),
-        ),
-        FilledButton(
-          onPressed: valid ? _save : null,
-          child: const Text('Sačuvaj'),
+        const TavliDialogAction('Odustani', null),
+        TavliDialogAction.computed(
+          'Sačuvaj',
+          () => normalizeName(_name.text),
+          isDefault: true,
+          enabled: name != null,
         ),
       ],
     );
@@ -63,69 +60,30 @@ class _EditNameDialogState extends State<_EditNameDialog> {
 
 /// "Odjaviti se?" — true kad je potvrdio. [waiting] = izmene koje još
 /// nisu poslate (biće poslate pri sledećoj prijavi na ovom uređaju).
-Future<bool> confirmSignOut(
-  BuildContext context, {
-  required int waiting,
-}) async =>
-    await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Odjaviti se? Tvoji podaci ostaju sačuvani u nalogu.'),
-            if (waiting > 0) ...[
-              const SizedBox(height: 12),
-              const Text(
-                'Neke izmene još nisu poslate. Poslaćemo ih kada se ponovo '
-                'prijaviš na ovom uređaju.',
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Odustani'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Odjavi se'),
-          ),
-        ],
-      ),
-    ) ??
-    false;
+Future<bool> confirmSignOut(BuildContext context, {required int waiting}) =>
+    showTavliConfirm(
+      context,
+      title: 'Odjaviti se?',
+      message: [
+        'Tvoji podaci ostaju sačuvani u nalogu.',
+        if (waiting > 0)
+          'Neke izmene još nisu poslate. Poslaćemo ih kada se ponovo '
+              'prijaviš na ovom uređaju.',
+      ].join('\n\n'),
+      cancelLabel: 'Odustani',
+      confirmLabel: 'Odjavi se',
+    );
 
 /// "Obrisati nalog?" — crveno dugme, bez kucanja potvrde. true = potvrdio.
-Future<bool> confirmDeleteAccount(BuildContext context) async {
-  final scheme = Theme.of(context).colorScheme;
-  return await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Obrisati nalog?'),
-          content: const Text(
-            'Trajno se brišu tvoj profil, domaćinstvo i svi podaci u njemu '
-            '(recepti, liste, ostava, planovi, ocene, fotografije), na '
-            'serveru i na ovom uređaju, kao i tvoji AI ključevi na ovom '
-            'uređaju. Ovo ne može da se poništi.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Odustani'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: scheme.error,
-                foregroundColor: scheme.onError,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Obriši nalog'),
-            ),
-          ],
-        ),
-      ) ??
-      false;
-}
+Future<bool> confirmDeleteAccount(BuildContext context) => showTavliConfirm(
+  context,
+  title: 'Obrisati nalog?',
+  message:
+      'Trajno se brišu tvoj profil, domaćinstvo i svi podaci u njemu '
+      '(recepti, liste, ostava, planovi, ocene, fotografije), na '
+      'serveru i na ovom uređaju, kao i tvoji AI ključevi na ovom '
+      'uređaju. Ovo ne može da se poništi.',
+  cancelLabel: 'Odustani',
+  confirmLabel: 'Obriši nalog',
+  destructive: true,
+);

@@ -25,7 +25,7 @@ class TavliControlsGallerySections extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GalleryLabeled(
-                'Glavno · 56',
+                'Glavno · 48',
                 Wrap(
                   spacing: TavliSpacing.small,
                   runSpacing: TavliSpacing.small,
@@ -86,7 +86,7 @@ class TavliControlsGallerySections extends StatelessWidget {
               ),
               gap,
               GalleryLabeled(
-                'U istom redu: iste visine (56)',
+                'U istom redu: iste visine (48)',
                 TavliButtonRow(
                   expand: true,
                   children: [
@@ -144,6 +144,17 @@ class TavliControlsGallerySections extends StatelessWidget {
                 label: 'Porcije',
                 initialValue: '4',
                 enabled: false,
+              ),
+              gap,
+              TavliTextField(
+                label: 'API ključ',
+                initialValue: 'gsk_primer',
+                obscureText: true,
+                trailing: TavliIconButton(
+                  icon: Icons.visibility_outlined,
+                  semanticLabel: 'Prikaži',
+                  onPressed: _noop,
+                ),
               ),
               gap,
               TavliSearchField(hint: 'Pretraži recepte'),
@@ -271,3 +282,5 @@ class _RowsDemoState extends State<_RowsDemo> {
     );
   }
 }
+
+void _noop() {}

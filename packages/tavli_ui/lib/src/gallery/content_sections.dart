@@ -5,9 +5,11 @@ import '../content/tavli_data_table.dart';
 import '../content/tavli_list.dart';
 import '../content/tavli_media.dart';
 import '../content/tavli_notice.dart';
+import '../content/tavli_plan.dart';
 import '../content/tavli_states.dart';
 import '../content/tavli_tag.dart';
 import '../controls/tavli_button.dart';
+import '../controls/tavli_icon_button.dart';
 import '../controls/tavli_rows.dart';
 import '../tokens.dart';
 import 'gallery_section.dart';
@@ -53,6 +55,7 @@ class TavliContentGallerySections extends StatelessWidget {
         GallerySection(title: 'Naslov odeljka', child: _Headers()),
         GallerySection(title: 'Sličica, avatar i oznaka', child: _Media()),
         GallerySection(title: 'Prazan ekran i učitavanje', child: _States()),
+        GallerySection(title: 'Plan: nedelja i mesec', child: _Plan()),
       ],
     );
   }
@@ -270,6 +273,37 @@ class _ListsState extends State<_Lists> {
         ),
         gap,
         GalleryLabeled(
+          'Sa ikonicom, dugmadima desno i za brisanje',
+          TavliListGroup(
+            children: [
+              TavliListRow(
+                leading: const Icon(Icons.key_outlined),
+                title: '••••7Lm2',
+                subtitle: 'Dodat 14.11.2026 · Radi',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TavliButton.text(label: 'Proveri', onPressed: () {}),
+                    TavliIconButton(
+                      icon: Icons.delete_outline_rounded,
+                      semanticLabel: 'Obriši ključ',
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+              ),
+              TavliListRow(
+                leading: const Icon(Icons.delete_forever_outlined),
+                title: 'Obriši nalog',
+                subtitle: 'Trajno briše nalog i sve podatke',
+                destructive: true,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+        gap,
+        GalleryLabeled(
           'Grupisana lista sa naslovima odeljaka',
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -440,6 +474,167 @@ class _StatesState extends State<_States> {
                 onChanged: (v) => setState(() => _spin = v),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Plan sa platna: izbor perioda, traka dana, kartice obroka, mesec sa
+/// tačkama i obroci dana, pa nedeljna mreža za računar.
+class _Plan extends StatefulWidget {
+  const _Plan();
+
+  @override
+  State<_Plan> createState() => _PlanState();
+}
+
+class _PlanState extends State<_Plan> {
+  int _day = 4;
+  int _date = 18;
+
+  static const _week = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
+  static const _meals = [
+    ['Palačinke', 'Pileća supa', 'Pita sa sirom'],
+    ['Jaja na oko', 'Sarma', 'Salata sa tunom'],
+    ['Omlet sa povrćem', 'Grašak sa piletinom', 'Proja'],
+    ['Griz', 'Riblji paprikaš', 'Testenina sa sirom'],
+    ['Ovsena kaša sa jabukom', 'Pasulj prebranac', 'Musaka od krompira'],
+    ['Kajgana', 'Punjene paprike', 'Čorba od povrća'],
+    ['Popara', 'Pečeno pile', 'Gibanica'],
+  ];
+  static const _types = ['Doručak', 'Ručak', 'Večera'];
+
+  /// Skuvano: sve do petka, pa doručak i ručak u petak.
+  bool _cooked(int day, int meal) => day < 4 || (day == 4 && meal < 2);
+
+  @override
+  Widget build(BuildContext context) {
+    const gap = SizedBox(height: TavliSpacing.medium);
+    // Novembar 2026: počinje u nedelju, mreža od 26. oktobra do 6. decembra.
+    final days = [
+      for (var i = 0; i < 42; i++)
+        () {
+          final n = i - 5;
+          final inMonth = n >= 1 && n <= 30;
+          final day = inMonth ? n : (n < 1 ? 31 + n : n - 30);
+          final planned = n >= 9 && n <= 22;
+          final week = n >= 9 && n <= 15;
+          return TavliCalendarDay(
+            day: '$day',
+            active: inMonth,
+            semanticLabel: '$day. novembar',
+            marks: [
+              if (planned)
+                for (var m = 0; m < 3; m++)
+                  TavliCalendarMark(
+                    week ? _meals[n - 9][m] : _types[m],
+                    done: week && _cooked(n - 9, m),
+                  ),
+            ],
+          );
+        }(),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TavliPeriodSwitcher(
+          label: '9. – 15. novembar',
+          previousLabel: 'Prethodna nedelja',
+          nextLabel: 'Sledeća nedelja',
+          onPrevious: () {},
+          onNext: null,
+        ),
+        TavliWeekStrip(
+          selectedIndex: _day,
+          onSelected: (i) => setState(() => _day = i),
+          days: [
+            for (var i = 0; i < 7; i++)
+              TavliStripDay(
+                weekday: _week[i],
+                day: '${9 + i}',
+                semanticLabel: '${_week[i]} ${9 + i}',
+              ),
+          ],
+        ),
+        const TavliSectionHeader(
+          'Petak, 13. novembar',
+          style: TavliSectionHeaderStyle.title,
+        ),
+        for (var m = 0; m < 3; m++) ...[
+          TavliMealCard(
+            label: _types[m],
+            title: _meals[_day][m],
+            detail: '75 min · 4 porcije',
+            cooked: _cooked(_day, m),
+            onTap: () {},
+          ),
+          const SizedBox(height: TavliSpacing.small),
+        ],
+        const TavliMealCard(
+          label: 'Užina',
+          title: 'Nije planirano',
+          muted: true,
+        ),
+        gap,
+        TavliMonthCalendar(
+          weekdays: const ['P', 'U', 'S', 'Č', 'P', 'S', 'N'],
+          days: days,
+          selectedIndex: _date + 5,
+          onSelected: (i) => setState(() => _date = i - 5),
+        ),
+        const SizedBox(height: TavliSpacing.small),
+        const TavliCalendarLegend(),
+        gap,
+        TavliMealList(
+          children: [
+            for (var m = 0; m < 3; m++)
+              TavliMealRow(
+                label: _types[m],
+                title: _meals[4][m],
+                cooked: _cooked(4, m),
+                onTap: () {},
+              ),
+          ],
+        ),
+        gap,
+        SizedBox(
+          height: 300,
+          child: TavliWeekGrid(
+            days: [
+              for (var i = 0; i < 7; i++)
+                TavliWeekDay(
+                  weekday: _week[i],
+                  day: '${9 + i}',
+                  semanticLabel: '${_week[i]} ${9 + i}',
+                  highlighted: i == 4,
+                ),
+            ],
+            rows: [
+              for (var m = 0; m < 3; m++)
+                [
+                  for (var d = 0; d < 7; d++)
+                    TavliMealCard(
+                      compact: true,
+                      label: _types[m],
+                      title: _meals[d][m],
+                      cooked: _cooked(d, m),
+                      onTap: () {},
+                    ),
+                ],
+            ],
+          ),
+        ),
+        gap,
+        SizedBox(
+          height: 360,
+          child: TavliMonthCalendar(
+            detailed: true,
+            weekdays: _week,
+            days: days,
+            selectedIndex: _date + 5,
+            onSelected: (i) => setState(() => _date = i - 5),
           ),
         ),
       ],

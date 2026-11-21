@@ -24,8 +24,8 @@ abstract final class TavliRadius {
   /// Sporedno dugme, polje za unos, red u listi, napomena.
   static const double field = 16;
 
-  /// Glavno dugme.
-  static const double button = 18;
+  /// Glavno i sporedno dugme (iste visine i radijusa, Anja 21.11.2026).
+  static const double button = 16;
 
   /// Kartica, plutajuće dugme, segmentno dugme.
   static const double card = 20;
@@ -41,4 +41,20 @@ abstract final class TavliWidth {
 
   /// Poruka praznog stanja ili greške.
   static const double message = 360;
+
+  /// Najveća širina sadržaja ekrana sa podešavanjima na širokom ekranu.
+  static const double page = 880;
+
+  /// Lista i detalj (Nabavka na računaru): detalj desno je najviše ove
+  /// širine i najviše trećina sadržaja.
+  static const double detail = 300;
+
+  /// Najmanja širina sadržaja od koje lista dobija detalj desno; uže od
+  /// toga detalj se otvara kao donji list.
+  static const double listDetail = 840;
+
+  /// Najmanja širina sadržaja od koje Plan na računaru prikazuje nedelju
+  /// kao mrežu od sedam kolona; uže od toga nedelja je kao na telefonu
+  /// (traka dana i obroci izabranog dana).
+  static const double weekGrid = 640;
 }

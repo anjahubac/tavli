@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli/account/session_store.dart';
+import 'package:tavli/features/account/auth_brand.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
@@ -30,16 +34,29 @@ void main() {
     return app;
   }
 
+  testWidgets('znak zadržava prostor dok se slika učitava', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: AuthBrand())),
+    );
+
+    final image = find.byType(RawImage);
+    expect(tester.widget<RawImage>(image).image, isNull);
+    final size = tester.getSize(image);
+    expect(size.width, greaterThan(0));
+    expect(size.height, size.width);
+  });
+
   testTavli('bez naloga: samo "Prijava", nijedan tab', (tester) async {
     await pumpTavli(tester, signedIn: false);
     expect(find.text('Prijava'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(
       find.text(
         'Prijavi se e-poštom. Poslaćemo ti kod, lozinka nije potrebna.',
       ),
       findsOneWidget,
     );
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(TavliNavigation), findsNothing);
     expect(find.text('Recepti'), findsNothing);
   });
 
@@ -72,6 +89,7 @@ void main() {
   ) async {
     final app = await toCodeStep(tester);
     expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(app.backend.auth.sentCodes, ['ana@mail.com']);
 
     await tester.enterText(field('Kod iz poruke'), FakeServer.code);
@@ -126,6 +144,29 @@ void main() {
     );
     expect(field('E-pošta'), findsOneWidget);
   });
+
+  for (final (platform, message) in [
+    (
+      TargetPlatform.linux,
+      'Bezbedno skladište sesije nije dostupno. Proveri da li je sistemski keyring pokrenut i otključan, pa pokušaj ponovo.',
+    ),
+    (TargetPlatform.windows, 'Funkcija nije dostupna na ovom uređaju.'),
+  ]) {
+    testTavli('odbijeno čuvanje sesije na ${platform.name}', (tester) async {
+      debugDefaultTargetPlatformOverride = platform;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final app = await toCodeStep(tester);
+      app.secrets.deniedWrites.add(SessionStore.key);
+
+      await tester.enterText(field('Kod iz poruke'), FakeServer.code);
+      await tester.pumpAndSettle();
+
+      expect(find.text(message), findsOneWidget);
+      expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+      expect(app.backend.auth.current, isNull);
+      expect(app.secrets.values, isEmpty);
+    });
+  }
 
   testTavli('"Pošalji ponovo" posle 30 s', (tester) async {
     final app = await toCodeStep(tester);

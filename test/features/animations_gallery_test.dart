@@ -134,7 +134,11 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await pumpTavli(tester, size: size, location: '/pantry');
       expect(find.text('Još nema unetih namirnica'), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.shopping_basket_outlined));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is TavliIcon && w.icon == TavliIcons.shopping,
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Nabavka je prazna'), findsOneWidget);
       await tester.ensureVisible(find.text('Pogledaj recepte'));

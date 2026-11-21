@@ -81,6 +81,7 @@ class FakeServer {
     'pantry_items': 'pantry_item',
     'meal_plans': 'meal_plan',
     'meal_plan_entries': 'meal_plan_entry',
+    'cooked_events': 'cooked_event',
     'shopping_sources': 'shopping_source',
     'shopping_contributions': 'shopping_contribution',
     'supply_allocations': 'supply_allocation',
@@ -93,6 +94,7 @@ class FakeServer {
     'recipe_versions': [('recipe', 'recipe_id')],
     'shopping_items': [('shopping_list', 'list_id')],
     'meal_plan_entries': [('meal_plan', 'plan_id')],
+    'cooked_events': [('meal_plan_entry', 'plan_entry_id')],
     'ratings': [('recipe', 'recipe_id')],
     'shopping_sources': [
       ('shopping_list', 'list_id'),
@@ -129,6 +131,21 @@ class FakeServer {
       if (_deleted(entity, id)) continue;
       if (_parentsOf[name]?.any((p) => _deleted(p.$1, r[p.$2])) ?? false) {
         continue;
+      }
+      if (name == 'shopping_lists' &&
+          r['meal_plan_id'] != null &&
+          r['period_start'] != null &&
+          table(name).values.any(
+            (existing) =>
+                existing['id'] != id &&
+                existing['meal_plan_id'] == r['meal_plan_id'] &&
+                existing['period_start'] == r['period_start'],
+          )) {
+        throw const PermanentSyncError('23505');
+      }
+      if (name == 'shopping_items' &&
+          !table('shopping_lists').containsKey(r['list_id'])) {
+        throw const PermanentSyncError(pgForeignKeyViolation);
       }
       final row = {...?table(name)[id], ...r, 'updated_at': _now()};
       // Kao kolona koju računa baza (generated always).
@@ -190,6 +207,7 @@ class FakeServer {
         setNull('shopping_lists', 'meal_plan_id');
       case 'meal_plan_entries':
         cascade('shopping_sources', 'plan_entry_id');
+        cascade('cooked_events', 'plan_entry_id');
       case 'shopping_items':
         setNull('shopping_contributions', 'shopping_item_id');
         setNull('pantry_items', 'source_shopping_item_id');
@@ -414,10 +432,16 @@ class FakeSyncRemote implements SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   }) async {
     _checkSession();
     server.upsert(table, [
-      for (final r in rows) jsonDecode(jsonEncode(r)) as Map<String, Object?>,
+      for (final r in rows)
+        if (!ignoreDuplicates ||
+            !server
+                .rows(table)
+                .any((existing) => existing[onConflict] == r[onConflict]))
+          jsonDecode(jsonEncode(r)) as Map<String, Object?>,
     ], onConflict);
   }
 

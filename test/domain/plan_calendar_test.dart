@@ -11,6 +11,11 @@ void main() {
       expect(CivilDate(2028, 2, 29).day, 29);
     });
 
+    test('isoDate je yyyy-MM-dd sa vodećim nulama', () {
+      expect(d(2026, 1, 5).isoDate, '2026-01-05');
+      expect(d(987, 12, 31).isoDate, '0987-12-31');
+    });
+
     test('poređenje i jednakost po kalendarskim poljima', () {
       expect(d(2026, 11, 2), d(2026, 11, 2));
       expect(d(2026, 11, 2).hashCode, d(2026, 11, 2).hashCode);

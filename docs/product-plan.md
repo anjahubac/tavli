@@ -107,7 +107,7 @@ operations. See [full spec index](../specs/README.md) and
 | CATALOG | Dev 1 | Date/unit contracts | UUID/slug, alias scope, seed review, nutrition provenance/licenses |
 | HOUSEHOLD (008) | Dev 3 | Auth/member contract | Inviting rights, transfer/leave semantics, purpose-limited personal aggregates |
 | REALTIME (009) | Dev 3 | Household transitions | Authorized invalidation/reconnect/conflicts |
-| MEAL-RULES | Dev 2 | AI schema/member aggregate | Snack identity, suitability/intensity/kind enums, favorites aggregation |
+| MEAL-RULES | Dev 2 | AI schema/member aggregate | Snack identity, suitability/intensity/kind enums, review of selected-member favorites contract |
 | SHOPPING-FOODS | Dev 1 | Catalog/supply contract | Dictionary versions, legacy snapshots and conversions |
 | EVERYDAY-UX | Dev 4 | Routes/cooking operation | Home route/order, existing-route compatibility |
 | PANTRY | Dev 4 | Catalog, supply/cooking contract | Known/unknown quantity, explicit transfer, reversible consumption |
@@ -129,8 +129,10 @@ The linked Claude proposals were not supplied in full. Counts of seven/ten/six
 questions above are source references, not questions invented or resolved here.
 Retrieve them or clarify explicit requirements before the affected feature starts.
 
-1. Creator-only versus all-member favorites: recommendation is all diners,
-   but no broad access to private profiles/diaries is approved by inference.
+1. Favorites decision (Matija, 2026-11-20): only explicitly selected plan
+   participants contribute, defaulting to all current household members.
+   The [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
+   still needs Dev 1/Dev 2 review; no broad access to private profiles/diaries.
 2. Initial cookbook real-text PDF/EPUB versus scanned OCR.
 3. Allergen vocabulary: reviewed canonical codes, distinct lactose avoidance
    and dietary preferences; do not turn a draft label into a medical claim.

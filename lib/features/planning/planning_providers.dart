@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../account/auth_controller.dart';
+import '../../data/cooking_repository.dart';
 import '../../data/meal_plan_repository.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/plan_calendar.dart';
@@ -14,6 +15,18 @@ final mealPlanRepositoryProvider = Provider<MealPlanRepository>(
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     writer: ref.watch(syncedWriterProvider),
     shopping: ref.watch(shoppingRepositoryProvider),
+    clock: ref.watch(clockProvider),
+  ),
+);
+
+/// Jedino mesto za „skuvano“ i poništavanje (Plan, Početna, režim kuvanja).
+/// Dnevnik ishrane se ovde kači kao `CookedEffect` kada bude gotov.
+final cookingRepositoryProvider = Provider<CookingRepository>(
+  (ref) => CookingRepository(
+    ref.watch(databaseProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    writer: ref.watch(syncedWriterProvider),
+    plans: ref.watch(mealPlanRepositoryProvider),
     clock: ref.watch(clockProvider),
   ),
 );

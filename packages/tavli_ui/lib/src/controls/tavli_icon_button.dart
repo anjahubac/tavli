@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../icons/tavli_icons.dart';
+
 /// Dugme samo sa ikonicom. Opis je obavezan: čita ga čitač ekrana i
 /// prikazuje se kao oblačić pod mišem ili na dug pritisak.
 ///
@@ -7,13 +9,20 @@ import 'package:material_ui/material_ui.dart';
 class TavliIconButton extends StatelessWidget {
   const TavliIconButton({
     super.key,
-    required this.icon,
+    this.icon,
+    this.glyph,
     required this.semanticLabel,
     required this.onPressed,
     this.selected = false,
-  });
+  }) : assert(
+         (icon == null) != (glyph == null),
+         'tačno jedna: ikonica ili Tavli ikonica',
+       );
 
-  final IconData icon;
+  final IconData? icon;
+
+  /// Ikonica iz Tavli seta ([TavliIcons]); zamenjuje [icon].
+  final TavliIconData? glyph;
 
   /// Šta dugme radi, npr. „Obriši pretragu“.
   final String semanticLabel;
@@ -35,7 +44,10 @@ class TavliIconButton extends StatelessWidget {
       child: IconButton(
         onPressed: onPressed,
         isSelected: selected,
-        icon: Icon(icon, size: 24, semanticLabel: semanticLabel),
+        icon: switch (glyph) {
+          final g? => TavliIcon(g, size: 24, semanticLabel: semanticLabel),
+          null => Icon(icon, size: 24, semanticLabel: semanticLabel),
+        },
         color: selected ? c.primary : c.onSurfaceVariant,
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         style: const ButtonStyle(
