@@ -230,6 +230,14 @@ na tanjiru", "Jaje se kuva".
 
 - The branded intro is visible only while restoring the account session. Ready
   screens are available immediately, with no minimum intro or refresh delay.
+- The approved Superdesign intro places the skillet inside the active theme's
+  circle above the Tavli wordmark. Basil leaves, two saffron blossoms or
+  blueberries fall from inside the top of the circle and disappear behind the
+  rim before the two curls of steam rise. The single sequence ends in a
+  still frame, which also appears immediately with Reduce Motion. Keep the
+  theme color inside the circle, use the neutral Bosiljak background for
+  each brightness, keep the existing subtitle and expose the wordmark as “Tavli”.
+  [Approved Superdesign draft](https://p.superdesign.dev/draft/84b5fd33-5056-48bc-bf99-b3cdb47b2bb3)
 - Frequent ingredient feedback lasts 180 ms; the badge grows by at most 8% for
   240 ms. Long recognised-ingredient lists finish revealing within 360 ms.
 - Shopping demo commits the difference before confirming it, blocks overlapping

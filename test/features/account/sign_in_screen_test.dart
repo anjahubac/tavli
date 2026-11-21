@@ -34,6 +34,7 @@ void main() {
   testTavli('bez naloga: samo "Prijava", nijedan tab', (tester) async {
     await pumpTavli(tester, signedIn: false);
     expect(find.text('Prijava'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(
       find.text(
         'Prijavi se e-poštom. Poslaćemo ti kod, lozinka nije potrebna.',
@@ -73,6 +74,7 @@ void main() {
   ) async {
     final app = await toCodeStep(tester);
     expect(find.text('Poslali smo kod na ana@mail.com.'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(app.backend.auth.sentCodes, ['ana@mail.com']);
 
     await tester.enterText(field('Kod iz poruke'), FakeServer.code);

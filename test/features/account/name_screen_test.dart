@@ -12,6 +12,7 @@ void main() {
   testTavli('nalog bez imena: korak sa imenom pre aplikacije', (tester) async {
     await pumpTavli(tester, name: null);
     expect(find.text('Kako da te zovemo?'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(nameField(), findsOneWidget);
     expect(find.byType(TavliNavigation), findsNothing);
     expect(find.byType(BackButton), findsNothing);
