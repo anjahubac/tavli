@@ -46,6 +46,17 @@ void main() {
     expect(jsonDecode(r.body), hasLength(2));
   });
 
+  test('nedeljna lista može da preskoči ponovljeno kreiranje', () async {
+    handler = (_) => http.Response('', 201);
+    await remote().upsert('shopping_lists', [
+      {'id': 'week'},
+    ], ignoreDuplicates: true);
+    expect(
+      requests.single.headers['Prefer'],
+      contains('resolution=ignore-duplicates'),
+    );
+  });
+
   test('profil ukusa: upsert po user_id', () async {
     handler = (_) => http.Response('', 201);
     await remote().upsert('taste_profiles', [

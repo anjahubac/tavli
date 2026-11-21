@@ -325,6 +325,7 @@ class _PlanPeriod extends ConsumerWidget {
         items: [for (final i in all) i.item],
       );
     }
+    final repo = ref.read(shoppingRepositoryProvider);
     return ShoppingItemsList(
       mode: mode,
       filters: filters,
@@ -332,8 +333,7 @@ class _PlanPeriod extends ConsumerWidget {
         for (final i in all)
           if (i.weekStart == week.range.start) i.item,
       ],
-      listId: () =>
-          ref.read(shoppingRepositoryProvider).weekList(plan.id, week),
+      listId: () => repo.weekList(plan.id, week),
       emptyText: 'Za ovu nedelju nema šta da se kupi.',
     );
   }
@@ -523,6 +523,7 @@ class _RecipeShopping extends ConsumerWidget {
       return ShoppingFrame(mode: mode, body: const TavliLoading());
     }
     final preparations = preparationsAsync.value ?? const [];
+    final repo = ref.read(shoppingRepositoryProvider);
     return ShoppingItemsList(
       mode: mode,
       header: [
@@ -538,7 +539,7 @@ class _RecipeShopping extends ConsumerWidget {
         ],
       ],
       items: items.value ?? const [],
-      listId: () => ref.read(shoppingRepositoryProvider).recipeList(),
+      listId: repo.recipeList,
       emptyText:
           'Otvori recept i izaberi „Proveri sastojke“ da dodaš ono što '
           'nemaš.',

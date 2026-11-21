@@ -154,7 +154,9 @@ unawaited futures and context-after-await are errors).
 - Keep generated `lib/data/database.g.dart` committed and in sync.
 - UI reads from drift (the offline cache); never from the network directly.
   Every synced business-data write goes through a repository that writes the row and an
-  outbox entry in one transaction. Record ids are client-generated (UUID).
+  outbox entry in one transaction. Use client-generated IDs. If devices can
+  create the same unique logical record offline, follow the identity, replay and
+  two-client regression rules in [quality gates](docs/development/quality-gates.md#sync-changes).
 - Backend access only through the data layer (Supabase client wrapped behind an
   interface so tests can fake it); no Supabase calls from widgets.
 - Follow `flutter_lints`; no `// ignore:` without a reason in the comment.
