@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/recipe_labels.dart';
 
 import '../../helpers/test_app.dart';
@@ -229,5 +232,49 @@ void main() {
     await tester.tap(find.byTooltip('Poništi poslednju izmenu'));
     await tester.pumpAndSettle();
     expect(await app.titles(), ['Treća']);
+  });
+  testTavli('izmena preko četa čuva vezu nepromenjenog sastojka', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a/chat',
+      recipes: [
+        Recipe(
+          id: 'a',
+          title: 'Kajgana',
+          servings: 2,
+          ingredients: const [
+            Ingredient(
+              name: 'crni luk',
+              quantity: 0.5,
+              unit: 'kg',
+              category: 'voće i povrće',
+              link: IngredientLink(
+                foodId: '00000000-0000-4000-8000-000000000001',
+                matchedKey: 'crni luk',
+                linkSource: LinkSource.confirmed,
+              ),
+            ),
+          ],
+          steps: const ['Iseckati luk.'],
+          source: RecipeSource.manual,
+          createdAt: DateTime.utc(2026),
+        ),
+      ],
+      ai: [aiAnswer(recipeJson('Kajgana sa biberom'))],
+    );
+
+    await send(tester, 'dodaj biber');
+    await tapButton(tester, 'Prihvati');
+
+    final row = await app.db.select(app.db.recipes).getSingle();
+    final stored = [
+      for (final i in jsonDecode(row.ingredientsJson) as List) i as Map,
+    ];
+    final onion = stored.firstWhere((i) => i['name'] == 'crni luk');
+    expect(onion['foodId'], '00000000-0000-4000-8000-000000000001');
+    expect(onion['linkSource'], 'confirmed');
+    expect(stored.firstWhere((i) => i['name'] == 'biber')['foodId'], isNull);
   });
 }
