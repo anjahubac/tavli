@@ -137,10 +137,12 @@ class MealEntryDetail extends ConsumerWidget {
               label: Text(meal.isLocked ? 'Otključaj' : 'Zaključaj'),
             ),
             OutlinedButton.icon(
-              onPressed: () => runMealEdit(
-                context,
-                () => repo.setCooked(meal.id, cooked: !meal.isCooked),
-              ),
+              onPressed: () => runMealEdit(context, () async {
+                final cooking = ref.read(cookingRepositoryProvider);
+                meal.isCooked
+                    ? await cooking.undoCooked(meal.id)
+                    : await cooking.markCooked(meal.id);
+              }),
               icon: Icon(
                 meal.isCooked ? Icons.undo : Icons.check_circle_outline,
               ),

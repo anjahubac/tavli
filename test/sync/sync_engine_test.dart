@@ -255,6 +255,35 @@ void main() {
       expect(phases, isEmpty);
     });
 
+    test(
+      'posle preuzimanja poziva afterPull, kad su redovi već upisani',
+      () async {
+        var after = 0;
+        final engine2 = SyncEngine(
+          db: db,
+          scope: scope,
+          uploader: Uploader(
+            db: db,
+            remote: backend.sync,
+            photos: backend.photos,
+            photoStore: FakePhotoStore(),
+            scope: scope,
+            refreshSession: () async => true,
+          ),
+          downloader: Downloader(db: db, remote: backend.sync, scope: scope),
+          timer: timers.call,
+          clock: () => now,
+          afterPull: () async {
+            expect(await db.select(db.pantryItems).get(), hasLength(1));
+            after++;
+          },
+        );
+        addTearDown(engine2.stop);
+        await engine2.pull();
+        expect(after, 1);
+      },
+    );
+
     test('povratak u aplikaciju preuzima tek posle 15 minuta', () async {
       await full.onStart();
       backend.server.calls.clear();

@@ -303,6 +303,7 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
     'expires_at': r.expiresAt == null ? null : _ts(r.expiresAt!),
     'confirmed_at': _tsOrNull(r.confirmedAt),
     'source_shopping_item_id': r.sourceShoppingItemId,
+    'quantity_set_at': _tsOrNull(r.quantitySetAt),
   };
 
   @override
@@ -318,6 +319,7 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
         expiresAt: Value(_dateOrNull(j['expires_at'])),
         confirmedAt: Value(_dateOrNull(j['confirmed_at'])),
         sourceShoppingItemId: Value(j['source_shopping_item_id'] as String?),
+        quantitySetAt: Value(_dateOrNull(j['quantity_set_at'])),
       );
 }
 
@@ -650,6 +652,103 @@ class TasteProfileEntity
       );
 }
 
+/// Obrok označen kao skuvan (zapis operacije; poništavanje ga ne briše).
+class CookedEventEntity extends SyncEntity<$CookedEventsTable, CookedEventRow> {
+  const CookedEventEntity();
+  @override
+  String get name => 'cooked_event';
+  @override
+  String get remoteTable => 'cooked_events';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  List<(String, String)> get parentKeys => const [
+    ('meal_plan_entry', 'plan_entry_id'),
+  ];
+  @override
+  $CookedEventsTable table(AppDatabase db) => db.cookedEvents;
+  @override
+  Expression<String> idColumn($CookedEventsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($CookedEventsTable t) => t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(CookedEventRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'plan_entry_id': r.planEntryId,
+    'meal_date': CivilDate.fromWire(r.mealDate).toString(),
+    'meal_type': r.mealType,
+    'actor_user_id': r.actorUserId,
+    'servings': r.servings,
+    'cooked_at': _ts(r.cookedAt),
+    'undone_at': _tsOrNull(r.undoneAt),
+    'undo_reason': r.undoReason,
+  };
+
+  @override
+  CookedEventsCompanion fromRemote(Map<String, Object?> j) =>
+      CookedEventsCompanion(
+        id: Value(j['id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        planEntryId: Value(j['plan_entry_id']! as String),
+        mealDate: Value(_date(j['meal_date'])),
+        mealType: Value(j['meal_type']! as String),
+        actorUserId: Value(j['actor_user_id']! as String),
+        servings: Value(j['servings']! as int),
+        cookedAt: Value(_date(j['cooked_at'])),
+        undoneAt: Value(_dateOrNull(j['undone_at'])),
+        undoReason: Value(j['undo_reason'] as String?),
+      );
+}
+
+/// Koliko je jedno kuvanje uzelo iz jedne stavke ostave.
+class PantryConsumptionEntity
+    extends SyncEntity<$PantryConsumptionsTable, PantryConsumptionRow> {
+  const PantryConsumptionEntity();
+  @override
+  String get name => 'pantry_consumption';
+  @override
+  String get remoteTable => 'pantry_consumptions';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  List<(String, String)> get parentKeys => const [
+    ('cooked_event', 'event_id'),
+    ('pantry_item', 'pantry_item_id'),
+  ];
+  @override
+  $PantryConsumptionsTable table(AppDatabase db) => db.pantryConsumptions;
+  @override
+  Expression<String> idColumn($PantryConsumptionsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($PantryConsumptionsTable t) =>
+      t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(PantryConsumptionRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'event_id': r.eventId,
+    'pantry_item_id': r.pantryItemId,
+    'base_unit': r.baseUnit,
+    'micros': r.micros,
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  PantryConsumptionsCompanion fromRemote(Map<String, Object?> j) =>
+      PantryConsumptionsCompanion(
+        id: Value(j['id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        eventId: Value(j['event_id']! as String),
+        pantryItemId: Value(j['pantry_item_id']! as String),
+        baseUnit: Value(j['base_unit']! as String),
+        micros: Value(j['micros']! as int),
+        createdAt: Value(_date(j['created_at'])),
+      );
+}
+
 /// Ime u profilu (lokalno u `Accounts`). Šalje se kao izmena imena, ne upsert.
 const profileEntity = 'profile';
 
@@ -668,6 +767,8 @@ const List<SyncEntity<Table, Object?>> syncEntities = [
   ShoppingSourceEntity(),
   ShoppingContributionEntity(),
   SupplyAllocationEntity(),
+  CookedEventEntity(),
+  PantryConsumptionEntity(),
   RatingEntity(),
   TasteProfileEntity(),
 ];
