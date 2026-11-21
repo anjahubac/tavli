@@ -57,6 +57,7 @@ class SyncEngine {
     this._legacyMover,
     this.onUnauthorized,
     this.refreshSession,
+    this.afterPull,
     TimerFactory? timer,
     DateTime Function()? clock,
     this.debounce = const Duration(seconds: 1),
@@ -80,6 +81,10 @@ class SyncEngine {
 
   /// Sesija je odbijena i posle obnove: nazad na prijavu.
   final Future<void> Function()? onUnauthorized;
+
+  /// Posle svakog uspešnog preuzimanja: lokalne projekcije koje zavise od
+  /// više tabela (npr. oznaka „skuvano“ iz zapisa kuvanja).
+  final Future<void> Function()? afterPull;
 
   static const backoff = [
     Duration(seconds: 5),
@@ -183,6 +188,7 @@ class SyncEngine {
         await downloader.run();
       }
       if (_stopped) return;
+      await afterPull?.call();
       await (_db.update(
         _db.accounts,
       )..where((t) => t.userId.equals(_scope.userId))).write(

@@ -7,7 +7,8 @@ import '../domain/cooked_event.dart';
 import '../domain/ids.dart';
 import '../domain/meal_plan.dart';
 import '../domain/plan_calendar.dart';
-import '../domain/shopping_demand.dart' show normalizeUnit;
+import '../domain/shopping_demand.dart'
+    show maxServings, minServings, normalizeUnit;
 import '../domain/shopping_source.dart' show RecipeSnapshot;
 import '../sync/synced_writer.dart';
 import 'database.dart';
@@ -58,7 +59,10 @@ class CookingRepository {
       mealDate: CivilDate.fromWire(entry.date),
       mealType: MealType.tryParse(entry.mealType) ?? MealType.lunch,
       actorUserId: _scope.userId,
-      servings: entry.servings ?? _snapshotOf(entry)?.baseServings ?? 2,
+      // Server prima 1–20; porcije recepta (stari obrok bez porcija) nemaju
+      // gornju granicu.
+      servings: (entry.servings ?? _snapshotOf(entry)?.baseServings ?? 2)
+          .clamp(minServings, maxServings),
       cookedAt: now,
     );
     await _db
@@ -137,7 +141,7 @@ class CookingRepository {
     // npr. unos u dnevniku ishrane za zapis koji više ne važi.
     late CookedEvent undone;
     for (final id in closed) {
-      final event = _toEvent(
+      final event = cookedEventFromRow(
         await (_db.select(
           _db.cookedEvents,
         )..where((t) => t.id.equals(id))).getSingle(),
@@ -148,6 +152,34 @@ class CookingRepository {
       }
     }
     return undone;
+  });
+
+  /// Posle preuzimanja: oznaka obroka se ponovo izvodi iz zapisa kuvanja.
+  /// Ceo red obroka se šalje i čuva po principu „poslednji upis pobeđuje“,
+  /// pa zastareo red sa drugog uređaja može da vrati staru oznaku. Obrok bez
+  /// ijednog zapisa (skuvan pre ove verzije) se ne dira. Vraća broj
+  /// ispravljenih obroka; svaka ispravka usklađuje i nabavku i ide u outbox.
+  Future<int> reconcileCookedFlags() => _db.transaction(() async {
+    final hid = _scope.householdId;
+    final byEntry = <String, List<CookedEvent>>{};
+    for (final r in await (_db.select(
+      _db.cookedEvents,
+    )..where((t) => t.householdId.equals(hid))).get()) {
+      byEntry.putIfAbsent(r.planEntryId, () => []).add(cookedEventFromRow(r));
+    }
+    if (byEntry.isEmpty) return 0;
+    var fixed = 0;
+    for (final entry
+        in await (_db.select(_db.mealPlanEntries)..where(
+              (t) => t.id.isIn(byEntry.keys) & t.householdId.equals(hid),
+            ))
+            .get()) {
+      final cooked = activeEvent(byEntry[entry.id]!) != null;
+      if (entry.isCooked == cooked) continue;
+      await _plans.setCooked(entry.id, cooked: cooked);
+      fixed++;
+    }
+    return fixed;
   });
 
   /// Važeći zapis obroka, uživo (null = nije skuvan).
@@ -168,7 +200,7 @@ class CookingRepository {
                   t.householdId.equals(_scope.householdId),
             ))
             .get())
-      _toEvent(r),
+      cookedEventFromRow(r),
   ];
 
   /// Koliko obrok uzima iz svake stavke ostave: zaliha koja je u nabavci već
@@ -247,14 +279,18 @@ class CookingRepository {
   static RecipeSnapshot? _snapshotOf(MealPlanEntryRow e) {
     final json = e.recipeSnapshotJson;
     if (json == null) return null;
+    // Bilo kakva greška čitanja (i pogrešan tip polja, TypeError) znači
+    // „nema upotrebljivog zapisa“: obrok se i tada može skuvati.
     try {
       return RecipeSnapshot.fromJson(jsonDecode(json) as Map<String, dynamic>);
-    } on FormatException {
+    } on Object {
       return null;
     }
   }
+}
 
-  static CookedEvent _toEvent(CookedEventRow r) => CookedEvent(
+/// Red baze → [CookedEvent].
+CookedEvent cookedEventFromRow(CookedEventRow r) => CookedEvent(
     id: r.id,
     planEntryId: r.planEntryId,
     mealDate: CivilDate.fromWire(r.mealDate),
@@ -267,4 +303,3 @@ class CookingRepository {
         ? null
         : UndoReason.values.asNameMap()[r.undoReason] ?? UndoReason.user,
   );
-}

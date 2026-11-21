@@ -68,15 +68,22 @@ CookedEvent? activeEvent(Iterable<CookedEvent> events) {
 }
 
 /// Jedan red potrošnje: koliko je zapis `eventId` uzeo iz stavke ostave,
-/// u milionitim delovima osnovne jedinice stavke (g, ml, kom…).
-typedef Consumption = ({String eventId, String pantryItemId, int micros});
+/// u milionitim delovima osnovne jedinice [baseUnit] (g, ml, kom…).
+typedef Consumption = ({
+  String eventId,
+  String pantryItemId,
+  String baseUnit,
+  int micros,
+});
 
 /// Raspoloživa količina stavke ostave u njenoj jedinici: upisana količina
 /// minus potrošnja važećih zapisa skuvanih posle poslednjeg ručnog brojanja
 /// ([quantitySetAt]), nikad ispod nule. null kad količina nije poznata.
 ///
 /// [counted] su id-jevi zapisa koji se računaju (važeći zapis svakog
-/// obroka); [cookedAt] daje vreme kuvanja po id-ju zapisa.
+/// obroka); [cookedAt] daje vreme kuvanja po id-ju zapisa. Red potrošnje
+/// druge osnovne jedinice (stavci je u međuvremenu promenjena jedinica) se
+/// ne oduzima.
 double? availableQuantity({
   required double? quantity,
   required String? unit,
@@ -86,10 +93,12 @@ double? availableQuantity({
   required Map<String, DateTime> cookedAt,
 }) {
   if (quantity == null) return null;
-  final factor = normalizeUnit(unit).factor;
+  final normalized = normalizeUnit(unit);
+  final factor = normalized.factor;
   var micros = toMicros(quantity) * factor;
   for (final c in consumptions) {
     if (!counted.contains(c.eventId)) continue;
+    if (c.baseUnit != normalized.base) continue;
     final at = cookedAt[c.eventId];
     if (at == null) continue;
     if (quantitySetAt != null && !at.isAfter(quantitySetAt)) continue;

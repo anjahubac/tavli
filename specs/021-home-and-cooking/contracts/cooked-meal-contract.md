@@ -79,7 +79,7 @@ service; widgets no longer call it. Types live in `lib/domain/cooked_event.dart`
 | `mealDate` | CivilDate (`YYYY-MM-DD`) | Copied from the entry; a local date, not a UTC timestamp. |
 | `mealType` | `MealType` name (`breakfast`, `morningSnack`, `lunch`, `afternoonSnack`, `dinner`) | Copied from the entry. |
 | `actorUserId` | UUID | Who pressed “Skuvano” (`AccountScope.userId`). Only this person's intake can be written automatically. |
-| `servings` | int 1–20 | Entry servings at cook time (`servings ?? snapshot.baseServings`). |
+| `servings` | int 1–20 | Entry servings at cook time (`servings ?? snapshot.baseServings`), clamped to 1–20. |
 | `cookedAt` | UTC timestamp | Device clock at mark time. |
 | `undoneAt` | UTC timestamp, nullable | Set once on undo; never cleared. |
 | `undoReason` | `user`, nullable | Set together with `undoneAt`. |
@@ -95,7 +95,12 @@ consumers read the entry's approved snapshot, never the live library recipe.
 
 `meal_plan_entries.is_cooked` stays as a projection of “has an active event”,
 written in the same transaction, so existing shopping code, `regenerableSlots`
-and the meal cards keep working unchanged.
+and the meal cards keep working unchanged. Because the whole entry row syncs
+with last write wins, a stale entry upload from another device can carry an old
+flag. After every download the client re-derives the flag from the events
+(`CookingRepository.reconcileCookedFlags`, via `SyncEngine.afterPull`) and
+reconciles shopping; entries with no event at all (legacy cooked) are left as
+they are.
 
 ### Pantry consumption: ledger, not a decrement
 
@@ -133,8 +138,10 @@ available = max(0, quantity − Σ micros of consumptions whose event is active
 - **Matching**: an ingredient consumes from the pantry item(s) that covered its
   demand when it was planned, i.e. the existing supply allocations for that
   meal's source. An allocation from a purchase counts when that purchase was
-  received into the pantry (`source_shopping_item_id`). Without an allocation,
-  no consumption. This keeps the choice of
+  received into the pantry (`source_shopping_item_id`). If the meal was cooked
+  before the purchase was received, `PantryRepository.receivePurchases` writes
+  the consumption for the meal's active event when it is received. Without an
+  allocation, no consumption. This keeps the choice of
   “which bag of flour” in one place (Dev 1's allocation) instead of a new
   name-matching rule (decision D2).
 
@@ -151,6 +158,8 @@ over earlier cooking.
   reflects reality. The undo snackbar on Home stays “Poništi” with no extra
   text; the pantry simply does not change (decision D3).
 - Undoing a meal cooked **after** the edit restores its consumption as usual.
+- A consumption row counts only while its `baseUnit` matches the item's
+  current base unit; after a unit change the next count decides.
 - Deleting a pantry item deletes its consumption rows (server cascade, like
   supply allocations). 022's remove-with-undo should therefore delay the delete
   until the undo window closes instead of recreating the item.
@@ -218,6 +227,10 @@ lunch 2026-11-20, 4 servings, needs 250 g brašno + 500 ml mleko.
   `pantry_items.quantity_set_at`. Household RLS, grants to `authenticated` only,
   two-account pgTAP tests, drift `schemaVersion` bump with migration test.
   Exact versions are allocated after the preceding schema PRs merge.
+- Removing a meal (only possible when it is not cooked, e.g. after undo)
+  relies on the server cascade for its undone events and their consumptions:
+  the outbox is sent in order, so they reach the server before the entry
+  delete. Any local copies that remain are undone and never counted.
 - Two devices that cooked the same meal offline both upload an active event.
   Nothing is rewritten on download: every client treats the earliest
   `(cookedAt, id)` active event as the meal's event (`activeEvent`), and only

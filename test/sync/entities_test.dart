@@ -331,7 +331,7 @@ void main() {
     );
   });
 
-  test('v6: zapis kuvanja, potrošnja iz ostave i ručno brojanje', () async {
+  test('v7: zapis kuvanja, potrošnja iz ostave i ručno brojanje', () async {
     await roundTrip(
       const CookedEventEntity(),
       CookedEventsCompanion.insert(

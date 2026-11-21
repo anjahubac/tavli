@@ -19,6 +19,7 @@ import 'ai/recipe_ai.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'data/shopping_repository.dart';
+import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
 import 'sync/legacy_mover.dart';
@@ -152,6 +153,11 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
     refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    // Ceo red obroka može da stigne zastareo; oznaka „skuvano“ se ponovo
+    // izvodi iz zapisa kuvanja.
+    afterPull: () async {
+      await ref.read(cookingRepositoryProvider).reconcileCookedFlags();
+    },
   );
   ref.onDispose(engine.stop);
   unawaited(engine.onStart());

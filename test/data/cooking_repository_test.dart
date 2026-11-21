@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -388,6 +390,114 @@ void main() {
     expect(await db.select(db.cookedEvents).get(), isEmpty);
   });
 
+  Future<MealPlanEntryRow> entryRow(String id) => (db.select(
+    db.mealPlanEntries,
+  )..where((t) => t.id.equals(id))).getSingle();
+
+  /// Upis kao da je stigao preuzimanjem (bez outbox-a i usklađivanja).
+  Future<void> downloadedFlag(String id, {required bool cooked}) =>
+      (db.update(db.mealPlanEntries)..where((t) => t.id.equals(id))).write(
+        MealPlanEntriesCompanion(isCooked: Value(cooked)),
+      );
+
+  test('zastareo red obroka sa drugog uređaja: oznaka se posle preuzimanja '
+      'vraća na stanje zapisa kuvanja', () async {
+    final meal = meals.first.id;
+    now = at(12);
+    await cooking.markCooked(meal);
+    await downloadedFlag(meal, cooked: false);
+
+    expect(await cooking.reconcileCookedFlags(), 1);
+    expect((await entryRow(meal)).isCooked, isTrue);
+    expect((await sourceOf(meal)).closedAt, isNotNull);
+    expect(await cooking.reconcileCookedFlags(), 0);
+
+    now = at(13);
+    await cooking.undoCooked(meal);
+    await downloadedFlag(meal, cooked: true);
+    expect(await cooking.reconcileCookedFlags(), 1);
+    expect((await entryRow(meal)).isCooked, isFalse);
+    expect((await sourceOf(meal)).closedAt, isNull);
+  });
+
+  test('obrok skuvan pre ove verzije (bez zapisa) se pri usklađivanju ne '
+      'dira', () async {
+    await plans.setCooked(meals.first.id, cooked: true);
+    expect(await cooking.reconcileCookedFlags(), 0);
+    expect((await entryRow(meals.first.id)).isCooked, isTrue);
+  });
+
+  test('stari obrok bez porcija: porcije recepta se ograničavaju na 1–20',
+      () async {
+    final meal = meals.first.id;
+    final snapshot =
+        jsonDecode((await entryRow(meal)).recipeSnapshotJson!)
+            as Map<String, dynamic>;
+    await (db.update(db.mealPlanEntries)..where((t) => t.id.equals(meal)))
+        .write(
+          MealPlanEntriesCompanion(
+            servings: const Value(null),
+            recipeSnapshotJson: Value(jsonEncode({...snapshot, 'servings': 24})),
+          ),
+        );
+    expect((await cooking.markCooked(meal))!.servings, 20);
+  });
+
+  test('pokvaren zapis recepta (pogrešan tip polja) ne sprečava kuvanje',
+      () async {
+    final meal = meals.first.id;
+    await (db.update(db.mealPlanEntries)..where((t) => t.id.equals(meal)))
+        .write(
+          const MealPlanEntriesCompanion(
+            servings: Value(null),
+            recipeSnapshotJson: Value('{"title": 5}'),
+          ),
+        );
+    final event = await cooking.markCooked(meal);
+    expect(event, isNotNull);
+    expect(event!.servings, 2);
+  });
+
+  test('kuvano pre prijema kupovine: prijem u ostavu odmah oduzima deo '
+      'skuvanog obroka', () async {
+    // Brašna nema u ostavi, pa se za oba ručka kupuje 500 g.
+    final shopping = ShoppingRepository(
+      db,
+      scope: scope,
+      writer: writer,
+      clock: () => now,
+    );
+    await (db.delete(db.pantryItems)..where((t) => t.id.equals('brasno')))
+        .go();
+    await shopping.reconcilePlan(meals.first.planId);
+    final flour = (await db.select(db.shoppingItems).get()).singleWhere(
+      (i) => i.name.toLowerCase().contains('brašno'),
+    );
+    await shopping.setBought([flour.id], bought: true);
+
+    now = at(12);
+    final event = await cooking.markCooked(meals.first.id);
+    expect(await db.select(db.pantryConsumptions).get(), isEmpty);
+
+    now = at(13);
+    expect(await pantry.receivePurchases([flour.id]), 1);
+    final received = (await db.select(db.pantryItems).get()).singleWhere(
+      (p) => p.sourceShoppingItemId == flour.id,
+    );
+    final rows = await db.select(db.pantryConsumptions).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.eventId, event!.id);
+    expect(rows.single.baseUnit, 'g');
+    expect(rows.single.micros, 250000000);
+    expect((await available())[received.id], 250);
+
+    // Poništavanje vraća deo; ponovljen prijem ne pravi drugi red.
+    await cooking.undoCooked(meals.first.id);
+    expect((await available())[received.id], 500);
+    expect(await pantry.receivePurchases([flour.id]), 0);
+    expect(await db.select(db.pantryConsumptions).get(), hasLength(1));
+  });
+
   group('raspoloživa količina', () {
     final cooked = {'e1': at(12), 'e2': at(13)};
 
@@ -400,8 +510,8 @@ void main() {
       unit: 'g',
       quantitySetAt: setAt,
       consumptions: const [
-        (eventId: 'e1', pantryItemId: 'o', micros: 250000000),
-        (eventId: 'e2', pantryItemId: 'o', micros: 250000000),
+        (eventId: 'e1', pantryItemId: 'o', baseUnit: 'g', micros: 250000000),
+        (eventId: 'e2', pantryItemId: 'o', baseUnit: 'g', micros: 250000000),
       ],
       counted: counted ?? {'e1', 'e2'},
       cookedAt: cooked,
@@ -424,12 +534,39 @@ void main() {
           unit: 'kg',
           quantitySetAt: null,
           consumptions: const [
-            (eventId: 'e1', pantryItemId: 'o', micros: 250000000),
+            (
+              eventId: 'e1',
+              pantryItemId: 'o',
+              baseUnit: 'g',
+              micros: 250000000,
+            ),
           ],
           counted: {'e1'},
           cookedAt: cooked,
         ),
         0.75,
+      );
+    });
+
+    test('stavci promenjena jedinica: potrošnja druge jedinice se ne '
+        'oduzima', () {
+      expect(
+        availableQuantity(
+          quantity: 3,
+          unit: 'kom',
+          quantitySetAt: null,
+          consumptions: const [
+            (
+              eventId: 'e1',
+              pantryItemId: 'o',
+              baseUnit: 'g',
+              micros: 250000000,
+            ),
+          ],
+          counted: {'e1'},
+          cookedAt: cooked,
+        ),
+        3,
       );
     });
 

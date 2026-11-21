@@ -5,7 +5,9 @@ import '../domain/cooked_event.dart';
 import '../domain/ids.dart';
 import '../domain/meal_plan.dart' show MealType;
 import '../domain/plan_calendar.dart';
+import '../domain/shopping_demand.dart' show normalizeUnit;
 import '../sync/synced_writer.dart';
+import 'cooking_repository.dart' show cookedEventFromRow;
 import 'database.dart';
 
 /// Ostava domaćinstva; svaka izmena ima outbox u istoj transakciji.
@@ -23,10 +25,12 @@ class PantryRepository {
   final DateTime Function() _clock;
 
   static const _pantryItem = 'pantry_item';
+  static const _consumption = 'pantry_consumption';
 
   /// Prima kupljene stavke u ostavu kao potvrđenu zalihu. Prijem je ista
   /// zaliha kao kupovina (ne nova), pa se ne računa dvaput; ponovljen prijem
-  /// ne pravi drugi zapis. Vraća broj novih prijema.
+  /// ne pravi drugi zapis. Obrok skuvan pre prijema odmah troši svoj deo
+  /// kupovine. Vraća broj novih prijema.
   Future<int> receivePurchases(Iterable<String> itemIds) =>
       _db.transaction(() async {
         var received = 0;
@@ -62,10 +66,83 @@ class PantryRepository {
                 ),
               );
           await _writer.upsert(_pantryItem, id);
+          await _consumeForCookedMeals(item, id, now);
           received++;
         }
         return received;
       });
+
+  /// Kupovina dodeljena obroku koji je skuvan pre prijema: potrošnja se
+  /// upisuje sada, za važeći zapis kuvanja tog obroka (ugovor obroka:
+  /// raspodela iz kupovine se računa kad je kupovina primljena). Samo
+  /// poznata količina iste grupe jedinica; ključ (zapis, stavka) sprečava
+  /// dupli red.
+  Future<void> _consumeForCookedMeals(
+    ShoppingItemRow item,
+    String pantryItemId,
+    DateTime now,
+  ) async {
+    if (item.quantity == null) return;
+    final hid = _scope.householdId;
+    final unit = normalizeUnit(item.unit);
+    final allocations =
+        await (_db.select(_db.supplyAllocations)..where(
+              (t) =>
+                  t.purchasedShoppingItemId.equals(item.id) &
+                  t.householdId.equals(hid) &
+                  t.micros.isNotNull() &
+                  t.coversWholeUnknown.equals(false),
+            ))
+            .get();
+    final perEvent = <String, int>{};
+    for (final a in allocations) {
+      final contribution =
+          await (_db.select(_db.shoppingContributions)..where(
+                (t) => t.id.equals(a.contributionId) & t.householdId.equals(hid),
+              ))
+              .getSingleOrNull();
+      if (contribution == null || contribution.unitGroup != unit.group) {
+        continue;
+      }
+      final source =
+          await (_db.select(_db.shoppingSources)..where(
+                (t) =>
+                    t.id.equals(contribution.sourceId) &
+                    t.householdId.equals(hid),
+              ))
+              .getSingleOrNull();
+      final entryId = source?.planEntryId;
+      if (entryId == null) continue;
+      final event = activeEvent([
+        for (final r
+            in await (_db.select(_db.cookedEvents)..where(
+                  (t) =>
+                      t.planEntryId.equals(entryId) & t.householdId.equals(hid),
+                ))
+                .get())
+          cookedEventFromRow(r),
+      ]);
+      if (event == null) continue;
+      perEvent[event.id] = (perEvent[event.id] ?? 0) + a.micros!;
+    }
+    for (final MapEntry(key: eventId, value: micros) in perEvent.entries) {
+      final id = newId();
+      await _db
+          .into(_db.pantryConsumptions)
+          .insert(
+            PantryConsumptionsCompanion.insert(
+              id: id,
+              householdId: Value(hid),
+              eventId: eventId,
+              pantryItemId: pantryItemId,
+              baseUnit: unit.base,
+              micros: micros,
+              createdAt: now,
+            ),
+          );
+      await _writer.upsert(_consumption, id);
+    }
+  }
 
   /// Kupljene stavke koje su već primljene u ostavu, uživo.
   Stream<Set<String>> watchReceivedItemIds() =>
@@ -151,6 +228,7 @@ class PantryRepository {
         consumptions.putIfAbsent(c.pantryItemId, () => []).add((
           eventId: c.eventId,
           pantryItemId: c.pantryItemId,
+          baseUnit: c.baseUnit,
           micros: c.micros,
         ));
       }

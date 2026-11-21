@@ -288,7 +288,7 @@ class CookedEvents extends Table {
   DateTimeColumn get cookedAt => dateTime()();
   DateTimeColumn get undoneAt => dateTime().nullable()();
 
-  /// `user` ili `duplicate` (dva uređaja bez mreže).
+  /// `user` (jedina vrednost koju server prihvata).
   TextColumn get undoReason => text().nullable()();
 
   @override
