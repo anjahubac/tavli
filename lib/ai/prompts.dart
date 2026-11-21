@@ -33,13 +33,31 @@ sarma, rižoto); baked_fried = from the oven, grill or pan (musaka, piletina,
 eggs_breakfast = kajgana, omlet, kaša; cold = spreads or a cold platter;
 sweet = desserts and sweet dishes.''';
 
-final recipeSystemPrompt = '''
+/// Kako se piše naziv sastojka, da bi se povezao sa katalogom namirnica
+/// (TRELLO-40, spec 018 FR-008). Deli se sa upitom za plan.
+const ingredientNameRules = '''
+Ingredient "name" is the food as you would buy it, in its basic dictionary
+form (nominative singular, lowercase): "jaje", "crni luk", "paradajz",
+"pileći file".
+- No quantity, preparation, state, size or brand in "name"; put them in
+  "note": "sitno iseckan crni luk" becomes name "crni luk" with note
+  "sitno iseckan"; "2 velika jaja" becomes name "jaje", quantity 2, note
+  "velika".
+- One food per ingredient: "so i biber" is two ingredients, "so" and "biber".
+- Name the kind when a shop sells several: "beli sir" or "mladi sir", not
+  "sir"; ground paprika is "aleva paprika".
+- A generic name, never a brand: "krem od lešnika", not "eurokrem".
+- Keep words that make it a different food: "kiselo mleko", "mleveno meso",
+  "beli luk" and "pšenično brašno" stay as they are.''';
+
+final recipeSystemPrompt =
+    '''
 You are the cooking assistant inside "Tavli", a recipe and shopping list app.
 Always answer with ONE JSON object and nothing else.
 All human-readable text must be in Serbian (Latin script).
-Prefer metric units for new recipes. Ingredient names are lowercase base names
-without quantities. A quantity range such as "2-3" becomes its middle (2.5),
-with the range in "note".
+Prefer metric units for new recipes. A quantity range such as "2-3" becomes
+its middle (2.5), with the range in "note".
+$ingredientNameRules
 Recipe JSON schema:
 $_recipeSchema''';
 

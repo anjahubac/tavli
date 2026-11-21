@@ -357,6 +357,47 @@ void main() {
     });
   });
 
+  group('naziv sastojka za katalog (TRELLO-40)', () {
+    test('zagrada iz naziva prelazi u napomenu', () {
+      final i = aiIngredient({'name': 'paradajz (oljušten)', 'quantity': 2});
+      expect(i.name, 'paradajz');
+      expect(i.note, 'oljušten');
+    });
+
+    test('zagrada se dodaje ispred postojeće napomene', () {
+      final i = aiIngredient({
+        'name': 'crni luk (srednji)',
+        'note': 'sitno iseckan',
+      });
+      expect(i.name, 'crni luk');
+      expect(i.note, 'srednji, sitno iseckan');
+    });
+
+    test('naziv bez zagrade ili samo zagrada ostaje kakav je', () {
+      expect(aiIngredient({'name': 'kiselo mleko'}).name, 'kiselo mleko');
+      expect(aiIngredient({'name': '(so)'}).name, '(so)');
+      expect(
+        aiIngredient({'name': 'paprika (crvena) iseckana'}).name,
+        'paprika (crvena) iseckana',
+      );
+    });
+
+    test('preduga napomena: naziv ostaje, odgovor se ne odbija', () {
+      final note = 'a' * (maxNoteLength - 3);
+      final i = aiIngredient({'name': 'so (morska)', 'note': note});
+      expect(i.name, 'so (morska)');
+      expect(i.note, note);
+    });
+
+    test('upiti za recept i plan nose pravila za naziv', () {
+      for (final prompt in [recipeSystemPrompt, mealPlanSystemPrompt]) {
+        expect(prompt, contains(ingredientNameRules));
+      }
+      expect(ingredientNameRules, contains('"so i biber" is two ingredients'));
+      expect(ingredientNameRules, contains('nominative singular'));
+    });
+  });
+
   group('rečnik jedinica', () {
     test('množina, skraćenice i velika slova', () {
       expect(canonicalUnit('Kašike'), 'kašika');
