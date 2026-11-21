@@ -26,6 +26,10 @@ The target adds no business-data or wire-format change, drift schema change,
 Supabase change or migration. `msix` is the only planned dependency addition,
 as a development-only packaging tool needed to create the installable Windows
 artifact required by FR-001. Runtime plugin versions remain those already locked.
+`win32` (already a transitive dependency of `flutter_secure_storage_windows`,
+same locked version) becomes a direct dependency only so the secure-storage
+adapter can catch the plugin's `WindowsException` and map it to
+`SecretStorageException`.
 
 Producer dependencies: [012](../012-security-baseline/spec.md), [013](../013-testing-strategy/spec.md)
 

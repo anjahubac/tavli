@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:win32/win32.dart' show WindowsException;
 
 import 'ai_models.dart';
 
@@ -105,20 +108,31 @@ class KeychainSecretStorage implements SecretStorage {
   );
 
   @override
-  Future<String?> read(String key) => _guard(() => _storage.read(key: key));
+  Future<String?> read(String key) => guard(() => _storage.read(key: key));
 
   @override
   Future<void> write(String key, String value) =>
-      _guard(() => _storage.write(key: key, value: value));
+      guard(() => _storage.write(key: key, value: value));
 
   @override
-  Future<void> delete(String key) => _guard(() => _storage.delete(key: key));
+  Future<void> delete(String key) => guard(() => _storage.delete(key: key));
 
-  static Future<T> _guard<T>(Future<T> Function() action) async {
+  /// Sistemske greške pretvara u [SecretStorageException]. Windows
+  /// implementacija (FFI, bez kanala) baca [WindowsException] i
+  /// [FileSystemException] umesto [PlatformException]. Poruke (putanje)
+  /// se ne prenose, samo kod.
+  @visibleForTesting
+  static Future<T> guard<T>(Future<T> Function() action) async {
     try {
       return await action();
     } on PlatformException catch (e) {
       throw SecretStorageException(e.code);
+    } on WindowsException catch (e) {
+      throw SecretStorageException(
+        'windows:0x${(e.hr & 0xFFFFFFFF).toRadixString(16)}',
+      );
+    } on FileSystemException catch (e) {
+      throw SecretStorageException('fs:${e.osError?.errorCode ?? 'unknown'}');
     }
   }
 }
