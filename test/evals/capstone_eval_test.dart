@@ -185,8 +185,10 @@ void main() {
           ai.fromDishName('gulaš'),
           throwsA(isA<AllModelsExhausted>()),
         );
-        // Najviše jedna popravka po modelu: 2 modela x (izlaz + popravka).
-        expect(client.calls.length, lessThanOrEqualTo(4));
+        // Jedna popravka istom modelu, pa stop bez ostatka lanca (#69).
+        // Pre #69 ovde su bila 4 poziva (ceo lanac), vidi
+        // ev12_repair_before_after_test.dart.
+        expect(client.calls, ['gemini/pro', 'gemini/pro']);
       },
     );
 
