@@ -105,7 +105,10 @@ class TavliNotice extends StatelessWidget {
                           TavliRadius.checkbox,
                         ),
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 44),
+                          constraints: const BoxConstraints(
+                            minWidth: 48,
+                            minHeight: 48,
+                          ),
                           child: Align(
                             alignment: AlignmentDirectional.centerStart,
                             widthFactor: 1,

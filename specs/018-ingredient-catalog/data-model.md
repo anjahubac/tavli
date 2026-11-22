@@ -1,14 +1,16 @@
 # Data model proposal: ingredient catalog tables (D1-005)
 
-**Status:** proposal for review; nothing here is implemented, migrated or agreed.
+**Status:** accepted in #56. Rollout step 2 (server tables, RLS, grants and
+pgTAP) is `supabase/migrations/20261121150000_food_catalog.sql` with
+`supabase/tests/10_food_catalog_test.sql`. The local drift tables, download and
+client tests (step 3 onward) are not implemented.
 **Source:** D1-005 / FR-002 in [spec.md](spec.md), task T004/T005 in [tasks.md](tasks.md).
 **Owner:** Dev 1. **Reviewers requested:** Dev 4 (schema coordinator), Dev 3 (scope and RLS).
 **Baseline:** `dev` as of 18 Nov 2026. **Depends on:** the ingredient identity contract in
 PR #30 (D1-001, version 1). If #30 changes, this document changes with it.
 
-This is documentation only. It adds no migration, drift table, generated code or
-drift version. The migration PR (T005) starts only after #30 and this document are
-accepted, and takes its drift version last (see Rollout).
+The server migration followed the acceptance of #30 and this document. The
+client step adds the drift tables and takes its drift version last (see Rollout).
 
 ## Current state (verified on `dev`)
 
@@ -77,10 +79,14 @@ Uniqueness of aliases differs by owner:
 A household override and a shared alias may coexist, and the household one wins
 (#30).
 
-`foods (household_id, slug)` stays unique per owner. PostgreSQL treats NULLs as
-distinct, so a plain unique constraint would allow two identical shared slugs.
-Use `unique nulls not distinct` (the local stack is PostgreSQL 17,
-`supabase/config.toml`) or two partial unique indexes.
+Slugs follow the same split. Shared slugs are unique (partial unique index on
+`foods (slug) where household_id is null`). **Household slugs have no unique
+key:** two devices can create the same custom food offline with different
+client ids, and a unique `(household_id, slug)` would reject the second upload
+permanently. Two such rows are two foods of the household; if both are linked
+to the same wording, the matcher returns `Unresolved` and the review UI (#57)
+lets the household pick one. (Changed from the accepted D3 during the migration
+PR; needs Dev 4 confirmation.)
 
 Consistency: a shared alias must point to a shared food; a household alias may
 point to a shared food or to a food of the same household. A foreign key cannot
@@ -275,7 +281,7 @@ and the recipe labels slice (#54) also need one.
 | --- | --- | --- | --- |
 | D1 | One `foods` table with nullable `household_id`, or separate shared and household tables | One table: one foreign key target and one matcher query. Shared slug uniqueness needs `nulls not distinct` or two partial unique indexes. Shared aliases are unique only while active, household aliases are not unique (see Replacing a household alias). | Dev 4, Dev 3 |
 | D2 | How to enforce alias and food consistency | Trigger, since a foreign key cannot express it | Dev 3 |
-| D3 | Slug uniqueness scope and rename behavior | Unique among shared rows and within one household; the id never changes on rename | Dev 4 |
+| D3 | Slug uniqueness scope and rename behavior | Unique among shared rows only; household slugs are not unique so offline duplicates can sync (changed in the migration PR, see Proposed tables); the id never changes on rename | Dev 4 |
 | D4 | Normalization function and where it runs | The existing `ingredientKey`, unchanged, so stored `alias_normalized` equals what the client already computes; covered by shared fixtures. Inflections are reviewed aliases. | Dev 2, Dev 4 |
 | D5 | Category vocabulary | Reuse the current ingredient categories unchanged | Dev 4 |
 | D6 | Wire values for `base_unit` | `piece`, `gram`, `milliliter`, final once 017 settles unit terms | Dev 4 |

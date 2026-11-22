@@ -105,7 +105,7 @@ operations. See [full spec index](../specs/README.md) and
 | DATES | Dev 1 | CivilDate, schema coordination | Old-client serialization and upgrade path |
 | UNITS | Dev 1 | Existing shopping demand | Defaults, approximation and override precedence |
 | CATALOG | Dev 1 | Date/unit contracts | UUID/slug, alias scope, seed review, nutrition provenance/licenses |
-| HOUSEHOLD (008) | Dev 3 | Auth/member contract | Inviting rights, transfer/leave semantics, purpose-limited personal aggregates |
+| HOUSEHOLD (008) | Dev 3 | Auth/member contract | Direct link/QR join, recipe transfer, owner succession, acknowledged empty-household deletion, purpose-limited personal aggregates |
 | REALTIME (009) | Dev 3 | Household transitions | Authorized invalidation/reconnect/conflicts |
 | MEAL-RULES | Dev 2 | AI schema/member aggregate | Snack identity, suitability/intensity/kind enums, review of selected-member favorites contract |
 | SHOPPING-FOODS | Dev 1 | Catalog/supply contract | Dictionary versions, legacy snapshots and conversions |

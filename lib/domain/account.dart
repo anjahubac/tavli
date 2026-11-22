@@ -25,13 +25,18 @@ class Account {
 
   bool get hasName => displayName != null && displayName!.trim().isNotEmpty;
 
-  Account copyWith({String? displayName}) => Account(
+  Account copyWith({
+    String? displayName,
+    String? householdId,
+    String? householdName,
+    String? role,
+  }) => Account(
     userId: userId,
     email: email,
     displayName: displayName ?? this.displayName,
-    householdId: householdId,
-    householdName: householdName,
-    role: role,
+    householdId: householdId ?? this.householdId,
+    householdName: householdName ?? this.householdName,
+    role: role ?? this.role,
   );
 
   @override

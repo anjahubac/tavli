@@ -42,7 +42,7 @@ create trigger record_deletion after delete on public.user_favorites
   for each row execute function private.record_deletion('favorite', 'id');
 -- Leaving a household drops favorites on its recipes. SECURITY DEFINER because
 -- the membership row is already gone, so RLS would hide those favorites.
-create function private.drop_favorites_on_leave()
+create function private.drop_recipe_marks_on_leave()
 returns trigger
 language plpgsql
 security definer
@@ -55,9 +55,9 @@ begin
 end;
 $$;
 
-revoke execute on function private.drop_favorites_on_leave() from public, anon, authenticated;
-create trigger drop_favorites_on_leave after delete on public.household_members
-  for each row execute function private.drop_favorites_on_leave();
+revoke execute on function private.drop_recipe_marks_on_leave() from public, anon, authenticated;
+create trigger drop_recipe_marks_on_leave after delete on public.household_members
+  for each row execute function private.drop_recipe_marks_on_leave();
 
 -- The ID is the same after a rejoin, so a new favorite clears the old
 -- tombstone first. A deleted recipe still blocks it (skip_if_deleted runs next).

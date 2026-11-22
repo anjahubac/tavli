@@ -18,15 +18,24 @@ function json(status: number, body: Record<string, unknown>): Response {
 /** Briše sve slike pod `{householdId}/` (po stranama). */
 async function removeHouseholdPhotos(
   admin: SupabaseClient,
+  uid: string,
   householdId: string,
 ): Promise<void> {
   while (true) {
-    const { data, error } = await admin.storage
-      .from(BUCKET)
-      .list(householdId, { limit: 100 });
+    const { data: paths, error } = await admin.rpc("retired_household_photo_paths", {
+      caller_id: uid,
+      hid: householdId,
+    });
     if (error) throw error;
-    if (!data || data.length === 0) return;
-    const paths = data.map((o) => `${householdId}/${o.name}`);
+    if (!paths?.length) return;
+    const prefix = `${householdId}/`;
+    for (const path of paths as string[]) {
+      if (!path.startsWith(prefix) || path.slice(prefix.length).split("/").some(
+        (part) => !part || part === "." || part === ".." || part.includes("\\"),
+      )) {
+        throw new Error("invalid_recipe_photo_path");
+      }
+    }
     const { error: removeError } = await admin.storage.from(BUCKET).remove(paths);
     if (removeError) throw removeError;
   }
@@ -52,19 +61,27 @@ Deno.serve(async (req: Request) => {
   const uid = userData.user.id;
 
   try {
-    // 2. Slike domaćinstava u kojima je osoba jedini član.
-    const { data: households, error: listError } = await admin.rpc(
-      "solo_households",
-      { uid },
-    );
-    if (listError) throw listError;
-    for (const householdId of (households ?? []) as string[]) {
-      await removeHouseholdPhotos(admin, householdId);
-    }
-
-    // 3. Podaci (domaćinstvo sa svim podacima, članstvo, lični podaci, profil).
+    // 2. Članstvo, zajednički i lični podaci, uz upis u red za čišćenje.
     const { error: rpcError } = await admin.rpc("delete_account_data", { uid });
     if (rpcError) throw rpcError;
+
+    // 3. Čisti samo ugašena domaćinstva. Red preživljava neuspeo poziv.
+    while (true) {
+      const { data: households, error: listError } = await admin.rpc(
+        "household_join_photo_cleanup",
+        { caller_id: uid, completed_id: null },
+      );
+      if (listError) throw listError;
+      if (!households?.length) break;
+      for (const householdId of households as string[]) {
+        await removeHouseholdPhotos(admin, uid, householdId);
+        const { error: cleanupError } = await admin.rpc(
+          "household_join_photo_cleanup",
+          { caller_id: uid, completed_id: householdId },
+        );
+        if (cleanupError) throw cleanupError;
+      }
+    }
 
     // 4. Nalog za prijavu.
     const { error: deleteError } = await admin.auth.admin.deleteUser(uid);
