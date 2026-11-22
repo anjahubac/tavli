@@ -39,7 +39,7 @@ class PlanGenerationCancelled implements Exception {
 }
 
 /// Predlaže plan obroka preko [AIRouter]-a: raspored po nedeljnim delovima,
-/// pa sažeci novih recepata u malim grupama. Ništa ne čuva; nacrt ostaje
+/// pa sastojci i koraci novih recepata u malim grupama. Ništa ne čuva; nacrt ostaje
 /// u sesiji dok ga osoba ne odobri.
 class MealPlanAI {
   MealPlanAI(this._router);
@@ -60,7 +60,10 @@ class MealPlanAI {
       throw ArgumentError('Nastavak pripada drugom zahtevu');
     }
     var draft = resume ?? PlanDraft(request: request);
-    final offered = library.take(maxLibraryInPrompt).toList();
+    final offered = library
+        .where((recipe) => recipe.steps.any((step) => step.trim().isNotEmpty))
+        .take(maxLibraryInPrompt)
+        .toList();
     final byId = {for (final r in offered) r.id: r};
 
     Future<T> step<T>(Future<T> Function() run) async {
@@ -340,9 +343,9 @@ Map<MealSlot, SlotProposal> parseOutline(
   return result;
 }
 
-/// Čita sažetke: tačno jedan recept za svaki od [titles], po
+/// Čita detalje: tačno jedan recept za svaki od [titles], po
 /// [draftRecipeKey]. Baca [FormatException] za višak, manjak, duplikat,
-/// porcije van 1–20 i sastojke koji ne prolaze ugovor (S1–S3).
+/// porcije van 1–20, neispravne sastojke ili korake (S1–S4).
 Map<String, RecipeSnapshot> parseSummaries(
   Map<String, dynamic> json, {
   required List<String> titles,
@@ -355,18 +358,21 @@ Map<String, RecipeSnapshot> parseSummaries(
     if (raw is! Map<String, dynamic>) {
       throw const FormatException('Pokvaren recept');
     }
-    final key = draftRecipeKey(raw['title'] as String? ?? '');
+    final key = draftRecipeKey(aiTitle(raw['title']));
     if (!wanted.containsKey(key)) {
       throw FormatException('Recept nije tražen', key);
     }
     if (result.containsKey(key)) {
       throw FormatException('Recept se ponavlja', key);
     }
+    final steps = aiSteps(raw['steps']);
+    if (steps.isEmpty) throw const FormatException('S4');
     result[key] = RecipeSnapshot(
       title: wanted[key]!,
       baseServings: aiServings(raw['servings'], max: maxServings, rule: 'S2'),
       prepMinutes: aiPrepMinutes(raw['prepMinutes']),
       ingredients: aiIngredients(raw['ingredients']),
+      steps: steps,
     );
   }
   if (result.length != wanted.length) {

@@ -138,7 +138,7 @@ class MealPlanRepository {
         )..where((t) => t.householdId.equals(_scope.householdId))).get())
           r.id,
       };
-      // Novi recepti iz predloga idu i u Recepte (sažetak, bez koraka);
+      // Novi recepti iz predloga idu i u Recepte, sa koracima;
       // isti recept na više mesta je jedan recept.
       // AI oznake (TRELLO-39) idu uz recept sa izvorom `ai`, pa ih sledeći
       // plan zna, a korisnik ih može ispraviti.
