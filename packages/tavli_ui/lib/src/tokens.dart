@@ -39,6 +39,10 @@ abstract final class TavliWidth {
   /// Dijalog.
   static const double dialog = 420;
 
+  /// Veći dijalog sa listom ili mrežom za izbor (npr. omiljeni recepti na
+  /// računaru).
+  static const double panel = 680;
+
   /// Poruka praznog stanja ili greške.
   static const double message = 360;
 
