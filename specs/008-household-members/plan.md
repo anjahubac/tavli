@@ -97,6 +97,7 @@ The initial SQL fixture uses these proposed RPC signatures and response keys:
 | `household_invite_token()` | Stable token as text; SQLSTATE `42501` for non-owners |
 | `preview_household_join(token text)` | JSON object with `status`, and on success `household_name`, `source_household_id` and `requires_source_deletion_ack` |
 | `confirm_household_join(token text, expected_source_household_id uuid, recipe_choice text, source_deletion_ack boolean, operation_id uuid)` | JSON object with `status` and verified scope on success |
+| `remove_household_member(member_id uuid)` | JSON object with `status`: `removed`, `not_allowed` or `invalid_request` |
 
 The fixture checks `joined`, `already_member`, `unavailable`,
 `stale_source`, `source_deletion_confirmation_required` and
@@ -161,6 +162,17 @@ credential or network destination is added. The related changes require an
 additive migration and Edge deployment. AI and provider access are N/A.
 
 ### Implementation status
+
+Membership invariant: every account with a profile has exactly one
+membership. A unique index enforces at most one. Deferred constraint triggers
+on `household_members` and `profiles` enforce at least one at commit, so a
+switch or account deletion may pass through an intermediate state. The owner
+removes a member through `remove_household_member`. In one transaction, the
+server deletes the membership and creates a new personal household owned by the
+removed account. The removed client discovers the new scope on its next
+membership refresh, quarantines old-household writes and downloads the new
+household. Errors stay generic so callers cannot probe other memberships. The
+member-management UI (T014/T015) still needs to list members and call this RPC.
 
 New households generate a 12-character invite code. Previously issued
 16- and 64-character credentials remain valid. The HTTPS share URL uses the configured project's

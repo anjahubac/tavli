@@ -86,6 +86,10 @@ abstract interface class AccountApi {
     required String operationId,
   });
 
+  /// Vlasnik uklanja člana; server mu pravi novo lično domaćinstvo.
+  /// Vraća `removed`, `not_allowed` ili `invalid_request`.
+  Future<String> removeHouseholdMember(String memberId);
+
   /// Edge Function `delete-account`. Baca [DeleteFailure].
   Future<void> deleteAccount();
 }
@@ -232,6 +236,19 @@ class SupabaseAccountApi implements AccountApi {
     return HouseholdJoinResult(status: status, account: account);
   }
 
+  @override
+  Future<String> removeHouseholdMember(String memberId) async {
+    final result = await _joinRpc(
+      () => _client.rpc(
+        'remove_household_member',
+        params: {'member_id': memberId},
+      ),
+    );
+    final status = result['status'];
+    if (status is! String) throw const Unavailable();
+    return status;
+  }
+
   Future<Map<String, dynamic>> _joinRpc(
     Future<dynamic> Function() action,
   ) async {
@@ -298,6 +315,10 @@ class UnconfiguredAccountApi implements AccountApi {
     required bool acknowledgeSourceDeletion,
     required String operationId,
   }) async => throw const Unavailable();
+
+  @override
+  Future<String> removeHouseholdMember(String memberId) async =>
+      throw const Unavailable();
 
   @override
   Future<void> deleteAccount() async => throw const DeleteServerError();

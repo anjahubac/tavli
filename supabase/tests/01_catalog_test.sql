@@ -75,7 +75,7 @@ select is(
   array[
     'private.is_member', 'private.join_photo_is_published', 'private.recipe_meal_types_valid',
     'public.confirm_household_join', 'public.household_invite_token',
-    'public.preview_household_join'
+    'public.preview_household_join', 'public.remove_household_member'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );

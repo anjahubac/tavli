@@ -494,6 +494,20 @@ class FakeAccountApi implements AccountApi {
     throw const Unavailable();
   }
 
+  /// Uklanjanje kao na serveru: samo član istog domaćinstva, ne sebe.
+  @override
+  Future<String> removeHouseholdMember(String memberId) async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if (memberId == uid) return 'invalid_request';
+    final home = server.households[uid];
+    if (home == null || server.households[memberId] != home) {
+      return 'not_allowed';
+    }
+    server.households[memberId] = 'home-$memberId';
+    return 'removed';
+  }
+
   @override
   Future<void> deleteAccount() async {
     if (server.offline) throw const DeleteOffline();

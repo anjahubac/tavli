@@ -105,6 +105,11 @@ class AccountService {
           .map((rows) => rows.isNotEmpty)
           .distinct();
 
+  /// Vlasnik uklanja člana. Server proverava ulogu i uklonjenom pravi novo
+  /// lično domaćinstvo; vlasnikovo članstvo se ne menja.
+  Future<String> removeHouseholdMember(String memberId) =>
+      _api.removeHouseholdMember(memberId);
+
   Future<HouseholdJoinResult> confirmHouseholdJoin({
     required Account account,
     required String token,

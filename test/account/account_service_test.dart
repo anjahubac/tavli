@@ -104,6 +104,33 @@ void main() {
     });
   });
 
+  group('SupabaseAccountApi.removeHouseholdMember', () {
+    late SupabaseClient client;
+    late List<http.Request> requests;
+
+    setUp(() async {
+      requests = [];
+      client = createSupabaseClient(
+        const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+        secrets: MapSecretStorage(),
+        httpClient: mockHttp((r) {
+          requests.add(r);
+          return jsonResponse({'status': 'removed'});
+        }),
+      );
+      await client.auth.recoverSession(jsonEncode(sessionBody()));
+    });
+    tearDown(() => client.dispose());
+
+    test('šalje ID člana i vraća status servera', () async {
+      final api = SupabaseAccountApi(client, retryDelay: Duration.zero);
+      expect(await api.removeHouseholdMember('u2'), 'removed');
+      final r = requests.single;
+      expect(r.url.path, endsWith('/rpc/remove_household_member'));
+      expect(jsonDecode(r.body), {'member_id': 'u2'});
+    });
+  });
+
   group('AccountService', () {
     late AppDatabase db;
     late FakeBackend backend;
@@ -193,6 +220,55 @@ void main() {
       );
       expect((await service.cached(account.userId))?.householdId, 'new-home');
     });
+
+    test(
+      'uklonjeni član dobija novo domaćinstvo i izdvaja stare izmene',
+      () async {
+        final owner = await service.loadOrFetch(await signIn());
+        final memberId = backend.server.userFor('ivan@mail.com');
+        backend.server.households[memberId] = owner.householdId;
+
+        expect(
+          await service.removeHouseholdMember(owner.userId),
+          'invalid_request',
+        );
+        expect(await service.removeHouseholdMember('nepoznat'), 'not_allowed');
+        expect(await service.removeHouseholdMember(memberId), 'removed');
+        expect(await service.removeHouseholdMember(memberId), 'not_allowed');
+        expect(backend.server.households[owner.userId], owner.householdId);
+
+        await backend.auth.signOutLocal();
+        final member = await service.loadOrFetch(
+          await backend.auth.verifyCode('ivan@mail.com', FakeServer.code),
+        );
+        expect(member.householdId, isNot(owner.householdId));
+
+        // Uređaj člana još misli da je u starom domaćinstvu i ima izmene.
+        await (db.update(db.accounts)..where((t) => t.userId.equals(memberId)))
+            .write(AccountsCompanion(householdId: Value(owner.householdId)));
+        final stale = (await service.cached(memberId))!;
+        await db
+            .into(db.syncOutbox)
+            .insert(
+              SyncOutboxCompanion.insert(
+                accountId: memberId,
+                entity: 'recipe',
+                recordId: 'queued',
+                op: 'upsert',
+                createdAt: DateTime.utc(2026),
+              ),
+            );
+
+        final updated = await service.refreshMembership(stale);
+
+        expect(updated.householdId, 'home-$memberId');
+        final row = await (db.select(
+          db.syncOutbox,
+        )..where((t) => t.accountId.equals(memberId))).getSingle();
+        expect(row.state, OutboxState.quarantined);
+        expect(row.lastError, 'household_changed');
+      },
+    );
 
     group('red za slanje pre prelaska', () {
       Future<void> queue(Account account, String state) => db
