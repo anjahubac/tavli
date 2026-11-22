@@ -38,12 +38,19 @@ class AccountService {
     return row == null ? null : _fromRow(row);
   }
 
-  /// Keširan nalog, a ako ga nema na uređaju — sa servera (prva prijava
-  /// na ovom uređaju). Baca `AuthFailure`.
+  /// Keširan nalog sa imenom, a inače sa servera (prva prijava na ovom
+  /// uređaju, ili je ime sačuvano na drugom uređaju). Bez mreže vraća
+  /// keširan nalog (i bez imena). Baca `AuthFailure`.
   Future<Account> loadOrFetch(AuthSession session) async {
     final local = await cached(session.userId);
-    if (local != null) return local;
-    final remote = await _api.fetch();
+    if (local != null && local.hasName) return local;
+    final RemoteAccount remote;
+    try {
+      remote = await _api.fetch();
+    } on AuthFailure catch (f) {
+      if (local != null && (f is Offline || f is Unavailable)) return local;
+      rethrow;
+    }
     await _db
         .into(_db.accounts)
         .insertOnConflictUpdate(

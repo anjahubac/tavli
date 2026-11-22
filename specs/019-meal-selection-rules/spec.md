@@ -27,7 +27,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 ## Behavioral requirements
 
 - **FR-101**: Support breakfast, morning snack, lunch, afternoon snack and dinner without fixed three-field assumptions; include snacks in shopping/Home/intake.
-- **FR-102**: Default lunch medium/hearty cooked/roast, dinner light/medium; at most one hearty meal daily, no same dish kind on consecutive days; household defaults editable.
+- **FR-102**: Default lunch medium/hearty (any dish kind), dinner light/medium; at most one hearty meal daily; the same recipe at most once within three consecutive days. Revised 2026-11-20 (TRELLO-39, [meal rules contract](contracts/meal-rules-contract.md)); editable household defaults are deferred.
 - **FR-103**: Snacks are light without cooked dishes. Locked/cooked/imported meals are preserved by regeneration; show restriction conflicts rather than silently rewrite a locked meal.
 - **FR-104**: For household-aware planning, the server planner filters candidate recipes before AI and revalidates proposed entries before returning a draft, including replacement. Unknown ingredient mappings are ineligible. The server retains member allergen data; the client and AI receive only the respective allowlisted results. Taste, notes and favorite counts use the 008 consent-filtered contract.
 - **FR-105**: In initial household-aware planning, the server verifies candidate eligibility and final placement before returning the draft. If the eligible saved pool is exhausted, return an incomplete draft. A later AI-invented candidate remains a draft until its ingredients are resolved and verified by the server.

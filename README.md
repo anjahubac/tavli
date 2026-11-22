@@ -2,7 +2,7 @@
 
 **From meal planning to organized shopping and cooking.**
 
-Tavli is a Flutter application for Android, iOS and macOS. Its interface is in
+Tavli is a Flutter application for Android, iOS, macOS and Windows. Its interface is in
 Serbian (Latin script); engineering documentation is in English. An account is
 required. Supabase stores synced business data; drift supplies the account-scoped
 offline cache and transactional outbox. Credentials stay in device secure storage.
@@ -18,7 +18,8 @@ claim that every planned behavior or platform release has shipped.
 
 The next direction adds central Početna, a simple pantry without expiry tracking,
 a food catalog, household collaboration and richer planning. The AI gateway,
-optional nutrition diary, cookbooks, voice and Windows are future work. See
+optional nutrition diary, cookbooks and voice are future work. Windows has a
+locally validated target; public signing and distribution remain release work. See
 [product plan](docs/product-plan.md) and [roadmap](docs/roadmap.md).
 
 ## Start development
@@ -35,6 +36,9 @@ scripts/check.sh
 flutter test
 flutter run -d macos
 ```
+
+Windows setup, builds and local MSIX packaging are documented in
+[Windows development](docs/development/windows.md).
 
 Account-backed use needs the team's gitignored local configuration passed with
 `--dart-define-from-file`. Humans provision it using empty example placeholders;

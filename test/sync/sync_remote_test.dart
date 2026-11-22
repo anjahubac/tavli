@@ -10,6 +10,7 @@ import 'package:tavli/account/supabase_client.dart';
 import 'package:tavli/account/supabase_config.dart';
 import 'package:tavli/sync/sync_remote.dart';
 
+import '../helpers/fake_secret_storage.dart';
 import '../helpers/fake_supabase.dart';
 
 void main() {
@@ -22,6 +23,7 @@ void main() {
     handler = (_) => jsonResponse(<Object>[]);
     client = createSupabaseClient(
       const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+      secrets: MapSecretStorage(),
       httpClient: mockHttp((r) {
         requests.add(r);
         return handler(r);

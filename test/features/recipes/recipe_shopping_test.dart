@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/domain/plan_calendar.dart';
+import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/ingredient_review_sheet.dart';
 
 import '../../helpers/test_app.dart';
@@ -207,5 +210,45 @@ void main() {
     await tapButton(tester, 'Pogledaj');
     expect(find.text('Po planu'), findsOneWidget);
     expect(find.text('Proveri sastojke'), findsNothing);
+  });
+  testTavli('dodavanje u nabavku sa drugim brojem porcija čuva vezu', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [
+        Recipe(
+          id: 'a',
+          title: 'Kajgana',
+          servings: 2,
+          ingredients: const [
+            Ingredient(
+              name: 'jaja',
+              quantity: 3,
+              unit: 'kom',
+              category: 'mlečni proizvodi i jaja',
+              link: IngredientLink(
+                foodId: '00000000-0000-4000-8000-000000000001',
+                matchedKey: 'jaja',
+                linkSource: LinkSource.confirmed,
+              ),
+            ),
+          ],
+          source: RecipeSource.manual,
+          createdAt: DateTime.utc(2026),
+        ),
+      ],
+    );
+    await openReview(tester);
+    await tester.tap(find.byTooltip('Više porcija'));
+    await tester.pump();
+    await tapButton(tester, 'Dodaj u nabavku (1)');
+
+    final source = (await app.db.select(app.db.shoppingSources).get()).single;
+    final snapshot = jsonDecode(source.recipeSnapshotJson!) as Map;
+    final ingredient = (snapshot['ingredients'] as List).single as Map;
+    expect(ingredient['foodId'], '00000000-0000-4000-8000-000000000001');
+    expect(ingredient['linkSource'], 'confirmed');
   });
 }

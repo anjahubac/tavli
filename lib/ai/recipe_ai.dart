@@ -1,4 +1,5 @@
 import '../domain/ids.dart';
+import '../domain/ingredient_links.dart';
 import '../domain/recipe.dart';
 import 'ai_models.dart';
 import 'ai_response_validator.dart';
@@ -80,12 +81,20 @@ class RecipeAI {
             prompt: refineRecipePrompt(current, instruction),
           ),
           (json) {
-            final refined = recipeFromAiResponse(
+            final parsed = recipeFromAiResponse(
               json,
               id: current.id,
               source: current.source,
               createdAt: current.createdAt,
               imagePath: current.imagePath,
+            );
+            // AI ne vraća veze sa katalogom; nepromenjeni sastojci ih
+            // zadržavaju iz sačuvanog recepta (ugovor #30).
+            final refined = parsed.copyWith(
+              ingredients: carryIngredientLinks(
+                from: current.ingredients,
+                to: parsed.ingredients,
+              ),
             );
             // R10: izmena ne sme tiho da obriše korake recepta koji ih ima;
             // router tada pita ponovo.

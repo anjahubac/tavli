@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase/supabase.dart';
 
@@ -52,7 +53,10 @@ final supabaseConfigProvider = Provider<SupabaseConfig>(
 final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
   final config = ref.watch(supabaseConfigProvider);
   if (!config.isConfigured) return null;
-  final client = createSupabaseClient(config);
+  final client = createSupabaseClient(
+    config,
+    secrets: const KeychainSecretStorage(),
+  );
   ref.onDispose(client.dispose);
   return client;
 });
@@ -63,6 +67,12 @@ final authGatewayProvider = Provider<AuthGateway>((ref) {
       ? const UnconfiguredAuthGateway()
       : SupabaseAuthGateway(client);
 });
+
+/// Linkovi kojima je aplikacija otvorena (tavli://auth-callback iz mejla
+/// za potvrdu), uključujući onaj kojim je pokrenuta; menja se u testovima.
+final appLinksProvider = Provider<Stream<Uri>>(
+  (ref) => AppLinks().uriLinkStream,
+);
 
 /// Vreme za prijavu (kada je poslat kod); menja se u testovima.
 final authClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);

@@ -15,7 +15,14 @@ is stale; full acceptance, pantry/preferences/cooking/UI evaluation remain open.
 | Three fixed meal kinds | List-based slots with morning/afternoon snacks; lock/import compatibility | Dev 2; Dev 4 rendering |
 | Text ingredient identity | UUID/slug catalog with original text and unresolved fallback | Dev 1; Dev 2/3/4 consumers |
 | Existing local built-in provider keys | Planned authenticated Supabase Edge gateway, own keys still device-only | Dev 2 |
+| FR-009: approved meal keeps recipe content independent of later library edits | Plan detail and cooking mode show live steps for uncooked meals with an existing library recipe. Cooked meals and meals whose recipe was deleted show the approved snapshot steps. Ingredients and servings come from the plan. An uncooked meal with changed library ingredients offers “Osveži iz recepta”, which refreshes the recipe snapshot and preserves planned servings (decided 2026-11-21). | Dev 4 |
 | Legacy original plan tasks describe all work in one spec | Completed slices retained; new behavior gets focused spec/contracts and linked tasks | All owners |
+
+The approved snapshot steps may differ from the live steps shown before cooking.
+For acceptance, mark a planned meal cooked, then edit its library recipe's steps
+and ingredients. Verify that plan detail and the meal's cooking route show the
+approved snapshot steps and ingredients at the planned servings. Plan detail
+offers no “Osveži iz recepta” action while the meal is cooked.
 
 Still binding: reviewed drafts, snapshots/servings, delta-only repeat Add,
 canonical week/month shopping, six-week months, bought/manual preservation,

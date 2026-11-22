@@ -24,8 +24,8 @@ abstract final class TavliRadius {
   /// Sporedno dugme, polje za unos, red u listi, napomena.
   static const double field = 16;
 
-  /// Glavno dugme.
-  static const double button = 18;
+  /// Glavno i sporedno dugme (iste visine i radijusa, Anja 21.11.2026).
+  static const double button = 16;
 
   /// Kartica, plutajuće dugme, segmentno dugme.
   static const double card = 20;
