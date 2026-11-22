@@ -247,6 +247,13 @@ class AccountService {
         }
         // Deca pre roditelja: potrošnja i kuvanje, raspodela, doprinosi,
         // izvori, pa liste i ostava.
+        // Kućni katalog namirnica; deljeni ostaje (ne pripada nalogu).
+        await (_db.delete(
+          _db.foodAliases,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.foods,
+        )..where((t) => t.householdId.equals(hid))).go();
         await (_db.delete(
           _db.pantryConsumptions,
         )..where((t) => t.householdId.equals(hid))).go();

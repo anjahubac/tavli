@@ -271,6 +271,10 @@ void main() {
       'fetch:pantry_consumptions',
       'fetch:ratings',
       'fetch:taste_profiles',
+      'fetch:households',
+      'fetch:foods',
+      'fetch:food_aliases',
+      'fetch:households',
       'fetch:deletions',
       'rating_summaries',
     ]);
