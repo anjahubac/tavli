@@ -127,7 +127,10 @@ class _EmptyArtPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_EmptyArtPainter old) =>
-      old.t != t || old.colors != colors || old.fit != fit;
+      old.t != t ||
+      old.colors != colors ||
+      old.fit != fit ||
+      old.scene != scene;
 }
 
 // Pomoćne funkcije za scene.
