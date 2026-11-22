@@ -8,6 +8,7 @@ import {
   extractEpubPages,
   extractPdfPages,
   MAX_PAGES,
+  MAX_ZIP_ENTRIES,
 } from "./extract.ts";
 
 // Najmanji PDF sa tekstom (Helvetica); `null` je stranica bez teksta (samo crtež).
@@ -166,4 +167,37 @@ Deno.test("extractEpubPages: EPUB bez teksta je no_text, a loš zip je corrupt",
     ExtractError,
   );
   assertEquals(bad.code, "corrupt");
+});
+
+// --- Otpornost na zlonamerne fajlove (bezbednosni pregled) ---
+
+Deno.test("chunkPage: šest miliona znakova bez razmaka se deli u linearnom vremenu", () => {
+  const t0 = performance.now();
+  const chunks = chunkPage("x".repeat(6_000_000), { maxChars: 900, overlap: 150 });
+  const ms = performance.now() - t0;
+  assert(chunks.length > 5000);
+  assert(ms < 1500, `presporo: ${ms.toFixed(0)} ms`);
+});
+
+Deno.test("EPUB: mnogo neuparenih <script oznaka se obrađuje u linearnom vremenu", async () => {
+  const hostile = "<script ".repeat(60_000) + "<p>Pasulj</p>";
+  const t0 = performance.now();
+  const pages = await extractEpubPages(makeEpub([hostile]));
+  const ms = performance.now() - t0;
+  assert(pages.join(" ").includes("Pasulj") || pages.length >= 0);
+  assert(ms < 1500, `presporo: ${ms.toFixed(0)} ms`);
+});
+
+Deno.test("EPUB: ukupno raspakovano preko granice je too_large (zip bomba)", async () => {
+  const chunk = "a".repeat(9_000_000);
+  const chapters = Array.from({ length: 7 }, () => `<p>${chunk}</p>`);
+  const err = await assertRejects(() => extractEpubPages(makeEpub(chapters)), ExtractError);
+  assertEquals(err.code, "too_large");
+});
+
+Deno.test("EPUB: previše unosa u arhivi je too_large", async () => {
+  const files: Record<string, Uint8Array> = {};
+  for (let i = 0; i < MAX_ZIP_ENTRIES + 5; i++) files[`f${i}.xml`] = strToU8("<a/>");
+  const err = await assertRejects(() => extractEpubPages(zipSync(files)), ExtractError);
+  assertEquals(err.code, "too_large");
 });

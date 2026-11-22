@@ -6,8 +6,11 @@ import { unzipSync } from "npm:fflate@0.8.2";
 export const MAX_PAGES = 500;
 /** Najviše znakova jedne EPUB „stranice”: dugo poglavlje se deli na više. */
 export const EPUB_PAGE_CHARS = 3000;
+/** Granice arhive: ukupno raspakovano i broj unosa (zaštita od zip bombe). */
+export const MAX_UNZIPPED_BYTES = 50_000_000;
+export const MAX_ZIP_ENTRIES = 5000;
 
-export type ExtractErrorCode = "no_text" | "corrupt" | "too_many_pages";
+export type ExtractErrorCode = "no_text" | "corrupt" | "too_many_pages" | "too_large";
 
 export class ExtractError extends Error {
   constructor(public code: ExtractErrorCode) {
@@ -68,9 +71,43 @@ const ENTITIES: Record<string, string> = {
   nbsp: " ",
 };
 
-function htmlToText(html: string): string {
+/**
+ * Skida <script> i <style> blokove jednim prolazom (bez regexa sa vraćanjem,
+ * koji je kvadratan na nizu neuparenih oznaka). Oznaka bez zatvaranja skida se
+ * samo kao oznaka; kad zatvaranja nema nigde dalje, ne traži se ponovo.
+ */
+function stripBlocks(html: string, tag: string): string {
+  const lower = html.toLowerCase();
+  const open = `<${tag}`, close = `</${tag}`;
+  let out = "", pos = 0, noClose = false;
+  for (;;) {
+    const at = lower.indexOf(open, pos);
+    if (at === -1) return out + html.slice(pos);
+    const after = lower.charCodeAt(at + open.length);
+    const isTag = Number.isNaN(after) || !(
+      (after >= 97 && after <= 122) || (after >= 48 && after <= 57)
+    );
+    if (!isTag) {
+      out += html.slice(pos, at + 1);
+      pos = at + 1;
+      continue;
+    }
+    out += html.slice(pos, at) + " ";
+    const end = noClose ? -1 : lower.indexOf(close, at + open.length);
+    if (end === -1) {
+      noClose = true;
+      const gt = lower.indexOf(">", at);
+      pos = gt === -1 ? html.length : gt + 1;
+      continue;
+    }
+    const gt = lower.indexOf(">", end);
+    pos = gt === -1 ? html.length : gt + 1;
+  }
+}
+
+function htmlToText(source: string): string {
+  const html = stripBlocks(stripBlocks(source, "script"), "style");
   return html
-    .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ")
     .replace(/<\/(p|div|h[1-6]|li|br|tr)>|<br\s*\/?>/gi, "\n")
     .replace(/<[^>]*>/g, " ")
     .replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e: string) => {
@@ -121,15 +158,31 @@ function splitLong(text: string): string[] {
 
 export function extractEpubPages(bytes: Uint8Array): Promise<string[]> {
   let files: Record<string, Uint8Array>;
+  let entries = 0, total = 0, tooLarge = false;
   try {
-    // Samo tekstualni delovi, svaki najviše 10 MB: slike i zip bombe se ne raspakuju.
+    // Samo tekstualni delovi, svaki najviše 10 MB, a zajedno i po broju unosa
+    // ograničeni: slike i zip bombe se ne raspakuju.
     files = unzipSync(bytes, {
-      filter: (f) =>
-        f.originalSize <= 10_000_000 && /\.(xhtml|html|htm|opf|xml)$/i.test(f.name),
+      filter: (f) => {
+        if (++entries > MAX_ZIP_ENTRIES) {
+          tooLarge = true;
+          return false;
+        }
+        if (f.originalSize > 10_000_000 || !/\.(xhtml|html|htm|opf|xml)$/i.test(f.name)) {
+          return false;
+        }
+        total += f.originalSize;
+        if (total > MAX_UNZIPPED_BYTES) {
+          tooLarge = true;
+          return false;
+        }
+        return true;
+      },
     });
   } catch {
     return Promise.reject(new ExtractError("corrupt"));
   }
+  if (tooLarge) return Promise.reject(new ExtractError("too_large"));
   const text = (name: string) => {
     const f = files[name];
     return f ? new TextDecoder().decode(f) : undefined;
