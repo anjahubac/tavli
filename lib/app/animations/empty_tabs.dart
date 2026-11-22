@@ -235,7 +235,9 @@ void _cookbook(Canvas canvas, double t, EmptyArtColors c) {
     const Rect.fromLTWH(_spine, 56, _pageWidth, 100),
     _pageRadius,
   );
-  final lo = interval(o, 0.45, 0.6);
+  // Leva strana postoji tek kad korice legnu: dok se okreću, njihova
+  // unutrašnjost je ta strana, pa se ništa ne pojavljuje pre njih.
+  final lo = o >= 1 ? 1.0 : 0.0;
   canvas
     ..drawRRect(left, fill(c.surface, opacity: lo))
     ..drawRRect(left, stroke(c.line, opacity: lo))
@@ -244,13 +246,15 @@ void _cookbook(Canvas canvas, double t, EmptyArtColors c) {
 
   final ro = easeOut(interval(t, 0.3, 0.45));
   final rules = Path();
-  for (final (x0, x1, y) in const [
+  for (final (x0, x1, y) in [
     (110.0, 158.0, 102.0),
     (110.0, 158.0, 118.0),
     (110.0, 150.0, 134.0),
-    (42.0, 90.0, 86.0),
-    (42.0, 90.0, 102.0),
-    (42.0, 82.0, 118.0),
+    if (lo > 0) ...[
+      (42.0, 90.0, 86.0),
+      (42.0, 90.0, 102.0),
+      (42.0, 82.0, 118.0),
+    ],
   ]) {
     rules
       ..moveTo(x0, y)
