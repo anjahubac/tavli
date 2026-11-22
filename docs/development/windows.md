@@ -35,6 +35,29 @@ Account-backed use needs the same gitignored configuration as the other
 platforms. Pass it with `--dart-define-from-file` as described in `AGENTS.md`.
 Never put those values into the runner, MSIX configuration or CI.
 
+To test email confirmation links with a local Windows build, close any
+running copy of that build and run from the repository root:
+
+```powershell
+.\scripts\build-windows.ps1
+.\scripts\build-windows.ps1 -Mode Release
+.\scripts\build-windows.ps1 -DefinesFile .\secrets.dev.json
+```
+
+The defaults are `-Mode Debug` and `-DefinesFile .\secrets.json`. Both
+`Release` and `Debug` use the selected environment file independently of mode.
+Flutter can embed values used by the app into either build. Keep both build
+bundles private when they contain credentials. The registry stores only the
+executable path and a placeholder for the incoming URI.
+
+After a successful build the script registers `tavli://` for the current Windows
+user and points it at the executable for the chosen mode. For the default
+build, launch `build\windows\x64\runner\Debug\tavli.exe` to test sign-up in
+that instance. Re-run the script if the checkout
+moves or to point the protocol at a different checkout. To remove the local
+registration, remove `HKCU\Software\Classes\tavli` if it still points to that
+build.
+
 ## Create and test an installer
 
 The development dependency `msix` creates a locally installable package:

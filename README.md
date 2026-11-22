@@ -37,8 +37,9 @@ flutter test
 flutter run -d macos
 ```
 
-Windows setup, builds and local MSIX packaging are documented in
-[Windows development](docs/development/windows.md).
+On Windows, `.\scripts\build-windows.ps1` builds Debug and registers the
+`tavli://` link for the current user. See [Windows development](docs/development/windows.md)
+for setup, build options and local MSIX packaging.
 
 Account-backed use needs the team's gitignored local configuration passed with
 `--dart-define-from-file`. Humans provision it using empty example placeholders;

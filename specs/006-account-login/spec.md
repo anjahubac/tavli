@@ -51,8 +51,9 @@ applies: sign-in and sign-up are separate screens. Tasks are T073–T078 in
   button there, the address is confirmed but the code is used up. "Proveri
   mejl" then offers "Pošalji mi kod", which sends a sign-in code. Automatic
   sign-in on the other device ("Da li si to ti?") is a later slice.
-- **Windows** has no `tavli://` registration until the installer adds it, so
-  "Proveri mejl" asks only for the code there.
+- **Windows** shows the code entry on "Proveri mejl". The [local Windows build
+  script](../../docs/development/windows.md) can register `tavli://` for testing
+  the email button with the local executable.
 - **Layout:** every auth screen centers the 64 px Tavli badge, the title and
   the intro. On phones the content sits directly on the background, and "Nazad"
   is in a top bar when the step has one. On wide windows (at least 720 × 600)

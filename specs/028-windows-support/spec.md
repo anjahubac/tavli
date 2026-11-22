@@ -43,6 +43,19 @@ until execution evidence is linked.
 
 New target must preserve secure session/key storage, account/environment isolation and file/outbox semantics. Windows is not currently supported merely because Flutter supports it.
 
+Local build callback slice (FR-101 and FR-102). The build and runner changes
+are coordinated by Dev 4 in `scripts/build-windows.ps1`, `windows/runner/main.cpp`
+and `docs/development/windows.md`. A successful local Debug or Release build may
+register `tavli://` for the current user. The runner forwards an activation to
+an open instance of the same executable, or receives it on startup. A failed
+build leaves the existing registration intact. Verify cold and warm activation
+with a synthetic URI, then verify email confirmation against the local stack.
+
+The registry stores the executable path and an argument placeholder. The
+existing auth callback validates links and handles one-time codes. The script
+does not log callback data, request credentials, or target hosted services.
+Database, account data, MSIX and CI deployment changes are N/A for this slice.
+
 ## Exact UI copy carried forward
 
 “Izaberi sliku”, “Funkcija nije dostupna na ovom uređaju.”.
