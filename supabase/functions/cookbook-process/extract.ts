@@ -133,7 +133,14 @@ function attr(tag: string, name: string): string | undefined {
 
 function resolve(base: string, href: string): string {
   const dir = base.includes("/") ? base.slice(0, base.lastIndexOf("/") + 1) : "";
-  const parts = (dir + decodeURIComponent(href.split("#")[0])).split("/");
+  const raw = href.split("#")[0];
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    // Neispravan procenat-zapis: koristi se putanja kakva jeste.
+  }
+  const parts = (dir + decoded).split("/");
   const out: string[] = [];
   for (const p of parts) {
     if (p === "..") out.pop();
@@ -156,7 +163,7 @@ function splitLong(text: string): string[] {
   return pieces;
 }
 
-export function extractEpubPages(bytes: Uint8Array): Promise<string[]> {
+export async function extractEpubPages(bytes: Uint8Array): Promise<string[]> {
   let files: Record<string, Uint8Array>;
   let entries = 0, total = 0, tooLarge = false;
   try {
@@ -180,9 +187,9 @@ export function extractEpubPages(bytes: Uint8Array): Promise<string[]> {
       },
     });
   } catch {
-    return Promise.reject(new ExtractError("corrupt"));
+    throw new ExtractError("corrupt");
   }
-  if (tooLarge) return Promise.reject(new ExtractError("too_large"));
+  if (tooLarge) throw new ExtractError("too_large");
   const text = (name: string) => {
     const f = files[name];
     return f ? new TextDecoder().decode(f) : undefined;
@@ -191,7 +198,7 @@ export function extractEpubPages(bytes: Uint8Array): Promise<string[]> {
   const rootTag = container && /<rootfile\b[^>]*>/i.exec(container)?.[0];
   const opfPath = rootTag ? attr(rootTag, "full-path") : undefined;
   const opf = opfPath ? text(opfPath) : undefined;
-  if (!opfPath || !opf) return Promise.reject(new ExtractError("corrupt"));
+  if (!opfPath || !opf) throw new ExtractError("corrupt");
 
   const manifest = new Map<string, string>();
   for (const m of opf.matchAll(/<item\b[^>]*>/gi)) {
@@ -205,9 +212,8 @@ export function extractEpubPages(bytes: Uint8Array): Promise<string[]> {
     if (html === undefined) continue;
     const t = htmlToText(html);
     if (t !== "") pages.push(...splitLong(t));
-    if (pages.length > MAX_PAGES) return Promise.reject(new ExtractError("too_many_pages"));
+    if (pages.length > MAX_PAGES) throw new ExtractError("too_many_pages");
   }
-  return hasText(pages)
-    ? Promise.resolve(pages)
-    : Promise.reject(new ExtractError("no_text"));
+  if (!hasText(pages)) throw new ExtractError("no_text");
+  return pages;
 }

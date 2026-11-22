@@ -199,4 +199,68 @@ void main() {
     expect(find.text('Kuvarske knjige'), findsOneWidget);
     expect(find.text('Velika kuvarica'), findsOneWidget);
   });
+
+  testTavli('prekinuta obrada: „Nastavi obradu“ je završava', (tester) async {
+    await open(
+      tester,
+      books: const [
+        Cookbook(
+          id: 'p',
+          title: 'Torte',
+          filename: 't.pdf',
+          status: CookbookStatus.processing,
+          pages: 100,
+          nextPage: 41,
+        ),
+      ],
+    );
+    expect(find.text('Obrada: 40 od 100 stranica'), findsOneWidget);
+    await tapButton(tester, 'Nastavi obradu');
+
+    expect(repo.resumes, ['p']);
+    expect(find.text('Spremno, 100 stranica'), findsOneWidget);
+    expect(find.text('Nastavi obradu'), findsNothing);
+    expect(find.text('Knjiga je spremna.'), findsOneWidget);
+  });
+
+  testTavli('spremna i neuspela knjiga nemaju „Nastavi obradu“', (
+    tester,
+  ) async {
+    await open(
+      tester,
+      books: const [
+        readyBook,
+        Cookbook(
+          id: 'f',
+          title: 'Skenirana',
+          filename: 's.pdf',
+          status: CookbookStatus.failed,
+          errorCode: 'no_text',
+        ),
+      ],
+    );
+    expect(find.text('Nastavi obradu'), findsNothing);
+  });
+
+  testTavli('greška pri nastavku obrade se prikazuje', (tester) async {
+    await open(
+      tester,
+      books: const [
+        Cookbook(
+          id: 'p',
+          title: 'Torte',
+          filename: 't.pdf',
+          status: CookbookStatus.uploaded,
+        ),
+      ],
+    );
+    repo.failure = const CookbookOffline();
+    await tapButton(tester, 'Nastavi obradu');
+    expect(
+      find.text(
+        'Nema veze sa internetom. Knjige i pitanja rade samo uz mrežu.',
+      ),
+      findsOneWidget,
+    );
+  });
 }

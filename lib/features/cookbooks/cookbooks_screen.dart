@@ -60,6 +60,40 @@ class _CookbooksScreenState extends ConsumerState<CookbooksScreen> {
     }
   }
 
+  Future<void> _resume(Cookbook book) async {
+    final repo = ref.read(cookbookRepositoryProvider);
+    if (repo == null || _busy) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+      _progress = cookbookStatusText(book);
+    });
+    try {
+      await repo.resume(
+        book,
+        onProgress: (b) {
+          if (mounted) setState(() => _progress = cookbookStatusText(b));
+        },
+      );
+      ref.invalidate(cookbooksProvider);
+      if (!mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Knjiga je spremna.')));
+    } on Exception catch (e) {
+      ref.invalidate(cookbooksProvider);
+      if (mounted) setState(() => _error = cookbookFailureText(e));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = null;
+        });
+      }
+    }
+  }
+
   Future<void> _delete(Cookbook book) async {
     final repo = ref.read(cookbookRepositoryProvider);
     if (repo == null) return;
@@ -155,17 +189,30 @@ class _CookbooksScreenState extends ConsumerState<CookbooksScreen> {
                 'Knjige vidi samo tvoje domaćinstvo.',
           )
         else
-          for (final book in list) _BookTile(book: book, onDelete: _delete),
+          for (final book in list)
+            _BookTile(
+              book: book,
+              busy: _busy,
+              onDelete: _delete,
+              onResume: _resume,
+            ),
       ],
     );
   }
 }
 
 class _BookTile extends StatelessWidget {
-  const _BookTile({required this.book, required this.onDelete});
+  const _BookTile({
+    required this.book,
+    required this.busy,
+    required this.onDelete,
+    required this.onResume,
+  });
 
   final Cookbook book;
+  final bool busy;
   final Future<void> Function(Cookbook) onDelete;
+  final Future<void> Function(Cookbook) onResume;
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +238,12 @@ class _BookTile extends StatelessWidget {
                     const SizedBox(height: 8),
                     LinearProgressIndicator(value: progress),
                   ],
+                  if (book.status == CookbookStatus.uploaded ||
+                      book.status == CookbookStatus.processing)
+                    TextButton(
+                      onPressed: busy ? null : () => onResume(book),
+                      child: const Text('Nastavi obradu'),
+                    ),
                 ],
               ),
             ),

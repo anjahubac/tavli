@@ -12,6 +12,7 @@ class FakeCookbookRepository implements CookbookRepository {
   final List<Cookbook> books;
   final uploads = <({String filename, int bytes})>[];
   final deletes = <String>[];
+  final resumes = <String>[];
   final questions = <({String question, String? bookId})>[];
 
   /// Greška koju sledeći poziv baca (jednom).
@@ -55,6 +56,27 @@ class FakeCookbookRepository implements CookbookRepository {
     onProgress?.call(book);
     books.insert(0, book);
     return book;
+  }
+
+  @override
+  Future<Cookbook> resume(
+    Cookbook book, {
+    void Function(Cookbook book)? onProgress,
+  }) async {
+    resumes.add(book.id);
+    if (_take() case final f?) throw f;
+    final done = Cookbook(
+      id: book.id,
+      title: book.title,
+      filename: book.filename,
+      status: CookbookStatus.ready,
+      pages: book.pages ?? 12,
+      nextPage: (book.pages ?? 12) + 1,
+    );
+    onProgress?.call(done);
+    final i = books.indexWhere((b) => b.id == book.id);
+    if (i >= 0) books[i] = done;
+    return done;
   }
 
   @override

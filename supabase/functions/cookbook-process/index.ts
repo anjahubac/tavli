@@ -114,6 +114,11 @@ const registerDeps: RegisterDeps = {
     if (error?.code === "23514" && error.message.includes("cookbook_limit")) {
       throw new LimitReachedError();
     }
+    // 23505: dva istovremena zahteva za istu putanju; važi onaj koji je prvi upisan.
+    if (error?.code === "23505") {
+      const existing = await registerDeps.findByPath(b.householdId, b.path);
+      if (existing) return existing;
+    }
     if (error) throw error;
     return { id: data.id, status: data.status };
   },

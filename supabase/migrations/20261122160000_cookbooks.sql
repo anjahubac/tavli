@@ -84,8 +84,9 @@ create trigger limit_cookbooks before insert on public.cookbooks
 
 -- Obradu knjige u jednom trenutku radi samo jedan poziv: dva istovremena poziva
 -- bi dvaput platila embedding. Preuzimanje starije od p_stale_seconds (srušen
--- poziv) se može preuzeti ponovo. Gotova i neuspela knjiga se ne preuzima.
-create or replace function public.claim_cookbook(p_id uuid, p_stale_seconds int default 150)
+-- poziv) se može preuzeti ponovo; 300 s je iznad budžeta poziva (100 s) i
+-- najduže stranice posle njega. Gotova i neuspela knjiga se ne preuzima.
+create or replace function public.claim_cookbook(p_id uuid, p_stale_seconds int default 300)
 returns boolean
 language plpgsql
 security definer
@@ -180,6 +181,21 @@ create policy "cookbooks: members select" on storage.objects
   );
 create policy "cookbooks: members insert" on storage.objects
   for insert to authenticated
+  with check (
+    bucket_id = 'cookbooks'
+    and private.is_member(case
+      when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      then ((storage.foldername(name))[1])::uuid end)
+  );
+-- Ponovni izbor istog fajla (prekinuto otpremanje) je upsert: traži i UPDATE.
+create policy "cookbooks: members update" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'cookbooks'
+    and private.is_member(case
+      when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      then ((storage.foldername(name))[1])::uuid end)
+  )
   with check (
     bucket_id = 'cookbooks'
     and private.is_member(case

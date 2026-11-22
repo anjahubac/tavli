@@ -80,3 +80,10 @@ Deno.test("baza odbija 21. knjigu u trci: limit_reached, ne greška servera", as
   const r = await registerBook(d, USER, { storagePath: `${HH_A}/a.pdf`, title: "t" });
   assertEquals(r, { ok: false, error: "limit_reached" });
 });
+
+Deno.test("fajl čije je ime samo ekstenzija nema naslov: bad_request", async () => {
+  const { d, created } = deps();
+  const r = await registerBook(d, USER, { storagePath: `${HH_A}/.pdf`, title: "" });
+  assertEquals(r, { ok: false, error: "bad_request" });
+  assertEquals(created.length, 0);
+});

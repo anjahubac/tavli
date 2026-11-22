@@ -48,7 +48,8 @@ export async function registerBook(
 
   let title = typeof req.title === "string" ? req.title.trim() : "";
   if (title.length > 200) return bad();
-  if (title === "") title = file.replace(/\.(pdf|epub)$/i, "");
+  if (title === "") title = file.replace(/\.(pdf|epub)$/i, "").trim();
+  if (title === "") return bad();
 
   const householdId = parts[0];
   if (!(await deps.isMember(userId, householdId))) {

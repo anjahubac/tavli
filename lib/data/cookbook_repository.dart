@@ -56,10 +56,78 @@ abstract interface class CookbookRepository {
     void Function(Cookbook book)? onProgress,
   });
 
+  /// Nastavlja obradu knjige koja je ostala nedovršena (prekid, greška
+  /// servera). Fajl se ne otprema ponovo.
+  Future<Cookbook> resume(
+    Cookbook book, {
+    void Function(Cookbook book)? onProgress,
+  });
+
   /// Briše knjigu i njene delove; posle toga se ne pretražuje.
   Future<void> delete(String id);
 
   Future<CookbookAnswer> ask(String question, {String? bookId});
+}
+
+/// Jedan poziv obrade na serveru: telo je `{storagePath, title}` za novu knjigu
+/// ili `{bookId}` za nastavak; odgovor je `{id, status, nextPage, pages, errorCode}`.
+typedef ProcessStep = Future<Map<String, dynamic>> Function(
+  Map<String, Object?> body,
+);
+
+/// Zove obradu dok knjiga nije spremna. Server radi u delovima (`partial`) i
+/// može da bude zauzet (`busy`). Deo koji napreduje se nastavlja odmah. Kad
+/// napretka nema (provajder embeddinga ne odgovara), čeka se [pause] i
+/// ponavlja najviše [maxStalls] puta, pa je greška: bez toga bi aplikacija
+/// u petlji ponavljala skup poziv koji svaki put iznova čita ceo fajl.
+Future<Cookbook> driveProcessing({
+  required ProcessStep step,
+  required Map<String, Object?> first,
+  required String title,
+  required String filename,
+  required Duration pause,
+  Future<void> Function(Duration)? wait,
+  int maxSteps = 60,
+  int maxStalls = 3,
+  void Function(Cookbook book)? onProgress,
+}) async {
+  final sleep = wait ?? Future<void>.delayed;
+  var body = first;
+  var lastPage = 0;
+  var stalls = 0;
+  for (var i = 0; i < maxSteps; i++) {
+    final data = await step(body);
+    final id = data['id'] as String;
+    final status = data['status'] as String;
+    final next = data['nextPage'] as int? ?? 1;
+    final book = Cookbook(
+      id: id,
+      title: title,
+      filename: filename,
+      status: switch (status) {
+        'ready' => CookbookStatus.ready,
+        'failed' => CookbookStatus.failed,
+        _ => CookbookStatus.processing,
+      },
+      pages: data['pages'] as int?,
+      nextPage: next,
+      errorCode: data['errorCode'] as String?,
+    );
+    onProgress?.call(book);
+    if (book.status == CookbookStatus.ready) return book;
+    if (book.status == CookbookStatus.failed) {
+      throw CookbookRejected(book.errorCode ?? 'failed');
+    }
+    if (status == 'partial' && next > lastPage) {
+      stalls = 0;
+    } else {
+      if (++stalls >= maxStalls) throw const CookbookServerError();
+      await sleep(pause);
+    }
+    lastPage = next > lastPage ? next : lastPage;
+    body = {'bookId': id};
+  }
+  throw const CookbookServerError();
 }
 
 class SupabaseCookbookRepository implements CookbookRepository {
@@ -113,38 +181,37 @@ class SupabaseCookbookRepository implements CookbookRepository {
       RegExp(r'\.(pdf|epub)$', caseSensitive: false),
       '',
     );
-    Map<String, dynamic> body = {'storagePath': path, 'title': title};
-    for (var step = 0; step < maxSteps; step++) {
-      final res = await _client.functions.invoke(
-        'cookbook-process',
-        body: body,
-      );
-      final data = res.data as Map<String, dynamic>;
-      final id = data['id'] as String;
-      final status = data['status'] as String;
-      final book = Cookbook(
-        id: id,
-        title: title,
-        filename: safe,
-        status: switch (status) {
-          'ready' => CookbookStatus.ready,
-          'failed' => CookbookStatus.failed,
-          _ => CookbookStatus.processing,
-        },
-        pages: data['pages'] as int?,
-        nextPage: data['nextPage'] as int? ?? 1,
-        errorCode: data['errorCode'] as String?,
-      );
-      onProgress?.call(book);
-      if (book.status == CookbookStatus.ready) return book;
-      if (book.status == CookbookStatus.failed) {
-        throw CookbookRejected(book.errorCode ?? 'failed');
-      }
-      if (status == 'busy') await Future<void>.delayed(stepDelay);
-      body = {'bookId': id};
-    }
-    throw const CookbookServerError();
+    return driveProcessing(
+      step: _process,
+      first: {'storagePath': path, 'title': title},
+      title: title,
+      filename: safe,
+      pause: stepDelay,
+      maxSteps: maxSteps,
+      onProgress: onProgress,
+    );
   });
+
+  @override
+  Future<Cookbook> resume(
+    Cookbook book, {
+    void Function(Cookbook book)? onProgress,
+  }) => _guard(
+    () => driveProcessing(
+      step: _process,
+      first: {'bookId': book.id},
+      title: book.title,
+      filename: book.filename,
+      pause: stepDelay,
+      maxSteps: maxSteps,
+      onProgress: onProgress,
+    ),
+  );
+
+  Future<Map<String, dynamic>> _process(Map<String, Object?> body) async {
+    final res = await _client.functions.invoke('cookbook-process', body: body);
+    return res.data as Map<String, dynamic>;
+  }
 
   @override
   Future<void> delete(String id) => _guard(() async {

@@ -201,3 +201,16 @@ Deno.test("EPUB: previše unosa u arhivi je too_large", async () => {
   const err = await assertRejects(() => extractEpubPages(zipSync(files)), ExtractError);
   assertEquals(err.code, "too_large");
 });
+
+Deno.test("EPUB: neispravan procenat-zapis u putanji ne baca URIError nego ExtractError", async () => {
+  const files: Record<string, Uint8Array> = {
+    "META-INF/container.xml": strToU8(
+      `<container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>`,
+    ),
+    "OEBPS/content.opf": strToU8(
+      `<package><manifest><item id="c0" href="text/%E0%A4%A.xhtml"/></manifest><spine><itemref idref="c0"/></spine></package>`,
+    ),
+  };
+  const err = await assertRejects(() => extractEpubPages(zipSync(files)), ExtractError);
+  assert(err instanceof ExtractError);
+});
