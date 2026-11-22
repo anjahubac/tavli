@@ -149,6 +149,26 @@ select tests.authenticate_as(:'ua');
 select throws_ok(format($$insert into public.food_aliases (id, food_id, household_id, alias, alias_normalized) values ('00000000-0000-4000-8000-0000000000d8', '00000000-0000-4000-8000-0000000000b2', %L, 'kajmak', 'kajmak')$$, :'ha'),
   '23514', null, 'alias na obrisanu namirnicu drugog domaćinstva se odbija kao nepostojeća');
 
+-- Ovlašćenje prvo, tragovi posle: nečlan dobija 42501 i za obrisan alias i za
+-- obrisanu namirnicu tuđeg domaćinstva, pa odgovor ne zavisi od tuđih brisanja.
+select tests.authenticate_as(:'ub');
+select throws_ok(format($$insert into public.food_aliases (id, food_id, household_id, alias, alias_normalized) values ('00000000-0000-4000-8000-0000000000d2', '00000000-0000-4000-8000-000000000001', %L, 'ajvar', 'ajvar')$$, :'ha'),
+  '42501', null, 'nečlan ne dobija tihi preskok za obrisan alias tuđeg domaćinstva');
+select throws_ok(format($$insert into public.foods (id, household_id, slug, name, category, base_unit) values ('00000000-0000-4000-8000-0000000000c1', %L, 'ajvar', 'ajvar', 'Ostalo', 'gram')$$, :'ha'),
+  '42501', null, 'nečlan ne dobija tihi preskok za obrisanu namirnicu tuđeg domaćinstva');
+-- Trag važi samo za domaćinstvo koje je brisalo: isti id u drugom domaćinstvu se upisuje.
+select lives_ok(format($$insert into public.foods (id, household_id, slug, name, category, base_unit) values ('00000000-0000-4000-8000-0000000000c1', %L, 'ajvar-b', 'ajvar', 'Ostalo', 'gram')$$, :'hb'),
+  'tuđ trag ne preskače upis u sopstveno domaćinstvo');
+select is((select count(*) from public.foods where id = '00000000-0000-4000-8000-0000000000c1'), 1::bigint, 'red je upisan');
+
+-- Zakasnela izmena aliasa koji je drugi uređaj obrisao, a namirnica je povučena:
+-- trag samog aliasa se gleda pre provere povlačenja, pa je to tih no-op, ne 23514.
+select tests.authenticate_as(:'ua');
+select is(tests.affected($$delete from public.food_aliases where id = '00000000-0000-4000-8000-0000000000d1'$$), 1::bigint, 'A briše alias na povučenu namirnicu');
+select lives_ok(format($$insert into public.food_aliases (id, food_id, household_id, alias, alias_normalized) values ('00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-000000000002', %L, 'mlijeko 2', 'mlijeko 2') on conflict (id) do update set alias = excluded.alias$$, :'ha'),
+  'zakasnela izmena obrisanog aliasa na povučenu namirnicu je no-op, ne trajna greška');
+select is((select count(*) from public.food_aliases where id = '00000000-0000-4000-8000-0000000000d1'), 0::bigint, 'obrisan alias se ne vraća');
+
 -- Brisanje naloga uklanja kućne namirnice i aliase, deljeni ostaju.
 select tests.clear_auth();
 select public.delete_account_data(:'ua');

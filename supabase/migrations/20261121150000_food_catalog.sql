@@ -80,10 +80,16 @@ $$;
 -- Deljeni alias pokazuje samo na deljenu namirnicu; kućni na deljenu ili na
 -- namirnicu istog domaćinstva (odluka D2). Nov kućni alias ne sme na povučenu
 -- namirnicu (D9); postojeći red (ponovno slanje je upsert) ostaje i šalje se
--- dalje. Okidač radi pre skip_if_deleted (redosled po imenu), pa sam tiho
--- preskače alias namirnice koju je obrisalo isto domaćinstvo: brisanje
--- pobeđuje. security definer: tuđa namirnica, postojeća ili obrisana, se vidi
--- da bi se odbila, a odgovor je isti kao za nepostojeću.
+-- dalje. security definer, pa prvo proverava ko zove: prijavljen korisnik koji
+-- nije član domaćinstva reda dobija red nazad bez ikakvog čitanja, a politika
+-- ga odbija (42501), pa odgovor ne zavisi od tuđe istorije brisanja. Tek za
+-- ovlašćenog važi redosled: (1) trag brisanja samog aliasa, jer zakasnela
+-- izmena aliasa koji je drugi uređaj obrisao (a namirnicu povukao) mora da
+-- bude tih bez greške, ne trajno odbijena; (2) roditelj se zaključava
+-- (for key share) pa istovremeno brisanje roditelja ili već završeno
+-- brisanje isto domaćinstvo vidi kao trag, ne kao 23503 iz spoljnog ključa;
+-- (3) tek onda provera cilja. Tragovi se gledaju samo za domaćinstvo reda.
+-- Okidač radi pre ostalih (redosled po imenu): brisanje pobeđuje.
 create or replace function private.check_food_alias()
 returns trigger
 language plpgsql
@@ -93,10 +99,22 @@ as $$
 declare
   f public.foods%rowtype;
 begin
-  select * into f from public.foods where id = new.food_id;
+  if new.household_id is not null
+     and (select auth.uid()) is not null
+     and not private.is_member(new.household_id) then
+    return new;
+  end if;
+  if new.household_id is not null and exists (
+    select 1 from public.deletions d
+    where d.entity = 'food_alias' and d.record_id = new.id::text
+      and d.household_id = new.household_id
+  ) then
+    return null;
+  end if;
+  select * into f from public.foods where id = new.food_id for key share;
   if not found and new.household_id is not null and exists (
     select 1 from public.deletions d
-    where d.entity = 'food' and d.record_id = new.food_id
+    where d.entity = 'food' and d.record_id = new.food_id::text
       and d.household_id = new.household_id
   ) then
     return null;
@@ -113,8 +131,32 @@ begin
 end;
 $$;
 
+-- Zakasnelo ubacivanje kućne namirnice koju je domaćinstvo obrisalo se tiho
+-- preskače. Opšti skip_if_deleted gleda tragove globalno; ovde samo za
+-- domaćinstvo reda i samo za ovlašćenog, da odgovor ne otkriva tuđa brisanja.
+create or replace function private.skip_deleted_food()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.household_id is not null
+     and ((select auth.uid()) is null or private.is_member(new.household_id))
+     and exists (
+       select 1 from public.deletions d
+       where d.entity = 'food' and d.record_id = new.id::text
+         and d.household_id = new.household_id
+     ) then
+    return null;
+  end if;
+  return new;
+end;
+$$;
+
 revoke execute on function private.keep_food_owner() from public, anon, authenticated;
 revoke execute on function private.check_food_alias() from public, anon, authenticated;
+revoke execute on function private.skip_deleted_food() from public, anon, authenticated;
 
 create trigger keep_food_owner before update on public.foods
   for each row execute function private.keep_food_owner();
@@ -138,9 +180,8 @@ create trigger record_deletion after delete on public.food_aliases
   execute function private.record_deletion('food_alias', 'id');
 
 create trigger skip_if_deleted before insert on public.foods
-  for each row execute function private.skip_if_deleted('food', 'id');
-create trigger skip_if_deleted before insert on public.food_aliases
-  for each row execute function private.skip_if_deleted('food_alias', 'id', 'food', 'food_id');
+  for each row execute function private.skip_deleted_food();
+-- Za food_aliases tragove proverava check_food_alias (posle provere ovlašćenja).
 
 -- RLS: deljeno čita svaki prijavljen korisnik, kućno samo članovi. Pisanje
 -- iz klijenta samo za kućne redove sopstvenog domaćinstva; is_member(null)
