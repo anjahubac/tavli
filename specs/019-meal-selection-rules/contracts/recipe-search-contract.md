@@ -46,6 +46,16 @@ button shows the selected state and reads “Filteri (N)”. With no match the
 list shows “Nema recepata za izabrane filtere.” and **Očisti filtere**. The
 search text and filters survive layout changes.
 
+**Canvas patterns used** (the filter UI itself is not drawn; UI standard,
+“Design source”): the button is a header icon button
+(`TavliIconButton` with its selected state); the sheet is the
+standard bottom sheet (`showTavliSheet`, radius 24, title and drag handle);
+each condition is the filter-chip row from Nabavka (“Nedelja 1”,
+“Nedelja 2”, “Ceo plan”: `TavliChoice.chips`, height 36, radius 10) under a
+`TavliSectionHeader`; the actions are the paired secondary and primary
+buttons from the canvas dialogs (`TavliButtonRow`). No new measurement or
+token is introduced.
+
 ## Labels in the manual form
 
 Filters only find labelled recipes. AI recipes are labelled automatically
@@ -85,8 +95,22 @@ These add fields to `RecipeFilter`; existing callers keep working.
 
 ## Open for design review
 
-- The **Filteri** button and sheet are not on the canvas; they are built only
-  from existing Tavli components and need Dev 4's confirmation.
+- The **Filteri** button and sheet are not on the canvas; they reuse the
+  canvas patterns listed under Recipes screen and need Dev 4's confirmation.
+  If Dev 4 wants another layout, only `recipes_screen.dart` changes;
+  `searchRecipes` and `RecipeFilter` stay.
 - `RecipeLabelsPicker` keeps Material `FilterChip` and `ChoiceChip` from the
   labels sheet (TRELLO-37): Tavli has no multi-select chip yet, and
-  `TavliChoice.chips` cannot turn a choice off.
+  `TavliChoice.chips` cannot turn a choice off. Dev 4 decides between a
+  multi-select variant in `tavli_ui` (with gallery section and golden image)
+  and accepting the Material chips until then.
+
+## Acceptance matrix (UI standard)
+
+| Check | Result |
+| --- | --- |
+| Widths 320, 400, 1200 | widget tests: filter sheet and manual-form labels without overflow |
+| Light/dark, text 1×/2×, reduced motion | widget tests at 2× text, dark theme, reduced motion |
+| States | populated, filtered, no results with “Očisti filtere”; loading and read error unchanged from the Recipes screen |
+| Desktop | Windows debug build checked by hand (filters, form labels); macOS not run |
+| Not checked | keyboard focus order and screen readers (TalkBack, VoiceOver), Android, iOS and macOS devices, 719/720 and 999/1000 widths (no shell or pane change) |

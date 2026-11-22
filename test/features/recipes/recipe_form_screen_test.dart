@@ -276,7 +276,11 @@ void main() {
       expect(row.labelsSource, 'user');
     });
 
-    for (final size in [const Size(320, 640), const Size(1200, 800)]) {
+    for (final size in [
+      const Size(320, 640),
+      const Size(400, 800),
+      const Size(1200, 800),
+    ]) {
       testTavli('${size.width} px, tekst 2×, tamna tema, bez animacija: '
           'oznake bez preliva', (tester) async {
         tester.platformDispatcher.textScaleFactorTestValue = 2;
