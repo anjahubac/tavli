@@ -357,6 +357,24 @@ void main() {
     });
   });
 
+  group('naziv sastojka za katalog (TRELLO-40)', () {
+    test('naziv ostaje kakav je: varijanta se ne skraćuje', () {
+      // „mleko (bez laktoze)“ nije obično mleko; skraćivanje bi ga
+      // povezalo sa pogrešnom namirnicom i spojilo u nabavci.
+      for (final name in ['mleko (bez laktoze)', 'kiselo mleko']) {
+        expect(aiIngredient({'name': name}).name, name);
+      }
+    });
+
+    test('upiti za recept i plan nose pravila za naziv', () {
+      for (final prompt in [recipeSystemPrompt, mealPlanSystemPrompt]) {
+        expect(prompt, contains(ingredientNameRules));
+      }
+      expect(ingredientNameRules, contains('"so i biber" is two ingredients'));
+      expect(ingredientNameRules, contains('nominative singular'));
+    });
+  });
+
   group('rečnik jedinica', () {
     test('množina, skraćenice i velika slova', () {
       expect(canonicalUnit('Kašike'), 'kašika');

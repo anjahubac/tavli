@@ -5,14 +5,15 @@ import '../domain/meal_rules.dart' show repeatWindowDays;
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
 import 'ai_units.dart';
+import 'prompts.dart' show ingredientNameRules;
 
 const mealPlanSystemPrompt = '''
 You are the meal-planning assistant inside "Tavli", a recipe and shopping app.
 Always answer with ONE JSON object and nothing else.
 All human-readable text must be in Serbian (Latin script).
 Suggest varied, realistic home cooking with ingredients that are easy to find
-in Serbian supermarkets. Use metric units. Ingredient names are lowercase base
-names without quantities.''';
+in Serbian supermarkets. Use metric units.
+$ingredientNameRules''';
 
 /// Recept iz biblioteke kako ga vidi upit; oznake samo kad su poznate.
 typedef LibraryEntry = ({
