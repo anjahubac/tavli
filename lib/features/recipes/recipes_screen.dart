@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../app/animations/empty_tabs.dart';
 import '../../app/animations/spoon_refresh.dart';
 import '../../app/app_menu.dart';
 import '../../app/tab_app_bar.dart';
@@ -157,7 +158,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
             if (all.isEmpty) {
               return const _ScrollableMessage(
                 TavliEmptyState(
-                  icon: Icons.menu_book_outlined,
+                  art: EmptyCookbook(),
                   title: 'Još nema recepata',
                   message:
                       'Dodaj prvi recept sa slike, po nazivu jela ili ručno.',

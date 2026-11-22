@@ -6,7 +6,9 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../app/animations/egg_timer.dart';
+import '../../app/animations/empty_basket.dart';
 import '../../app/animations/empty_fridge.dart';
+import '../../app/animations/empty_tabs.dart';
 import '../../app/animations/ingredient_check.dart';
 import '../../app/animations/intro_motif.dart';
 import '../../app/animations/photo_scan.dart';
@@ -30,6 +32,10 @@ const animationNames = [
   'Sastojci: imam / u kupovinu',
   'Sve kupljeno',
   'Prazna ostava',
+  'Prazan sto (Početna)',
+  'Prazna nedelja (Plan)',
+  'Prazna kuvarica (Recepti)',
+  'Prazna korpa (Nabavka)',
   'Varjača (osvežavanje)',
   'Tanjir u planu',
   'Tajmer sa jajetom',
@@ -48,6 +54,10 @@ class AnimationsGalleryScreen extends StatelessWidget {
       const _CheckDemo(),
       const _AllBoughtDemo(),
       const EmptyFridge(),
+      const EmptyTable(),
+      const EmptyWeek(),
+      const EmptyCookbook(),
+      const EmptyBasket(),
       const _SpoonDemo(),
       const PlatePlanDrop(),
       const _EggDemo(),
