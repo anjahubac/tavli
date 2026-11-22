@@ -78,7 +78,8 @@ msix_config:
   display_name: Tavli
   publisher_display_name: Tavli
   identity_name: com.tavli.tavli
-  msix_version: 1.0.0.0
+  msix_version: 1.0.1.0
+  protocol_activation: tavli
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
