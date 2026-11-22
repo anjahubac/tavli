@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/ai/ai_errors.dart';
+import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/ai_router.dart';
 import 'package:tavli/ai/chain_config.dart';
 import 'package:tavli/ai/chat_client.dart';
@@ -15,8 +16,8 @@ import 'package:tavli/domain/food_matcher.dart';
 // pravi model, svaki sastojak se proverava matcherom nad legacy referencom.
 // Pokreće se samo ručno:
 //   flutter test test/evals/live_catalog_names_test.dart \
-//     --dart-define=EVAL_LABEL=before --dart-define=EVAL_COMMIT=<sha> \
-//     --dart-define-from-file=<fajl van repoa sa GEMINI_API_KEY>
+//     --dart-define=EVAL_LABEL=before --dart-define=EVAL_COMMIT=<sha>
+// GEMINI_API_KEY se prosleđuje kroz okruženje procesa za ručnu evaluaciju.
 // Bez EVAL_LABEL se preskače, pa `flutter test` ostaje bez mreže.
 
 const label = String.fromEnvironment('EVAL_LABEL');
@@ -60,13 +61,17 @@ void main() {
                   as Map<String, dynamic>)['dishes']
               as List<dynamic>;
       final matcher = referenceMatcher();
+      final key = Platform.environment['GEMINI_API_KEY']?.trim();
+      if (key == null || key.isEmpty) {
+        throw StateError('GEMINI_API_KEY nije podešen za ručnu evaluaciju.');
+      }
       final ai = RecipeAI(
         AIRouter(
           config: () => ChainConfig.defaults,
           client: OpenAICompatibleClient(),
           keys: LayeredKeySource(
-            InMemoryKeyStore({}),
-            BuiltInKeys.fromEnvironment(),
+            InMemoryKeyStore({AIProvider.gemini: key}),
+            const BuiltInKeys(),
           ),
           status: InMemoryModelStatusStore(),
         ),

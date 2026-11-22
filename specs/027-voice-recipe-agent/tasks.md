@@ -1,17 +1,17 @@
 # Tasks: Voice-assisted recipe drafts
 
-Status: planned, not completed. Source roles/phases are preserved. All source
-tasks remain not_assessed until current code is checked. Lead: Dev 4;
-proposed reviewers: Dev 2 and Dev 3 (choose a different human from the implementer).
+Status: planned, not completed. Source IDs and phases are preserved. All source
+tasks remain not_assessed until current code is checked. Product lead: Dev 4.
+Implementer: Dev 2 (Ceviz). Proposed independent reviewer: Dev 3.
 Paths and contracts are in plan.md; finalize exact filenames and remaining
 implementation/test/review estimates before Ready.
 
-- [ ] T001 Resolve blocking questions in spec.md, agree typed contract/migration needs and acceptance fixtures. Owner Dev 4; reviewer Dev 2 and Dev 3; depends on producer specs in plan.md; evidence: accepted decision/contract links.
-- [ ] T002 [US1] D4-018 / FR-001, phase 4: inspect existing evidence and add missing failing behavior/acceptance cases for **Capture voice and transcribe speech** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T003 [US1] D4-018 / FR-001, phase 4: **Capture voice and transcribe speech** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T002; evidence: spec scenarios, applicable checks and reviewed PR.
-- [ ] T004 [US1] D4-019 / FR-002, phase 4: inspect existing evidence and add missing failing behavior/acceptance cases for **Apply allowlisted voice draft commands and speak responses** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T005 [US1] D4-019 / FR-002, phase 4: **Apply allowlisted voice draft commands and speak responses** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T004; evidence: spec scenarios, applicable checks and reviewed PR.
-- [ ] T006 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 4; reviewer Dev 2 and Dev 3; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
+- [ ] T001 [Prototype](https://trello.com/c/qJ9r0D4w): measure Groq transcription on Serbian fixtures and verify recording on supported devices. Resolve Q1 with Dev 4 and independent review, including the typed contracts and acceptance fixtures.
+- [ ] T002 [US3, US4] D4-018 / FR-001, phase 4: cover capture, permission denial, cancellation, invalid or over-quota uploads and the returned transcript at the tiers required by 013. Depends on T001 and the gateway auth/quota contract.
+- [ ] T003 [US3, US4] D4-018 / FR-001, phase 4: implement Flutter capture and the authenticated Groq transcription endpoint. Return the transcript to Flutter and clean up transient audio. Depends on T002. [Trello](https://trello.com/c/1zNjMr4K)
+- [ ] T004 [US1, US2, US4, US5] D4-019 / FR-002, phase 4: cover the second POST, typed edits, unknown commands, text clarification, retry without retranscription and explicit save at the tiers required by 013. Depends on T001 and the text gateway contract; use a fake transcript for isolated tests.
+- [ ] T005 [US1, US2, US4, US5] D4-019 / FR-002, phase 4: send the transcript via `AIRouter`, validate and apply draft edits, render text questions, and connect review to the existing editor. Depends on T003 and T004. [Trello](https://trello.com/c/5Ri5cwW3)
+- [ ] T006 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits with Dev 4 and the independent reviewer. Depends on T003 and T005. Link check commands, commit SHA, results and release decisions.
 
 ## Sequencing and effort
 

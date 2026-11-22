@@ -550,7 +550,7 @@ void main() {
     // Čitanje recepta sa slike: prvo brzi modeli, spori Pro tek posle njih.
     expect(vision.map((m) => m.label).take(3), [
       'Gemini Flash',
-      'Groq Llama 4 Maverick',
+      'Groq Qwen 3.6 27B',
       'Gemini Pro',
     ]);
     expect(

@@ -7,7 +7,7 @@ access is not correct. Use synthetic data and local services, never hosted probe
 | Requirement / risk | Allowed case | Denied / failure cases | Evidence owner |
 | --- | --- | --- | --- |
 | FR-001 / SEC-06 | Member uses own household data; user sees own personal row | anon; other household; forged parent ID; ownership UPDATE; private row by co-member; RPC execute; object rename across households | Dev 3 + Dev 1, pgTAP |
-| FR-002 / SEC-01 | Valid user sends allowed bounded task | missing/invalid token; supplied other uid; arbitrary URL/model; oversized input; quota race; cancel/retry budget | Dev 2, fake provider + local gateway |
+| FR-002 / SEC-01 | Valid user sends allowed bounded task; authenticated model discovery consumes no quota | missing/invalid token; supplied other uid; arbitrary URL/model; oversized input; quota race; cancel/retry budget; account switch during refresh; shared credentials absent from the release artifact | Dev 2, fake provider + local gateway + [015 release checks](../../015-ai-server-gateway/plan.md#verification-rollout-and-risks) |
 | FR-003 / SEC-03 | Serbian category/action shown | provider body, token-shaped fixture, recipe/email or raw exception in UI/attempt/toString/log | Dev 2 + Dev 3, unit/widget |
 | FR-004 / SEC-02 | Valid recipe photo read/write/delete/sync | ../, absolute names, alternate separators, invalid snapshot name, encoded traversal, symlink escape, oversized/corrupt image | Dev 1 + Dev 4, temp files and sync fixtures |
 | FR-005 / SEC-05 | Valid current OTP creates session | expired/replayed/wrong code; throttled resend/verify; malicious redirect; callback for wrong environment; expired/revoked session | Dev 3, fake auth + local stack; operator settings evidence |

@@ -43,7 +43,10 @@ applies: sign-in and sign-up are separate screens. Tasks are T073–T078 in
   it the button goes straight to `tavli://auth-callback`. The page holds no
   keys and makes no requests. It reads `code` or `error`/`error_code` from the
   query or hash, removes them from the address bar, and offers "Otvori Tavli",
-  which opens `tavli://auth-callback` with the same parameters. The app
+  which opens `tavli://auth-callback` with the same parameters. On desktop,
+  successful confirmation also attempts to open Tavli automatically. The
+  desktop page stays open so the button remains available if the browser blocks
+  the launch or the user cancels. The app
   exchanges the code with the PKCE verifier from secure storage, then shows
   the name step once for a new account.
 - **Another device:** when the email is read on a different device than the

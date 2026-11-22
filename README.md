@@ -40,7 +40,8 @@ flutter run -d macos
 For local Windows builds, use `.\scripts\build-windows.ps1` to build Tavli and
 register `tavli://` links for the current user. Debug is the default. The
 [Windows guide](docs/development/windows.md) covers setup, launching the build
-and packaging the MSIX installer.
+and packaging the MSIX installer. Linux builds and `tavli://` link registration
+are in [Linux development](docs/development/linux.md).
 
 Account-backed use needs the team's gitignored local configuration passed with
 `--dart-define-from-file`. Humans provision it using empty example placeholders;

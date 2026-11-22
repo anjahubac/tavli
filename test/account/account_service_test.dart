@@ -9,13 +9,20 @@ import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
 import 'package:tavli/account/account_api.dart';
 import 'package:tavli/account/account_service.dart';
+import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/account/auth_gateway.dart';
 import 'package:tavli/account/supabase_client.dart';
 import 'package:tavli/account/supabase_config.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/key_store.dart';
+import 'package:tavli/data/allergen_repository.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/data/taste_profile_repository.dart';
 import 'package:tavli/domain/account.dart';
+import 'package:tavli/domain/allergen_group.dart';
+import 'package:tavli/domain/cuisine_preferences.dart';
+import 'package:tavli/domain/dish_kind_preferences.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
 import '../helpers/fake_backend.dart';
@@ -219,6 +226,61 @@ void main() {
         'pending',
       );
       expect((await service.cached(account.userId))?.householdId, 'new-home');
+    });
+
+    test('promena domaćinstva čuva lične preference i alergene', () async {
+      final account = await service.loadOrFetch(await signIn());
+      final scope = AccountScope(
+        userId: account.userId,
+        householdId: account.householdId,
+      );
+      final writer = SyncedWriter(db, accountId: account.userId);
+      final taste = TasteProfileRepository(db, scope: scope, writer: writer);
+      await taste.saveDishPreferences(
+        DishKindPreferences(liked: {DishKind.soup}),
+      );
+      await taste.saveCuisinePreferences(
+        CuisinePreferences(disliked: {Cuisine.italian}),
+      );
+      await AllergenRepository(
+        db,
+        scope: scope,
+        writer: writer,
+      ).saveSelection({AllergenGroup.milk});
+      await writer.upsert('favorite', '${account.userId}:old-recipe');
+      backend.server.households[account.userId] = 'new-home';
+
+      final updated = await service.refreshMembership(account);
+
+      final moved = AccountScope(
+        userId: account.userId,
+        householdId: updated.householdId,
+      );
+      final movedTaste = TasteProfileRepository(
+        db,
+        scope: moved,
+        writer: writer,
+      );
+      expect((await movedTaste.getDishPreferences()).liked, {DishKind.soup});
+      expect((await movedTaste.getCuisinePreferences()).disliked, {
+        Cuisine.italian,
+      });
+      expect(
+        await AllergenRepository(
+          db,
+          scope: moved,
+          writer: writer,
+        ).getSelection(),
+        {AllergenGroup.milk},
+      );
+      final states = {
+        for (final row in await db.select(db.syncOutbox).get())
+          row.entity: row.state,
+      };
+      // Unsent preference changes still upload; an old-recipe favorite does not.
+      expect(states['taste_profile'], OutboxState.pending);
+      expect(states['allergen_selection'], OutboxState.pending);
+      expect(states['favorite'], OutboxState.quarantined);
     });
 
     test(
@@ -524,6 +586,51 @@ void main() {
           );
     });
     tearDown(() => db.close());
+
+    test('brisanje naloga briše kućni katalog, deljeni ostaje', () async {
+      final t = DateTime.utc(2026);
+      Future<void> food(String id, String? home) => db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: id,
+              householdId: Value(home),
+              slug: id,
+              name: id,
+              category: 'Ostalo',
+              baseUnit: 'gram',
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      Future<void> alias(String id, String foodId, String? home) => db
+          .into(db.foodAliases)
+          .insert(
+            FoodAliasesCompanion.insert(
+              id: id,
+              foodId: foodId,
+              householdId: Value(home),
+              alias: id,
+              aliasNormalized: id,
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      await food('deljena', null);
+      await alias('deljeni', 'deljena', null);
+      await food('moja', a.householdId);
+      await alias('moj-alias', 'deljena', a.householdId);
+      await food('tudja', 'drugi-dom');
+
+      await service.wipeLocal(a.userId);
+      expect([
+        for (final r in await db.select(db.foods).get()) r.id,
+      ], unorderedEquals(['deljena', 'tudja']));
+      expect(
+        [for (final r in await db.select(db.foodAliases).get()) r.id],
+        ['deljeni'],
+      );
+    });
 
     test('posle uspeha na serveru briše sve od naloga na uređaju', () async {
       await service.deleteAccount(a);
