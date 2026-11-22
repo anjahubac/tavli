@@ -11,6 +11,7 @@ on:
       - "supabase/migrations/**"
       - "supabase/functions/**"
       - "supabase/templates/**"
+      - "supabase/email-assets/**"
       - "supabase/config.toml"
       - "scripts/deploy_auth_email_templates.py"
       - "scripts/test_auth_email_templates.py"
@@ -50,5 +51,8 @@ jobs:
         run: supabase db push --include-all --dry-run
       - run: supabase db push --include-all --yes
       - run: supabase functions deploy delete-account --project-ref "$SUPABASE_PROJECT_REF"
+      # Public bucket with the images used by the Auth emails (config.toml).
+      - name: Email images
+        run: supabase seed buckets --linked
       - name: Deploy Auth email templates
         run: python3 scripts/deploy_auth_email_templates.py

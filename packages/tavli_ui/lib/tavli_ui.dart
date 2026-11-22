@@ -13,6 +13,7 @@ export 'src/content/tavli_states.dart';
 export 'src/content/tavli_tag.dart';
 export 'src/controls/tavli_button.dart' hide TavliButtonScope;
 export 'src/controls/tavli_choice.dart';
+export 'src/controls/tavli_code_field.dart';
 export 'src/controls/tavli_icon_button.dart';
 export 'src/controls/tavli_rows.dart';
 export 'src/controls/tavli_text_field.dart';

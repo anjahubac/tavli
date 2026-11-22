@@ -37,8 +37,9 @@ const noAccountScope = AccountScope(userId: '', householdId: '');
 
 enum SignOutReason { sessionExpired, accountDeleted, storageUnavailable }
 
-/// Stanje prijave. `CodeSent` se nikad ne čuva: posle ponovnog otvaranja
-/// aplikacije prikazuje se korak sa e-poštom.
+/// Stanje prijave. `CodeSent` i `ConfirmSent` se nikad ne čuvaju: posle
+/// ponovnog otvaranja aplikacije prikazuje se korak sa e-poštom (link iz
+/// mejla za potvrdu i dalje prijavljuje, jer je PKCE verifikator sačuvan).
 sealed class AuthState {
   const AuthState();
 }
@@ -49,16 +50,33 @@ class Starting extends AuthState {
 }
 
 class SignedOut extends AuthState {
-  const SignedOut([this.reason]);
+  const SignedOut([this.reason, this.linkError]);
 
   final SignOutReason? reason;
+
+  /// Link iz mejla nije uspeo (npr. [LinkExpired]) pre nego što je u ovom
+  /// pokretanju poslat mejl.
+  final AuthFailure? linkError;
 }
 
+/// "Prijava": kod je poslat postojećem nalogu ("Upiši kod").
 class CodeSent extends AuthState {
   const CodeSent(this.email, this.sentAt);
 
   final String email;
   final DateTime sentAt;
+}
+
+/// "Registracija": poslat je mejl za potvrdu ("Proveri mejl"), sa dugmetom
+/// i kodom.
+class ConfirmSent extends AuthState {
+  const ConfirmSent(this.email, this.sentAt, {this.linkError});
+
+  final String email;
+  final DateTime sentAt;
+
+  /// Link iz mejla nije uspeo; prikazuje se uz "Pošalji mejl ponovo".
+  final AuthFailure? linkError;
 }
 
 /// Prijavljen, ali još bez imena (obavezan korak).
@@ -122,20 +140,29 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
     final account = await service.cached(uid);
-    if (account != null) {
-      _set(_signedIn(account));
+    if (account != null && account.hasName) {
+      _set(SignedIn(account));
       unawaited(restoreSession());
       return;
     }
-    // Sesija postoji, ali nalog nije keširan (prekinuta prva prijava).
+    // Nalog nije keširan (prekinuta prva prijava) ili u kešu nema imena:
+    // ime se možda već nalazi na serveru (drugi uređaj), pa se prvo pita
+    // server. Korak sa imenom samo ako ga ni server nema ili nema mreže.
     try {
       final session = await gateway.restore(json);
       await store.write(session.json);
       _set(_signedIn(await service.loadOrFetch(session)));
     } on SecretStorageException {
       await _lockSession(gateway);
-    } on AuthFailure {
-      _set(const SignedOut());
+    } on AuthFailure catch (f) {
+      if (account == null) {
+        _set(const SignedOut());
+      } else if (f is Offline || f is Unavailable) {
+        _set(NeedsName(account));
+      } else {
+        _set(NeedsName(account));
+        await sessionExpired(accountGone: f is AccountGone);
+      }
     }
   }
 
@@ -155,6 +182,7 @@ class AuthController extends Notifier<AuthState> {
     try {
       final session = await gateway.restore(json);
       if (ref.mounted) await store.write(session.json);
+      if (ref.mounted && state is NeedsName) await _refetchName(session);
     } on SecretStorageException {
       await _lockSession(gateway);
     } on Offline {
@@ -166,7 +194,8 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  /// Šalje kod (i ponovo, posle 30 s). Baca [AuthFailure]; stanje ostaje.
+  /// "Prijava": šalje kod postojećem nalogu (i ponovo, posle 30 s). Baca
+  /// [AuthFailure] ([NoAccount] za nepoznatu adresu); stanje ostaje.
   Future<void> sendCode(String email) async {
     final e = normalizeEmail(email);
     final clock = ref.read(authClockProvider);
@@ -174,13 +203,75 @@ class AuthController extends Notifier<AuthState> {
     _set(CodeSent(e, clock()));
   }
 
-  /// Proverava kod; ispravan kod čuva sesiju i otvara aplikaciju (ili
-  /// korak sa imenom). Baca [AuthFailure]; stanje ostaje.
-  Future<void> verify(String code) async {
+  /// "Registracija": pravi nalog i šalje mejl za potvrdu ("Proveri mejl").
+  /// Kad server ne traži potvrdu adrese, odmah prijavljuje. Baca
+  /// [AuthFailure] ([AlreadyRegistered] za postojeći nalog); stanje ostaje.
+  Future<void> signUp(String email) async {
+    final e = normalizeEmail(email);
+    final clock = ref.read(authClockProvider);
+    final session = await _gateway.signUp(e);
+    if (session == null) {
+      _set(ConfirmSent(e, clock()));
+    } else {
+      await _signInWith(session);
+    }
+  }
+
+  /// "Pošalji mejl ponovo" na ekranu "Proveri mejl". Baca [AuthFailure].
+  Future<void> resendConfirmation() async {
     final s = state;
-    if (s is! CodeSent) return;
+    if (s is! ConfirmSent) return;
+    final clock = ref.read(authClockProvider);
+    await _gateway.resendConfirmation(s.email);
+    _set(ConfirmSent(s.email, clock()));
+  }
+
+  /// "Pošalji mi kod" na ekranu "Proveri mejl" (adresa potvrđena na drugom
+  /// uređaju): kod za prijavu se upisuje u isto polje. Baca [AuthFailure].
+  Future<void> sendCodeInstead() async {
+    final s = state;
+    if (s is! ConfirmSent) return;
+    final clock = ref.read(authClockProvider);
+    await _gateway.sendCode(s.email);
+    _set(ConfirmSent(s.email, clock()));
+  }
+
+  /// Proverava kod (prijava ili potvrda adrese); ispravan kod čuva sesiju
+  /// i otvara aplikaciju (ili korak sa imenom). Baca [AuthFailure]; stanje
+  /// ostaje.
+  Future<void> verify(String code) async {
+    final email = switch (state) {
+      CodeSent(:final email) || ConfirmSent(:final email) => email,
+      _ => null,
+    };
+    if (email == null) return;
+    await _signInWith(await _gateway.verifyCode(email, normalizeCode(code)));
+  }
+
+  /// Link iz mejla za potvrdu ([authCallbackUrl]): prijavljuje novu adresu
+  /// i otvara aplikaciju (ili jednom korak sa imenom). Greška (istekao ili
+  /// iskorišćen link, bez mreže) ostaje u stanju, uz "Pošalji mejl
+  /// ponovo". Ako je neko već prijavljen, link se zanemaruje.
+  Future<void> openLink(Uri link) async {
+    if (!isAuthCallback(link)) return;
+    if (state is SignedIn || state is NeedsName) return;
+    try {
+      await _signInWith(await _gateway.exchangeLink(link));
+    } on AuthFailure catch (f) {
+      _set(switch (state) {
+        ConfirmSent(:final email, :final sentAt) => ConfirmSent(
+          email,
+          sentAt,
+          linkError: f,
+        ),
+        SignedOut(:final reason) => SignedOut(reason, f),
+        final other => other,
+      });
+    }
+  }
+
+  Future<void> _signInWith(AuthSession session) async {
     final store = _store, service = _service, gateway = _gateway;
-    final session = await gateway.verifyCode(s.email, normalizeCode(code));
     try {
       await store.write(session.json);
     } on SecretStorageException {
@@ -188,6 +279,16 @@ class AuthController extends Notifier<AuthState> {
       throw const SecureStorageUnavailable();
     }
     _set(_signedIn(await service.loadOrFetch(session)));
+  }
+
+  /// Ime je možda u međuvremenu sačuvano na drugom uređaju.
+  Future<void> _refetchName(AuthSession session) async {
+    try {
+      final account = await _service.loadOrFetch(session);
+      if (account.hasName && state is NeedsName) _set(SignedIn(account));
+    } on AuthFailure {
+      // Ostaje korak sa imenom.
+    }
   }
 
   /// Čuva ime (obavezan korak ili "Izmeni ime"). Baca [ArgumentError] za
@@ -201,7 +302,7 @@ class AuthController extends Notifier<AuthState> {
     _set(SignedIn(await _service.saveName(account, name)));
   }
 
-  /// "Promeni e-poštu": nazad na prvi korak.
+  /// "Promeni e-poštu" i "Nazad": nazad na korak sa e-poštom.
   void changeEmail() => state = const SignedOut();
 
   /// Posle čekanja kontroler je možda već uklonjen (test, odjava).

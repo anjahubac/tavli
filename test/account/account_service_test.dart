@@ -19,6 +19,7 @@ import 'package:tavli/domain/account.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_photo_store.dart';
+import '../helpers/fake_secret_storage.dart';
 import '../helpers/fake_supabase.dart';
 
 void main() {
@@ -31,6 +32,7 @@ void main() {
       requests = [];
       client = createSupabaseClient(
         const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+        secrets: MapSecretStorage(),
         httpClient: mockHttp((r) {
           requests.add(r);
           return handler(r);
