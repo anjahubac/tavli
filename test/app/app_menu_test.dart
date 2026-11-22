@@ -185,4 +185,25 @@ void main() {
     await pumpTavli(tester, size: wide, location: '/pantry');
     expect(find.byType(PlatformMenuBar), findsNothing);
   });
+
+  testTavli('macOS: link iz mejla izbacuje prozor ispred pregledača', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    const channel = MethodChannel('tavli/macos_window');
+    final calls = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      calls.add(call.method);
+      return call.method == 'isFullScreen' ? false : null;
+    });
+    final app = await pumpTavli(tester, signedIn: false, size: wide);
+    expect(calls, isNot(contains('activate')));
+
+    app.links.add(Uri.parse('tavli://auth-callback?code=iskoriscen'));
+    await tester.pumpAndSettle();
+    expect(calls, contains('activate'));
+  });
 }
