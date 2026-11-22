@@ -130,12 +130,17 @@ must preserve existing RLS behavior and not cascade-delete shopping rows. Add
 two-household SQL tests for valid shared/same-household links and a denied
 cross-household link.
 
-Old clients do not know `food_id`. Before rollout, prove how an old-client
-upsert behaves when it omits the new column. If it can clear a non-null link,
-either gate the feature until household clients are compatible or accept and
-document downgrade to unlinked text. Do not claim mixed-version preservation
-until the behavior is tested against the actual sync write path. Allocate the
-local schema version after preceding migrations have merged.
+Old clients do not know `food_id`. The current sync path batches rows through
+`SupabaseSyncRemote` and calls the locked `postgrest` 2.9.1 `.upsert` with
+`onConflict: id`, `ignoreDuplicates: false`, and its default `defaultToNull`.
+The [Supabase Dart upsert reference](https://supabase.com/docs/reference/dart/upsert)
+says missing-field defaults apply on insert, not when merging with an existing
+row. That is evidence that an old client's payload omitting `food_id` should
+preserve an existing link on conflict and insert a new legacy row as unlinked.
+Add a compatibility regression case against the actual sync/PostgREST path
+before rollout; if that check disagrees, gate the feature or document downgrade
+to unlinked text. Allocate the local schema version after preceding migrations
+have merged.
 
 ## Acceptance fixtures
 
@@ -152,7 +157,9 @@ to regular regression tests with the implementation.
 4. A 50 g typed free-text item remains unlinked and separate even when its text
    exactly matches the selected food's name.
 5. Reopening the app and replaying a pending outbox operation preserves the
-   explicit identity exactly once; legacy rows remain unlinked.
+   explicit identity exactly once; legacy rows remain unlinked. An old-client
+   upsert without `food_id` preserves an existing link and creates a new row
+   without one.
 6. A stale recipe link, withdrawn food or foreign-household ID cannot form a
    catalog group. Original text remains visible.
 7. Unknown amounts, unsupported units and approximate inputs retain the
@@ -166,7 +173,7 @@ to regular regression tests with the implementation.
 | --- | --- | --- | --- |
 | Identity and free text | Stable `foods.id`; explicit selection only; no automatic legacy backfill | Dev 1 / Dev 4 | Open |
 | Aggregate action semantics | Keep source rows; confirm whether a group action toggles every member or opens row-level actions | Dev 4 | Open |
-| Mixed client versions | Test omission behavior; feature gate if old upserts erase `food_id` | Dev 1 / Dev 4 | Open |
+| Mixed client versions | SDK docs indicate omitted fields do not replace existing values on conflict; add a sync/PostgREST regression case before rollout | Dev 1 / Dev 4 | Proposed; test outstanding |
 | Unit groups and precision | Exact current conversions only; no kitchen/density guesses | Dev 1 / Dev 2 | Open |
 | Catalog ownership validation | Shared or active-household food only; deny cross-household IDs in SQL tests | Dev 1 / Dev 3 | Open |
 | Manual quantity display | Preserve entered quantity/unit; confirm display when the same food has mixed exact units | Dev 1 / Dev 4 | Open |
