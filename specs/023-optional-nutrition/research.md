@@ -68,10 +68,16 @@ linked foods and a loaded synthetic catalog. With seven 100 g contributions and
 two servings, the screen shows `~350 kcal`, 35 g protein, 7 g fat and 52.5 g
 carbohydrates per serving with “Računato za 7 od 8 sastojaka.” With all eight
 nutrition records absent, the recipe stays visible and both nutrition lines
-are hidden. Both cases passed against prototype `f74d08e`, together with
-twelve existing nutrition tests. To rerun on that prototype, copy the fixture
-to `test/features/foods/recipe_nutrition_display_fixture_test.dart` and run
-`flutter test test/features/foods/recipe_nutrition_display_fixture_test.dart`.
+are hidden. The fixture is not run in this repository: `dev` has no nutrition
+screen, `foods` has no nutrition columns, and CI does not execute `.dart.txt`
+files. The arithmetic (7 × 100 kcal / 2 servings = 350 kcal) was checked by
+hand. The fixture is written against a different API than `dev` has: it sets
+`Ingredient.foodId` and `foods.kcal100` and imports
+`features/foods/nutrition_line.dart`, while `dev` links an ingredient through
+`Ingredient.link` (`IngredientLink`, from #100) and has no nutrition source.
+Adapt those three places when the nutrition screen lands, then copy the fixture
+to `test/features/recipes/recipe_nutrition_display_test.dart` and run it with
+`flutter test`.
 
 Review the display copy and whether partial totals appear in the nutrition
 diary with Dev 3. Repeat this case against the accepted Tavli catalog, alongside
