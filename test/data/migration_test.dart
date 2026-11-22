@@ -12,8 +12,11 @@ import '../helpers/fake_photo_store.dart';
 import '../helpers/v3_schema.dart';
 import '../helpers/v4_schema.dart';
 
-/// v7 tabele koje dira migracija rejtinga.
+/// v7 tabele potrebne za migracije rejtinga i kataloga.
 const _v7RatingTables = [
+  'CREATE TABLE accounts (user_id TEXT PRIMARY KEY, email TEXT NOT NULL, display_name TEXT, '
+      'household_id TEXT NOT NULL, household_name TEXT NOT NULL, role TEXT NOT NULL, '
+      'initial_download_done INTEGER NOT NULL DEFAULT 0, last_pull_at INTEGER, created_at INTEGER NOT NULL)',
   'CREATE TABLE ratings (id TEXT PRIMARY KEY, user_id TEXT, '
       'recipe_id TEXT NOT NULL, stars INTEGER NOT NULL, cooked_at INTEGER '
       'NOT NULL, comment TEXT, is_comfort_food INTEGER NOT NULL DEFAULT 0)',
@@ -25,7 +28,7 @@ const _v7RatingTables = [
 ];
 
 void main() {
-  for (final from in [7, 8]) {
+  for (final from in [7, 8, 9]) {
     test('v$from upgrade creates allergen and favorite tables and preserves '
         'the personal outbox', () async {
       final db = AppDatabase(
@@ -40,7 +43,7 @@ void main() {
               'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
               "VALUES ('rating', 'member', 'recipe', 4, 1)",
             );
-            if (from == 8) {
+            if (from >= 8) {
               raw.execute(
                 'CREATE UNIQUE INDEX ratings_user_recipe_unique ON ratings (user_id, recipe_id)',
               );
@@ -50,10 +53,15 @@ void main() {
                 'rating_count INTEGER NOT NULL, PRIMARY KEY (household_id, recipe_id))',
               );
             }
+            if (from == 9) {
+              raw.execute(
+                'ALTER TABLE accounts ADD COLUMN catalog_status TEXT',
+              );
+            }
             raw.execute(
               "INSERT INTO sync_outbox VALUES (1, 'member', 'taste_profile', 'member', 'upsert', 'pending', 0, NULL, NULL, 1)",
             );
-            // v8 is the recipe ratings version: no member planning tables.
+            // v8 is recipe ratings, v9 the food catalog: no member planning tables.
             raw.execute('PRAGMA user_version = $from');
           },
         ),
@@ -71,28 +79,27 @@ void main() {
     });
   }
 
-  test(
-    'v7 to v8 keeps the latest rating and creates the summary cache',
-    () async {
-      final db = AppDatabase(
-        NativeDatabase.memory(
-          setup: (raw) {
-            _v7RatingTables.forEach(raw.execute);
-            raw.execute(
-              'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
-              "VALUES ('old', 'u', 'r', 1, 1), ('new', 'u', 'r', 4, 2)",
-            );
-            raw.execute('PRAGMA user_version = 7');
-          },
-        ),
-      );
-      addTearDown(db.close);
-      expect((await db.select(db.ratings).get()).single.id, 'new');
-      expect(await db.select(db.ratingSummaries).get(), isEmpty);
-    },
-  );
+  test('v7 to v9 keeps the latest rating and creates both caches', () async {
+    final db = AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          _v7RatingTables.forEach(raw.execute);
+          raw.execute(
+            'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+            "VALUES ('old', 'u', 'r', 1, 1), ('new', 'u', 'r', 4, 2)",
+          );
+          raw.execute('PRAGMA user_version = 7');
+        },
+      ),
+    );
+    addTearDown(db.close);
+    expect((await db.select(db.ratings).get()).single.id, 'new');
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    expect(await db.select(db.foods).get(), isEmpty);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+  });
 
-  group('v7 to v8 keeps pending rating edits', () {
+  group('v7 to v9 keeps pending rating edits', () {
     late FakeBackend backend;
     late AccountScope scope;
 
@@ -326,7 +333,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 9);
+    expect(db.schemaVersion, 10);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
@@ -581,5 +588,72 @@ void main() {
     addTearDown(again.close);
     expect((await again.select(again.cookedEvents).get()).single.id, 'k1');
     expect(await again.select(again.pantryConsumptions).get(), hasLength(1));
+  });
+  test('migracija 8 → 9 dodaje katalog i čuva ocene; ponovljen korak ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v9-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    // v8 sadrži ocene i sažetke, bez tabela kataloga.
+    await first.customStatement('DROP TABLE food_aliases');
+    await first.customStatement('DROP TABLE foods');
+    await first.customStatement(
+      'ALTER TABLE accounts DROP COLUMN catalog_status',
+    );
+    await first.customStatement(
+      'INSERT INTO pantry_items (id, name, quantity, unit, category, added_at) '
+      "VALUES ('o1', 'brašno', 1000, 'g', 'ostalo', 1)",
+    );
+    await first.customStatement(
+      'INSERT INTO accounts (user_id, email, household_id, household_name, role, created_at) '
+      "VALUES ('u1', 'u@example.test', 'h1', 'Moje domaćinstvo', 'owner', 1)",
+    );
+    await first.customStatement(
+      'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+      "VALUES ('rating-kept', 'u1', 'r1', 4, 1)",
+    );
+    await first.customStatement('PRAGMA user_version = 8');
+    await first.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    expect((await db.select(db.pantryItems).get()).single.id, 'o1');
+    expect(await db.select(db.foods).get(), isEmpty);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+    final account = await db.select(db.accounts).getSingle();
+    expect(account.userId, 'u1');
+    expect(account.catalogStatus, isNull);
+    expect((await db.select(db.ratings).get()).single.id, 'rating-kept');
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    await expectLater(
+      db.customStatement(
+        'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+        "VALUES ('duplicate', 'u1', 'r1', 3, 2)",
+      ),
+      throwsA(isA<SqliteException>()),
+    );
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            "AND name = 'food_aliases_shared_active'",
+          )
+          .get(),
+      hasLength(1),
+    );
+    await db.customStatement(
+      'INSERT INTO foods (id, slug, name, category, base_unit, created_at, '
+      "updated_at) VALUES ('f1', 'jaje', 'jaje', 'ostalo', 'piece', 1, 1)",
+    );
+    await db.customStatement(
+      'INSERT INTO food_aliases (id, food_id, alias, alias_normalized, '
+      "created_at, updated_at) VALUES ('a1', 'f1', 'jaja', 'jaja', 1, 1)",
+    );
+    await db.customStatement('PRAGMA user_version = 8');
+    await db.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.foods).get()).single.id, 'f1');
+    expect((await again.select(again.foodAliases).get()).single.id, 'a1');
   });
 }

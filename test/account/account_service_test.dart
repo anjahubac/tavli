@@ -587,6 +587,51 @@ void main() {
     });
     tearDown(() => db.close());
 
+    test('brisanje naloga briše kućni katalog, deljeni ostaje', () async {
+      final t = DateTime.utc(2026);
+      Future<void> food(String id, String? home) => db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: id,
+              householdId: Value(home),
+              slug: id,
+              name: id,
+              category: 'Ostalo',
+              baseUnit: 'gram',
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      Future<void> alias(String id, String foodId, String? home) => db
+          .into(db.foodAliases)
+          .insert(
+            FoodAliasesCompanion.insert(
+              id: id,
+              foodId: foodId,
+              householdId: Value(home),
+              alias: id,
+              aliasNormalized: id,
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      await food('deljena', null);
+      await alias('deljeni', 'deljena', null);
+      await food('moja', a.householdId);
+      await alias('moj-alias', 'deljena', a.householdId);
+      await food('tudja', 'drugi-dom');
+
+      await service.wipeLocal(a.userId);
+      expect([
+        for (final r in await db.select(db.foods).get()) r.id,
+      ], unorderedEquals(['deljena', 'tudja']));
+      expect(
+        [for (final r in await db.select(db.foodAliases).get()) r.id],
+        ['deljeni'],
+      );
+    });
+
     test('posle uspeha na serveru briše sve od naloga na uređaju', () async {
       await service.deleteAccount(a);
 

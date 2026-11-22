@@ -279,6 +279,10 @@ void main() {
       'fetch:taste_profiles',
       'fetch:user_allergen_selections',
       'fetch:user_favorites',
+      'fetch:households',
+      'fetch:foods',
+      'fetch:food_aliases',
+      'fetch:households',
       'fetch:deletions',
       'rating_summaries',
     ]);

@@ -648,4 +648,57 @@ void main() {
     );
     expect((await db.select(db.supplyAllocations).get()).single.supplyId, 'i1');
   });
+  test('namirnica i alias: server → lokalno → server bez gubitka', () async {
+    await roundTrip(
+      const FoodEntity(),
+      FoodsCompanion.insert(
+        id: 'f1',
+        slug: 'jaje',
+        name: 'jaje',
+        category: 'Mlečni proizvodi i jaja',
+        baseUnit: 'piece',
+        source: const Value('pregled'),
+        reviewedAt: Value(t),
+        withdrawnAt: Value(t),
+        createdAt: t,
+        updatedAt: t,
+      ),
+      'f1',
+      (r) {
+        expect(r['household_id'], isNull);
+        expect(r['base_unit'], 'piece');
+        expect(r['withdrawn_at'], '2026-10-30T10:05:07.000Z');
+      },
+    );
+    await roundTrip(
+      const FoodAliasEntity(),
+      FoodAliasesCompanion.insert(
+        id: 'a1',
+        foodId: 'f1',
+        householdId: const Value('h1'),
+        alias: 'Jaja',
+        aliasNormalized: 'jaja',
+        createdAt: t,
+        updatedAt: t,
+      ),
+      'a1',
+      (r) {
+        expect(r['food_id'], 'f1');
+        expect(r['household_id'], 'h1');
+        expect(r['alias_normalized'], 'jaja');
+        expect(r['withdrawn_at'], isNull);
+      },
+    );
+  });
+
+  test(
+    'entityByName nalazi entitete kataloga, a syncEntities ih ne sadrži',
+    () {
+      expect(entityByName('food'), isA<FoodEntity>());
+      expect(entityByName('food_alias'), isA<FoodAliasEntity>());
+      expect(syncEntities.map((e) => e.name), isNot(contains('food')));
+      expect(syncEntities.map((e) => e.name), isNot(contains('food_alias')));
+      expect(catalogEntities.map((e) => e.name), ['food', 'food_alias']);
+    },
+  );
 }

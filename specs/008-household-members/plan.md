@@ -305,7 +305,7 @@ server deployment follow 012/015.
 
 ### Implementation decisions
 
-- **Personal allergen selection.** Drift v9 adds one private selection row
+- **Personal allergen selection.** Drift v10 adds one private selection row
   per account. The account-scoped repository replaces the entire canonical set
   and enqueues one upsert in the same transaction. Clearing writes an empty set.
   The SQL migration checks the vocabulary and uses owner-only RLS. Auth account
@@ -362,8 +362,8 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
   also deletes the member's ratings on the old household's recipes. Sync drops cached
   favorites and queued writes for recipes outside the active household before
   upload and after pulls. Tastes, allergens and consent belong to the profile
-  and survive a household change. Drift v9 holds both new tables, after recipe
-  ratings in v8.
+  and survive a household change. Drift v10 holds both new tables, after recipe
+  ratings in v8 and the food catalog in v9.
 
 ### Cross-owner handoffs and remaining decisions
 
