@@ -45,6 +45,21 @@ remain planned.
 - **US3 / SC-003**: Switching recipe/plan mode twice preserves selection and displays the correct list after navigation/restart.
 - **US4 / SC-004**: Starting with a standalone recipe and no plan, add missing ingredients and open the resulting recipe list. Switch modes and return without losing that list. In either mode, where source details are available, open them by keyboard without marking the item bought. With a saved plan, reach weekly shopping in at most two actions.
 
+For [Trello #26](https://trello.com/c/Cs2TrwS4), the
+[manual-item fixture](fixtures/manual_catalog_shopping_test.dart.txt) supplies
+three shopping rows. The 200 g recipe row and 100 g manual catalog selection
+share a food ID and yield one 300 g total. The 50 g manual entry with the same
+display name and no food ID stays separate. The fixture exercises totals after
+item entry. The eventual input flow must also save explicit free text without
+assigning a food ID, even when the text matches a catalog name.
+
+The fixture passed on prototype `f74d08e` with 41 existing repository tests.
+To rerun it there, copy it to `test/data/manual_catalog_shopping_fixture_test.dart`
+and run `flutter test test/data/manual_catalog_shopping_fixture_test.dart`.
+Team `dev` currently groups these rows by text and has no shopping-row
+`foodId` field. The prototype's manual write also resolves matching names
+automatically, so this run verifies aggregation from stored rows only.
+
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
 security denials require allowed-case controls as well. Acceptance is unverified
