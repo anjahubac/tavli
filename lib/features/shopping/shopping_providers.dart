@@ -15,7 +15,13 @@ final pantryRepositoryProvider = Provider<PantryRepository>(
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     writer: ref.watch(syncedWriterProvider),
     clock: ref.watch(clockProvider),
+    shopping: ref.watch(shoppingRepositoryProvider),
   ),
+);
+
+/// Potvrđena ostava koja ne ulazi u brojčano pokriće nabavke.
+final unknownPantrySupplyProvider = StreamProvider.autoDispose<Set<String>>(
+  (ref) => ref.watch(pantryRepositoryProvider).watchUnknownSupplyKeys(),
 );
 
 /// Stavke nedeljnih lista plana, uživo.
