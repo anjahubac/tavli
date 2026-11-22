@@ -90,9 +90,21 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     final auth = ref.read(authControllerProvider.notifier);
     await auth.start();
     if (!mounted) return;
-    _links = ref
-        .read(appLinksProvider)
-        .listen((uri) => unawaited(auth.openLink(uri)), onError: (_) {});
+    _links = ref.read(appLinksProvider).listen((uri) {
+      unawaited(_bringToFront());
+      unawaited(auth.openLink(uri));
+    }, onError: (_) {});
+  }
+
+  /// macOS ne izbacuje aplikaciju ispred pregledača kad primi link iz mejla
+  /// („Otvori Tavli“), pa bi prijava ostala skrivena iza Chrome-a.
+  Future<void> _bringToFront() async {
+    if (!_observesMacosWindow) return;
+    try {
+      await _macosWindow.invokeMethod<void>('activate');
+    } on MissingPluginException {
+      // Testovi bez macOS runnera.
+    }
   }
 
   Future<void> _readMacosFullScreen() async {
