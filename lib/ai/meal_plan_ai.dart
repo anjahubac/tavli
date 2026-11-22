@@ -119,6 +119,7 @@ class MealPlanAI {
       final result = await step(
         () => _router.run(
           AIRequest(
+            task: AITask.planOutline,
             system: mealPlanSystemPrompt,
             prompt: planOutlinePrompt(
               slots: slots,
@@ -194,6 +195,7 @@ class MealPlanAI {
       final result = await step(
         () => _router.run(
           AIRequest(
+            task: AITask.recipeSummaries,
             system: mealPlanSystemPrompt,
             prompt: recipeSummariesPrompt(batch),
           ),
