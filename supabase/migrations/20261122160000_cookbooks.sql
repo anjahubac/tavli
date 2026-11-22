@@ -175,6 +175,10 @@ create policy "cookbooks: members select" on storage.objects
   for select to authenticated
   using (
     bucket_id = 'cookbooks'
+    and cardinality(storage.foldername(name)) = 1
+    and lower(storage.extension(name)) in ('pdf', 'epub')
+    and position('..' in storage.filename(name)) = 0
+    and position(E'\\' in name) = 0
     and private.is_member(case
       when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then ((storage.foldername(name))[1])::uuid end)
@@ -183,21 +187,40 @@ create policy "cookbooks: members insert" on storage.objects
   for insert to authenticated
   with check (
     bucket_id = 'cookbooks'
+    and cardinality(storage.foldername(name)) = 1
+    and lower(storage.extension(name)) in ('pdf', 'epub')
+    and position('..' in storage.filename(name)) = 0
+    and position(E'\\' in name) = 0
     and private.is_member(case
       when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then ((storage.foldername(name))[1])::uuid end)
   );
--- Ponovni izbor istog fajla (prekinuto otpremanje) je upsert: traži i UPDATE.
+-- Ponovni upload je dozvoljen samo pre registracije knjige. Posle registracije
+-- fajl je nepromenljiv: zamena bi ostavila chunkove iz prethodnog sadržaja.
 create policy "cookbooks: members update" on storage.objects
   for update to authenticated
   using (
     bucket_id = 'cookbooks'
+    and cardinality(storage.foldername(name)) = 1
+    and lower(storage.extension(name)) in ('pdf', 'epub')
+    and position('..' in storage.filename(name)) = 0
+    and position(E'\\' in name) = 0
+    and not exists (
+      select 1 from public.cookbooks b where b.storage_path = name
+    )
     and private.is_member(case
       when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then ((storage.foldername(name))[1])::uuid end)
   )
   with check (
     bucket_id = 'cookbooks'
+    and cardinality(storage.foldername(name)) = 1
+    and lower(storage.extension(name)) in ('pdf', 'epub')
+    and position('..' in storage.filename(name)) = 0
+    and position(E'\\' in name) = 0
+    and not exists (
+      select 1 from public.cookbooks b where b.storage_path = name
+    )
     and private.is_member(case
       when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then ((storage.foldername(name))[1])::uuid end)
@@ -206,6 +229,10 @@ create policy "cookbooks: members delete" on storage.objects
   for delete to authenticated
   using (
     bucket_id = 'cookbooks'
+    and cardinality(storage.foldername(name)) = 1
+    and lower(storage.extension(name)) in ('pdf', 'epub')
+    and position('..' in storage.filename(name)) = 0
+    and position(E'\\' in name) = 0
     and private.is_member(case
       when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then ((storage.foldername(name))[1])::uuid end)

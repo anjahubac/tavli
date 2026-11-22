@@ -108,13 +108,18 @@ select throws_ok($$select public.claim_cookbook('c0000000-0000-4000-8000-0000000
 select throws_ok($$select public.release_cookbook('c0000000-0000-4000-8000-0000000000c1')$$, '42501', null, 'klijent ne oslobađa obradu');
 select tests.clear_auth();
 
--- Skladište: prvi deo putanje je id domaćinstva čiji je korisnik član.
+-- Skladište: prihvata samo fajl direktno u folderu domaćinstva i ne dozvoljava
+-- zamenu fajla koji već ima registrovanu knjigu.
 select tests.authenticate_as(:'ub');
 select lives_ok(format($$insert into storage.objects (bucket_id, name, owner) values ('cookbooks', %L, %L)$$, :'hb' || '/b.pdf', :'ub'), 'član B upisuje u svoju putanju');
 select throws_ok(format($$insert into storage.objects (bucket_id, name, owner) values ('cookbooks', %L, %L)$$, :'ha' || '/tudja.pdf', :'ub'), '42501', null, 'član B ne upisuje u putanju domaćinstva A');
 select is((select count(*) from storage.objects where bucket_id = 'cookbooks'), 1::bigint, 'B vidi samo svoj objekat');
-select is(tests.affected(format($$update storage.objects set name = name where bucket_id = 'cookbooks' and name = %L$$, :'hb' || '/b.pdf')), 1::bigint, 'član B može da prepiše (upsert) svoj objekat');
-select throws_ok(format($$update storage.objects set name = %L where bucket_id = 'cookbooks' and name = %L$$, :'ha' || '/preuzeto.pdf', :'hb' || '/b.pdf'), '42501', null, 'objekat se ne premešta u tuđe domaćinstvo');
+select is(tests.affected(format($$update storage.objects set name = name where bucket_id = 'cookbooks' and name = %L$$, :'hb' || '/b.pdf')), 0::bigint, 'registrovani fajl ne može da se zameni');
+select lives_ok(format($$insert into storage.objects (bucket_id, name, owner) values ('cookbooks', %L, %L)$$, :'hb' || '/cekanje.pdf', :'ub'), 'neobradivi upload može da se nastavi');
+select is(tests.affected(format($$update storage.objects set name = name where bucket_id = 'cookbooks' and name = %L$$, :'hb' || '/cekanje.pdf')), 1::bigint, 'neupisani fajl može da se otpremi ponovo');
+select throws_ok(format($$insert into storage.objects (bucket_id, name, owner) values ('cookbooks', %L, %L)$$, :'hb' || '/nested/knjiga.pdf', :'ub'), '42501', null, 'ne prihvata ugnježdenu putanju');
+select throws_ok(format($$insert into storage.objects (bucket_id, name, owner) values ('cookbooks', %L, %L)$$, :'hb' || '/slika.png', :'ub'), '42501', null, 'ne prihvata nepodržan nastavak');
+select throws_ok(format($$update storage.objects set name = %L where bucket_id = 'cookbooks' and name = %L$$, :'ha' || '/preuzeto.pdf', :'hb' || '/cekanje.pdf'), '42501', null, 'objekat se ne premešta u tuđe domaćinstvo');
 select tests.clear_auth();
 select ok((select not public from storage.buckets where id = 'cookbooks'), 'bucket cookbooks je privatan');
 select is((select file_size_limit from storage.buckets where id = 'cookbooks'), 15728640::bigint, 'limit fajla je 15 MB');
