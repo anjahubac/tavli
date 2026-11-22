@@ -6,7 +6,8 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
-const BUCKET = "recipe-photos";
+// Privatni bucketi sa putanjom {household_id}/{ime}: slike recepata i kuvarske knjige.
+const BUCKETS = ["recipe-photos", "cookbooks"];
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -15,19 +16,20 @@ function json(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-/** Briše sve slike pod `{householdId}/` (po stranama). */
-async function removeHouseholdPhotos(
+/** Briše sve objekte pod `{householdId}/` u jednom bucketu (po stranama). */
+async function removeHouseholdObjects(
   admin: SupabaseClient,
+  bucket: string,
   householdId: string,
 ): Promise<void> {
   while (true) {
     const { data, error } = await admin.storage
-      .from(BUCKET)
+      .from(bucket)
       .list(householdId, { limit: 100 });
     if (error) throw error;
     if (!data || data.length === 0) return;
     const paths = data.map((o) => `${householdId}/${o.name}`);
-    const { error: removeError } = await admin.storage.from(BUCKET).remove(paths);
+    const { error: removeError } = await admin.storage.from(bucket).remove(paths);
     if (removeError) throw removeError;
   }
 }
@@ -52,14 +54,16 @@ Deno.serve(async (req: Request) => {
   const uid = userData.user.id;
 
   try {
-    // 2. Slike domaćinstava u kojima je osoba jedini član.
+    // 2. Slike i knjige domaćinstava u kojima je osoba jedini član.
     const { data: households, error: listError } = await admin.rpc(
       "solo_households",
       { uid },
     );
     if (listError) throw listError;
     for (const householdId of (households ?? []) as string[]) {
-      await removeHouseholdPhotos(admin, householdId);
+      for (const bucket of BUCKETS) {
+        await removeHouseholdObjects(admin, bucket, householdId);
+      }
     }
 
     // 3. Podaci (domaćinstvo sa svim podacima, članstvo, lični podaci, profil).
