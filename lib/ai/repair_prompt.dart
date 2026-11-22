@@ -70,6 +70,7 @@ Keep everything that was already correct.''';
       previous.length <= maxRepairEchoLength &&
       original.system.length + withEcho.length <= maxRequestChars;
   return AIRequest(
+    task: original.task,
     system: original.system,
     prompt: fits ? withEcho : prompt(''),
     images: original.images,

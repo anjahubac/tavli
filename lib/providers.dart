@@ -14,6 +14,7 @@ import 'account/supabase_config.dart';
 import 'ai/ai_router.dart';
 import 'ai/chain_config.dart';
 import 'ai/chat_client.dart';
+import 'ai/gateway_chat_client.dart';
 import 'ai/key_store.dart';
 import 'ai/meal_plan_ai.dart';
 import 'ai/recipe_ai.dart';
@@ -199,12 +200,9 @@ final syncPhaseProvider = StreamProvider<SyncPhase?>((ref) {
 
 final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
 
-/// Ugrađeni ključevi iz `--dart-define-from-file=secrets.json`.
-final builtInKeysProvider = Provider<BuiltInKeys>(
-  (ref) => BuiltInKeys.fromEnvironment(),
-);
+/// Stari izvor postoji za testne zamene. App učitava deljene modele sa servera.
+final builtInKeysProvider = Provider<BuiltInKeys>((ref) => const BuiltInKeys());
 
-/// Sopstveni ključ pa ugrađeni. Kasnije ga menja Cloudflare proxy.
 final keySourceProvider = Provider<KeySource>(
   (ref) => LayeredKeySource(
     ref.watch(keyStoreProvider),
@@ -228,12 +226,20 @@ final chatClientProvider = Provider<OpenAICompatibleClient>(
   (ref) => OpenAICompatibleClient(),
 );
 
+final gatewayChatClientProvider = Provider<GatewayChatClient?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? null
+      : GatewayChatClient.supabase(client, refresh: () => _refreshSession(ref));
+});
+
 final aiRouterProvider = Provider<AIRouter>(
   (ref) => AIRouter(
     config: () => ref.read(chainConfigProvider),
     client: ref.watch(chatClientProvider),
     keys: ref.watch(keySourceProvider),
     status: DriftModelStatusStore(ref.watch(databaseProvider)),
+    gateway: ref.watch(gatewayChatClientProvider),
   ),
 );
 

@@ -52,6 +52,26 @@ class BadRequestError extends AIError {
   const BadRequestError(super.message);
 }
 
+class GatewayAuthError extends AIError {
+  const GatewayAuthError() : super('Sesija je istekla. Prijavi se ponovo.');
+}
+
+class GatewayQuotaError extends AIError {
+  const GatewayQuotaError(this.retryAfter, {this.kind})
+    : super('Limit je trenutno potrošen. Pokušaj malo kasnije.');
+
+  final Duration retryAfter;
+  final TaskKind? kind;
+}
+
+class GatewayUnavailableError extends AIError {
+  const GatewayUnavailableError() : super('AI trenutno nije dostupan.');
+}
+
+class GatewayRequestRejected extends AIError {
+  const GatewayRequestRejected() : super('Zahtev nije uspeo. Pokušaj ponovo.');
+}
+
 class AttemptLog {
   const AttemptLog(this.model, this.outcome, {this.origin = KeyOrigin.user});
 

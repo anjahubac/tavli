@@ -174,8 +174,10 @@ Target: keep the same feature/router boundaries; add a gateway transport for
 built-in Tavli credentials through a Supabase Edge Function. Server validates
 identity, allowed tasks, size/budget and per-user limits, then adds provider
 credentials. Bring-your-own keys stay in secure device storage and can use the
-existing direct transport. Do not duplicate fallback/repair policy in the UI and
-server; the gateway contract must specify who owns each retry and cancellation.
+existing direct transport. The gateway serves the ordered shared text and photo
+model lists and runs one provider attempt per completion. AIRouter owns fallback,
+repair and cancellation. See [the 015 integration plan](../specs/015-ai-server-gateway/plan.md)
+for the Flutter cutover and current verification status.
 
 ```mermaid
 flowchart LR
@@ -188,9 +190,10 @@ flowchart LR
 ```
 
 After gateway acceptance, built-in provider keys must no longer ship in app
-builds. Existing build-time keys are a migration risk, not a new recommended
-production design. No credential-file changes or real provider calls belong in
-this documentation revision.
+builds. On the gateway implementation branch the app reads only Supabase
+client configuration and passes its session token to the Edge Function. Older
+builds that shipped shared provider keys still need the cutover and rotation
+procedure in 015.
 
 Future cookbook/RAG processing uses private household storage and authorized
 retrieval, page/chunk provenance and resumable background jobs. Future voice uses

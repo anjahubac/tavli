@@ -167,7 +167,7 @@ class SecureKeyStore implements KeyStore {
     // Keychain-a umesto četiri (svako može da traži lozinku na macOS-u).
     if (raw != null) return _decode(raw);
     final keys = <StoredKey>[];
-    for (final p in AIProvider.values) {
+    for (final p in AIProvider.values.where((p) => p.supportsPersonalKey)) {
       // Stari zapis je napravio prethodni build; macOS može da odbije
       // pristup. Tada ga preskačemo: korisnik ključ može ponovo da doda.
       final String? legacy;
@@ -235,7 +235,7 @@ class SecureKeyStore implements KeyStore {
   @override
   Future<void> clear() async {
     await _storage.delete(_listKey);
-    for (final p in AIProvider.values) {
+    for (final p in AIProvider.values.where((p) => p.supportsPersonalKey)) {
       await _storage.delete(_legacyKey(p));
     }
   }
@@ -288,10 +288,20 @@ class InMemoryKeyStore implements KeyStore {
 enum KeyOrigin { user, builtIn }
 
 class ApiCredential {
-  const ApiCredential(this.provider, this.value, this.origin, {this.keyId});
+  const ApiCredential(
+    this.provider,
+    String this.value,
+    this.origin, {
+    this.keyId,
+  });
+
+  const ApiCredential.gateway(this.provider)
+    : value = null,
+      origin = KeyOrigin.builtIn,
+      keyId = null;
 
   final AIProvider provider;
-  final String value;
+  final String? value;
   final KeyOrigin origin;
 
   /// Id sačuvanog ključa (samo za sopstvene ključeve).
@@ -314,12 +324,6 @@ abstract interface class KeySource {
 /// Ugrađeni ključevi iz `secrets.json` preko `--dart-define-from-file`.
 class BuiltInKeys {
   const BuiltInKeys([this._keys = const {}]);
-
-  factory BuiltInKeys.fromEnvironment() => const BuiltInKeys({
-    AIProvider.gemini: String.fromEnvironment('GEMINI_API_KEY'),
-    AIProvider.groq: String.fromEnvironment('GROQ_API_KEY'),
-    AIProvider.openRouter: String.fromEnvironment('OPENROUTER_API_KEY'),
-  });
 
   final Map<AIProvider, String> _keys;
 

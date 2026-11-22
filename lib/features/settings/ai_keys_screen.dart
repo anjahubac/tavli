@@ -264,7 +264,8 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
                 Text('Izaberi servis', style: _muted(context)),
                 TavliChoice<AIProvider?>.chips(
                   options: [
-                    for (final p in AIProvider.values) TavliOption(p, p.label),
+                    for (final p in AIProvider.values)
+                      if (p.supportsPersonalKey) TavliOption(p, p.label),
                   ],
                   selected: _chosen,
                   onChanged: (p) => setState(() => _chosen = p),
@@ -336,7 +337,7 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     }
     return [
       for (final p in AIProvider.values)
-        if (keys.any((k) => k.provider == p)) ...[
+        if (p.supportsPersonalKey && keys.any((k) => k.provider == p)) ...[
           TavliSectionHeader(p.label, style: TavliSectionHeaderStyle.bold),
           TavliListGroup(
             children: [

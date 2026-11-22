@@ -2,7 +2,9 @@
 
 **ID**: 015-ai-server-gateway | **Feature key**: AI-GATEWAY
 **Created**: 2026-11-14 | **Baseline**: dev 207c94c
-**Status**: Draft implementation specification; decisions below gate dependent tasks.
+**Status**: Implementation in progress. Quota reservation is merged. The Edge
+Function and Flutter transport are local. Durable client quota pauses and rollout
+are pending.
 **Lead**: Dev 2 | **Proposed independent reviewer**: Dev 3
 
 ## Scope and source
@@ -24,12 +26,17 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-101**: First spike an image request through a local gateway with fake/provider-independent timing data; evaluate deployed limits through authorized setup before choosing sync versus queued transport.
 - **FR-102**: Allowlist tasks/models/destinations and enforce request size, token/cost, user quota and concurrency budgets before provider work.
 - **FR-103**: Preserve AIRouter/facade APIs, cancellation, retry-after and bounded fallback; designate one retry owner across client/server.
-- **FR-104**: Release cutover removes built-in provider values from client builds, retains BYOK and includes operator disable/rotation procedure.
+- **FR-104**: Release cutover removes built-in provider values from client builds, retains BYOK and includes operator disable/rotation procedure. The Flutter app sends the signed-in user's Supabase access token on built-in requests.
+- **FR-105**: The gateway advertises the ordered list of available shared models for text and photo input. Gemini, Groq and OpenRouter are the initial providers. Once explicitly enabled in an environment, OpenAI is the first shared model for both kinds, with the remaining models as fallbacks. BYOK keeps precedence and uses the direct path.
+- **FR-106**: Every built-in completion identifies its task explicitly, including schema repair. A provider rate limit permits fallback. A gateway quota stops shared attempts for the affected account and kind, while eligible user keys remain available. An authentication failure can trigger one session refresh and one replay for the same account.
 
 ## User scenarios and acceptance
 
 - **US1 / SC-001**: Invalid token, forged uid or arbitrary provider URL produces zero provider calls.
 - **US2 / SC-002**: A valid bounded request succeeds; concurrent quota exhaustion returns a safe retryable limit without duplicate expensive retries.
+- **US3 / SC-003**: A signed-in build with only Supabase configuration generates a recipe by name, imports a recipe from a photo and generates a meal plan. Request evidence shows the expected task IDs and a gateway destination. Direct traffic occurs only when a user key is selected.
+- **US4 / SC-004**: Model discovery consumes no provider quota. OpenAI is absent from both shared model lists before opt-in and first in both lists after opt-in. A rejected OpenAI attempt can fall back to the remaining models. The client handles this change without recompilation.
+- **US5 / SC-005**: Cancellation or account switch prevents further attempts and suppresses results from the old run. An expired session retries at most once. A daily text quota persists across restart without blocking photo input, other accounts or BYOK.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
@@ -38,11 +45,16 @@ until execution evidence is linked.
 
 ## Data and privacy
 
-Built-in provider credentials live server-side after cutover. BYOK stays device-secure. Gateway validates identity without accepting client-supplied ownership.
+- **Privacy**: Recipe prompts and an optional photo go to the selected provider for generation or extraction. The gateway keeps them out of logs and quota records. The local quota pause is device-only and account-scoped.
+- **Abuse**: The gateway validates the authenticated caller, allowlisted task and model, payload size and configured budgets before provider work. Dev 2 owns the kill switch and quota policy.
+- **Credentials**: Shared provider keys live in Edge Function Secrets after cutover. BYOK stays device-secure. Flutter sends the session token to Supabase and sends a personal AI key only to its configured provider.
+- **Files**: Photo import sends one bounded image in the request body. Gateway storage writes, image generation, photo paths and new file retention are out of scope. Generated recipe artwork is tracked separately on [Trello 130](https://trello.com/c/te8lAjwG/130-ai-slike-recepata-server-red-%C4%8Dekanja-prikaz-i-zamena).
+- **Deployment**: Deploy the reviewed server to `tavli-dev` before switching builds. Verify a key-free client and an operator rollback before production. Record evidence through [033](../033-release-operations/contracts/release-evidence.md).
 
 ## Exact UI copy carried forward
 
-“Limit je trenutno potrošen. Pokušaj malo kasnije.”, “Otkaži”.
+“Limit je trenutno potrošen. Pokušaj malo kasnije.”, “Sesija je istekla. Prijavi se ponovo.”,
+“AI trenutno nije dostupan.”, “Zahtev nije uspeo. Pokušaj ponovo.”, “Otkaži”.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
@@ -51,7 +63,10 @@ that UI task becomes Ready. English is used for engineering documents only.
 Producer specs: [012](../012-security-baseline/spec.md), [014](../014-ai-response-contracts/spec.md)
 
 - **Q1** (Dev 2 with reviewer): Concrete quota/size/time budgets, service plan limits, rotation/cutover and key-free artifact verification?
-  Proposed 2026-11-17 in [contracts/ai-gateway-contract.md](contracts/ai-gateway-contract.md); pending review by Dev 4 (TRELLO-36).
+  The [base contract](contracts/ai-gateway-contract.md) was approved in
+  [PR #47](https://github.com/anjahubac/tavli/pull/47). Dev 4 requested
+  OpenAI opt-in as the first built-in model for text and vision on 2026-11-22.
+  Production model selection and release evidence remain pending.
 - **Q2** (Dev 2 with reviewer): Does image processing fit synchronous limits or need a queued job? Decide from the spike.
   Spike 2026-11-17: [spike-photo-timing.md](spike-photo-timing.md). One attempt fits (slowest success 15.4 s,
   limit 150 s); the full fallback chain can exceed it. Proposed: synchronous gateway with one model attempt per

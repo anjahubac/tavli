@@ -77,10 +77,9 @@ void main() {
     expect(c.toString(), isNot(contains('tajna')));
   });
 
-  test('bez --dart-define nema ugrađenih ključeva', () {
-    final keys = BuiltInKeys.fromEnvironment();
-    for (final p in AIProvider.values) {
-      expect(keys.has(p), false);
-    }
+  test('gateway koristi oznaku ugrađenog modela bez vrednosti ključa', () {
+    const credential = ApiCredential.gateway(AIProvider.gemini);
+    expect(credential.value, isNull);
+    expect(credential.origin, KeyOrigin.builtIn);
   });
 }
