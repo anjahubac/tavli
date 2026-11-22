@@ -24,7 +24,9 @@ class _VoiceRecipeScreenState extends ConsumerState<VoiceRecipeScreen> {
     agent: ref.read(voiceAgentProvider),
   );
   final _text = TextEditingController();
-  String? _shownTranscript;
+
+  /// Polje trenutno sadrži ispravku poslednjeg prepisa (a ne nov tekst).
+  bool _correcting = false;
 
   @override
   void initState() {
@@ -33,15 +35,28 @@ class _VoiceRecipeScreenState extends ConsumerState<VoiceRecipeScreen> {
     _text.addListener(() => setState(() {}));
   }
 
-  /// Nov prepis upisuje se u polje da osoba vidi šta je čuto i može da ga
-  /// ispravi i pošalje ponovo.
-  void _sync() {
-    final t = _flow.transcript;
-    if (t != null && t != _shownTranscript) {
-      _shownTranscript = t;
-      _text.text = t;
+  void _sync() => setState(() {});
+
+  /// „Ispravi“: prepis ide u polje da se izmeni i pošalje umesto prethodnog.
+  void _startCorrection() {
+    setState(() => _correcting = true);
+    _text.text = _flow.transcript ?? '';
+  }
+
+  void _stopCorrection() {
+    setState(() => _correcting = false);
+    _text.clear();
+  }
+
+  Future<void> _send() async {
+    final text = _text.text;
+    if (_correcting) {
+      await _flow.correct(text);
+    } else {
+      await _flow.sendText(text);
     }
-    setState(() {});
+    // Poslato bez greške: polje je ponovo za nov tekst.
+    if (mounted && _flow.error == null) _stopCorrection();
   }
 
   @override
@@ -91,10 +106,30 @@ class _VoiceRecipeScreenState extends ConsumerState<VoiceRecipeScreen> {
                     TavliNotice(message: reply),
                     const SizedBox(height: TavliSpacing.medium),
                   ],
-                  const TavliSectionHeader('Šta si rekao'),
+                  if (flow.transcript case final heard? when !_correcting) ...[
+                    const TavliSectionHeader('Čuo sam'),
+                    Text(
+                      '„$heard“',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    TavliButtonRow(
+                      expand: true,
+                      children: [
+                        TavliButton.text(
+                          label: 'Ispravi',
+                          icon: Icons.edit_outlined,
+                          onPressed: flow.canCorrect ? _startCorrection : null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: TavliSpacing.small),
+                  ],
+                  TavliSectionHeader(_correcting ? 'Ispravka' : 'Ili ukucaj'),
                   TavliTextField(
                     controller: _text,
-                    hint: 'Izgovori ili ukucaj, npr. „Dodaj kilogram brašna“',
+                    hint: _correcting
+                        ? 'Ispravi prepis pa ga pošalji'
+                        : 'npr. „Dodaj kilogram brašna“',
                     enabled: !flow.busy,
                     maxLines: 5,
                   ),
@@ -102,11 +137,18 @@ class _VoiceRecipeScreenState extends ConsumerState<VoiceRecipeScreen> {
                   TavliButtonRow(
                     expand: true,
                     children: [
+                      if (_correcting)
+                        TavliButton.secondary(
+                          label: 'Odustani',
+                          onPressed: flow.busy ? null : _stopCorrection,
+                        ),
                       TavliButton.secondary(
-                        label: 'Pošalji tekst',
+                        label: _correcting
+                            ? 'Pošalji ispravku'
+                            : 'Pošalji tekst',
                         onPressed: flow.busy || _text.text.trim().isEmpty
                             ? null
-                            : () => flow.sendText(_text.text),
+                            : _send,
                       ),
                     ],
                   ),

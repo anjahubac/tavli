@@ -45,6 +45,7 @@ draft → "Pregledaj recept" → existing manual form → person taps "Sačuvaj"
 | 4 | Bounds | at most 40 actions per utterance (a whole recipe), ingredient fields through `aiIngredient` (R5–R9), title 120, step 1000, servings 1–99, resulting draft at most 60 ingredients and 40 steps (V2, V5–V8); transcript at most 4000 characters, empty or longer is not sent |
 | 5 | Late answers are dropped | each answer is applied only for the draft `revision` it was made for (`VoiceSession.apply`); cancel ignores later answers |
 | 6 | Undo | `VoiceSession.undo` restores the draft before the last applied utterance; an answer prepared before the undo no longer applies |
+| 6a | Correction replaces | the screen shows “Čuo sam: „…“” with **Ispravi**; the edited transcript is sent with **Pošalji ispravku**, which first undoes the changes of the misheard utterance (`VoiceRecipeFlow.correct`), so a correction never duplicates items; new typed text uses **Pošalji tekst** and adds to the draft |
 | 7 | Voice privacy | press-to-talk only, at most 120 s and 3 MB; temporary audio deleted right after upload or cancel; audio and transcript never written to Drift, the outbox, logs or crash reports; the function logs only status, size and duration |
 | 8 | Server like the gateway | `voice-transcribe`: session required, audio type and size checked before quota, quota through `ai_reserve`, one provider call, typed errors without provider bodies |
 

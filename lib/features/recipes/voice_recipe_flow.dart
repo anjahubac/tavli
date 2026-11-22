@@ -35,6 +35,9 @@ class VoiceRecipeFlow extends ChangeNotifier {
   VoiceSession _session = VoiceSession();
   VoicePhase _phase = VoicePhase.idle;
   String? _transcript;
+
+  /// Poslednji izgovor je promenio nacrt; ispravka ga prvo poništava.
+  bool _lastTurnApplied = false;
   String? _reply;
   String? _error;
   int _turn = 0;
@@ -56,6 +59,9 @@ class VoiceRecipeFlow extends ChangeNotifier {
   /// Greška sa putem dalje (ponovi isti tekst ili kucaj).
   String? get error => _error;
   bool get canRetry => _error != null && (_transcript?.isNotEmpty ?? false);
+
+  /// Prepis može da se ispravi i pošalje umesto prethodnog izgovora.
+  bool get canCorrect => !busy && (_transcript?.isNotEmpty ?? false);
 
   Future<void> startRecording() async {
     if (busy) return;
@@ -125,6 +131,18 @@ class VoiceRecipeFlow extends ChangeNotifier {
   }
 
   /// Isti prepis ponovo, posle greške agenta (bez novog snimanja).
+  /// „Pošalji ispravku“: ispravljen prepis zamenjuje prethodni izgovor.
+  /// Ono što je agent uradio sa pogrešnim prepisom se prvo poništi, pa se
+  /// izmene ne dupliraju.
+  Future<void> correct(String text) async {
+    final t = text.trim();
+    if (!canCorrect || t.isEmpty) return;
+    if (_lastTurnApplied && _session.canUndo) _session.undo();
+    _lastTurnApplied = false;
+    _transcript = t;
+    await _interpret(t, ++_turn);
+  }
+
   Future<void> retry() async {
     final t = _transcript;
     if (busy || t == null || t.isEmpty) return;
@@ -145,6 +163,7 @@ class VoiceRecipeFlow extends ChangeNotifier {
   void undo() {
     if (!canUndo) return;
     _session.undo();
+    _lastTurnApplied = false;
     _reply = null;
     _notify();
   }
@@ -154,12 +173,14 @@ class VoiceRecipeFlow extends ChangeNotifier {
     if (busy) return;
     _session = VoiceSession();
     _transcript = null;
+    _lastTurnApplied = false;
     _reply = null;
     _error = null;
     _notify();
   }
 
   Future<void> _interpret(String text, int turn) async {
+    _lastTurnApplied = false;
     _phase = VoicePhase.thinking;
     _reply = null;
     _error = null;
@@ -169,7 +190,8 @@ class VoiceRecipeFlow extends ChangeNotifier {
     try {
       final result = await _agent.interpret(base, text, cancel: cancel);
       if (turn != _turn || _disposed) return;
-      _session.apply(result.value, baseRevision: base.revision);
+      final applied = _session.apply(result.value, baseRevision: base.revision);
+      _lastTurnApplied = applied && result.value.actions.isNotEmpty;
       _reply = result.value.reply;
       _finish(turn);
     } on AICancelled {

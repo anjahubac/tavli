@@ -242,6 +242,45 @@ void main() {
     expect(f.draft.title, 'Sarma');
   });
 
+  test('ispravka zamenjuje prethodni izgovor, bez duplikata', () async {
+    ai = ScriptedModel([
+      turn([
+        {'op': 'add_ingredient', 'name': 'mleveni mens', 'quantity': 1},
+      ]),
+      turn([
+        {'op': 'add_ingredient', 'name': 'mleveno meso', 'quantity': 1},
+      ]),
+    ]);
+    final f = flow();
+    await f.sendText('kilogram mlevenog mensa');
+    expect(f.canCorrect, isTrue);
+    await f.correct('kilogram mlevenog mesa');
+
+    expect([for (final i in f.draft.ingredients) i.name], ['mleveno meso']);
+    expect(f.transcript, 'kilogram mlevenog mesa');
+  });
+
+  test('ispravka posle neuspeha ne poništava raniji izgovor', () async {
+    ai = ScriptedModel([
+      turn([
+        {'op': 'set_title', 'title': 'Sarma'},
+      ]),
+      '{"actions": [{"op": "save_recipe"}]}',
+      '{"actions": [{"op": "save_recipe"}]}',
+      turn([
+        {'op': 'set_servings', 'servings': 6},
+      ]),
+    ]);
+    final f = flow();
+    await f.sendText('Sarma.');
+    await f.sendText('za šest osoba');
+    expect(f.error, isNotNull);
+    // Neuspeli izgovor nije menjao nacrt, pa ispravka ne dira „Sarma“.
+    await f.correct('za šest osoba.');
+    expect(f.draft.title, 'Sarma');
+    expect(f.draft.servings, 6);
+  });
+
   test('Poništi i Počni ispočetka', () async {
     final f = flow();
     await f.sendText('Sarma za šest osoba.');

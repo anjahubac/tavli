@@ -105,9 +105,10 @@ void main() {
     expect(find.text('Upisala sam sarmu.'), findsOneWidget);
     // Prepis je vidljiv i može da se ispravi.
     expect(
-      find.text('Sarma za šest osoba, kilogram mlevenog mesa.'),
+      find.text('„Sarma za šest osoba, kilogram mlevenog mesa.“'),
       findsOneWidget,
     );
+    expect(find.text('Ispravi'), findsOneWidget);
 
     await tapText(tester, 'Pregledaj recept');
     await tester.pumpAndSettle();
@@ -136,6 +137,43 @@ void main() {
     await tester.pump();
     await tapText(tester, 'Pošalji tekst');
     expect(find.text('Sarma'), findsOneWidget);
+  });
+
+  testTavli('Ispravi: ispravljen prepis zamenjuje prethodni, bez duplikata', (
+    tester,
+  ) async {
+    Map<String, dynamic> add(String name) => {
+      'actions': [
+        {'op': 'add_ingredient', 'name': name, 'quantity': 1, 'unit': 'kg'},
+      ],
+    };
+    await pumpTavli(
+      tester,
+      location: '/recipes/new/voice',
+      ai: [aiAnswer(add('mleveni mens')), aiAnswer(add('mleveno meso'))],
+      overrides: [
+        voiceRecorderFactoryProvider.overrideWithValue(FakeRecorder.new),
+        speechTranscriberProvider.overrideWithValue(
+          FakeTranscriber('Kilogram mlevenog mensa.'),
+        ),
+      ],
+    );
+    await tapText(tester, 'Govori');
+    await tapText(tester, 'Zaustavi');
+    expect(find.textContaining('mleveni mens'), findsOneWidget);
+
+    await tapText(tester, 'Ispravi');
+    expect(find.text('Pošalji ispravku'), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextField).first,
+      'Kilogram mlevenog mesa.',
+    );
+    await tester.pump();
+    await tapText(tester, 'Pošalji ispravku');
+
+    expect(find.textContaining('mleveni mens'), findsNothing);
+    expect(find.textContaining('mleveno meso'), findsOneWidget);
+    expect(find.text('„Kilogram mlevenog mesa.“'), findsOneWidget);
   });
 
   for (final size in [const Size(320, 640), const Size(1200, 800)]) {
