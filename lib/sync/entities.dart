@@ -21,6 +21,10 @@ abstract class SyncEntity<T extends Table, R> {
   /// Kolona sa id-jem na serveru (`user_id` za profil ukusa).
   String get remoteId => 'id';
 
+  /// Unique remote conflict target. Most tables use [remoteId]; personal
+  /// ratings use their account/recipe pair to converge across devices.
+  String get remoteConflict => remoteId;
+
   /// Entitet i kolona svakog stranog ključa u serverskom zapisu.
   List<(String, String)> get parentKeys => const [];
 
@@ -426,6 +430,8 @@ class RatingEntity extends SyncEntity<$RatingsTable, RatingRow> {
   String get name => 'rating';
   @override
   String get remoteTable => 'ratings';
+  @override
+  String get remoteConflict => 'user_id,recipe_id';
   @override
   EntityScope get scope => EntityScope.user;
   @override

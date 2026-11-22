@@ -46,6 +46,9 @@ abstract interface class SyncRemote {
 
   Future<void> updateProfileName(String userId, String name);
 
+  /// Read only the household-visible recipe rating aggregates.
+  Future<List<Map<String, Object?>>> fetchHouseholdRecipeRatingSummaries();
+
   /// Redovi posle (since, afterId), redom po ([timeColumn], [idColumn]).
   Future<List<Map<String, Object?>>> fetchSince(
     String table, {
@@ -143,6 +146,22 @@ class SupabaseSyncRemote implements SyncRemote {
   Future<void> updateProfileName(String userId, String name) =>
       _guard(() async {
         await _from('profiles').update({'display_name': name}).eq('id', userId);
+      });
+
+  @override
+  Future<List<Map<String, Object?>>> fetchHouseholdRecipeRatingSummaries() =>
+      _guard(() async {
+        const pageSize = 500;
+        final results = <Map<String, Object?>>[];
+        for (var offset = 0; ; offset += pageSize) {
+          final rows = await _client
+              .rpc<List<dynamic>>('get_household_recipe_rating_summaries')
+              .order('household_id', ascending: true)
+              .order('recipe_id', ascending: true)
+              .range(offset, offset + pageSize - 1);
+          results.addAll(rows.cast<Map<String, Object?>>());
+          if (rows.length < pageSize) return results;
+        }
       });
 
   @override
