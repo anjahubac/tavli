@@ -171,5 +171,88 @@ void main() {
       );
       expect((r as NeedsReview).reason, ConversionReview.unverifiedPackage);
     });
+    test('neto jedinica pakovanja mora biti masa, zapremina ili komadi', () {
+      const bad = FoodConversionFactors(
+        packages: {
+          'cup': PackageAmount(1, 'šolja'),
+          'pinch': PackageAmount(1, 'prstohvat'),
+          'unknown': PackageAmount(1, 'xyz'),
+          'nested': PackageAmount(1, 'pakovanje'),
+          'zero': PackageAmount(0, 'g'),
+          'nan': PackageAmount(double.nan, 'g'),
+        },
+      );
+      for (final id in bad.packages.keys) {
+        final r = conv(
+          1,
+          'pakovanje',
+          ml,
+          factors: bad,
+          kitchen: true,
+          packageId: id,
+        );
+        expect(
+          (r as NeedsReview).reason,
+          ConversionReview.unverifiedPackage,
+          reason: id,
+        );
+      }
+    });
+
+    test('pakovanje u zapremini i komadima je ispravna neto jedinica', () {
+      const f = FoodConversionFactors(
+        packages: {'l': PackageAmount(1, 'l'), 'k': PackageAmount(6, 'kom')},
+      );
+      expect(
+        (conv(
+          2,
+          'pakovanje',
+          ml,
+          factors: f,
+          packageId: 'l',
+        ) as Converted).micros,
+        2000 * 1000000,
+      );
+      expect(
+        (conv(
+          2,
+          'pakovanje',
+          piece,
+          factors: f,
+          packageId: 'k',
+        ) as Converted).micros,
+        12 * 1000000,
+      );
+    });
+  });
+
+  group('granice celobrojnih vrednosti', () {
+    test('nepredstavljiva količina nije izuzetak ni tiho ograničenje', () {
+      for (final q in [1e303, 1e13, 1e300]) {
+        final r = conv(q, 'g', grams);
+        expect(r, isA<NeedsReview>(), reason: '$q');
+        expect((r as NeedsReview).reason, ConversionReview.outOfRange);
+      }
+    });
+
+    test('rezultat faktora koji prelazi granicu ide u proveru', () {
+      final r = conv(
+        1e12,
+        'l',
+        grams,
+        factors: const FoodConversionFactors(densityGPerMl: 1e9),
+      );
+      expect((r as NeedsReview).reason, ConversionReview.outOfRange);
+    });
+
+    test('zbir dve ispravne vrednosti ne sme da pređe u negativno', () {
+      final a = conv(5e12, 'g', grams);
+      final b = conv(5e12, 'g', grams);
+      expect(a, isA<Converted>());
+      final t = totalOf([a, b]);
+      expect(t.micros, greaterThanOrEqualTo(0));
+      expect(t.micros, (a as Converted).micros);
+      expect(t.review.single.reason, ConversionReview.outOfRange);
+    });
   });
 }

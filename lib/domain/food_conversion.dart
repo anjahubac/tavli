@@ -20,7 +20,15 @@ enum ConversionReview {
 
   /// "Pakovanje" bez izričito izabranog i poznatog pakovanja.
   unverifiedPackage,
+
+  /// Količina ili zbir ne staje u celobrojne milionite delove; ne ograničava
+  /// se tiho nego ide na proveru.
+  outOfRange,
 }
+
+/// Najveća količina u milionitim delovima (ispod granice 64-bitnog celog
+/// broja, da zaokruživanje i sabiranje ostanu tačni).
+const maxConvertedMicros = 9000000000000000000;
 
 sealed class UnitConversion {
   const UnitConversion();
@@ -80,6 +88,14 @@ final class FoodConversionFactors {
 
 enum _Kind { mass, volume, count }
 
+/// Neto sadržaj pakovanja je pozitivan konačan broj mase, zapremine ili
+/// komada; kuhinjska mera, prstohvat ili "pakovanje" to nisu.
+bool _validNet(PackageAmount p) {
+  if (!p.quantity.isFinite || p.quantity <= 0) return false;
+  final group = normalizeUnit(p.unit).group;
+  return group == 'mass' || group == 'volume' || group == 'count:kom';
+}
+
 /// Pretvara [quantity] u [unit] u osnovnu jedinicu [target].
 ///
 /// Jedinice iste dimenzije se pretvaraju tačno; ostalo traži faktor namirnice
@@ -98,7 +114,7 @@ UnitConversion convertQuantity({
   }
   if (canonicalUnit(unit) == 'pakovanje') {
     final pack = packageId == null ? null : factors.packages[packageId];
-    if (pack == null) {
+    if (pack == null || !_validNet(pack)) {
       return const NeedsReview(ConversionReview.unverifiedPackage);
     }
     final inner = convertQuantity(
@@ -109,7 +125,7 @@ UnitConversion convertQuantity({
         densityGPerMl: factors.densityGPerMl,
         pieceWeightG: factors.pieceWeightG,
       ),
-      kitchenMeasures: kitchenMeasures,
+      // Kuhinjske procene važe za izvornu količinu, ne za neto pakovanja.
     );
     // Neto sadržaj je procena proizvođača, pa je rezultat približan.
     return inner is Converted
@@ -165,8 +181,12 @@ UnitConversion convertQuantity({
       usedFactor = true;
   }
   if (value == null) return const NeedsReview(ConversionReview.missingFactor);
+  final scaled = value * microsPerUnit;
+  if (!scaled.isFinite || scaled > maxConvertedMicros) {
+    return const NeedsReview(ConversionReview.outOfRange);
+  }
   return Converted(
-    (value * microsPerUnit).round(),
+    scaled.round(),
     target,
     approximate: usedFactor || kitchenUsed,
   );
@@ -193,6 +213,10 @@ ConversionTotal totalOf(Iterable<UnitConversion> parts) {
       case Converted():
         if (base != null && base != part.base) {
           throw ArgumentError('Zbir traži istu osnovnu jedinicu');
+        }
+        if (part.micros > maxConvertedMicros - micros) {
+          review.add(const NeedsReview(ConversionReview.outOfRange));
+          continue;
         }
         base = part.base;
         micros += part.micros;
