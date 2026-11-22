@@ -21,12 +21,24 @@ class SignInScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
+    // Nova greška iz mejla ima prednost nad prethodnim razlogom odjave.
     final notice = switch (auth) {
-      SignedOut(reason: SignOutReason.sessionExpired) => sessionExpiredText,
-      SignedOut(reason: SignOutReason.accountDeleted) => accountDeletedText,
-      SignedOut(reason: SignOutReason.storageUnavailable) =>
+      SignedOut(linkError: final f?) => (
+        authErrorText(f),
+        TavliNoticeTone.error,
+      ),
+      SignedOut(reason: SignOutReason.sessionExpired) => (
+        sessionExpiredText,
+        TavliNoticeTone.info,
+      ),
+      SignedOut(reason: SignOutReason.accountDeleted) => (
+        accountDeletedText,
+        TavliNoticeTone.info,
+      ),
+      SignedOut(reason: SignOutReason.storageUnavailable) => (
         storageUnavailableText,
-      SignedOut(linkError: final f?) => authErrorText(f),
+        TavliNoticeTone.info,
+      ),
       _ => null,
     };
     return auth is CodeSent
@@ -38,7 +50,7 @@ class SignInScreen extends ConsumerWidget {
 class _EmailStep extends ConsumerStatefulWidget {
   const _EmailStep({this.notice});
 
-  final String? notice;
+  final (String, TavliNoticeTone)? notice;
 
   @override
   ConsumerState<_EmailStep> createState() => _EmailStepState();
@@ -150,8 +162,8 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
             tone: TavliNoticeTone.error,
             message: authErrorText(error),
           )
-        else if (widget.notice case final n?)
-          TavliNotice(message: n),
+        else if (widget.notice case (final message, final tone))
+          TavliNotice(tone: tone, message: message),
       ],
     );
   }

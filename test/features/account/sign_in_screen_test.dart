@@ -254,6 +254,11 @@ void main() {
       ),
       findsOneWidget,
     );
+    // Greška je crvena, kao na "Proveri mejl".
+    expect(
+      tester.widget<TavliNotice>(find.byType(TavliNotice)).tone,
+      TavliNoticeTone.error,
+    );
     expect(app.secrets.values, isEmpty);
   });
 

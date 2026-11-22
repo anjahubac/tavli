@@ -22,6 +22,11 @@ class MainFlutterWindow: NSWindow {
     channel.setMethodCallHandler { [weak self] call, result in
       if call.method == "isFullScreen" {
         result(self?.styleMask.contains(.fullScreen) ?? false)
+      } else if call.method == "activate" {
+        // Link iz mejla („Otvori Tavli“): prozor ispred pregledača.
+        NSApp.activate(ignoringOtherApps: true)
+        self?.makeKeyAndOrderFront(nil)
+        result(nil)
       } else {
         result(FlutterMethodNotImplemented)
       }
