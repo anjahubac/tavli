@@ -7,6 +7,8 @@ import '../account/auth_controller.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
+import '../features/cookbooks/cookbook_ask_screen.dart';
+import '../features/cookbooks/cookbooks_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
@@ -206,8 +208,23 @@ GoRouter createRouter({
                   ),
                 ),
                 GoRoute(
+                  path: 'cookbooks',
+                  builder: (context, state) => const CookbooksScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'ask',
+                      builder: (context, state) => const CookbookAskScreen(),
+                    ),
+                  ],
+                ),
+                GoRoute(
                   path: 'new/manual',
-                  builder: (context, state) => const RecipeFormScreen(),
+                  builder: (context, state) => RecipeFormScreen(
+                    draft: switch (state.extra) {
+                      final RecipeDraft draft => draft,
+                      _ => null,
+                    },
+                  ),
                 ),
                 GoRoute(
                   path: ':id',
