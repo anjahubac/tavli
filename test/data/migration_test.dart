@@ -364,7 +364,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 12);
+    expect(db.schemaVersion, 13);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
