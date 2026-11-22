@@ -11,8 +11,14 @@ security definer
 set search_path = ''
 as $$
 declare
-  uid uuid := case when tg_table_name = 'profiles' then new.id else old.user_id end;
+  uid uuid;
 begin
+  -- Odvojene grane: polje iz OLD/NEW se razrešava tek kad se grana izvrši.
+  if tg_table_name = 'profiles' then
+    uid := new.id;
+  else
+    uid := old.user_id;
+  end if;
   if exists (select 1 from public.profiles p where p.id = uid)
      and not exists (select 1 from public.household_members m where m.user_id = uid) then
     raise exception 'account % has no household membership', uid

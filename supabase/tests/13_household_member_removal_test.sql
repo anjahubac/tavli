@@ -1,6 +1,6 @@
 -- Vlasnik uklanja člana; svaki nalog uvek ima tačno jedno domaćinstvo.
 begin;
-select plan(20);
+select plan(21);
 
 select has_function('public', 'remove_household_member', array['uuid'], 'postoji RPC za uklanjanje člana');
 
@@ -79,6 +79,14 @@ select is(public.confirm_household_join(:'outsider_invite', tests.household_of(:
   'leave_recipes', true, gen_random_uuid())->>'status', 'joined',
   'uklonjeni može da pređe u drugo domaćinstvo');
 select tests.clear_auth();
+
+-- Novi nalog prolazi proveru (okidač na profiles).
+savepoint signup;
+select tests.create_user('removal-new@test.local') as new_id \gset
+select lives_ok('set constraints all immediate', 'novi nalog dobija domaćinstvo i prolazi proveru');
+rollback to savepoint signup;
+-- SET CONSTRAINTS ne poništava rollback to savepoint.
+set constraints all deferred;
 
 -- Server odbija transakciju koja ostavi nalog bez domaćinstva.
 savepoint orphan;
