@@ -453,9 +453,14 @@ class FakeAccountApi implements AccountApi {
 
   /// Brisanje naloga baca ovu grešku.
   DeleteFailure? deleteFails;
+  Future<void> Function()? beforeFetch;
+  String? joinTargetHousehold;
+  String? joinFailureStatus;
+  int joinCalls = 0;
 
   @override
   Future<RemoteAccount> fetch() async {
+    await beforeFetch?.call();
     if (server.offline) throw const Offline();
     final uid = auth.current!.userId;
     final p = server.profiles[uid]!;
@@ -467,6 +472,56 @@ class FakeAccountApi implements AccountApi {
       householdName: 'Moje domaćinstvo',
       role: 'owner',
     );
+  }
+
+  @override
+  Future<String> householdInviteToken() async => throw const Unavailable();
+
+  @override
+  Future<HouseholdPreview> previewHouseholdJoin(String token) async {
+    if (joinTargetHousehold == null) throw const Unavailable();
+    return HouseholdPreview(
+      householdName: 'Zajedničko domaćinstvo',
+      sourceHouseholdId: server.households[auth.current!.userId]!,
+      requiresSourceDeletionAcknowledgement: true,
+    );
+  }
+
+  @override
+  Future<HouseholdJoinResult> confirmHouseholdJoin({
+    required String token,
+    required String expectedSourceHouseholdId,
+    required JoinRecipeChoice recipeChoice,
+    required bool acknowledgeSourceDeletion,
+    required String operationId,
+  }) async {
+    joinCalls++;
+    if (joinFailureStatus case final status?) {
+      return HouseholdJoinResult(status: status);
+    }
+    if (joinTargetHousehold case final destination?) {
+      final uid = auth.current!.userId;
+      if (server.households[uid] != expectedSourceHouseholdId) {
+        return const HouseholdJoinResult(status: 'stale_source');
+      }
+      server.households[uid] = destination;
+      return HouseholdJoinResult(status: 'joined', account: await fetch());
+    }
+    throw const Unavailable();
+  }
+
+  /// Uklanjanje kao na serveru: samo član istog domaćinstva, ne sebe.
+  @override
+  Future<String> removeHouseholdMember(String memberId) async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if (memberId == uid) return 'invalid_request';
+    final home = server.households[uid];
+    if (home == null || server.households[memberId] != home) {
+      return 'not_allowed';
+    }
+    server.households[memberId] = 'home-$memberId';
+    return 'removed';
   }
 
   @override
@@ -619,14 +674,15 @@ class FakePhotoRemote implements PhotoRemote {
 
 /// Sve lažne granice nad jednim serverom.
 class FakeBackend {
-  FakeBackend() {
+  FakeBackend({FakeServer? sharedServer})
+    : server = sharedServer ?? FakeServer() {
     auth = FakeAuth(server);
     accounts = FakeAccountApi(server, auth);
     sync = FakeSyncRemote(server, auth);
     photos = FakePhotoRemote(server);
   }
 
-  final server = FakeServer();
+  final FakeServer server;
   late final FakeAuth auth;
   late final FakeAccountApi accounts;
   late final FakeSyncRemote sync;

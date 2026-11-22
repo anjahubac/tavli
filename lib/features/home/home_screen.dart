@@ -9,16 +9,19 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
 import '../../domain/meal_plan.dart';
+import '../../domain/plan_calendar.dart';
 import '../../domain/recipe_format.dart';
 import '../planning/meal_actions.dart' show mealErrorText;
 import '../planning/plan_format.dart';
 import '../planning/planning_providers.dart';
+import '../shopping/shopping_providers.dart';
+import 'home_notice.dart';
 import 'home_today.dart';
 
 /// Početna (021 FR-008): današnji obroci po platnu. Skuvani su zasenčeni,
 /// sledeći neskuvan je istaknut sa „Kuvaj“, a ispod su sutrašnji obroci.
-/// „Skuvano“ označava sledeći obrok uz „Poništi“; obaveštenje („Na umu“)
-/// dolazi u sledećem koraku.
+/// „Skuvano“ označava sledeći obrok uz „Poništi“. „Na umu“ izdvaja jednu
+/// napomenu za današnje i sutrašnje obroke.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -94,30 +97,9 @@ class _HomeContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (day.today.isEmpty) {
-      return _ScrollableCenter(
-        child: day.hasPlans
-            ? TavliEmptyState(
-                glyph: TavliIcons.plan,
-                title: 'Za danas nema obroka u planu',
-                message: 'Pogledaj plan ili napravi nov za ove dane.',
-                action: TavliButton.primary(
-                  label: 'Otvori plan',
-                  glyph: TavliIcons.plan,
-                  onPressed: () => context.go('/plan'),
-                ),
-              )
-            : TavliEmptyState(
-                glyph: TavliIcons.plan,
-                title: 'Još nema plana obroka',
-                message: 'Napravi plan i ovde ćeš videti šta se danas kuva.',
-                action: TavliButton.primary(
-                  label: 'Napravi plan',
-                  glyph: TavliIcons.plan,
-                  onPressed: () => context.go('/plan/new'),
-                ),
-              ),
-      );
+    final notice = ref.watch(homeNoticeProvider);
+    if (day.today.isEmpty && notice == null) {
+      return _ScrollableCenter(child: _HomeEmptyState(hasPlans: day.hasPlans));
     }
 
     final wide = MediaQuery.sizeOf(context).width >= wideLayoutWidth;
@@ -127,10 +109,14 @@ class _HomeContent extends ConsumerWidget {
     );
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Kao na platnu: sutrašnji obroci desno kada ima mesta za dve
-        // kolone, inače ispod današnjih.
+        // Kao na platnu: napomena i sutrašnji obroci desno na širokom ekranu.
         final side = constraints.maxWidth >= TavliWidth.listDetail;
-        final today = _TodayMeals(day: day, columns: side ? 2 : 1);
+        final today = day.today.isEmpty
+            ? _HomeEmptyState(hasPlans: day.hasPlans)
+            : _TodayMeals(day: day, columns: side ? 2 : 1);
+        final noticeCard = notice == null
+            ? null
+            : _HomeNoticeCard(notice: notice, date: day.date);
         return SingleChildScrollView(
           padding: wide
               ? const EdgeInsets.fromLTRB(28, 24, 28, 24)
@@ -151,19 +137,28 @@ class _HomeContent extends ConsumerWidget {
                   spacing: TavliSpacing.large,
                   children: [
                     Expanded(child: today),
-                    if (day.tomorrow.isNotEmpty)
+                    if (noticeCard != null || day.tomorrow.isNotEmpty)
                       SizedBox(
                         // Najviše trećina sadržaja, kao detalj pored liste.
                         width: math.min(
                           TavliWidth.detail,
                           constraints.maxWidth / 3,
                         ),
-                        child: _TomorrowCard(meals: day.tomorrow),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          spacing: TavliSpacing.medium,
+                          children: [
+                            ?noticeCard,
+                            if (day.tomorrow.isNotEmpty)
+                              _TomorrowCard(meals: day.tomorrow),
+                          ],
+                        ),
                       ),
                   ],
                 )
               else ...[
                 today,
+                ?noticeCard,
                 if (day.tomorrow.isNotEmpty) _TomorrowLine(meals: day.tomorrow),
               ],
             ],
@@ -172,6 +167,61 @@ class _HomeContent extends ConsumerWidget {
       },
     );
   }
+}
+
+class _HomeEmptyState extends StatelessWidget {
+  const _HomeEmptyState({required this.hasPlans});
+
+  final bool hasPlans;
+
+  @override
+  Widget build(BuildContext context) => TavliEmptyState(
+    glyph: TavliIcons.plan,
+    title: hasPlans ? 'Za danas nema obroka u planu' : 'Još nema plana obroka',
+    message: hasPlans
+        ? 'Pogledaj plan ili napravi nov za ove dane.'
+        : 'Napravi plan i ovde ćeš videti šta se danas kuva.',
+    action: TavliButton.primary(
+      label: hasPlans ? 'Otvori plan' : 'Napravi plan',
+      glyph: TavliIcons.plan,
+      onPressed: () => context.go(hasPlans ? '/plan' : '/plan/new'),
+    ),
+  );
+}
+
+class _HomeNoticeCard extends ConsumerWidget {
+  const _HomeNoticeCard({required this.notice, required this.date});
+
+  final HomeNotice notice;
+  final CivilDate date;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => switch (notice) {
+    MissingShoppingNotice(:final meal) => TavliNotice(
+      title: 'Na umu',
+      tone: TavliNoticeTone.warning,
+      message: meal.slot.date == date
+          ? 'Za današnje jelo „${_title(meal)}“ nedostaju namirnice.'
+          : 'Za sutrašnje jelo „${_title(meal)}“ nedostaju namirnice.',
+      linkLabel: 'Nabavka',
+      onLink: () {
+        final plans = ref.read(mealPlansProvider).value ?? const <MealPlan>[];
+        final plan = plans.where((plan) => plan.id == meal.planId).firstOrNull;
+        final week = plan == null
+            ? null
+            : periodFor(plan.range, meal.slot.date);
+        final shopping = ref.read(shoppingViewProvider.notifier);
+        ref.read(planViewProvider.notifier).selectPlan(meal.planId);
+        shopping.setMode(ShoppingMode.plan);
+        if (week != null) shopping.selectWeek(week.range.start);
+        context.go('/shopping');
+      },
+    ),
+    PlanEndingNotice() => const TavliNotice(
+      title: 'Na umu',
+      message: 'Plan se završava za dva dana.',
+    ),
+  };
 }
 
 /// Današnji obroci redom: pre sledećeg (skuvani), sledeći istaknut, pa

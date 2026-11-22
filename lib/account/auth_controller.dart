@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../ai/key_store.dart';
 import '../domain/account.dart';
 import '../providers.dart';
+import '../sync/sync_engine.dart';
 import 'account_api.dart';
 import 'account_service.dart';
 import 'auth_gateway.dart';
@@ -81,15 +82,17 @@ class ConfirmSent extends AuthState {
 
 /// Prijavljen, ali još bez imena (obavezan korak).
 class NeedsName extends AuthState {
-  const NeedsName(this.account);
+  const NeedsName(this.account, {this.membershipVerified = true});
 
   final Account account;
+  final bool membershipVerified;
 }
 
 class SignedIn extends AuthState {
-  const SignedIn(this.account);
+  const SignedIn(this.account, {this.membershipVerified = true});
 
   final Account account;
+  final bool membershipVerified;
 }
 
 /// userId iz sačuvanog JSON-a sesije (bez mreže).
@@ -119,12 +122,14 @@ class AuthController extends Notifier<AuthState> {
         .watch(authGatewayProvider)
         .sessionChanges
         .listen(_onSessionChanged);
-    ref.onDispose(() => _sessions?.cancel());
+    ref.onDispose(() {
+      unawaited(_sessions?.cancel());
+      _membershipRetry?.cancel();
+    });
     return const Starting();
   }
 
-  /// Otvara aplikaciju iz sačuvane sesije i keširanog naloga, bez mreže.
-  /// Sesija se obnavlja u pozadini kad ima mreže.
+  /// Proverava članstvo pre pokretanja sync-a. Keš radi i bez mreže.
   Future<void> start() async {
     final store = _store, gateway = _gateway, service = _service;
     final String? json;
@@ -140,25 +145,17 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
     final account = await service.cached(uid);
-    if (account != null && account.hasName) {
-      _set(SignedIn(account));
-      unawaited(restoreSession());
-      return;
-    }
-    // Nalog nije keširan (prekinuta prva prijava) ili u kešu nema imena:
-    // ime se možda već nalazi na serveru (drugi uređaj), pa se prvo pita
-    // server. Korak sa imenom samo ako ga ni server nema ili nema mreže.
     try {
       final session = await gateway.restore(json);
       await store.write(session.json);
-      _set(_signedIn(await service.loadOrFetch(session)));
+      _set(_signedIn(await service.loadOrFetch(session, allowOffline: false)));
     } on SecretStorageException {
       await _lockSession(gateway);
     } on AuthFailure catch (f) {
       if (account == null) {
         _set(const SignedOut());
       } else if (f is Offline || f is Unavailable) {
-        _set(NeedsName(account));
+        _useOfflineCache(account);
       } else {
         _set(NeedsName(account));
         await sessionExpired(accountGone: f is AccountGone);
@@ -166,10 +163,41 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  Timer? _membershipRetry;
+
+  void _useOfflineCache(Account account) {
+    _set(_signedIn(account, membershipVerified: false));
+    _retryMembership();
+  }
+
+  void _retryMembership() {
+    if (!ref.mounted || !_hasAccount) return;
+    _membershipRetry?.cancel();
+    _membershipRetry = Timer(const Duration(seconds: 5), () {
+      unawaited(restoreSession());
+    });
+  }
+
   /// Obnavlja sačuvanu sesiju (start, povratak u aplikaciju). Bez mreže
   /// ostaje prijavljen; odbijena obnova vraća na prijavu.
-  Future<void> restoreSession() async {
-    if (!ref.mounted || !_hasAccount) return;
+  Future<void> restoreSession({SyncEngine? sync}) async {
+    if (!ref.mounted ||
+        !_hasAccount ||
+        _restoringSession ||
+        _checkingMembership) {
+      return;
+    }
+    _restoringSession = true;
+    try {
+      await _restoreSession(sync);
+    } finally {
+      _restoringSession = false;
+    }
+  }
+
+  var _restoringSession = false;
+
+  Future<void> _restoreSession(SyncEngine? sync) async {
     final store = _store, gateway = _gateway;
     final String? json;
     try {
@@ -181,16 +209,119 @@ class AuthController extends Notifier<AuthState> {
     if (json == null) return;
     try {
       final session = await gateway.restore(json);
-      if (ref.mounted) await store.write(session.json);
-      if (ref.mounted && state is NeedsName) await _refetchName(session);
+      if (!ref.mounted) return;
+      await store.write(session.json);
+      if (!ref.mounted || _checkingMembership) return;
+      if (state is NeedsName) {
+        await _refetchName(session);
+        return;
+      }
+      final initial = state;
+      if (initial is! SignedIn || initial.account.userId != session.userId) {
+        return;
+      }
+      final service = _service;
+      _checkingMembership = true;
+      try {
+        Future<void> reconcile() async {
+          final account = await service.refreshMembership(initial.account);
+          if (!ref.mounted || !identical(state, initial)) return;
+          if (account.householdId != initial.account.householdId) sync?.stop();
+          _membershipRetry?.cancel();
+          if (!initial.membershipVerified ||
+              account.householdId != initial.account.householdId ||
+              account.role != initial.account.role ||
+              account.householdName != initial.account.householdName) {
+            _set(_signedIn(account));
+          }
+        }
+
+        await (sync == null
+            ? reconcile()
+            : sync.reconcileMembership(reconcile));
+      } finally {
+        _checkingMembership = false;
+      }
     } on SecretStorageException {
       await _lockSession(gateway);
     } on Offline {
-      // Pokušava se ponovo pri povratku u aplikaciju.
+      _retryIfUnverified();
     } on Unavailable {
-      // Isto.
+      _retryIfUnverified();
     } on AuthFailure catch (f) {
       if (ref.mounted) await sessionExpired(accountGone: f is AccountGone);
+    }
+  }
+
+  void _retryIfUnverified() {
+    if (!ref.mounted) return;
+    if (state
+        case SignedIn(membershipVerified: false) ||
+            NeedsName(membershipVerified: false)) {
+      _retryMembership();
+    }
+  }
+
+  var _checkingMembership = false;
+
+  Future<HouseholdJoinResult> confirmHouseholdJoin({
+    required String token,
+    required String expectedSourceHouseholdId,
+    required JoinRecipeChoice recipeChoice,
+    required bool acknowledgeSourceDeletion,
+    required String operationId,
+    required SyncEngine? sync,
+    bool proceedWithoutPendingWrites = false,
+  }) async {
+    final initial = state;
+    if (initial is! SignedIn ||
+        !initial.membershipVerified ||
+        _checkingMembership ||
+        _restoringSession) {
+      return const HouseholdJoinResult(status: 'unavailable');
+    }
+    if (initial.account.householdId != expectedSourceHouseholdId) {
+      return const HouseholdJoinResult(status: 'stale_source');
+    }
+    final service = _service;
+    _checkingMembership = true;
+    try {
+      if (!proceedWithoutPendingWrites &&
+          await service.hasPendingHouseholdWrites(initial.account.userId)) {
+        sync?.kick();
+        return const HouseholdJoinResult(status: 'pending_sync');
+      }
+      Future<HouseholdJoinResult> confirm() async {
+        if (!ref.mounted || !identical(state, initial)) {
+          return const HouseholdJoinResult(status: 'unavailable');
+        }
+        final result = await service.confirmHouseholdJoin(
+          account: initial.account,
+          token: token,
+          recipeChoice: recipeChoice,
+          acknowledgeSourceDeletion: acknowledgeSourceDeletion,
+          operationId: operationId,
+          proceedWithoutPendingWrites: proceedWithoutPendingWrites,
+        );
+        if (result.account != null &&
+            ref.mounted &&
+            identical(state, initial)) {
+          final account = await service.cached(initial.account.userId);
+          if (account != null && ref.mounted && identical(state, initial)) {
+            if (account.householdId != initial.account.householdId) {
+              sync?.stop();
+            }
+            _set(_signedIn(account));
+          }
+        }
+        return result;
+      }
+
+      return await (sync == null
+          ? confirm()
+          : sync.reconcileMembership(confirm));
+    } finally {
+      _checkingMembership = false;
     }
   }
 
@@ -278,16 +409,26 @@ class AuthController extends Notifier<AuthState> {
       await gateway.signOutLocal();
       throw const SecureStorageUnavailable();
     }
-    _set(_signedIn(await service.loadOrFetch(session)));
+    try {
+      _set(_signedIn(await service.loadOrFetch(session, allowOffline: false)));
+    } on AuthFailure catch (failure) {
+      if (failure is! Offline && failure is! Unavailable) rethrow;
+      final account = await service.cached(session.userId);
+      if (account == null) rethrow;
+      _useOfflineCache(account);
+    }
   }
 
   /// Ime je možda u međuvremenu sačuvano na drugom uređaju.
   Future<void> _refetchName(AuthSession session) async {
     try {
-      final account = await _service.loadOrFetch(session);
-      if (account.hasName && state is NeedsName) _set(SignedIn(account));
-    } on AuthFailure {
-      // Ostaje korak sa imenom.
+      final account = await _service.loadOrFetch(session, allowOffline: false);
+      _membershipRetry?.cancel();
+      if (ref.mounted && state is NeedsName) _set(_signedIn(account));
+    } on Offline {
+      _retryIfUnverified();
+    } on Unavailable {
+      _retryIfUnverified();
     }
   }
 
@@ -299,7 +440,17 @@ class AuthController extends Notifier<AuthState> {
       _ => null,
     };
     if (account == null) return;
-    _set(SignedIn(await _service.saveName(account, name)));
+    final verified = switch (state) {
+      SignedIn(:final membershipVerified) ||
+      NeedsName(:final membershipVerified) => membershipVerified,
+      _ => false,
+    };
+    _set(
+      SignedIn(
+        await _service.saveName(account, name),
+        membershipVerified: verified,
+      ),
+    );
   }
 
   /// "Promeni e-poštu" i "Nazad": nazad na korak sa e-poštom.
@@ -307,10 +458,14 @@ class AuthController extends Notifier<AuthState> {
 
   /// Posle čekanja kontroler je možda već uklonjen (test, odjava).
   void _set(AuthState s) {
-    if (ref.mounted) state = s;
+    if (!ref.mounted) return;
+    if (s is SignedOut) _membershipRetry?.cancel();
+    state = s;
   }
 
-  AuthState _signedIn(Account a) => a.hasName ? SignedIn(a) : NeedsName(a);
+  AuthState _signedIn(Account a, {bool membershipVerified = true}) => a.hasName
+      ? SignedIn(a, membershipVerified: membershipVerified)
+      : NeedsName(a, membershipVerified: membershipVerified);
 
   bool get _hasAccount => state is SignedIn || state is NeedsName;
 

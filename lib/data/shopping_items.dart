@@ -41,6 +41,37 @@ mixin _ShoppingItems on _ShoppingBase {
     );
   }
 
+  /// Obroci sa nepokrivenim doprinosom na otvorenoj stavci nabavke.
+  Stream<Set<String>> watchMealsWithOpenItems(List<String> mealIds) {
+    final sources = _db.shoppingSources;
+    final contributions = _db.shoppingContributions;
+    final items = _db.shoppingItems;
+    final household = _scope.householdId;
+    final query =
+        _db.selectOnly(sources, distinct: true).join([
+            innerJoin(
+              contributions,
+              contributions.sourceId.equalsExp(sources.id),
+            ),
+            innerJoin(items, items.id.equalsExp(contributions.shoppingItemId)),
+          ])
+          ..addColumns([sources.planEntryId])
+          ..where(
+            sources.planEntryId.isIn(mealIds) &
+                sources.kind.equals(ShoppingSourceKind.planEntry.name) &
+                sources.householdId.equals(household) &
+                sources.closedAt.isNull() &
+                sources.supersededAt.isNull() &
+                contributions.householdId.equals(household) &
+                items.householdId.equals(household) &
+                items.isManual.equals(false) &
+                items.isBought.equals(false),
+          );
+    return query.watch().map(
+      (rows) => {for (final row in rows) row.read(sources.planEntryId)!},
+    );
+  }
+
   /// Stavke liste bez plana (recepti i ručne stavke), uživo. Ne pravi listu.
   Stream<List<ShoppingItemRow>> watchRecipeItems() {
     final q =

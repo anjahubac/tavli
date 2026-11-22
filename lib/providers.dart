@@ -136,6 +136,12 @@ Future<bool> _refreshSession(Ref ref) async {
 /// Slanje i preuzimanje za prijavljen nalog; null bez naloga ili servera.
 /// Nov nalog → nov engine (stari se zaustavlja).
 final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
+  final verified = ref.watch(
+    authControllerProvider.select(
+      (state) => state is SignedIn && state.membershipVerified,
+    ),
+  );
+  if (!verified) return null;
   final scope = ref.watch(accountScopeProvider);
   final remote = ref.watch(syncRemoteProvider);
   final photos = ref.watch(photoRemoteProvider);
