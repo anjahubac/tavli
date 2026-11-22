@@ -36,6 +36,13 @@ class FakeServer {
   /// Slanje slika baca grešku.
   bool photoUploadFails = false;
 
+  /// Like RLS: a write into a household the caller is not a member of is
+  /// denied with 42501. Off by default so tests can seed any household.
+  bool enforceMembership = false;
+
+  /// Like a Storage policy: photo uploads are denied with 403.
+  bool photoUploadForbidden = false;
+
   /// Broj poziva po vrsti, za proveru grupisanja.
   final calls = <String>[];
 
@@ -456,6 +463,9 @@ class FakeAccountApi implements AccountApi {
   Future<void> Function()? beforeFetch;
   String? joinTargetHousehold;
   String? joinFailureStatus;
+
+  /// Household names by ID; others are "Moje domaćinstvo".
+  final householdNames = <String, String>{};
   int joinCalls = 0;
 
   @override
@@ -469,7 +479,8 @@ class FakeAccountApi implements AccountApi {
       email: p['email']! as String,
       displayName: p['display_name'] as String?,
       householdId: server.households[uid]!,
-      householdName: 'Moje domaćinstvo',
+      householdName:
+          householdNames[server.households[uid]] ?? 'Moje domaćinstvo',
       role: 'owner',
     );
   }
@@ -557,6 +568,14 @@ class FakeSyncRemote implements SyncRemote {
     bool ignoreDuplicates = false,
   }) async {
     _checkSession();
+    if (server.enforceMembership &&
+        rows.any(
+          (r) =>
+              r['household_id'] != null &&
+              r['household_id'] != server.households[_uid],
+        )) {
+      throw const PermanentSyncError(pgInsufficientPrivilege);
+    }
     server.upsert(table, [
       for (final r in rows)
         if (!ignoreDuplicates ||
@@ -651,6 +670,7 @@ class FakePhotoRemote implements PhotoRemote {
   Future<void> upload(String objectKey, Uint8List jpeg) async {
     server._check();
     if (server.photoUploadFails) throw const TransientSyncError('503');
+    if (server.photoUploadForbidden) throw const PermanentSyncError('403');
     server.calls.add('photo:upload');
     server.photos[objectKey] = jpeg;
   }
