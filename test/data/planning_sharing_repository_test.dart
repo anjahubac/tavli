@@ -6,6 +6,7 @@ import 'package:tavli/account/supabase_client.dart';
 import 'package:tavli/account/supabase_config.dart';
 import 'package:tavli/data/planning_sharing_repository.dart';
 
+import '../helpers/fake_secret_storage.dart';
 import '../helpers/fake_supabase.dart';
 
 void main() {
@@ -14,6 +15,7 @@ void main() {
     late http.Response Function(http.Request) respond;
     final client = createSupabaseClient(
       const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+      secrets: MapSecretStorage(),
       httpClient: mockHttp((request) {
         requests.add(request);
         return respond(request);
