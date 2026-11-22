@@ -305,6 +305,27 @@ class FakeAuth implements AuthGateway {
   /// Koliko puta je sesija obnovljena.
   int refreshes = 0;
 
+  /// Mejlovi za potvrdu adrese (registracija i "Pošalji mejl ponovo").
+  final sentConfirmations = <String>[];
+
+  /// Adrese registrovane, a još nepotvrđene (kodom ili linkom).
+  final unconfirmed = <String>{};
+
+  /// Server ne traži potvrdu adrese (kao cloud pre uključivanja "Confirm
+  /// email"): registracija odmah prijavljuje.
+  bool autoconfirm = false;
+
+  /// Linkovi za potvrdu: kod iz linka → e-pošta (iskorišćen link se briše).
+  final _links = <String, String>{};
+  var _linkN = 0;
+
+  /// Link iz mejla za potvrdu nove adrese (kao da ga je GoTrue poslao).
+  Uri linkFor(String email) {
+    final code = 'link-${++_linkN}';
+    _links[code] = email;
+    return Uri.parse('$authCallbackUrl?code=$code');
+  }
+
   AuthSession sessionFor(String email) {
     final uid = server.userFor(email);
     return AuthSession(
@@ -328,13 +349,43 @@ class FakeAuth implements AuthGateway {
   @override
   Future<void> sendCode(String email) async {
     _check();
+    if (!server.users.containsKey(email)) throw const NoAccount();
     sentCodes.add(email);
+  }
+
+  @override
+  Future<AuthSession?> signUp(String email) async {
+    _check();
+    if (server.users.containsKey(email) && !unconfirmed.contains(email)) {
+      throw const AlreadyRegistered();
+    }
+    server.userFor(email);
+    if (autoconfirm) return current = sessionFor(email);
+    unconfirmed.add(email);
+    sentConfirmations.add(email);
+    return null;
+  }
+
+  @override
+  Future<void> resendConfirmation(String email) async {
+    _check();
+    sentConfirmations.add(email);
   }
 
   @override
   Future<AuthSession> verifyCode(String email, String code) async {
     _check();
     if (code != FakeServer.code) throw const WrongCode();
+    unconfirmed.remove(email);
+    return current = sessionFor(email);
+  }
+
+  @override
+  Future<AuthSession> exchangeLink(Uri link) async {
+    _check();
+    final email = _links.remove(link.queryParameters['code']);
+    if (email == null) throw const LinkExpired();
+    unconfirmed.remove(email);
     return current = sessionFor(email);
   }
 

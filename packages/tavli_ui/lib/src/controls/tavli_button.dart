@@ -13,6 +13,10 @@ enum TavliButtonVariant {
   /// Sporedno: visina 48 i radijus 16 kao glavno, ivica 1 px.
   secondary,
 
+  /// Tonsko: visina 48, radijus 16, svetla pozadina boje teme, bez ivice
+  /// (kanvas: „Pošalji mi kod“ u kartici).
+  tonal,
+
   /// Tekstualno: visina 48, radijus 14, bez pozadine.
   text,
 
@@ -43,6 +47,15 @@ class TavliButton extends StatelessWidget {
     this.glyph,
   }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
        variant = TavliButtonVariant.secondary;
+
+  const TavliButton.tonal({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.tonal;
 
   const TavliButton.text({
     super.key,
@@ -89,6 +102,7 @@ class TavliButton extends StatelessWidget {
     final radius = switch (variant) {
       TavliButtonVariant.primary => TavliRadius.button,
       TavliButtonVariant.secondary => TavliRadius.button,
+      TavliButtonVariant.tonal => TavliRadius.field,
       TavliButtonVariant.text ||
       TavliButtonVariant.destructive => TavliRadius.compact,
     };
@@ -125,8 +139,16 @@ class TavliButton extends StatelessWidget {
         TavliButtonVariant.secondary => _enabled(c.onSurface, c),
         TavliButtonVariant.text => _enabled(c.primary, c),
         TavliButtonVariant.destructive => _enabled(c.error, c),
+        TavliButtonVariant.tonal => _enabled(c.onPrimaryContainer, c),
         TavliButtonVariant.primary => null,
       },
+      backgroundColor: variant == TavliButtonVariant.tonal
+          ? WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.disabled)
+                  ? c.onSurface.withValues(alpha: 0.12)
+                  : c.primaryContainer,
+            )
+          : null,
     );
 
     final text = Text(label, textAlign: TextAlign.center);
@@ -147,7 +169,7 @@ class TavliButton extends StatelessWidget {
           );
 
     return switch (variant) {
-      TavliButtonVariant.primary => FilledButton(
+      TavliButtonVariant.primary || TavliButtonVariant.tonal => FilledButton(
         onPressed: onPressed,
         style: style,
         child: child,

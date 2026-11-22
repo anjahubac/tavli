@@ -79,9 +79,20 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       }
     });
     _lifecycle = AppLifecycleListener(onResume: _onResume);
-    unawaited(
-      Future.microtask(ref.read(authControllerProvider.notifier).start),
-    );
+    unawaited(Future.microtask(_start));
+  }
+
+  StreamSubscription<Uri>? _links;
+
+  /// Prvo sačuvana sesija, pa tek onda linkovi iz mejla (i onaj kojim je
+  /// aplikacija pokrenuta), da link ne bi naišao na stanje "Starting".
+  Future<void> _start() async {
+    final auth = ref.read(authControllerProvider.notifier);
+    await auth.start();
+    if (!mounted) return;
+    _links = ref
+        .read(appLinksProvider)
+        .listen((uri) => unawaited(auth.openLink(uri)), onError: (_) {});
   }
 
   Future<void> _readMacosFullScreen() async {
@@ -102,6 +113,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
 
   @override
   void dispose() {
+    unawaited(_links?.cancel());
     if (_observesMacosWindow) _macosWindow.setMethodCallHandler(null);
     _lifecycle.dispose();
     _router.dispose();

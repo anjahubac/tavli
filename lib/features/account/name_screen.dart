@@ -5,10 +5,11 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../domain/account.dart';
-import 'auth_brand.dart';
+import 'auth_layout.dart';
 
-/// "Kako da te zovemo?" — obavezan korak posle prve prijave (FR-011).
-/// Nema nazad ni preskakanja.
+/// "Kako da te zovemo?" — obavezan korak samo pri prvoj prijavi (FR-011);
+/// ime se čuva na nalogu i posle se menja u profilu. Nema nazad ni
+/// preskakanja.
 class NameScreen extends ConsumerStatefulWidget {
   const NameScreen({super.key});
 
@@ -40,49 +41,33 @@ class _NameScreenState extends ConsumerState<NameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return PopScope(
       canPop: false,
-      child: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const AuthBrand(),
-                    const SizedBox(height: TavliSpacing.medium),
-                    Text('Kako da te zovemo?', style: text.headlineMedium),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _name,
-                      autofocus: true,
-                      textCapitalization: TextCapitalization.words,
-                      autofillHints: const [AutofillHints.name],
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(maxNameLength),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: 'Ime',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (_) => setState(() {}),
-                      onSubmitted: (_) => _save(),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _valid && !_busy ? _save : null,
-                      child: const Text('Nastavi'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+      child: AuthPage(
+        title: 'Kako da te zovemo?',
+        intro: const TextSpan(
+          text:
+              'Ime vide članovi tvog domaćinstva. Pitamo samo sada, a '
+              'kasnije ga menjaš u profilu.',
         ),
+        children: [
+          TavliTextField(
+            label: 'Ime',
+            tall: true,
+            controller: _name,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            autofillHints: const [AutofillHints.name],
+            inputFormatters: [LengthLimitingTextInputFormatter(maxNameLength)],
+            textInputAction: TextInputAction.done,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _save(),
+          ),
+          TavliButton.primary(
+            label: 'Nastavi',
+            onPressed: _valid && !_busy ? _save : null,
+          ),
+        ],
       ),
     );
   }

@@ -32,6 +32,8 @@ void main() {
         authClockProvider.overrideWithValue(() => now),
       ],
     );
+    // Nalog za "Prijava" postoji na serveru (bez imena).
+    backend.server.userFor('ana@mail.com');
   });
   tearDown(() async {
     c.dispose();
@@ -181,5 +183,132 @@ void main() {
     backend.server.offline = true;
     await expectLater(ctrl().verify(FakeServer.code), throwsA(isA<Offline>()));
     expect(state(), isA<CodeSent>());
+  });
+
+  group('registracija i link iz mejla', () {
+    test('signUp: ConfirmSent, ništa se ne čuva', () async {
+      await ctrl().start();
+      await ctrl().signUp(' Nova@Mail.com ');
+      final st = state() as ConfirmSent;
+      expect(st.email, 'nova@mail.com');
+      expect(st.sentAt, now);
+      expect(secrets.values, isEmpty);
+      expect(backend.auth.sentConfirmations, ['nova@mail.com']);
+    });
+
+    test(
+      'signUp za postojeći nalog: AlreadyRegistered, stanje ostaje',
+      () async {
+        await ctrl().start();
+        await expectLater(
+          ctrl().signUp('ana@mail.com'),
+          throwsA(isA<AlreadyRegistered>()),
+        );
+        expect(state(), isA<SignedOut>());
+      },
+    );
+
+    test(
+      'sendCode za nepoznatu adresu: NoAccount, nalog se ne pravi',
+      () async {
+        await ctrl().start();
+        await expectLater(
+          ctrl().sendCode('nova@mail.com'),
+          throwsA(isA<NoAccount>()),
+        );
+        expect(state(), isA<SignedOut>());
+        expect(backend.server.users, isNot(contains('nova@mail.com')));
+      },
+    );
+
+    test('kod iz mejla za potvrdu prijavljuje (ConfirmSent)', () async {
+      await ctrl().start();
+      await ctrl().signUp('nova@mail.com');
+      await ctrl().verify(FakeServer.code);
+      expect(state(), isA<NeedsName>());
+      expect(secrets.values[SessionStore.key], isNotNull);
+    });
+
+    test(
+      '"Pošalji mi kod" i "Pošalji mejl ponovo" ostaju na ConfirmSent',
+      () async {
+        await ctrl().start();
+        await ctrl().signUp('nova@mail.com');
+        now = now.add(const Duration(seconds: 31));
+        await ctrl().sendCodeInstead();
+        expect((state() as ConfirmSent).sentAt, now);
+        expect(backend.auth.sentCodes, ['nova@mail.com']);
+        await ctrl().resendConfirmation();
+        expect(backend.auth.sentConfirmations, [
+          'nova@mail.com',
+          'nova@mail.com',
+        ]);
+        expect(state(), isA<ConfirmSent>());
+      },
+    );
+
+    test('link iz mejla prijavljuje i posle ponovnog pokretanja', () async {
+      await ctrl().start();
+      expect(state(), isA<SignedOut>());
+      // Aplikacija je zatvorena posle registracije; link je otvori.
+      await ctrl().openLink(backend.auth.linkFor('nova@mail.com'));
+      expect(state(), isA<NeedsName>());
+      expect(secrets.values[SessionStore.key], isNotNull);
+    });
+
+    test('istekao link: greška u stanju, ništa se ne čuva', () async {
+      await ctrl().start();
+      await ctrl().signUp('nova@mail.com');
+      await ctrl().openLink(Uri.parse('tavli://auth-callback?code=star'));
+      final st = state() as ConfirmSent;
+      expect(st.linkError, isA<LinkExpired>());
+      expect(secrets.values, isEmpty);
+    });
+
+    test('link dok je neko prijavljen se zanemaruje', () async {
+      final s = backend.auth.sessionFor('ana@mail.com');
+      secrets.values[SessionStore.key] = s.json;
+      await cacheAccount(s, name: 'Ana');
+      await ctrl().start();
+      final link = backend.auth.linkFor('nova@mail.com');
+      await ctrl().openLink(link);
+      expect((state() as SignedIn).account.email, 'ana@mail.com');
+    });
+
+    test('server bez potvrde adrese: signUp odmah prijavljuje', () async {
+      backend.auth.autoconfirm = true;
+      await ctrl().start();
+      await ctrl().signUp('nova@mail.com');
+      expect(state(), isA<NeedsName>());
+    });
+  });
+
+  group('ime samo jednom', () {
+    test('nov uređaj: ime sa servera, bez koraka sa imenom', () async {
+      final uid = backend.server.users['ana@mail.com']!;
+      backend.server.profiles[uid]!['display_name'] = 'Ana';
+      await ctrl().start();
+      await ctrl().sendCode('ana@mail.com');
+      await ctrl().verify(FakeServer.code);
+      expect((state() as SignedIn).account.displayName, 'Ana');
+    });
+
+    test('keš bez imena, a server ga ima: prijavljen bez koraka', () async {
+      final s = backend.auth.sessionFor('ana@mail.com');
+      backend.server.profiles[s.userId]!['display_name'] = 'Ana';
+      secrets.values[SessionStore.key] = s.json;
+      await cacheAccount(s);
+      await ctrl().start();
+      expect((state() as SignedIn).account.displayName, 'Ana');
+    });
+
+    test('keš bez imena i bez mreže: korak sa imenom', () async {
+      final s = backend.auth.sessionFor('ana@mail.com');
+      secrets.values[SessionStore.key] = s.json;
+      await cacheAccount(s);
+      backend.server.offline = true;
+      await ctrl().start();
+      expect(state(), isA<NeedsName>());
+    });
   });
 }
