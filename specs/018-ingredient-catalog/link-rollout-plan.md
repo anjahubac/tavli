@@ -32,9 +32,11 @@ Only the first two lose data. Reads in either direction stay compatible.
    It may be turned on only when every device that syncs the household runs a
    build that contains #100 (merged 2026-11-21), including any build that still
    holds pending outbox entries.
-2. **Make the floor checkable.** Record the first build number or date that
-   contains #100 and have each team member confirm in Trello that their devices
-   are on it. Do not rely on "the team updates together".
+2. **Make the floor checkable.** Every build today reports the same version
+   (`1.0.0+1`), so a build cannot show which side of #100 it is on. Bump the
+   build number once, in a change merged after #100, and record that number as
+   the floor. Have each team member confirm in Trello that their devices run it
+   or a later build. Do not rely on "the team updates together".
 3. **Drain old-build outbox entries first.** Before the switch is turned on, the
    `sync_outbox` of every device must be empty (how to check it on a device is
    still to be defined). This covers only writes already queued by a build that
@@ -121,7 +123,7 @@ which contradicted D1-009.
   agreement in steps 1 to 3 is enough while the team is small.
 - Dev 4: whether the "read the server row before upload" rule is accepted for
   recipe uploads, including the extra read.
-- Dev 1: record the first build number or date with #100 once it is known.
+- Dev 1 and Dev 4: agree the build number that becomes the floor (the current version is `1.0.0+1` in every build), and bump it in a separate change.
 
 ## Acceptance for the first code slice
 
