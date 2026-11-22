@@ -150,8 +150,8 @@ void main() {
       ],
     );
 
-    expect(find.text('Priprema'), findsOneWidget);
-    expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+    expect(find.text('Priprema'), findsNothing);
+    expect(find.text('Koraci pripreme nisu uneti.'), findsNothing);
     expect(find.text('• paradajz'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
     expect(find.text('1 porcija'), findsOneWidget);
@@ -255,8 +255,8 @@ void main() {
       );
 
       expect(find.text('Sastojci'), findsOneWidget);
-      expect(find.text('Priprema'), findsOneWidget);
-      expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+      expect(find.text('Priprema'), findsNothing);
+      expect(find.text('Koraci pripreme nisu uneti.'), findsNothing);
     });
   }
 

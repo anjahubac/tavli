@@ -92,19 +92,12 @@ class RecipeView extends StatelessWidget {
               child: Text('• ${ingredientLine(i)}'),
             ),
         ],
-        const SizedBox(height: TavliSpacing.medium),
-        const TavliSectionHeader(
-          'Priprema',
-          style: TavliSectionHeaderStyle.bold,
-        ),
-        if (recipe.steps.isEmpty)
-          Text(
-            'Koraci pripreme nisu uneti.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          )
-        else
+        if (recipe.steps.isNotEmpty) ...[
+          const SizedBox(height: TavliSpacing.medium),
+          const TavliSectionHeader(
+            'Priprema',
+            style: TavliSectionHeaderStyle.bold,
+          ),
           for (final (n, step) in recipe.steps.indexed)
             Padding(
               padding: const EdgeInsets.only(bottom: TavliSpacing.small),
@@ -122,6 +115,7 @@ class RecipeView extends StatelessWidget {
                 ],
               ),
             ),
+        ],
         if (origin != null) ...[
           const SizedBox(height: TavliSpacing.medium),
           Text(origin, style: theme.textTheme.bodySmall),
