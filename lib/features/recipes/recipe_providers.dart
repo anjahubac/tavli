@@ -7,8 +7,10 @@ import 'package:path_provider/path_provider.dart';
 import '../../account/auth_controller.dart';
 import '../../data/photo_resize.dart';
 import '../../data/recipe_photo_store.dart';
+import '../../data/recipe_rating_repository.dart';
 import '../../data/recipe_repository.dart';
 import '../../domain/recipe.dart';
+import '../../domain/recipe_rating.dart';
 import '../../domain/recipe_search.dart';
 import '../../domain/recipe_version.dart';
 import '../../providers.dart';
@@ -26,6 +28,15 @@ final recipeRepositoryProvider = Provider<RecipeRepository>(
   (ref) => RecipeRepository(
     ref.watch(databaseProvider),
     ref.watch(recipePhotoStoreProvider),
+    writer: ref.watch(syncedWriterProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    clock: ref.watch(clockProvider),
+  ),
+);
+
+final recipeRatingRepositoryProvider = Provider<RecipeRatingRepository>(
+  (ref) => RecipeRatingRepository(
+    ref.watch(databaseProvider),
     writer: ref.watch(syncedWriterProvider),
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     clock: ref.watch(clockProvider),
@@ -51,6 +62,19 @@ final recipeProvider = StreamProvider.autoDispose.family<Recipe?, String>(
 final recipeVersionsProvider = StreamProvider.autoDispose
     .family<List<RecipeVersion>, String>(
       (ref, id) => ref.watch(recipeRepositoryProvider).watchVersions(id),
+    );
+
+final recipeMyRatingProvider = StreamProvider.autoDispose
+    .family<RecipeRating?, String>(
+      (ref, recipeId) =>
+          ref.watch(recipeRatingRepositoryProvider).watchMyRating(recipeId),
+    );
+
+final recipeRatingSummaryProvider = StreamProvider.autoDispose
+    .family<RecipeRatingSummary?, String>(
+      (ref, recipeId) => ref
+          .watch(recipeRatingRepositoryProvider)
+          .watchHouseholdSummary(recipeId),
     );
 
 final recipePhotoFileProvider = FutureProvider.autoDispose

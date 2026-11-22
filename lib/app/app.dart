@@ -106,9 +106,13 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     }
   }
 
-  void _onResume() {
-    unawaited(ref.read(authControllerProvider.notifier).restoreSession());
-    unawaited(ref.read(syncEngineProvider)?.onResume());
+  void _onResume() => unawaited(_resumeSync());
+
+  Future<void> _resumeSync() async {
+    await ref
+        .read(authControllerProvider.notifier)
+        .restoreSession(sync: ref.read(syncEngineProvider));
+    if (mounted) await ref.read(syncEngineProvider)?.onResume();
   }
 
   @override

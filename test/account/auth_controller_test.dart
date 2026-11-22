@@ -1,14 +1,20 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/account/account_api.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/account/auth_gateway.dart';
 import 'package:tavli/account/session_store.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
+import 'package:tavli/sync/synced_writer.dart';
 
 import '../helpers/fake_backend.dart';
+import '../helpers/fake_photo_store.dart';
 import '../helpers/fake_secret_storage.dart';
 
 void main() {
@@ -30,6 +36,9 @@ void main() {
         authGatewayProvider.overrideWithValue(backend.auth),
         accountApiProvider.overrideWithValue(backend.accounts),
         authClockProvider.overrideWithValue(() => now),
+        syncRemoteProvider.overrideWithValue(backend.sync),
+        photoRemoteProvider.overrideWithValue(backend.photos),
+        recipePhotoStoreProvider.overrideWithValue(FakePhotoStore()),
       ],
     );
     // Nalog za "Prijava" postoji na serveru (bez imena).
@@ -101,6 +110,106 @@ void main() {
     // Obnova bez mreže ne odjavljuje.
     expect(state(), isA<SignedIn>());
     expect(secrets.values[SessionStore.key], s.json);
+  });
+
+  for (final coldStart in [true, false]) {
+    test(
+      '${coldStart ? 'pokretanje' : 'ponovna prijava'} proverava članstvo pre sync-a',
+      () async {
+        final session = backend.auth.sessionFor('ana@mail.com');
+        final source = backend.server.households[session.userId]!;
+        backend.server.profiles[session.userId]!['display_name'] = 'Ana';
+        await cacheAccount(session, name: 'Ana');
+        await db
+            .into(db.syncOutbox)
+            .insert(
+              SyncOutboxCompanion.insert(
+                accountId: session.userId,
+                entity: 'photo',
+                recordId: 'old.jpg',
+                op: OutboxOp.photoDelete,
+                createdAt: now,
+              ),
+            );
+
+        final otherDevice = FakeBackend(sharedServer: backend.server);
+        final destinationOwner = backend.server.userFor(
+          'destination@test.local',
+        );
+        final destination = backend.server.households[destinationOwner]!;
+        otherDevice.accounts.joinTargetHousehold = destination;
+        await otherDevice.auth.verifyCode(session.email, FakeServer.code);
+        expect(
+          (await otherDevice.accounts.confirmHouseholdJoin(
+            token: 'code',
+            expectedSourceHouseholdId: source,
+            recipeChoice: JoinRecipeChoice.leaveRecipes,
+            acknowledgeSourceDeletion: true,
+            operationId: 'operation',
+          )).status,
+          'joined',
+        );
+
+        final fetchStarted = Completer<void>();
+        final finishFetch = Completer<void>();
+        backend.accounts.beforeFetch = () {
+          fetchStarted.complete();
+          return finishFetch.future;
+        };
+        final syncScopes = <String>[];
+        final authSubscription = c.listen(authControllerProvider, (_, next) {
+          if (next case SignedIn(:final account)) {
+            syncScopes.add(account.householdId);
+          }
+        });
+        addTearDown(authSubscription.close);
+
+        final Future<void> loading;
+        if (coldStart) {
+          secrets.values[SessionStore.key] = session.json;
+          loading = ctrl().start();
+        } else {
+          await ctrl().start();
+          await ctrl().sendCode(session.email);
+          loading = ctrl().verify(FakeServer.code);
+        }
+        await fetchStarted.future;
+        expect(c.read(syncEngineProvider), isNull);
+        expect(syncScopes, isEmpty);
+        expect(
+          (await db.select(db.syncOutbox).getSingle()).state,
+          OutboxState.pending,
+        );
+        finishFetch.complete();
+        await loading;
+
+        expect(syncScopes, [destination]);
+        expect(c.read(accountScopeProvider)?.householdId, destination);
+        expect(
+          (await db.select(db.syncOutbox).getSingle()).state,
+          OutboxState.quarantined,
+        );
+        expect(backend.server.calls, isEmpty);
+      },
+    );
+  }
+
+  test('offline keš je vidljiv, a prvi sync čeka potvrdu članstva', () async {
+    final session = backend.auth.sessionFor('ana@mail.com');
+    secrets.values[SessionStore.key] = session.json;
+    await cacheAccount(session, name: 'Ana');
+    backend.server.offline = true;
+
+    await ctrl().start();
+    expect((state() as SignedIn).membershipVerified, isFalse);
+    expect(c.read(accountScopeProvider), isNotNull);
+    expect(c.read(syncEngineProvider), isNull);
+
+    backend.server.offline = false;
+    backend.server.households[session.userId] = 'new-home';
+    await ctrl().restoreSession();
+    expect((state() as SignedIn).membershipVerified, isTrue);
+    expect(c.read(accountScopeProvider)?.householdId, 'new-home');
   });
 
   test('keširan nalog bez imena: korak sa imenom', () async {

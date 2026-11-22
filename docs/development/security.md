@@ -66,11 +66,16 @@ score or proof of exploitation. No credential exposure incident is asserted.
 - Define recent-auth protection for account deletion and future owner transfer.
   Do not add repeated prompts to normal shopping/cooking. Team/admin accounts
   should use MFA and least privilege; consumer MFA is a separate UX decision.
-- Household invite codes need secure randomness, expiry/revocation, server-side
-  attempt throttling, atomic claim and explicit join confirmation. A short code
-  alone is insufficient protection against enumeration. Cache/outbox access after
-  removal must stop at the next verified membership change; an offline device
-  cannot be promised instantaneous remote erasure.
+- The reusable household invite in [008](../../specs/008-household-members/spec.md)
+  is a bearer credential with no scheduled expiry or user-facing revocation.
+  Use secure high-entropy randomness, restrict token access to the owner and
+  authorized server operations, and keep tokens out of logs and analytics.
+  Require sign-in, rate-limit preview and join, return only the household name
+  before explicit confirmation, and commit the membership change atomically.
+  A forwarded link grants join eligibility. Removal ends current server
+  access. A holder of the link can request another direct switch. Stop
+  cache/outbox access on the next verified membership change; offline devices
+  may retain stale local copies until reconnection.
 
 ## AI gateway and untrusted inputs
 
