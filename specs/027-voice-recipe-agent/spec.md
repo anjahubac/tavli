@@ -52,6 +52,10 @@ that UI task becomes Ready. English is used for engineering documents only.
 Producer specs: [014](../014-ai-response-contracts/spec.md), [015](../015-ai-server-gateway/spec.md), [018](../018-ingredient-catalog/spec.md)
 
 - **Q1** (Dev 4 with reviewer): Choose STT/TTS transport and retention/budgets; device Serbian voices require real-platform proof before promising support.
+  **Decided 2026-11-22 (Dev 2, AI engineer):** Groq Whisper behind the
+  `voice-transcribe` Edge Function, system voice only where verified; see the
+  [voice agent contract](contracts/voice-agent-contract.md). Device voices
+  still need real-platform proof.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
