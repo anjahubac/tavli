@@ -214,7 +214,7 @@ void main() {
       backend.server.households[scope.userId] = 'new-home';
     }
 
-    test('42501 pokreće proveru članstva tačno jednom', () async {
+    test('odbijanje tokom provere zakazuje jednu dodatnu proveru', () async {
       await addRecipe('a');
       await addRecipe('b');
       removeFromHousehold();
@@ -229,13 +229,21 @@ void main() {
       await pumpQueue();
       expect(checks, 1);
 
+      // Multiple denials in the gap before membership reconciliation starts
+      // must coalesce into one follow-up check, not disappear.
+      await addRecipe('c2');
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 1);
+
       checkDone.complete();
       await pumpQueue();
+      expect(checks, 2);
       checkDone = Completer<void>();
       await addRecipe('d');
       await guarded.push();
       await pumpQueue();
-      expect(checks, 2);
+      expect(checks, 3);
     });
 
     test(

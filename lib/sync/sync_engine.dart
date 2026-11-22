@@ -352,12 +352,17 @@ class SyncEngine {
   }
 
   var _accessCheck = false;
+  var _accessCheckPending = false;
 
   /// Runs [onForbidden] outside the upload: the membership check waits for the
   /// active upload, so awaiting it here would deadlock.
   void _checkAccess() {
     final check = onForbidden;
-    if (check == null || _accessCheck || _membershipCheck || _stopped) return;
+    if (check == null || _membershipCheck || _stopped) return;
+    if (_accessCheck) {
+      _accessCheckPending = true;
+      return;
+    }
     _accessCheck = true;
     _zone.run(
       () => unawaited(
@@ -371,6 +376,9 @@ class SyncEngine {
             // Nothing is logged: the error may carry account details.
           } finally {
             _accessCheck = false;
+            final recheck = _accessCheckPending;
+            _accessCheckPending = false;
+            if (recheck && !_stopped) _checkAccess();
           }
         }),
       ),
