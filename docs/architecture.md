@@ -83,9 +83,11 @@ Pages, URL in `AUTH_CONFIRM_PAGE_URL`), whose "Otvori Tavli" button passes the
 same code on to `tavli://auth-callback?code=…`; locally the button goes straight
 to `tavli://auth-callback`. The app exchanges the code with the PKCE
 verifier kept in secure storage (`PkceStorage`); the page holds no keys and
-sends nothing anywhere. Android, iOS and macOS
-register the `tavli` scheme; Windows signs in with the code until the Windows
-installer registers `tavli://` under `HKEY_CURRENT_USER\Software\Classes\tavli`.
+sends nothing anywhere. Android, iOS and macOS register the `tavli` scheme.
+The [local Windows build script](development/windows.md) registers the scheme
+for the current user and points it to the selected Debug or Release executable.
+Windows also registers the scheme when installing the MSIX package. On Windows
+the user can type the code from the email as well.
 The name is asked once: with no cached name the app checks the server profile
 before showing the name step. Apple/Google remain future work. Session tokens live
 in secure storage, not drift or logs. Email OTP length, confirmation templates

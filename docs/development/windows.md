@@ -21,28 +21,63 @@ workstation. The Visual Studio and Windows checks must be green.
 
 ## Build and run
 
+Use the build script for local Windows builds that need to open `tavli://`
+links, including email confirmation. The script builds Tavli and registers
+the resulting executable for the current Windows user. Close any running
+copy of that build and run these commands from the repository root:
+
 ```powershell
-flutter build windows --debug
-flutter run -d windows
-flutter build windows --release
+.\scripts\build-windows.ps1
+.\build\windows\x64\runner\Debug\tavli.exe
 ```
 
-The unpackaged release bundle is under
-`build/windows/x64/runner/Release/`. Keep the whole directory together; the
-executable depends on the adjacent DLLs and `data` directory.
+The defaults are `-Mode Debug` and `-DefinesFile .\secrets.json`. Choose the
+build mode and configuration file independently:
 
-Account-backed use needs the same gitignored configuration as the other
-platforms. Pass it with `--dart-define-from-file` as described in `AGENTS.md`.
-Never put those values into the runner, MSIX configuration or CI.
+```powershell
+# Build and run Release with secrets.json
+.\scripts\build-windows.ps1 -Mode Release
+.\build\windows\x64\runner\Release\tavli.exe
+
+# Build and run Debug with the dev configuration
+.\scripts\build-windows.ps1 -DefinesFile .\secrets.dev.json
+.\build\windows\x64\runner\Debug\tavli.exe
+```
+
+Open Tavli from the executable the script registered so the confirmation link
+returns to the same instance. The latest successful run of the script selects
+the executable. Run the script again when switching between Debug and Release
+or using a different checkout. Keep each build directory together because the
+executable depends on its adjacent DLLs and `data` directory.
+
+For hot reload, register the Debug executable with the script first, then run
+Flutter from the same checkout. Direct Flutter builds and runs rely on the
+existing Windows handler for links.
+
+```powershell
+flutter run -d windows --dart-define-from-file=secrets.json
+```
+
+Keep the defines file gitignored. Flutter can embed values used by the app
+into either build, so keep build bundles private when they contain credentials.
+The registry stores the executable path and a placeholder for the incoming URI.
 
 ## Create and test an installer
 
-The development dependency `msix` creates a locally installable package:
+For an installed build, Windows registers `tavli://` from the MSIX manifest
+at install time. Build a Release bundle with your chosen defines file, then
+package that bundle with `msix`:
 
 ```powershell
-dart run msix:create
+flutter build windows --release --dart-define-from-file=secrets.json
+dart run msix:create --build-windows false
 Add-AppxPackage build\windows\x64\runner\Release\tavli.msix
 ```
+
+Start Tavli from the Windows Start menu and use the email link from that
+session. If a previous local script registration selects an unpackaged build,
+remove `HKCU\Software\Classes\tavli` if it still points to that local build so
+the link opens the installed package.
 
 For development, the tool offers to install its self-signed test certificate.
 That certificate establishes trust only on the test machine. It is not suitable
