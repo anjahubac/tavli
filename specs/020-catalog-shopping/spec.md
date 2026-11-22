@@ -69,6 +69,23 @@ until execution evidence is linked.
 
 Preserve existing shopping sources/contributions/allocations, integer micros and receipt provenance. Catalog migration is additive with legacy unmapped fallback; refactor by responsibility without changing semantics.
 
+## Catalog aggregation acceptance
+
+For [Trello #25](https://trello.com/c/jnyaK6JC), the
+[shopping screen fixture](fixtures/shopping_ingredient_aggregation_test.dart.txt)
+uses three recipes with a shared onion food ID and mixed names and units.
+Both “Po planu” and “Po receptu” show one 500 g row
+(`200 g + 100 g + 0.2 kg`) and a separate 75 g row with the same name
+and no food ID.
+
+The fixture and 53 existing shopping tests passed on prototype `f74d08e`.
+To rerun there, copy the fixture to
+`test/features/shopping/shopping_ingredient_aggregation_fixture_test.dart`
+and run
+`flutter test test/features/shopping/shopping_ingredient_aggregation_fixture_test.dart`.
+Team `dev` still groups by text. The fixture uses synthetic links and can
+become a regular regression test when catalog-based grouping lands there.
+
 ## Exact UI copy carried forward
 
 “Po planu”, “Po receptu”, “Proveri količinu”, “Imaš u ostavi, proveri”,
