@@ -191,3 +191,21 @@ through the existing repository and outbox. Abuse, credentials, file access and
 deployment: N/A. `test/features/home/home_screen_test.dart` covers the display
 states, phone and wide navigation, 2× text, reduced motion, and cook/undo replay
 with a fake backend.
+
+## Home notice first slice — 2026-11-22
+
+- Show one notice for the first uncooked displayed meal with outstanding
+  shopping demand, today before tomorrow and in meal order. Count a meal only
+  when a contribution is attached to an open plan-derived shopping item.
+  Purchasing or covering that contribution clears its warning. The link opens
+  plan shopping for that meal's plan and week.
+- When no shopping notice applies, show the plan reminder exactly two civil
+  days before the end of the plan selected for today. Show no notice when
+  neither rule applies. Shopping loading or failure never hides Home meals.
+- Use the existing gallery warning and notice patterns. The wide layout puts
+  the notice above “Sutra”, with “Na umu” inside the notice. Allergen priority
+  remains a follow-up to the household and reviewed catalog inputs.
+
+UI copy: “Na umu”, “Za današnje jelo „{title}“ nedostaju namirnice.”,
+“Za sutrašnje jelo „{title}“ nedostaju namirnice.”, “Nabavka”,
+“Plan se završava za dva dana.”

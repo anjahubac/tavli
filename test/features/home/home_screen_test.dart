@@ -8,6 +8,7 @@ import 'package:tavli/data/meal_plan_repository.dart';
 import 'package:tavli/data/shopping_repository.dart';
 import 'package:tavli/domain/meal_plan.dart';
 import 'package:tavli/domain/plan_calendar.dart';
+import 'package:tavli/domain/recipe.dart' show Ingredient;
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/features/home/home_today.dart';
 import 'package:tavli/features/planning/planning_providers.dart';
@@ -51,6 +52,7 @@ Future<void> seedPlan(
   AppDatabase db, {
   Set<MealType> cooked = const {},
   DateRange? range,
+  Set<CivilDate> shoppingDates = const {},
 }) async {
   final repo = await _repo(db);
   final request = PlanRequest(
@@ -58,9 +60,12 @@ Future<void> seedPlan(
     mealTypes: _titles.keys.toSet(),
     servings: 4,
   );
-  String title(MealSlot s) => s.date == today
-      ? _titles[s.type]!
-      : 'Sutra ${s.type.label.toLowerCase()}';
+  String title(MealSlot s) {
+    if (s.date == today) return _titles[s.type]!;
+    final label = s.type.label.toLowerCase();
+    return s.date == today.addDays(1) ? 'Sutra $label' : '${s.date} $label';
+  }
+
   final planId = await repo.approve(
     PlanDraft(
       request: request,
@@ -74,7 +79,10 @@ Future<void> seedPlan(
             title: title(s),
             baseServings: 4,
             prepMinutes: 75,
-            ingredients: const [],
+            ingredients:
+                shoppingDates.contains(s.date) && s.type == MealType.lunch
+                ? const [Ingredient(name: 'Pasulj', quantity: 500, unit: 'g')]
+                : const [],
             steps: const ['Skuvaj.'],
           ),
       },
@@ -140,9 +148,101 @@ void main() {
   testTavli('bez plana: jedna akcija „Napravi plan“', (tester) async {
     await pumpHome(tester);
     expect(find.text('Još nema plana obroka'), findsOneWidget);
+    expect(find.text('Na umu'), findsNothing);
     await tapButton(tester, 'Napravi plan');
     expect(find.text('Još nema plana obroka'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testTavli('manjak za sutra ima prednost; kupovina i poništavanje', (
+    tester,
+  ) async {
+    final backend = FakeBackend();
+    backend.server.offline = true;
+    await pumpHome(
+      tester,
+      backend: backend,
+      setup: (db) => seedPlan(
+        db,
+        range: DateRange(today, today.addDays(2)),
+        shoppingDates: {today.addDays(1)},
+      ),
+    );
+    final notice = find.byType(TavliNotice);
+    const missing = 'Za sutrašnje jelo „Sutra ručak“ nedostaju namirnice.';
+    const ending = 'Plan se završava za dva dana.';
+    expect(find.text('Na umu'), findsOneWidget);
+    expect(find.text(missing), findsOneWidget);
+    expect(find.text(ending), findsNothing);
+
+    final container = ProviderScope.containerOf(tester.element(notice));
+    final db = container.read(databaseProvider);
+    final item = await db.select(db.shoppingItems).getSingle();
+    final shopping = container.read(shoppingRepositoryProvider);
+    await shopping.setBought([item.id], bought: true);
+    await tester.pumpAndSettle();
+    expect(find.text(missing), findsNothing);
+    expect(find.text(ending), findsOneWidget);
+
+    await shopping.setBought([item.id], bought: false);
+    await tester.pumpAndSettle();
+    expect(find.text(missing), findsOneWidget);
+    expect(find.text(ending), findsNothing);
+    final link = find.descendant(of: notice, matching: find.text('Nabavka'));
+    await tester.ensureVisible(link);
+    await tester.tap(link);
+    await tester.pumpAndSettle();
+    expect(currentTab(tester), 'Nabavka');
+    expect(find.text('Pasulj'), findsOneWidget);
+  });
+
+  testTavli('stavka kasnijeg obroka ne pokreće obaveštenje', (tester) async {
+    await pumpHome(
+      tester,
+      setup: (db) => seedPlan(
+        db,
+        range: DateRange(today, today.addDays(3)),
+        shoppingDates: {today.addDays(2)},
+      ),
+    );
+    expect(find.text('Na umu'), findsNothing);
+  });
+
+  testTavli('današnji manjak ima prednost nad sutrašnjim na širokom ekranu', (
+    tester,
+  ) async {
+    await pumpHome(
+      tester,
+      size: wide,
+      setup: (db) => seedPlan(db, shoppingDates: {today, today.addDays(1)}),
+    );
+    final notice = find.byType(TavliNotice);
+    expect(notice, findsOneWidget);
+    expect(
+      find.text('Za današnje jelo „Pasulj prebranac“ nedostaju namirnice.'),
+      findsOneWidget,
+    );
+    final tomorrow = tester.getRect(find.text('SUTRA'));
+    expect(tester.getRect(notice).bottom, lessThan(tomorrow.top));
+  });
+
+  testTavli('sutrašnji manjak je vidljiv i kada danas nema obroka', (
+    tester,
+  ) async {
+    final tomorrow = today.addDays(1);
+    await pumpHome(
+      tester,
+      setup: (db) => seedPlan(
+        db,
+        range: DateRange(tomorrow, tomorrow),
+        shoppingDates: {tomorrow},
+      ),
+    );
+    expect(find.text('Za danas nema obroka u planu'), findsOneWidget);
+    expect(
+      find.text('Za sutrašnje jelo „Sutra ručak“ nedostaju namirnice.'),
+      findsOneWidget,
+    );
   });
 
   testTavli('plan bez današnjih obroka nudi plan, ne pravljenje novog', (
@@ -323,9 +423,12 @@ void main() {
       await pumpHome(
         tester,
         size: size,
-        setup: (db) => seedPlan(db, cooked: {MealType.breakfast}),
+        setup: (db) =>
+            seedPlan(db, cooked: {MealType.breakfast}, shoppingDates: {today}),
       );
       expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.byType(TavliNotice));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(button('Kuvaj'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
