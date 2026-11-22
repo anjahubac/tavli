@@ -21,9 +21,12 @@ class SignInScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    // Razlog odjave je obaveštenje; neuspeo link iz mejla je greška (crveno,
-    // kao na "Proveri mejl").
+    // Nova greška iz mejla ima prednost nad prethodnim razlogom odjave.
     final notice = switch (auth) {
+      SignedOut(linkError: final f?) => (
+        authErrorText(f),
+        TavliNoticeTone.error,
+      ),
       SignedOut(reason: SignOutReason.sessionExpired) => (
         sessionExpiredText,
         TavliNoticeTone.info,
@@ -35,10 +38,6 @@ class SignInScreen extends ConsumerWidget {
       SignedOut(reason: SignOutReason.storageUnavailable) => (
         storageUnavailableText,
         TavliNoticeTone.info,
-      ),
-      SignedOut(linkError: final f?) => (
-        authErrorText(f),
-        TavliNoticeTone.error,
       ),
       _ => null,
     };

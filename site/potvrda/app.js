@@ -32,60 +32,36 @@
     a.setAttribute('href', link);
   });
 
-  // Posle „Otvori Tavli“ prozor se sam zatvara kad se aplikacija otvori.
-  // Stranica to ne može da zna direktno, pa gleda dva znaka:
-  // - stranica je sakrivena (telefon: aplikacija je preko nje);
-  // - prozor je izgubio fokus pa ga ponovo dobio (računar: aplikacija se
-  //   otvorila, ili je korisnik odgovorio na pitanje pregledača „Otvori
-  //   Tavli?“). Odmah na gubitak fokusa ne zatvaramo, jer bi to zatvorilo
-  //   i to pitanje pre nego što korisnik odgovori.
-  // Pregledač dozvoljava zatvaranje samo prozora otvorenog iz mejla (jedna
-  // stavka u istoriji); inače ostaje napomena da prozor može da se zatvori.
-  var opened = false;
-  var leftPage = false;
-  function tryClose() {
-    if (!opened || !leftPage) return;
-    window.setTimeout(function () {
-      window.close();
-    }, 300);
-  }
-  function markOpened() {
-    opened = true;
-    leftPage = false;
-    document.querySelectorAll('[data-posle-klika]').forEach(function (el) {
-      el.hidden = el.getAttribute('data-posle-klika') !== state;
-    });
-  }
-  document.querySelectorAll('[data-otvori]').forEach(function (a) {
-    a.addEventListener('click', markOpened);
-  });
-  window.addEventListener('blur', function () {
-    if (opened) leftPage = true;
-  });
-  window.addEventListener('focus', tryClose);
-  document.addEventListener('visibilitychange', function () {
-    if (!opened) return;
-    if (document.visibilityState === 'hidden') {
-      leftPage = true;
-      tryClose();
-    }
-  });
-
   // Kod ne ostaje u adresnoj traci, istoriji ni u obeleživaču.
   if (code || error) {
     window.history.replaceState(null, '', window.location.pathname);
   }
 
-  // Posle potvrde, na računaru, Tavli se otvara odmah, bez klika (kao Zoom
-  // ili Slack): pregledač sam pita „Otvori Tavli?“, ili ga otvori odmah ako
-  // je to već dozvoljeno. Na telefonu samo dugme, jer Safari bez instalirane
-  // aplikacije prikazuje grešku „adresa nije važeća“. Dugme ostaje i na
-  // računaru, ako se pitanje zatvori.
   var phone =
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (state === 'uspeh' && !phone) {
-    markOpened();
+
+  if (phone) {
+    // Na telefonu, posle dodira, pokušaj da zatvoriš stranicu kad se sakrije.
+    var tapped = false;
+    document.querySelectorAll('[data-otvori]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        tapped = true;
+        document.querySelectorAll('[data-posle-klika]').forEach(function (el) {
+          el.hidden = el.getAttribute('data-posle-klika') !== state;
+        });
+      });
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (tapped && document.visibilityState === 'hidden') {
+        window.setTimeout(function () {
+          window.close();
+        }, 300);
+      }
+    });
+  } else if (state === 'uspeh') {
+    // Pregledač može da blokira otvaranje ili da traži potvrdu. Stranica
+    // ostaje otvorena da bi korisnik mogao da klikne „Otvori Tavli“.
     window.location.href = link;
   }
 })();
