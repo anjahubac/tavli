@@ -75,6 +75,16 @@ The [flow map](../../docs/flows.md) records the boundary for downstream consumer
   user UUID breaks ties) or delete the now-empty source with its shared rows. Failures
   roll back the DB changes. Use least-privilege RPC grants, explicit policies
   and fixed search paths. Keep token lookup and delivery owner-scoped.
+- PR 94 account deletion uses the same private departure function as join.
+  Both lock the account and affected household rows before changing membership.
+  The departure function retires an empty household and records any photo
+  cleanup in the existing private queue. The delete-account function removes
+  those objects through Storage, confirms the queue entry and then deletes the
+  login. A retry resumes cleanup after an interrupted response.
+  The service-role photo RPC returns only paths for the caller's queued retired
+  household. Client authorization and invite scope are unchanged. There are no
+  new provider credentials, client endpoints or abuse limits. Deploy the
+  migration with the updated delete-account function through the backend workflow.
 - Keep the link reusable and rate-limit preview and confirmation server-side.
   Treat it as a secret in logs and analytics. Route validation, token lifecycle
   on household retirement and operation receipt retention belong in the final
