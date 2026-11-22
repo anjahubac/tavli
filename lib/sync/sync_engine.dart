@@ -311,9 +311,11 @@ class SyncEngine {
   Future<void> _push() async {
     _running = true;
     _retryTimer?.cancel();
+    var refreshRatings = false;
     try {
       do {
         _again = false;
+        final ratingChanges = await _hasRatingChanges();
         if (await _waitingCount() > 0) _emit(const Sending());
         final result = await _uploader.run();
         if (_stopped) return;
@@ -325,6 +327,7 @@ class SyncEngine {
           _scheduleRetry();
           return;
         }
+        refreshRatings |= ratingChanges;
         _failures = 0;
         if (await _hasPostponedPhotos()) _scheduleRetry();
         if (_movedWaiting > 0 && await _waitingCount() == 0) {
@@ -337,6 +340,8 @@ class SyncEngine {
       _running = false;
       if (!_stopped) await refreshStatus();
     }
+    // Pull waits for an active upload, so release the upload slot first.
+    if (refreshRatings) await pull();
   }
 
   void _scheduleRetry() {
@@ -359,6 +364,18 @@ class SyncEngine {
 
   Future<int> _waitingCount() async =>
       await _count(OutboxState.pending) + await _count(OutboxState.sending);
+
+  Future<bool> _hasRatingChanges() async =>
+      await (_db.select(_db.syncOutbox)
+            ..where(
+              (t) =>
+                  t.accountId.equals(_scope.userId) &
+                  t.entity.equals('rating') &
+                  t.state.isIn([OutboxState.pending, OutboxState.sending]),
+            )
+            ..limit(1))
+          .getSingleOrNull() !=
+      null;
 
   Future<bool> _hasPostponedPhotos() async =>
       await (_db.select(_db.syncOutbox)

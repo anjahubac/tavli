@@ -31,7 +31,7 @@ The ticket IDs and original assignment are retained for traceability.
 - **FR-008**: Deliver **Choose structured allergens per member**. Source D3-009; Dev 3; phase 3. Completion must satisfy the behavior and evidence below, not only code presence.
 - **FR-009**: Deliver **Display allergens on ingredients and recipes**. Source D3-010; Dev 3; phase 3. Completion must satisfy the behavior and evidence below, not only code presence.
 - **FR-010**: Deliver **Store favorites per member**. Source D3-011; Dev 3; phase 3. Completion must satisfy the behavior and evidence below, not only code presence.
-- **FR-011**: Deliver **Rate recipes**. Source D3-018; Dev 3; phase 4. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-011**: Deliver **Rate recipes**. Source D3-018; Dev 3; phase 4. A member has one current 1–5-star rating per saved recipe; recooking may update it. An optional note is private to its author. Household members see only the aggregate average and number of ratings, never another member's rating or note. Completion must satisfy the behavior and evidence below, not only code presence.
 
 ## Behavioral requirements
 
@@ -82,6 +82,8 @@ until execution evidence is linked.
   after the membership transition commits.
 - Deployment: migrations and verification follow 012/013 with synthetic
   accounts. Hosted controls remain unverified.
+- Ratings: recipe rating summaries expose only average and count to current
+  household members; individual ratings and notes remain owner-only.
 
 ## Exact UI copy carried forward
 
@@ -112,6 +114,9 @@ and takes effect only after the server confirms the membership change.
 
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
+For ratings, the agreed phrases are “Da li ti se svidelo?” and “Oceni”. The
+rating UI is intentionally a later design step; no modal or repeated prompt is
+part of this contract.
 
 ## Dependencies and open decisions
 

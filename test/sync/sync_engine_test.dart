@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/data/recipe_rating_repository.dart';
 import 'package:tavli/sync/downloader.dart';
 import 'package:tavli/sync/photo_sync.dart';
 import 'package:tavli/sync/sync_engine.dart';
@@ -232,6 +233,27 @@ void main() {
       ], 'id');
     });
     tearDown(() => full.stop());
+
+    test(
+      'rating upload completes and refreshes the household summary',
+      () async {
+        await addRecipe('rated');
+        final ratings = RecipeRatingRepository(
+          db,
+          writer: writer,
+          scope: scope,
+        );
+        await ratings.save(recipeId: 'rated', stars: 4);
+
+        await full.push().timeout(const Duration(seconds: 5));
+
+        expect(backend.server.table('ratings'), hasLength(1));
+        final summary = await ratings.watchHouseholdSummary('rated').first;
+        expect(summary?.averageStars, 4);
+        expect(summary?.ratingCount, 1);
+        expect(full.status, isA<AllSaved>());
+      },
+    );
 
     Future<AccountRow> account() => db.select(db.accounts).getSingle();
 

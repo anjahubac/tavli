@@ -3,12 +3,140 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/sync/uploader.dart';
 
+import '../helpers/fake_backend.dart';
+import '../helpers/fake_photo_store.dart';
 import '../helpers/v3_schema.dart';
 import '../helpers/v4_schema.dart';
 
+/// v7 tabele potrebne za migracije rejtinga i kataloga.
+const _v7RatingTables = [
+  'CREATE TABLE accounts (user_id TEXT PRIMARY KEY, email TEXT NOT NULL, display_name TEXT, '
+      'household_id TEXT NOT NULL, household_name TEXT NOT NULL, role TEXT NOT NULL, '
+      'initial_download_done INTEGER NOT NULL DEFAULT 0, last_pull_at INTEGER, created_at INTEGER NOT NULL)',
+  'CREATE TABLE ratings (id TEXT PRIMARY KEY, user_id TEXT, '
+      'recipe_id TEXT NOT NULL, stars INTEGER NOT NULL, cooked_at INTEGER '
+      'NOT NULL, comment TEXT, is_comfort_food INTEGER NOT NULL DEFAULT 0)',
+  'CREATE TABLE sync_outbox (seq INTEGER PRIMARY KEY AUTOINCREMENT, '
+      'account_id TEXT NOT NULL, entity TEXT NOT NULL, record_id TEXT NOT NULL, '
+      "op TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', "
+      'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
+      'last_error TEXT, created_at INTEGER NOT NULL)',
+];
+
 void main() {
+  test('v7 to v9 keeps the latest rating and creates both caches', () async {
+    final db = AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          _v7RatingTables.forEach(raw.execute);
+          raw.execute(
+            'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+            "VALUES ('old', 'u', 'r', 1, 1), ('new', 'u', 'r', 4, 2)",
+          );
+          raw.execute('PRAGMA user_version = 7');
+        },
+      ),
+    );
+    addTearDown(db.close);
+    expect((await db.select(db.ratings).get()).single.id, 'new');
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    expect(await db.select(db.foods).get(), isEmpty);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+  });
+
+  group('v7 to v9 keeps pending rating edits', () {
+    late FakeBackend backend;
+    late AccountScope scope;
+
+    setUp(() async {
+      backend = FakeBackend();
+      final s = await backend.auth.verifyCode('ana@mail.com', FakeServer.code);
+      scope = AccountScope(
+        userId: s.userId,
+        householdId: backend.server.households[s.userId]!,
+      );
+    });
+
+    // Dva rejtinga istog recepta (old je ranije kuvan) i upserti u outboxu
+    // po redu upisa.
+    AppDatabase v7({required List<String> queued}) => AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          _v7RatingTables.forEach(raw.execute);
+          raw.execute(
+            'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at, '
+            "comment) VALUES ('old', ?, 'r', 5, 1, 'edited'), "
+            "('new', ?, 'r', 2, 2, 'kept')",
+            [scope.userId, scope.userId],
+          );
+          for (final id in queued) {
+            raw.execute(
+              'INSERT INTO sync_outbox (account_id, entity, record_id, op, '
+              "created_at) VALUES (?, 'rating', ?, 'upsert', 1)",
+              [scope.userId, id],
+            );
+          }
+          raw.execute('PRAGMA user_version = 7');
+        },
+      ),
+    );
+
+    Uploader uploader(AppDatabase db) => Uploader(
+      db: db,
+      remote: backend.sync,
+      photos: backend.photos,
+      photoStore: FakePhotoStore(),
+      scope: scope,
+      refreshSession: () async => true,
+    );
+
+    test(
+      'an edit of the removed rating moves to the survivor and uploads',
+      () async {
+        final db = v7(queued: ['old']);
+        addTearDown(db.close);
+
+        final rating = (await db.select(db.ratings).get()).single;
+        expect(rating.id, 'new');
+        expect(rating.stars, 5);
+        expect(rating.comment, 'edited');
+        expect(rating.cookedAt, DateTime.fromMillisecondsSinceEpoch(2000));
+        final queue = await db.select(db.syncOutbox).get();
+        expect(queue.map((e) => e.recordId), ['new']);
+
+        final result = await uploader(db).run();
+
+        expect(result.sent, 1);
+        expect(await db.select(db.syncOutbox).get(), isEmpty);
+        final sent = backend.server.rows('ratings').single;
+        expect(sent['id'], 'new');
+        expect(sent['stars'], 5);
+        expect(sent['comment'], 'edited');
+      },
+    );
+
+    test('the newest edit wins and the queue keeps one upsert', () async {
+      final db = v7(queued: ['old', 'new']);
+      addTearDown(db.close);
+
+      final rating = (await db.select(db.ratings).get()).single;
+      expect(rating.stars, 2);
+      expect(rating.comment, 'kept');
+      final queue = await db.select(db.syncOutbox).get();
+      expect(queue.map((e) => e.recordId), ['new']);
+
+      await uploader(db).run();
+
+      final sent = backend.server.rows('ratings').single;
+      expect(sent['id'], 'new');
+      expect(sent['stars'], 2);
+    });
+  });
+
   test('postojeća v4 struktura označena kao v3 čuva id-jeve i outbox pri otvaranju', () async {
     final directory = await Directory.systemTemp.createTemp(
       'tavli-migration-test-',
@@ -154,7 +282,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 8);
+    expect(db.schemaVersion, 9);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
@@ -410,12 +538,12 @@ void main() {
     expect((await again.select(again.cookedEvents).get()).single.id, 'k1');
     expect(await again.select(again.pantryConsumptions).get(), hasLength(1));
   });
-  test('migracija 7 → 8 dodaje katalog namirnica; ponovljen korak ne pada', () async {
-    final directory = await Directory.systemTemp.createTemp('tavli-v8-');
+  test('migracija 8 → 9 dodaje katalog i čuva ocene; ponovljen korak ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v9-');
     addTearDown(() => directory.delete(recursive: true));
     final file = File('${directory.path}/cache.sqlite');
     final first = AppDatabase(NativeDatabase(file));
-    // v7 struktura: bez tabela kataloga.
+    // v8 sadrži ocene i sažetke, bez tabela kataloga.
     await first.customStatement('DROP TABLE food_aliases');
     await first.customStatement('DROP TABLE foods');
     await first.customStatement(
@@ -429,7 +557,11 @@ void main() {
       'INSERT INTO accounts (user_id, email, household_id, household_name, role, created_at) '
       "VALUES ('u1', 'u@example.test', 'h1', 'Moje domaćinstvo', 'owner', 1)",
     );
-    await first.customStatement('PRAGMA user_version = 7');
+    await first.customStatement(
+      'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+      "VALUES ('rating-kept', 'u1', 'r1', 4, 1)",
+    );
+    await first.customStatement('PRAGMA user_version = 8');
     await first.close();
 
     final db = AppDatabase(NativeDatabase(file));
@@ -439,6 +571,15 @@ void main() {
     final account = await db.select(db.accounts).getSingle();
     expect(account.userId, 'u1');
     expect(account.catalogStatus, isNull);
+    expect((await db.select(db.ratings).get()).single.id, 'rating-kept');
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    await expectLater(
+      db.customStatement(
+        'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+        "VALUES ('duplicate', 'u1', 'r1', 3, 2)",
+      ),
+      throwsA(isA<SqliteException>()),
+    );
     expect(
       await db
           .customSelect(
@@ -456,7 +597,7 @@ void main() {
       'INSERT INTO food_aliases (id, food_id, alias, alias_normalized, '
       "created_at, updated_at) VALUES ('a1', 'f1', 'jaja', 'jaja', 1, 1)",
     );
-    await db.customStatement('PRAGMA user_version = 7');
+    await db.customStatement('PRAGMA user_version = 8');
     await db.close();
 
     final again = AppDatabase(NativeDatabase(file));

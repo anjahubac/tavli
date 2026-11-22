@@ -77,6 +77,7 @@ class Downloader {
         return true;
       },
     );
+    await _refreshRatingSummaries();
     return (
       deferred: skipped,
       adoptedWeek: adoptedWeek,
@@ -207,6 +208,62 @@ class Downloader {
     return (skipped: 0, status: CatalogStatus.accessDenied);
   }
 
+  Future<void> _refreshRatingSummaries() async {
+    final List<Map<String, Object?>> rows;
+    try {
+      rows = await _remote.fetchHouseholdRecipeRatingSummaries();
+    } on SyncError catch (error) {
+      if (error is UnauthorizedSyncError) rethrow;
+      // The summary is optional; keep the cached values until the next pull.
+      return;
+    }
+    final valid = <RatingSummariesCompanion>[];
+    for (final row in rows) {
+      final householdId = row['household_id'] as String?;
+      final recipeId = row['recipe_id'] as String?;
+      final rawAverage = row['average_stars'];
+      final average = rawAverage is num
+          ? rawAverage.toDouble()
+          : double.tryParse(rawAverage is String ? rawAverage : '');
+      final count = (row['rating_count'] as num?)?.toInt();
+      if (householdId != _scope.householdId ||
+          recipeId == null ||
+          average == null ||
+          !average.isFinite ||
+          average < 1 ||
+          average > 5 ||
+          count == null ||
+          count < 1) {
+        continue;
+      }
+      valid.add(
+        RatingSummariesCompanion.insert(
+          householdId: householdId!,
+          recipeId: recipeId,
+          averageStars: average,
+          ratingCount: count,
+        ),
+      );
+    }
+
+    await _db.transaction(() async {
+      await (_db.delete(
+        _db.ratingSummaries,
+      )..where((t) => t.householdId.equals(_scope.householdId))).go();
+      for (final row in valid) {
+        final recipe =
+            await (_db.select(_db.recipes)..where(
+                  (t) =>
+                      t.id.equals(row.recipeId.value) &
+                      t.householdId.equals(_scope.householdId),
+                ))
+                .getSingleOrNull();
+        if (recipe == null) continue;
+        await _db.into(_db.ratingSummaries).insertOnConflictUpdate(row);
+      }
+    });
+  }
+
   /// Vraća broj odloženih redova.
   Future<int> _pull({
     required String key,
@@ -329,6 +386,20 @@ class Downloader {
         await adoptShoppingWeek(_db, _scope, e, row)) {
       return true;
     }
+    if (e is RatingEntity) {
+      if (row['user_id'] != _scope.userId) return false;
+      final local =
+          await (_db.select(_db.ratings)..where(
+                (t) =>
+                    t.userId.equals(_scope.userId) &
+                    t.recipeId.equals(row['recipe_id']! as String),
+              ))
+              .getSingleOrNull();
+      if (local != null && local.id != id) {
+        if (await _hasLocalChange(e.name, local.id)) return false;
+        await e.deleteLocal(_db, local.id);
+      }
+    }
     await e.write(_db, row);
     return false;
   }
@@ -349,12 +420,39 @@ class Downloader {
     final e = entityByName(row['entity']! as String);
     final id = row['record_id']! as String;
     if (e == null) return;
+    if (e is RecipeEntity) await _clearRecipeRatings(id);
     await e.deleteLocal(_db, id);
     await (_db.delete(_db.syncOutbox)..where(
           (t) =>
               t.accountId.equals(_scope.userId) &
               t.entity.equals(e.name) &
               t.recordId.equals(id),
+        ))
+        .go();
+  }
+
+  Future<void> _clearRecipeRatings(String recipeId) async {
+    final rating =
+        await (_db.select(_db.ratings)..where(
+              (t) =>
+                  t.userId.equals(_scope.userId) & t.recipeId.equals(recipeId),
+            ))
+            .getSingleOrNull();
+    if (rating != null) {
+      const entity = RatingEntity();
+      await entity.deleteLocal(_db, rating.id);
+      await (_db.delete(_db.syncOutbox)..where(
+            (t) =>
+                t.accountId.equals(_scope.userId) &
+                t.entity.equals(entity.name) &
+                t.recordId.equals(rating.id),
+          ))
+          .go();
+    }
+    await (_db.delete(_db.ratingSummaries)..where(
+          (t) =>
+              t.householdId.equals(_scope.householdId) &
+              t.recipeId.equals(recipeId),
         ))
         .go();
   }

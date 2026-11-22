@@ -366,6 +366,11 @@ class FoodAliases extends Table {
 }
 
 @DataClassName('RatingRow')
+@TableIndex(
+  name: 'ratings_user_recipe_unique',
+  columns: {#userId, #recipeId},
+  unique: true,
+)
 class Ratings extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId => text().references(Recipes, #id)();
@@ -378,6 +383,18 @@ class Ratings extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Lokalni keš bezbednog, server-izračunatog proseka domaćinstva.
+@DataClassName('RatingSummaryRow')
+class RatingSummaries extends Table {
+  TextColumn get householdId => text()();
+  TextColumn get recipeId => text()();
+  RealColumn get averageStars => real()();
+  IntColumn get ratingCount => integer()();
+
+  @override
+  Set<Column> get primaryKey => {householdId, recipeId};
 }
 
 /// Profil ukusa kao JSON (polja će se često menjati). Id je userId osobe;
@@ -491,6 +508,7 @@ class SyncCursors extends Table {
     Foods,
     FoodAliases,
     Ratings,
+    RatingSummaries,
     UserProfiles,
     AppSettings,
     ModelStatuses,
@@ -504,7 +522,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -523,7 +541,8 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
       if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
       if (from < 7) await transaction(() => _migrateToCookedEvents(m));
-      if (from < 8) await transaction(() => _migrateToFoodCatalog(m));
+      if (from < 8) await transaction(_migrateToRecipeRatings);
+      if (from < 9) await transaction(() => _migrateToFoodCatalog(m));
     },
   );
 
@@ -536,6 +555,95 @@ class AppDatabase extends _$AppDatabase {
       recipes.labelsSource,
     ]) {
       await _addMissingColumn(m, recipes, c);
+    }
+  }
+
+  /// v8: jedan lični rejting po receptu i lokalni keš proseka domaćinstva.
+  Future<void> _migrateToRecipeRatings() async {
+    await _moveRatingEditsToSurvivors();
+    await customStatement('''
+      DELETE FROM ratings
+      WHERE EXISTS (
+        SELECT 1 FROM ratings newer
+        WHERE newer.user_id IS ratings.user_id
+          AND newer.recipe_id = ratings.recipe_id
+          AND (newer.cooked_at > ratings.cooked_at
+            OR (newer.cooked_at = ratings.cooked_at AND newer.id > ratings.id))
+      )
+    ''');
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS ratings_user_recipe_unique '
+      'ON ratings (user_id, recipe_id)',
+    );
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS rating_summaries ('
+      'household_id TEXT NOT NULL, recipe_id TEXT NOT NULL, '
+      'average_stars REAL NOT NULL, rating_count INTEGER NOT NULL, '
+      'PRIMARY KEY (household_id, recipe_id))',
+    );
+  }
+
+  /// Pre brisanja duplikata (v8): neposlata izmena obrisanog rejtinga prelazi
+  /// na rejting koji ostaje, inače bi je Uploader odbacio kao obrisan zapis.
+  /// Najnovija neposlata izmena grupe (najveći seq) daje ocenu, a u outboxu
+  /// ostaje jedan upsert za preživeli ID (dva ista reda u jednom upsertu
+  /// server odbija).
+  Future<void> _moveRatingEditsToSurvivors() async {
+    // Isti izbor kao DELETE ispod: najnoviji cooked_at, pa najveći id.
+    final losers = await customSelect('''
+      SELECT loser.id AS loser_id,
+        (SELECT s.id FROM ratings s
+         WHERE s.user_id IS loser.user_id AND s.recipe_id = loser.recipe_id
+         ORDER BY s.cooked_at DESC, s.id DESC LIMIT 1) AS survivor_id
+      FROM ratings loser
+      WHERE EXISTS (
+        SELECT 1 FROM ratings newer
+        WHERE newer.user_id IS loser.user_id
+          AND newer.recipe_id = loser.recipe_id
+          AND (newer.cooked_at > loser.cooked_at
+            OR (newer.cooked_at = loser.cooked_at AND newer.id > loser.id))
+      )
+    ''').get();
+    final groups = <String, List<String>>{};
+    for (final r in losers) {
+      groups
+          .putIfAbsent(r.read<String>('survivor_id'), () => [])
+          .add(r.read<String>('loser_id'));
+    }
+
+    for (final MapEntry(key: survivor, value: lost) in groups.entries) {
+      final ids = [survivor, ...lost];
+      final marks = List.filled(ids.length, '?').join(', ');
+      final edits = await customSelect(
+        'SELECT seq, record_id FROM sync_outbox '
+        "WHERE entity = 'rating' AND op = 'upsert' "
+        "AND state IN ('pending', 'sending') AND record_id IN ($marks) "
+        'ORDER BY seq DESC',
+        variables: [for (final id in ids) Variable<String>(id)],
+      ).get();
+      if (edits.isEmpty) continue;
+
+      final latest = edits.first;
+      final editedId = latest.read<String>('record_id');
+      if (editedId != survivor) {
+        // cooked_at ostaje od preživelog: to je poslednje kuvanje.
+        await customStatement(
+          'UPDATE ratings SET '
+          '(stars, comment, is_comfort_food) = '
+          '(SELECT stars, comment, is_comfort_food FROM ratings WHERE id = ?) '
+          'WHERE id = ?',
+          [editedId, survivor],
+        );
+      }
+      for (final older in edits.skip(1)) {
+        await customStatement('DELETE FROM sync_outbox WHERE seq = ?', [
+          older.read<int>('seq'),
+        ]);
+      }
+      await customStatement(
+        'UPDATE sync_outbox SET record_id = ? WHERE seq = ?',
+        [survivor, latest.read<int>('seq')],
+      );
     }
   }
 
@@ -553,7 +661,7 @@ class AppDatabase extends _$AppDatabase {
     await m.addColumn(table, c);
   }
 
-  /// v8: keš kataloga namirnica (samo dodaje). Ponovljen korak (vraćen
+  /// v9: keš kataloga namirnica (samo dodaje). Ponovljen korak (vraćen
   /// user_version) ne pada.
   Future<void> _migrateToFoodCatalog(Migrator m) async {
     await _addMissingColumn(m, accounts, accounts.catalogStatus);

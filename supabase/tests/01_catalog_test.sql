@@ -29,7 +29,10 @@ select is(
         order by 1),
   array[
     'cooked_events:delete', 'cooked_events:insert', 'cooked_events:select', 'cooked_events:update',
-    'deletions:select', 'household_members:select', 'households:select',
+    'deletions:select',
+    'food_aliases:delete', 'food_aliases:insert', 'food_aliases:select', 'food_aliases:update',
+    'foods:delete', 'foods:insert', 'foods:select', 'foods:update',
+    'household_members:select', 'households:select',
     'meal_plan_entries:delete', 'meal_plan_entries:insert', 'meal_plan_entries:select', 'meal_plan_entries:update',
     'meal_plans:delete', 'meal_plans:insert', 'meal_plans:select', 'meal_plans:update',
     'pantry_consumptions:delete', 'pantry_consumptions:insert', 'pantry_consumptions:select', 'pantry_consumptions:update',
@@ -74,8 +77,8 @@ select is(
   -- korisnika koji upisuje (20261118120000_recipe_labels.sql).
   array[
     'private.is_member', 'private.join_photo_is_published', 'private.recipe_meal_types_valid',
-    'public.confirm_household_join', 'public.household_invite_token',
-    'public.preview_household_join', 'public.remove_household_member'
+    'public.confirm_household_join', 'public.get_household_recipe_rating_summaries',
+    'public.household_invite_token', 'public.preview_household_join', 'public.remove_household_member'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );

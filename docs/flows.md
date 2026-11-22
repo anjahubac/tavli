@@ -47,6 +47,7 @@ accepted; **missing** = only requirements or open questions exist.
 | Početna / Plan → Skuvano | One cooked/undo operation for a plan entry or recipe | cooked meal contract (`specs/021-home-and-cooking/contracts/cooked-meal-contract.md`, added in its own PR) | draft | Dev 4 |
 | Skuvano → Ostava | Known quantities consumed once as a ledger; undo restores once; manual count wins | cooked meal contract | draft | Dev 4 |
 | Skuvano → Nutrition diary | Optional intake for the cook only; other members confirm their own | cooked meal contract; C6 checklist; [023](../specs/023-optional-nutrition/spec.md) | draft | Dev 3 |
+| Ratings → Recipes | Current personal rating; household-visible average and count only | [recipe ratings](../specs/008-household-members/contracts/recipe-ratings.md) | draft | Dev 3 |
 | Orthodox calendar → Početna, Plan | Dietary rule per civil date, including time restrictions, and current or next named fast | calendar API in [035 plan](../specs/035-fasting-holidays/plan.md) | missing | Dev 2 |
 | Fasting knowledge base → AI gateway | Retrieved calendar facts and passages, server-validated `fasting_question` answers with sources | [035](../specs/035-fasting-holidays/spec.md) FR-002/FR-003 and [proposed gateway extension](../specs/015-ai-server-gateway/contracts/ai-gateway-contract.md#proposed-extension-for-spec-035) | draft | Dev 2 |
 | Household “Pratim post” → Plan | Default fasting scope and strictness with an explicit per-plan override | [035](../specs/035-fasting-holidays/spec.md) FR-005/FR-006 | missing | Dev 3 → Dev 2 |

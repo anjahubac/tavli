@@ -45,6 +45,54 @@ void main() {
     expect(b.complete, isFalse);
   });
 
+  test('tri od četiri stavke imaju cenu, a pirinač ostaje nepokriven', () {
+    const lines = [
+      BasketLine(
+        id: '1',
+        name: 'mleko',
+        quantity: 1500,
+        unit: BasketUnit.milliliter,
+        barcode: '1',
+        packageQuantity: 1000,
+      ),
+      BasketLine(
+        id: '2',
+        name: 'jaja',
+        quantity: 6,
+        unit: BasketUnit.piece,
+        barcode: '2',
+        packageQuantity: 10,
+      ),
+      BasketLine(
+        id: '3',
+        name: 'brašno',
+        quantity: 500,
+        unit: BasketUnit.gram,
+        barcode: '3',
+        packageQuantity: 1000,
+      ),
+      BasketLine(
+        id: '4',
+        name: 'pirinač',
+        quantity: 1000,
+        unit: BasketUnit.gram,
+        barcode: '4',
+        packageQuantity: 1000,
+      ),
+    ];
+    final result = compareBasket(lines, [
+      offer('A', '1', 12000),
+      offer('A', '2', 25000),
+      offer('A', '3', 9500),
+    ]).single;
+
+    expect(result.subtotalInParas, 58500);
+    expect(result.covered.length, 3);
+    expect(result.covered.length + result.uncovered.length, 4);
+    expect(result.uncovered.single.name, 'pirinač');
+    expect(result.complete, isFalse);
+  });
+
   test('nepoznato pakovanje i protivrečne cene ostaju nepokriveni', () {
     const lines = [
       BasketLine(
