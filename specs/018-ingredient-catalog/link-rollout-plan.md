@@ -35,19 +35,76 @@ Only the first two lose data. Reads in either direction stay compatible.
 2. **Make the floor checkable.** Record the first build number or date that
    contains #100 and have each team member confirm in Trello that their devices
    are on it. Do not rely on "the team updates together".
-3. **Drain old outbox entries first.** Before the switch is turned on, the
+3. **Drain old-build outbox entries first.** Before the switch is turned on, the
    `sync_outbox` of every device must be empty (how to check it on a device is
-   still to be defined). An entry created by an older build is the only way an old payload
-   can arrive after links exist.
-4. **Make confirmation recoverable.** A confirmed mapping is also saved as a
-   household alias (D2), which outranks shared matches. If a link is ever lost,
-   resolving the same name again returns the same food, so the confirmation is
-   restored by lookup and not only by the link. This depends on the alias being
-   written before the link, and needs the catalog writes of rollout step 4.
+   still to be defined). This covers only writes already queued by a build that
+   does not know the link fields. It does not cover the next case.
+4. **Keep links when an upgraded device uploads a stale recipe** (see the next
+   section). This is the rule that protects links once the switch is on.
 5. **Backfill is idempotent and re-checked.** It follows the rules already in
    the proposal: skip a valid link, never overwrite `confirmed`, discard the
    result when the recipe or ingredient changed since it was read, never touch
    approved plan snapshots.
+
+## Stale recipe writes from an upgraded device
+
+The uploader reads the current local recipe row and sends the whole
+`ingredients` array, and the server keeps the last write. A device that was
+offline can therefore hold a recipe without links that another device added in
+the meantime, edit it, and later overwrite those links. Draining the outbox
+does not help here: the edit is queued after the rollout.
+
+Proposed rule: **before it uploads a recipe row, the client reads the row that
+is on the server and carries links forward.** For each local ingredient that has
+no valid link, take the server's link when its `matchedKey` equals
+`ingredientKey(name)` of the local ingredient (the same carry rule as
+`carryIngredientLinks` after an AI edit, with the server row as the source).
+Two guards:
+
+- A local `unlinkedKey` that equals the current key means the person removed the
+  link on purpose; do not carry it back
+  ([D1-009](unresolved-review-ui.md)).
+- A local `confirmed` link is kept, and a server `confirmed` link wins over a
+  local `matched` one. A name edited since the link was made no longer matches
+  `matchedKey`, so nothing is carried.
+
+If the read fails (offline, error), the upload waits and retries; it is never
+sent without the check while the switch is on. The cost is one extra read per
+recipe upload, which is small at household scale. A server-side merge in SQL
+would avoid the read but would need `ingredientKey` implemented a second time
+in SQL, so it is not proposed here.
+
+**Two-device acceptance case** (to be a test before the switch is turned on):
+
+| Step | Device A | Device B (upgraded, offline) |
+| --- | --- | --- |
+| 1 | Online; the recipe has no link for "jaja". | Syncs; has the same recipe, no link. Goes offline. |
+| 2 | Confirms "jaja" → food; the link is saved and uploaded. | Edits a quantity of another ingredient. The edit is queued. |
+| 3 | | Goes online; the upload reads the server row first. |
+| Expected | The server keeps the `confirmed` link for "jaja" and has B's quantity edit. | After the next sync it has the link. |
+
+Variants that must also pass: B renames "jaja" while offline (the link is not
+carried, the original text is kept); B removes the link on purpose offline (the
+removal is kept through `unlinkedKey`); B's upload fails the read (nothing is
+sent until it succeeds).
+
+## Recovering lost links
+
+D1-009 confirms **this ingredient only** by default and writes a household alias
+only when the person turns on the separate switch. The plan follows that:
+
+- A confirmation with the alias switch **on** is recoverable: the household
+  alias outranks shared matches, so resolving the same text again returns the
+  same food.
+- A recipe-only confirmation (the default) lives only in the link. If an old
+  build or any other path loses it, nothing recovers it automatically. The
+  ingredient becomes unresolved again, keeps its original text and appears in
+  the review list, where the person confirms it again. This is accepted as a
+  cost, and it is the reason the first four steps above exist: they keep it from
+  happening, not repair it afterwards.
+
+This replaces the earlier proposal that every confirmation also writes an alias,
+which contradicted D1-009.
 
 ## What this does not solve
 
@@ -55,15 +112,15 @@ Only the first two lose data. Reads in either direction stay compatible.
   links on its next save. The switch is a team agreement, not enforcement. A
   server-side minimum client version would enforce it; none exists today, and
   adding one is a separate decision.
-- A link dropped that way is repaired by backfill only if no newer user edit
-  exists, and a confirmation only if step 4 holds.
+- A recipe-only confirmation dropped that way needs the person to confirm it
+  again.
 
 ## Decisions required
 
 - Dev 3: whether a server-side minimum client version is wanted, or the
   agreement in steps 1 to 3 is enough while the team is small.
-- Dev 3 and Dev 4: whether confirm-writes-alias (step 4) is accepted as the
-  recovery path for confirmed links.
+- Dev 4: whether the "read the server row before upload" rule is accepted for
+  recipe uploads, including the extra read.
 - Dev 1: record the first build number or date with #100 once it is known.
 
 ## Acceptance for the first code slice
@@ -72,3 +129,4 @@ Only the first two lose data. Reads in either direction stay compatible.
 - With the switch on, running backfill twice leaves the same links and no extra
   aliases or proposals.
 - A recipe saved by a build that ignores links is re-read without error.
+- The two-device case above, with its three variants.
