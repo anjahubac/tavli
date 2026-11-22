@@ -35,8 +35,10 @@ Account-backed use needs the same gitignored configuration as the other
 platforms. Pass it with `--dart-define-from-file` as described in `AGENTS.md`.
 Never put those values into the runner, MSIX configuration or CI.
 
-To test email confirmation links with a local Windows build, close any
-running copy of that build and run from the repository root:
+Windows needs a registered `tavli://` handler to open email confirmation links
+in a local Windows build. The build script compiles Tavli and creates that
+registration. Close any running copy of the build, then run the script from
+the repository root:
 
 ```powershell
 .\scripts\build-windows.ps1
@@ -51,12 +53,12 @@ bundles private when they contain credentials. The registry stores only the
 executable path and a placeholder for the incoming URI.
 
 After a successful build the script registers `tavli://` for the current Windows
-user and points it at the executable for the chosen mode. For the default
-build, launch `build\windows\x64\runner\Debug\tavli.exe` to test sign-up in
-that instance. Re-run the script if the checkout
-moves or to point the protocol at a different checkout. To remove the local
-registration, remove `HKCU\Software\Classes\tavli` if it still points to that
-build.
+user and points it at the executable for the chosen mode. Start sign-up in
+that executable so the email link returns to the same instance. For the default
+build, launch `build\windows\x64\runner\Debug\tavli.exe`. Re-run the script if
+the checkout moves or to point the protocol at a different checkout. To remove
+the local registration, remove `HKCU\Software\Classes\tavli` if it still points
+to that build.
 
 ## Create and test an installer
 
@@ -67,9 +69,9 @@ dart run msix:create
 Add-AppxPackage build\windows\x64\runner\Release\tavli.msix
 ```
 
-Installing the MSIX registers `tavli://` through the package manifest. For a
-local sign-up test, build the Release bundle with your local defines file and
-then package the existing bundle:
+Installing the MSIX registers `tavli://` through the package manifest. To
+package Tavli with your local backend configuration, build the Release bundle
+with your local defines file and then package that bundle:
 
 ```powershell
 flutter build windows --release --dart-define-from-file=secrets.json
@@ -79,7 +81,7 @@ Add-AppxPackage build\windows\x64\runner\Release\tavli.msix
 
 Start Tavli from the Windows Start menu and use the email link from that
 session. If a previous local script registration selects an unpackaged build,
-remove that per-user registration before testing the installed package.
+remove that per-user registration so the link opens the installed package.
 
 For development, the tool offers to install its self-signed test certificate.
 That certificate establishes trust only on the test machine. It is not suitable
