@@ -106,7 +106,7 @@ server deployment follow 012/015.
 
 ### Implementation decisions
 
-- **Personal allergen selection.** Drift v8 adds one private selection row
+- **Personal allergen selection.** Drift v9 adds one private selection row
   per account. The account-scoped repository replaces the entire canonical set
   and enqueues one upsert in the same transaction. Clearing writes an empty set.
   The SQL migration checks the vocabulary and uses owner-only RLS. Auth account
@@ -155,15 +155,15 @@ at request time. A profile hint can be considered separately after the initial
 implementation. Dev 2 owns incomplete drafts when the reviewed recipe pool is
 exhausted; the 008 delivery does not depend on building that planner behavior.
 
-- **Favorite membership lifetime.** SQL uses a separate identity for every
-  household membership. The favorite row references the precise membership
-  and recipe so access loss and recipe deletion cascade. A reconnect may
-  refresh the membership identity but cannot migrate stale writes to it.
-  Existing cached accounts can fetch the identity on their first edit.
-  Sync reconciles the cached identity before sending favorites and after pulls.
-  A verified access change removes stale favorite rows and queued operations.
-  The invitations PR should keep the identity when saving the new membership. Coordinate the additive
-  migration and Drift v9 with Dev 1.
+- **Favorites follow the recipe.** A favorite is one row per user and recipe
+  (`user_id:recipe_id`), allowed only for a recipe visible in the user's
+  household. Leaving a household deletes favorites on its recipes (trigger on
+  `household_members`). The household join copies favorites and ratings to the
+  recipes it brings along; recipes left behind lose them. Sync drops cached
+  favorites and queued writes for recipes outside the active household before
+  upload and after pulls. Tastes, allergens and consent belong to the profile
+  and survive a household change. Drift v9 holds both new tables, after recipe
+  ratings in v8.
 
 ### Cross-owner handoffs and remaining decisions
 
@@ -195,7 +195,7 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
 | D3-004 | `TasteProfileRepository` reads, watches and writes dish-kind, catalog food and cuisine choices. `PlanningSharingRepository` reads and changes owner consent online. The private resolver applies consent and resolves ranking conflicts. | Dev 2 to apply the five cuisine codes and define consumer limits. Connect the profile UI and the visible food catalog. |
 | D3-009 | `AllergenRepository` reads, watches and replaces owner selections. `public.planning_allergen_codes` checks household scope and resolves the selected union. | Connect profile UI and Dev 2 server planning. |
 | D3-010 | `RecipeAllergens` derives visible recipe groups, warns on unresolved links or unreviewed mappings and compares with the viewer's own selection. The domain fixture covers seven reviewed ingredients out of eight. | Dev 1 supplies linked food IDs and reviewed mappings. Connect the recipe warning UI. Dev 2 applies the same completeness requirement in recommendation eligibility and result checks. |
-| D3-011 | `FavoriteRepository` reads, watches and edits private favorites. The server resolver counts visible favorites after consent. Membership-scoped identity prevents replay on a new membership. | Preserve the identity in the invitations PR, connect the recipe heart and list filter, and run the integrated planner acceptance. |
+| D3-011 | `FavoriteRepository` reads, watches and edits private favorites. The server resolver counts visible favorites after consent. Favorites follow the recipe; leaving a household removes them. | Copy favorites and ratings for brought recipes in the invitations PR, connect the recipe heart and list filter, and run the integrated planner acceptance. |
 
 At `origin/dev` 5fc4485, PR #90 has merged the alias matcher. That baseline
 has no food catalog migrations, embedded recipe food links or reviewed

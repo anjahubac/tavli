@@ -9,41 +9,37 @@ import '../helpers/v3_schema.dart';
 import '../helpers/v4_schema.dart';
 
 void main() {
-  test('v7 upgrade creates settings and favorite tables and preserves the personal outbox', () async {
-    final db = AppDatabase(
-      NativeDatabase.memory(
-        setup: (raw) {
-          raw.execute(
-            'CREATE TABLE user_profiles (id TEXT PRIMARY KEY, profile_json TEXT NOT NULL)',
-          );
-          raw.execute("INSERT INTO user_profiles VALUES ('member', '{}')");
-          raw.execute(
-            'CREATE TABLE sync_outbox (seq INTEGER PRIMARY KEY, account_id TEXT, entity TEXT, record_id TEXT, op TEXT, state TEXT, attempts INTEGER, next_attempt_at INTEGER, last_error TEXT, created_at INTEGER)',
-          );
-          raw.execute(
-            "INSERT INTO sync_outbox VALUES (1, 'member', 'taste_profile', 'member', 'upsert', 'pending', 0, NULL, NULL, 1)",
-          );
-          raw.execute('CREATE TABLE accounts (user_id TEXT PRIMARY KEY)');
-          raw.execute('PRAGMA user_version = 7');
-        },
-      ),
-    );
-    addTearDown(db.close);
-    expect(await db.select(db.userFavorites).get(), isEmpty);
-    final accountColumns = await db
-        .customSelect('PRAGMA table_info(accounts)')
-        .get();
-    expect(
-      accountColumns.map((row) => row.read<String>('name')),
-      contains('favorite_membership_id'),
-    );
-    expect(await db.select(db.userAllergenSelections).get(), isEmpty);
-    expect((await db.select(db.userProfiles).getSingle()).id, 'member');
-    expect(
-      (await db.select(db.syncOutbox).getSingle()).entity,
-      'taste_profile',
-    );
-  });
+  for (final from in [7, 8]) {
+    test('v$from upgrade creates allergen and favorite tables and preserves '
+        'the personal outbox', () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute(
+              'CREATE TABLE user_profiles (id TEXT PRIMARY KEY, profile_json TEXT NOT NULL)',
+            );
+            raw.execute("INSERT INTO user_profiles VALUES ('member', '{}')");
+            raw.execute(
+              'CREATE TABLE sync_outbox (seq INTEGER PRIMARY KEY, account_id TEXT, entity TEXT, record_id TEXT, op TEXT, state TEXT, attempts INTEGER, next_attempt_at INTEGER, last_error TEXT, created_at INTEGER)',
+            );
+            raw.execute(
+              "INSERT INTO sync_outbox VALUES (1, 'member', 'taste_profile', 'member', 'upsert', 'pending', 0, NULL, NULL, 1)",
+            );
+            // v8 is the recipe ratings version: no member planning tables.
+            raw.execute('PRAGMA user_version = $from');
+          },
+        ),
+      );
+      addTearDown(db.close);
+      expect(await db.select(db.userFavorites).get(), isEmpty);
+      expect(await db.select(db.userAllergenSelections).get(), isEmpty);
+      expect((await db.select(db.userProfiles).getSingle()).id, 'member');
+      expect(
+        (await db.select(db.syncOutbox).getSingle()).entity,
+        'taste_profile',
+      );
+    });
+  }
 
   test('postojeća v4 struktura označena kao v3 čuva id-jeve i outbox pri otvaranju', () async {
     final directory = await Directory.systemTemp.createTemp(

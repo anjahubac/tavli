@@ -8631,17 +8631,6 @@ class $UserFavoritesTable extends UserFavorites
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       );
-  static const VerificationMeta _membershipIdMeta = const VerificationMeta(
-    'membershipId',
-  );
-  @override
-  late final GeneratedColumn<String> membershipId = GeneratedColumn<String>(
-    'membership_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
   );
@@ -8662,7 +8651,6 @@ class $UserFavoritesTable extends UserFavorites
     userId,
     recipeId,
     recipeHouseholdId,
-    membershipId,
     isFavorite,
   ];
   @override
@@ -8709,17 +8697,6 @@ class $UserFavoritesTable extends UserFavorites
     } else if (isInserting) {
       context.missing(_recipeHouseholdIdMeta);
     }
-    if (data.containsKey('membership_id')) {
-      context.handle(
-        _membershipIdMeta,
-        membershipId.isAcceptableOrUnknown(
-          data['membership_id']!,
-          _membershipIdMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_membershipIdMeta);
-    }
     if (data.containsKey('is_favorite')) {
       context.handle(
         _isFavoriteMeta,
@@ -8753,10 +8730,6 @@ class $UserFavoritesTable extends UserFavorites
         DriftSqlType.string,
         data['${effectivePrefix}recipe_household_id'],
       )!,
-      membershipId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}membership_id'],
-      )!,
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
@@ -8775,14 +8748,12 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
   final String userId;
   final String recipeId;
   final String recipeHouseholdId;
-  final String membershipId;
   final bool isFavorite;
   const UserFavoriteRow({
     required this.id,
     required this.userId,
     required this.recipeId,
     required this.recipeHouseholdId,
-    required this.membershipId,
     required this.isFavorite,
   });
   @override
@@ -8792,7 +8763,6 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
     map['user_id'] = Variable<String>(userId);
     map['recipe_id'] = Variable<String>(recipeId);
     map['recipe_household_id'] = Variable<String>(recipeHouseholdId);
-    map['membership_id'] = Variable<String>(membershipId);
     map['is_favorite'] = Variable<bool>(isFavorite);
     return map;
   }
@@ -8803,7 +8773,6 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
       userId: Value(userId),
       recipeId: Value(recipeId),
       recipeHouseholdId: Value(recipeHouseholdId),
-      membershipId: Value(membershipId),
       isFavorite: Value(isFavorite),
     );
   }
@@ -8818,7 +8787,6 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
       userId: serializer.fromJson<String>(json['userId']),
       recipeId: serializer.fromJson<String>(json['recipeId']),
       recipeHouseholdId: serializer.fromJson<String>(json['recipeHouseholdId']),
-      membershipId: serializer.fromJson<String>(json['membershipId']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
     );
   }
@@ -8830,7 +8798,6 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
       'userId': serializer.toJson<String>(userId),
       'recipeId': serializer.toJson<String>(recipeId),
       'recipeHouseholdId': serializer.toJson<String>(recipeHouseholdId),
-      'membershipId': serializer.toJson<String>(membershipId),
       'isFavorite': serializer.toJson<bool>(isFavorite),
     };
   }
@@ -8840,14 +8807,12 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
     String? userId,
     String? recipeId,
     String? recipeHouseholdId,
-    String? membershipId,
     bool? isFavorite,
   }) => UserFavoriteRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
     recipeId: recipeId ?? this.recipeId,
     recipeHouseholdId: recipeHouseholdId ?? this.recipeHouseholdId,
-    membershipId: membershipId ?? this.membershipId,
     isFavorite: isFavorite ?? this.isFavorite,
   );
   UserFavoriteRow copyWithCompanion(UserFavoritesCompanion data) {
@@ -8858,9 +8823,6 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
       recipeHouseholdId: data.recipeHouseholdId.present
           ? data.recipeHouseholdId.value
           : this.recipeHouseholdId,
-      membershipId: data.membershipId.present
-          ? data.membershipId.value
-          : this.membershipId,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -8874,21 +8836,14 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
           ..write('userId: $userId, ')
           ..write('recipeId: $recipeId, ')
           ..write('recipeHouseholdId: $recipeHouseholdId, ')
-          ..write('membershipId: $membershipId, ')
           ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    userId,
-    recipeId,
-    recipeHouseholdId,
-    membershipId,
-    isFavorite,
-  );
+  int get hashCode =>
+      Object.hash(id, userId, recipeId, recipeHouseholdId, isFavorite);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8897,7 +8852,6 @@ class UserFavoriteRow extends DataClass implements Insertable<UserFavoriteRow> {
           other.userId == this.userId &&
           other.recipeId == this.recipeId &&
           other.recipeHouseholdId == this.recipeHouseholdId &&
-          other.membershipId == this.membershipId &&
           other.isFavorite == this.isFavorite);
 }
 
@@ -8906,7 +8860,6 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
   final Value<String> userId;
   final Value<String> recipeId;
   final Value<String> recipeHouseholdId;
-  final Value<String> membershipId;
   final Value<bool> isFavorite;
   final Value<int> rowid;
   const UserFavoritesCompanion({
@@ -8914,7 +8867,6 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
     this.userId = const Value.absent(),
     this.recipeId = const Value.absent(),
     this.recipeHouseholdId = const Value.absent(),
-    this.membershipId = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -8923,21 +8875,18 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
     required String userId,
     required String recipeId,
     required String recipeHouseholdId,
-    required String membershipId,
     required bool isFavorite,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        userId = Value(userId),
        recipeId = Value(recipeId),
        recipeHouseholdId = Value(recipeHouseholdId),
-       membershipId = Value(membershipId),
        isFavorite = Value(isFavorite);
   static Insertable<UserFavoriteRow> custom({
     Expression<String>? id,
     Expression<String>? userId,
     Expression<String>? recipeId,
     Expression<String>? recipeHouseholdId,
-    Expression<String>? membershipId,
     Expression<bool>? isFavorite,
     Expression<int>? rowid,
   }) {
@@ -8946,7 +8895,6 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
       if (userId != null) 'user_id': userId,
       if (recipeId != null) 'recipe_id': recipeId,
       if (recipeHouseholdId != null) 'recipe_household_id': recipeHouseholdId,
-      if (membershipId != null) 'membership_id': membershipId,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (rowid != null) 'rowid': rowid,
     });
@@ -8957,7 +8905,6 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
     Value<String>? userId,
     Value<String>? recipeId,
     Value<String>? recipeHouseholdId,
-    Value<String>? membershipId,
     Value<bool>? isFavorite,
     Value<int>? rowid,
   }) {
@@ -8966,7 +8913,6 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
       userId: userId ?? this.userId,
       recipeId: recipeId ?? this.recipeId,
       recipeHouseholdId: recipeHouseholdId ?? this.recipeHouseholdId,
-      membershipId: membershipId ?? this.membershipId,
       isFavorite: isFavorite ?? this.isFavorite,
       rowid: rowid ?? this.rowid,
     );
@@ -8987,9 +8933,6 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
     if (recipeHouseholdId.present) {
       map['recipe_household_id'] = Variable<String>(recipeHouseholdId.value);
     }
-    if (membershipId.present) {
-      map['membership_id'] = Variable<String>(membershipId.value);
-    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -9006,7 +8949,6 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
           ..write('userId: $userId, ')
           ..write('recipeId: $recipeId, ')
           ..write('recipeHouseholdId: $recipeHouseholdId, ')
-          ..write('membershipId: $membershipId, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -9766,17 +9708,6 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _favoriteMembershipIdMeta =
-      const VerificationMeta('favoriteMembershipId');
-  @override
-  late final GeneratedColumn<String> favoriteMembershipId =
-      GeneratedColumn<String>(
-        'favorite_membership_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
   static const VerificationMeta _initialDownloadDoneMeta =
       const VerificationMeta('initialDownloadDone');
   @override
@@ -9821,7 +9752,6 @@ class $AccountsTable extends Accounts
     householdId,
     householdName,
     role,
-    favoriteMembershipId,
     initialDownloadDone,
     lastPullAt,
     createdAt,
@@ -9893,15 +9823,6 @@ class $AccountsTable extends Accounts
     } else if (isInserting) {
       context.missing(_roleMeta);
     }
-    if (data.containsKey('favorite_membership_id')) {
-      context.handle(
-        _favoriteMembershipIdMeta,
-        favoriteMembershipId.isAcceptableOrUnknown(
-          data['favorite_membership_id']!,
-          _favoriteMembershipIdMeta,
-        ),
-      );
-    }
     if (data.containsKey('initial_download_done')) {
       context.handle(
         _initialDownloadDoneMeta,
@@ -9961,10 +9882,6 @@ class $AccountsTable extends Accounts
         DriftSqlType.string,
         data['${effectivePrefix}role'],
       )!,
-      favoriteMembershipId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}favorite_membership_id'],
-      ),
       initialDownloadDone: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}initial_download_done'],
@@ -9993,7 +9910,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final String householdId;
   final String householdName;
   final String role;
-  final String? favoriteMembershipId;
   final bool initialDownloadDone;
   final DateTime? lastPullAt;
   final DateTime createdAt;
@@ -10004,7 +9920,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.householdId,
     required this.householdName,
     required this.role,
-    this.favoriteMembershipId,
     required this.initialDownloadDone,
     this.lastPullAt,
     required this.createdAt,
@@ -10020,9 +9935,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['household_id'] = Variable<String>(householdId);
     map['household_name'] = Variable<String>(householdName);
     map['role'] = Variable<String>(role);
-    if (!nullToAbsent || favoriteMembershipId != null) {
-      map['favorite_membership_id'] = Variable<String>(favoriteMembershipId);
-    }
     map['initial_download_done'] = Variable<bool>(initialDownloadDone);
     if (!nullToAbsent || lastPullAt != null) {
       map['last_pull_at'] = Variable<DateTime>(lastPullAt);
@@ -10041,9 +9953,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       householdId: Value(householdId),
       householdName: Value(householdName),
       role: Value(role),
-      favoriteMembershipId: favoriteMembershipId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(favoriteMembershipId),
       initialDownloadDone: Value(initialDownloadDone),
       lastPullAt: lastPullAt == null && nullToAbsent
           ? const Value.absent()
@@ -10064,9 +9973,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       householdId: serializer.fromJson<String>(json['householdId']),
       householdName: serializer.fromJson<String>(json['householdName']),
       role: serializer.fromJson<String>(json['role']),
-      favoriteMembershipId: serializer.fromJson<String?>(
-        json['favoriteMembershipId'],
-      ),
       initialDownloadDone: serializer.fromJson<bool>(
         json['initialDownloadDone'],
       ),
@@ -10084,7 +9990,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'householdId': serializer.toJson<String>(householdId),
       'householdName': serializer.toJson<String>(householdName),
       'role': serializer.toJson<String>(role),
-      'favoriteMembershipId': serializer.toJson<String?>(favoriteMembershipId),
       'initialDownloadDone': serializer.toJson<bool>(initialDownloadDone),
       'lastPullAt': serializer.toJson<DateTime?>(lastPullAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -10098,7 +10003,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     String? householdId,
     String? householdName,
     String? role,
-    Value<String?> favoriteMembershipId = const Value.absent(),
     bool? initialDownloadDone,
     Value<DateTime?> lastPullAt = const Value.absent(),
     DateTime? createdAt,
@@ -10109,9 +10013,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     householdId: householdId ?? this.householdId,
     householdName: householdName ?? this.householdName,
     role: role ?? this.role,
-    favoriteMembershipId: favoriteMembershipId.present
-        ? favoriteMembershipId.value
-        : this.favoriteMembershipId,
     initialDownloadDone: initialDownloadDone ?? this.initialDownloadDone,
     lastPullAt: lastPullAt.present ? lastPullAt.value : this.lastPullAt,
     createdAt: createdAt ?? this.createdAt,
@@ -10130,9 +10031,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ? data.householdName.value
           : this.householdName,
       role: data.role.present ? data.role.value : this.role,
-      favoriteMembershipId: data.favoriteMembershipId.present
-          ? data.favoriteMembershipId.value
-          : this.favoriteMembershipId,
       initialDownloadDone: data.initialDownloadDone.present
           ? data.initialDownloadDone.value
           : this.initialDownloadDone,
@@ -10152,7 +10050,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('householdId: $householdId, ')
           ..write('householdName: $householdName, ')
           ..write('role: $role, ')
-          ..write('favoriteMembershipId: $favoriteMembershipId, ')
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('createdAt: $createdAt')
@@ -10168,7 +10065,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     householdId,
     householdName,
     role,
-    favoriteMembershipId,
     initialDownloadDone,
     lastPullAt,
     createdAt,
@@ -10183,7 +10079,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.householdId == this.householdId &&
           other.householdName == this.householdName &&
           other.role == this.role &&
-          other.favoriteMembershipId == this.favoriteMembershipId &&
           other.initialDownloadDone == this.initialDownloadDone &&
           other.lastPullAt == this.lastPullAt &&
           other.createdAt == this.createdAt);
@@ -10196,7 +10091,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<String> householdId;
   final Value<String> householdName;
   final Value<String> role;
-  final Value<String?> favoriteMembershipId;
   final Value<bool> initialDownloadDone;
   final Value<DateTime?> lastPullAt;
   final Value<DateTime> createdAt;
@@ -10208,7 +10102,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.householdId = const Value.absent(),
     this.householdName = const Value.absent(),
     this.role = const Value.absent(),
-    this.favoriteMembershipId = const Value.absent(),
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -10221,7 +10114,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     required String householdId,
     required String householdName,
     required String role,
-    this.favoriteMembershipId = const Value.absent(),
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
     required DateTime createdAt,
@@ -10239,7 +10131,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<String>? householdId,
     Expression<String>? householdName,
     Expression<String>? role,
-    Expression<String>? favoriteMembershipId,
     Expression<bool>? initialDownloadDone,
     Expression<DateTime>? lastPullAt,
     Expression<DateTime>? createdAt,
@@ -10252,8 +10143,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (householdId != null) 'household_id': householdId,
       if (householdName != null) 'household_name': householdName,
       if (role != null) 'role': role,
-      if (favoriteMembershipId != null)
-        'favorite_membership_id': favoriteMembershipId,
       if (initialDownloadDone != null)
         'initial_download_done': initialDownloadDone,
       if (lastPullAt != null) 'last_pull_at': lastPullAt,
@@ -10269,7 +10158,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<String>? householdId,
     Value<String>? householdName,
     Value<String>? role,
-    Value<String?>? favoriteMembershipId,
     Value<bool>? initialDownloadDone,
     Value<DateTime?>? lastPullAt,
     Value<DateTime>? createdAt,
@@ -10282,7 +10170,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       householdId: householdId ?? this.householdId,
       householdName: householdName ?? this.householdName,
       role: role ?? this.role,
-      favoriteMembershipId: favoriteMembershipId ?? this.favoriteMembershipId,
       initialDownloadDone: initialDownloadDone ?? this.initialDownloadDone,
       lastPullAt: lastPullAt ?? this.lastPullAt,
       createdAt: createdAt ?? this.createdAt,
@@ -10311,11 +10198,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (role.present) {
       map['role'] = Variable<String>(role.value);
     }
-    if (favoriteMembershipId.present) {
-      map['favorite_membership_id'] = Variable<String>(
-        favoriteMembershipId.value,
-      );
-    }
     if (initialDownloadDone.present) {
       map['initial_download_done'] = Variable<bool>(initialDownloadDone.value);
     }
@@ -10340,7 +10222,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('householdId: $householdId, ')
           ..write('householdName: $householdName, ')
           ..write('role: $role, ')
-          ..write('favoriteMembershipId: $favoriteMembershipId, ')
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('createdAt: $createdAt, ')
@@ -18190,7 +18071,6 @@ typedef $$UserFavoritesTableCreateCompanionBuilder =
       required String userId,
       required String recipeId,
       required String recipeHouseholdId,
-      required String membershipId,
       required bool isFavorite,
       Value<int> rowid,
     });
@@ -18200,7 +18080,6 @@ typedef $$UserFavoritesTableUpdateCompanionBuilder =
       Value<String> userId,
       Value<String> recipeId,
       Value<String> recipeHouseholdId,
-      Value<String> membershipId,
       Value<bool> isFavorite,
       Value<int> rowid,
     });
@@ -18231,11 +18110,6 @@ class $$UserFavoritesTableFilterComposer
 
   ColumnFilters<String> get recipeHouseholdId => $composableBuilder(
     column: $table.recipeHouseholdId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get membershipId => $composableBuilder(
-    column: $table.membershipId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18274,11 +18148,6 @@ class $$UserFavoritesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get membershipId => $composableBuilder(
-    column: $table.membershipId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
@@ -18305,11 +18174,6 @@ class $$UserFavoritesTableAnnotationComposer
 
   GeneratedColumn<String> get recipeHouseholdId => $composableBuilder(
     column: $table.recipeHouseholdId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get membershipId => $composableBuilder(
-    column: $table.membershipId,
     builder: (column) => column,
   );
 
@@ -18354,7 +18218,6 @@ class $$UserFavoritesTableTableManager
                 Value<String> userId = const Value.absent(),
                 Value<String> recipeId = const Value.absent(),
                 Value<String> recipeHouseholdId = const Value.absent(),
-                Value<String> membershipId = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserFavoritesCompanion(
@@ -18362,7 +18225,6 @@ class $$UserFavoritesTableTableManager
                 userId: userId,
                 recipeId: recipeId,
                 recipeHouseholdId: recipeHouseholdId,
-                membershipId: membershipId,
                 isFavorite: isFavorite,
                 rowid: rowid,
               ),
@@ -18372,7 +18234,6 @@ class $$UserFavoritesTableTableManager
                 required String userId,
                 required String recipeId,
                 required String recipeHouseholdId,
-                required String membershipId,
                 required bool isFavorite,
                 Value<int> rowid = const Value.absent(),
               }) => UserFavoritesCompanion.insert(
@@ -18380,7 +18241,6 @@ class $$UserFavoritesTableTableManager
                 userId: userId,
                 recipeId: recipeId,
                 recipeHouseholdId: recipeHouseholdId,
-                membershipId: membershipId,
                 isFavorite: isFavorite,
                 rowid: rowid,
               ),
@@ -18823,7 +18683,6 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   required String householdId,
   required String householdName,
   required String role,
-  Value<String?> favoriteMembershipId,
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
   required DateTime createdAt,
@@ -18836,7 +18695,6 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<String> householdId,
   Value<String> householdName,
   Value<String> role,
-  Value<String?> favoriteMembershipId,
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
   Value<DateTime> createdAt,
@@ -18879,11 +18737,6 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<String> get role => $composableBuilder(
     column: $table.role,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get favoriteMembershipId => $composableBuilder(
-    column: $table.favoriteMembershipId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18942,11 +18795,6 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get favoriteMembershipId => $composableBuilder(
-    column: $table.favoriteMembershipId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<bool> get initialDownloadDone => $composableBuilder(
     column: $table.initialDownloadDone,
     builder: (column) => ColumnOrderings(column),
@@ -18995,11 +18843,6 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<String> get role =>
       $composableBuilder(column: $table.role, builder: (column) => column);
-
-  GeneratedColumn<String> get favoriteMembershipId => $composableBuilder(
-    column: $table.favoriteMembershipId,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<bool> get initialDownloadDone => $composableBuilder(
     column: $table.initialDownloadDone,
@@ -19052,7 +18895,6 @@ class $$AccountsTableTableManager
                 Value<String> householdId = const Value.absent(),
                 Value<String> householdName = const Value.absent(),
                 Value<String> role = const Value.absent(),
-                Value<String?> favoriteMembershipId = const Value.absent(),
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -19064,7 +18906,6 @@ class $$AccountsTableTableManager
                 householdId: householdId,
                 householdName: householdName,
                 role: role,
-                favoriteMembershipId: favoriteMembershipId,
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
                 createdAt: createdAt,
@@ -19078,7 +18919,6 @@ class $$AccountsTableTableManager
                 required String householdId,
                 required String householdName,
                 required String role,
-                Value<String?> favoriteMembershipId = const Value.absent(),
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 required DateTime createdAt,
@@ -19090,7 +18930,6 @@ class $$AccountsTableTableManager
                 householdId: householdId,
                 householdName: householdName,
                 role: role,
-                favoriteMembershipId: favoriteMembershipId,
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
                 createdAt: createdAt,

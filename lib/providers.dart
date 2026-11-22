@@ -140,7 +140,6 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     db,
     scope: scope,
     writer: SyncedWriter(db, accountId: scope.userId),
-    accountApi: ref.watch(accountApiProvider),
   );
   final engine = SyncEngine(
     db: db,
@@ -152,7 +151,7 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
       photoStore: ref.watch(recipePhotoStoreProvider),
       scope: scope,
       refreshSession: () => _refreshSession(ref),
-      beforeFavoriteUpload: favorites.reconcileMembership,
+      beforeFavoriteUpload: favorites.dropStaleFavorites,
     ),
     downloader: Downloader(db: db, remote: remote, scope: scope),
     photoSync: PhotoSync(
@@ -169,7 +168,7 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     // izvodi iz zapisa kuvanja.
     afterPull: () async {
       await ref.read(cookingRepositoryProvider).reconcileCookedFlags();
-      await favorites.reconcileMembership();
+      await favorites.dropStaleFavorites();
     },
   );
   ref.onDispose(engine.stop);
@@ -257,7 +256,6 @@ final favoriteRepositoryProvider = Provider<FavoriteRepository>(
     ref.watch(databaseProvider),
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     writer: ref.watch(syncedWriterProvider),
-    accountApi: ref.watch(accountApiProvider),
   ),
 );
 

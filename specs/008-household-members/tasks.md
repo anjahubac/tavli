@@ -70,7 +70,7 @@ and merged PR; checkbox completion alone is not a release or an external approva
   producer and warning UI remain dependencies.
 - **T020–T021**: repository coverage for owner isolation, repeat toggles and stale queue cleanup,
   two-client replay coverage,
-  plus pgTAP for membership loss, stale replay after rejoin and recipe/account
+  plus pgTAP for leaving a household, stale replay, saving again after rejoin and recipe/account
   deletion. UI and integrated planner acceptance are tracked by the same task.
 
 The parent task checkboxes remain open until their acceptance scenarios pass

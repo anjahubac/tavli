@@ -54,7 +54,6 @@ class AccountService {
             householdId: remote.householdId,
             householdName: remote.householdName,
             role: remote.role,
-            favoriteMembershipId: Value(remote.favoriteMembershipId),
             createdAt: _clock(),
           ),
         );

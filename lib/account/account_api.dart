@@ -15,7 +15,6 @@ class RemoteAccount {
     required this.householdName,
     required this.role,
     this.displayName,
-    this.favoriteMembershipId,
   });
 
   final String userId;
@@ -24,7 +23,6 @@ class RemoteAccount {
   final String householdId;
   final String householdName;
   final String role;
-  final String? favoriteMembershipId;
 }
 
 /// Zašto brisanje naloga nije uspelo; na uređaju se tada ništa ne briše.
@@ -83,9 +81,7 @@ class SupabaseAccountApi implements AccountApi {
               .limit(1),
           await _client.rest
               .from('household_members')
-              .select(
-                'household_id, role, favorite_membership_id, households(name)',
-              )
+              .select('household_id, role, households(name)')
               .eq('user_id', uid)
               .limit(1),
         ),
@@ -101,7 +97,6 @@ class SupabaseAccountApi implements AccountApi {
           householdId: m['household_id'] as String,
           householdName: household?['name'] as String? ?? 'Moje domaćinstvo',
           role: m['role'] as String? ?? 'owner',
-          favoriteMembershipId: m['favorite_membership_id'] as String?,
         );
       }
       if (attempt == _attempts) throw const Unavailable();

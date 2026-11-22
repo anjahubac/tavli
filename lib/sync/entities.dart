@@ -692,7 +692,6 @@ class FavoriteEntity extends SyncEntity<$UserFavoritesTable, UserFavoriteRow> {
     'user_id': row.userId,
     'recipe_id': row.recipeId,
     'recipe_household_id': row.recipeHouseholdId,
-    'membership_id': row.membershipId,
     'is_favorite': row.isFavorite,
   };
 
@@ -703,7 +702,6 @@ class FavoriteEntity extends SyncEntity<$UserFavoritesTable, UserFavoriteRow> {
         userId: json['user_id']! as String,
         recipeId: json['recipe_id']! as String,
         recipeHouseholdId: json['recipe_household_id']! as String,
-        membershipId: json['membership_id']! as String,
         isFavorite: json['is_favorite']! as bool,
       );
 }

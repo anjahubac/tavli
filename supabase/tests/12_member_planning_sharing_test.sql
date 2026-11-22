@@ -9,10 +9,6 @@ delete from public.household_members where user_id = :'second_user';
 insert into public.household_members (household_id, user_id, role)
 values (:'household_id', :'second_user', 'owner');
 
-select favorite_membership_id as first_membership
-  from public.household_members where user_id = :'first_user' \gset
-select favorite_membership_id as second_membership
-  from public.household_members where user_id = :'second_user' \gset
 insert into public.recipes (id, household_id, title, servings, source, ingredients, steps)
 values ('shared-recipe', :'household_id', 'Jelo', 1, 'manual', '[]', '[]');
 
@@ -28,8 +24,8 @@ select throws_ok($$select * from public.set_planning_preferences_sharing(0, fals
   'P0001', null, 'stale client cannot undo acknowledged consent');
 insert into public.taste_profiles (profile)
 values ('{"likedDishKinds":["salad","pasta"],"likedCuisineCodes":["serbian","italian","unreviewed"],"likedFoodIds":["46d60c83-0d05-466e-9c28-585a8be28d8f","e760678c-1bce-4cde-8bca-b763885c7895"],"unsharedNote":"canary"}');
-insert into public.user_favorites (id, recipe_id, recipe_household_id, membership_id, is_favorite)
-values (:'first_membership' || ':shared-recipe', 'shared-recipe', :'household_id', :'first_membership', true);
+insert into public.user_favorites (id, recipe_id, recipe_household_id, is_favorite)
+values (:'first_user' || ':shared-recipe', 'shared-recipe', :'household_id', true);
 insert into public.user_allergen_selections (group_codes) values (array['eggs']);
 
 select tests.authenticate_as(:'second_user');
@@ -39,8 +35,8 @@ select throws_ok(format($$select public.planning_allergen_codes(%L, %L, array[%L
 
 insert into public.taste_profiles (profile)
 values ('{"dislikedDishKinds":["pasta"],"dislikedCuisineCodes":["italian"],"dislikedFoodIds":["46d60c83-0d05-466e-9c28-585a8be28d8f"],"unsharedNote":"canary"}');
-insert into public.user_favorites (id, recipe_id, recipe_household_id, membership_id, is_favorite)
-values (:'second_membership' || ':shared-recipe', 'shared-recipe', :'household_id', :'second_membership', true);
+insert into public.user_favorites (id, recipe_id, recipe_household_id, is_favorite)
+values (:'second_user' || ':shared-recipe', 'shared-recipe', :'household_id', true);
 select throws_ok(format($$select public.planning_advisory_inputs(%L, %L, array[%L::uuid], false)$$,
   :'second_user', :'household_id', :'first_user'), '42501', null, 'peer cannot execute internal advisory resolver');
 

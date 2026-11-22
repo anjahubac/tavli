@@ -378,7 +378,6 @@ class Accounts extends Table {
   TextColumn get householdId => text()();
   TextColumn get householdName => text()();
   TextColumn get role => text()();
-  TextColumn get favoriteMembershipId => text().nullable()();
   BoolColumn get initialDownloadDone =>
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastPullAt => dateTime().nullable()();
@@ -441,7 +440,6 @@ class UserFavorites extends Table {
   TextColumn get userId => text()();
   TextColumn get recipeId => text()();
   TextColumn get recipeHouseholdId => text()();
-  TextColumn get membershipId => text()();
   BoolColumn get isFavorite => boolean()();
 
   @override
@@ -497,15 +495,17 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
       if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
       if (from < 7) await transaction(() => _migrateToCookedEvents(m));
-      if (from < 8) await m.createTable(userAllergenSelections);
-      if (from < 9) {
-        await transaction(() async {
-          await _addMissingColumn(m, accounts, accounts.favoriteMembershipId);
-          await m.createTable(userFavorites);
-        });
-      }
+      // v8 belongs to recipe ratings (#95).
+      if (from < 9) await transaction(() => _migrateToMemberPlanning(m));
     },
   );
+
+  /// v9: private allergen selections and favorites. Drift creates tables
+  /// with IF NOT EXISTS, so a cache that already has them opens unchanged.
+  Future<void> _migrateToMemberPlanning(Migrator m) async {
+    await m.createTable(userAllergenSelections);
+    await m.createTable(userFavorites);
+  }
 
   /// v6: oznake recepta. Postojeći recepti ostaju neoznačeni (null).
   Future<void> _migrateToRecipeLabels(Migrator m) async {
