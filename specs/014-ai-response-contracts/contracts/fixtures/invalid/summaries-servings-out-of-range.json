@@ -20,7 +20,8 @@
             "unit": "g",
             "category": "suvi proizvodi"
           }
-        ]
+        ],
+        "steps": ["Zamesi testo."]
       }
     ]
   }

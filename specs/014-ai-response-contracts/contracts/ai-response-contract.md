@@ -140,13 +140,15 @@ produces a plan; such a dish is simply not checked by the weight rules.
 
 ### `recipe-summary.v1`
 
-Summaries for new dishes from the outline (title and ingredients, no steps).
+Recipe details for new dishes from the outline. The 2026-11-22 planning
+amendment requires preparation steps in these batches.
 
 ```jsonc
 {"recipes": [
   {"title": "Pasulj", "servings": 4, "prepMinutes": 120,
    "ingredients": [{"name": "pasulj", "quantity": 500, "unit": "g",
-                    "category": "suvi proizvodi", "note": null}]}
+                    "category": "suvi proizvodi", "note": null}],
+   "steps": ["Potopi pasulj preko noći.", "Isperi ga i kuvaj dok ne omekša."]}
 ]}
 ```
 
@@ -154,7 +156,8 @@ Summaries for new dishes from the outline (title and ingredients, no steps).
 | --- | --- | --- |
 | S1 | `recipes` is a list; each `title` matches a requested title (same `draftRecipeKey`) exactly once; no extra, missing or repeated recipe | reject |
 | S2 | `servings` is an integer 1–20 (`minServings`/`maxServings`) | reject |
-| S3 | `prepMinutes` follows R3; `ingredients` follow R4–R9; `steps` is ignored | as referenced |
+| S3 | `prepMinutes` follows R3; `ingredients` follow R4–R9 | as referenced |
+| S4 | `steps` follows R10 and must contain at least one nonblank step | reject |
 
 ### Unit vocabulary
 

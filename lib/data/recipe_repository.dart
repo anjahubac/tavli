@@ -7,10 +7,12 @@ import '../domain/ids.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
 import '../domain/recipe_version.dart';
+import '../domain/shopping_source.dart';
 import '../sync/entities.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
 import 'recipe_photo_store.dart';
+import 'shopping_repository.dart';
 
 /// Recepti i njihove prethodne verzije u lokalnoj bazi (kešu naloga).
 /// Čita samo recepte domaćinstva iz [AccountScope]; svaka izmena se u istoj
@@ -308,6 +310,39 @@ class RecipeRepository {
         ))
         .write(_toCompanion(recipe));
     await _writer.upsert(_recipe, recipe.id);
+    await _refreshPlannedMeals(recipe);
+  }
+
+  /// Izmene recepta i vezanih obroka se čuvaju u istoj transakciji.
+  Future<void> _refreshPlannedMeals(Recipe recipe) async {
+    final snapshot = jsonEncode(RecipeSnapshot.fromRecipe(recipe).toJson());
+    final entries =
+        await (_db.select(_db.mealPlanEntries)..where(
+              (t) =>
+                  t.householdId.equals(_scope.householdId) &
+                  t.recipeId.equals(recipe.id) &
+                  t.isCooked.equals(false) &
+                  (t.recipeSnapshotJson.isNull() |
+                      t.recipeSnapshotJson.equals(snapshot).not()),
+            ))
+            .get();
+    if (entries.isEmpty) return;
+
+    for (final entry in entries) {
+      await (_db.update(_db.mealPlanEntries)
+            ..where((t) => t.id.equals(entry.id)))
+          .write(MealPlanEntriesCompanion(recipeSnapshotJson: Value(snapshot)));
+      await _writer.upsert('meal_plan_entry', entry.id);
+    }
+    final shopping = ShoppingRepository(
+      _db,
+      scope: _scope,
+      writer: _writer,
+      clock: _clock,
+    );
+    for (final planId in entries.map((entry) => entry.planId).toSet()) {
+      await shopping.reconcilePlan(planId);
+    }
   }
 
   RecipesCompanion _toCompanion(Recipe r) => RecipesCompanion.insert(
