@@ -35,8 +35,15 @@ insert into public.ratings (id, recipe_id, stars, comment, is_comfort_food, cook
 values ('marks-rating-own', 'marks-own', 5, 'Odlično', true, '2026-11-01T12:00:00Z'),
        ('marks-rating-peer', 'marks-peer', 2, null, false, '2026-11-02T12:00:00Z');
 
+select gen_random_uuid() as mover_operation \gset
 select is(public.confirm_household_join(:'target_token', :'source_household',
-  'bring_recipes', false, gen_random_uuid())->>'status', 'joined', 'mover joins with own recipes');
+  'bring_recipes', false, :'mover_operation')->>'status', 'joined', 'mover joins with own recipes');
+select is(public.confirm_household_join(:'target_token', :'source_household',
+  'bring_recipes', false, :'mover_operation')->>'status', 'joined', 'a replayed join returns the same result');
+select is((select count(*) from public.user_favorites), 1::bigint, 'a replayed join does not copy the favorite again');
+select is((select count(*) from public.ratings), 1::bigint, 'a replayed join does not copy the rating again');
+select is((select count(*) from public.recipes where household_id = :'target_household'), 1::bigint,
+  'a replayed join does not copy the recipe again');
 
 select id as copied_recipe from public.recipes
  where household_id = :'target_household' and title = 'Moj recept' \gset

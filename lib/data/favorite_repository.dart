@@ -66,35 +66,33 @@ class FavoriteRepository {
     });
   }
 
-  /// Drops cached favorites and queued favorite writes for recipes outside the
-  /// active household (left behind or deleted). The server would reject them
-  /// anyway; removing them locally keeps the queue from getting stuck.
+  /// Drops cached favorites and queued favorite writes for recipes of another
+  /// household (left behind after a household change). The server would
+  /// reject them anyway; removing them locally keeps the queue from getting
+  /// stuck. A favorite whose recipe is not cached yet (e.g. a deferred
+  /// download) is kept.
   Future<void> dropStaleFavorites() => _db.transaction(() async {
-    final current = _db.selectOnly(_db.userFavorites)
-      ..addColumns([_db.userFavorites.id])
-      ..join([
-        innerJoin(
-          _db.recipes,
-          _db.recipes.id.equalsExp(_db.userFavorites.recipeId),
-          useColumns: false,
-        ),
-      ])
+    final favorite = _db.userFavorites;
+    final recipe = _db.recipes;
+    final elsewhere = _db.selectOnly(recipe)
+      ..addColumns([recipe.id])
+      ..where(recipe.householdId.equals(_scope.householdId).not());
+    final stale = _db.selectOnly(favorite)
+      ..addColumns([favorite.id])
       ..where(
-        _db.userFavorites.userId.equals(_scope.userId) &
-            _db.userFavorites.recipeHouseholdId.equals(_scope.householdId) &
-            _db.recipes.householdId.equals(_scope.householdId),
+        favorite.userId.equals(_scope.userId) &
+            (favorite.recipeHouseholdId.equals(_scope.householdId).not() |
+                favorite.recipeId.isInQuery(elsewhere)),
       );
     await (_db.delete(_db.syncOutbox)..where(
           (row) =>
               row.accountId.equals(_scope.userId) &
               row.entity.equals(_entity.name) &
-              row.recordId.isInQuery(current).not(),
+              row.recordId.isInQuery(stale),
         ))
         .go();
-    await (_db.delete(_db.userFavorites)..where(
-          (row) =>
-              row.userId.equals(_scope.userId) &
-              row.id.isInQuery(current).not(),
+    await (_db.delete(favorite)..where(
+          (row) => row.userId.equals(_scope.userId) & row.id.isInQuery(stale),
         ))
         .go();
   });

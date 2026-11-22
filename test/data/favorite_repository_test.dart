@@ -96,6 +96,23 @@ void main() {
     expect(await queuedIds(), {'peer:recipe', 'first:foreign'});
   });
 
+  test('a favorite whose recipe is not cached yet is kept', () async {
+    // The download deferred the recipe row, but the favorite arrived.
+    await const FavoriteEntity().write(db, {
+      'id': FavoriteRepository.idFor('first', 'deferred'),
+      'user_id': 'first',
+      'recipe_id': 'deferred',
+      'recipe_household_id': 'home',
+      'is_favorite': true,
+    });
+    final atHome = repository('first');
+    await atHome.dropStaleFavorites();
+    expect(await db.select(db.userFavorites).get(), hasLength(1));
+
+    await addRecipe('deferred', 'home');
+    expect(await atHome.getFavoriteRecipeIds(), {'deferred'});
+  });
+
   test('a recipe brought to the new household keeps its favorite', () async {
     // The join copies the recipe and the favorite under the new household.
     await addRecipe('brought', 'away');
