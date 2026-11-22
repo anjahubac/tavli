@@ -508,6 +508,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v8: jedan lični rejting po receptu i lokalni keš proseka domaćinstva.
   Future<void> _migrateToRecipeRatings() async {
+    await _moveRatingEditsToSurvivors();
     await customStatement('''
       DELETE FROM ratings
       WHERE EXISTS (
@@ -528,6 +529,70 @@ class AppDatabase extends _$AppDatabase {
       'average_stars REAL NOT NULL, rating_count INTEGER NOT NULL, '
       'PRIMARY KEY (household_id, recipe_id))',
     );
+  }
+
+  /// Pre brisanja duplikata (v8): neposlata izmena obrisanog rejtinga prelazi
+  /// na rejting koji ostaje, inače bi je Uploader odbacio kao obrisan zapis.
+  /// Najnovija neposlata izmena grupe (najveći seq) daje ocenu, a u outboxu
+  /// ostaje jedan upsert za preživeli ID (dva ista reda u jednom upsertu
+  /// server odbija).
+  Future<void> _moveRatingEditsToSurvivors() async {
+    // Isti izbor kao DELETE ispod: najnoviji cooked_at, pa najveći id.
+    final losers = await customSelect('''
+      SELECT loser.id AS loser_id,
+        (SELECT s.id FROM ratings s
+         WHERE s.user_id IS loser.user_id AND s.recipe_id = loser.recipe_id
+         ORDER BY s.cooked_at DESC, s.id DESC LIMIT 1) AS survivor_id
+      FROM ratings loser
+      WHERE EXISTS (
+        SELECT 1 FROM ratings newer
+        WHERE newer.user_id IS loser.user_id
+          AND newer.recipe_id = loser.recipe_id
+          AND (newer.cooked_at > loser.cooked_at
+            OR (newer.cooked_at = loser.cooked_at AND newer.id > loser.id))
+      )
+    ''').get();
+    final groups = <String, List<String>>{};
+    for (final r in losers) {
+      groups
+          .putIfAbsent(r.read<String>('survivor_id'), () => [])
+          .add(r.read<String>('loser_id'));
+    }
+
+    for (final MapEntry(key: survivor, value: lost) in groups.entries) {
+      final ids = [survivor, ...lost];
+      final marks = List.filled(ids.length, '?').join(', ');
+      final edits = await customSelect(
+        'SELECT seq, record_id FROM sync_outbox '
+        "WHERE entity = 'rating' AND op = 'upsert' "
+        "AND state IN ('pending', 'sending') AND record_id IN ($marks) "
+        'ORDER BY seq DESC',
+        variables: [for (final id in ids) Variable<String>(id)],
+      ).get();
+      if (edits.isEmpty) continue;
+
+      final latest = edits.first;
+      final editedId = latest.read<String>('record_id');
+      if (editedId != survivor) {
+        // cooked_at ostaje od preživelog: to je poslednje kuvanje.
+        await customStatement(
+          'UPDATE ratings SET '
+          '(stars, comment, is_comfort_food) = '
+          '(SELECT stars, comment, is_comfort_food FROM ratings WHERE id = ?) '
+          'WHERE id = ?',
+          [editedId, survivor],
+        );
+      }
+      for (final older in edits.skip(1)) {
+        await customStatement('DELETE FROM sync_outbox WHERE seq = ?', [
+          older.read<int>('seq'),
+        ]);
+      }
+      await customStatement(
+        'UPDATE sync_outbox SET record_id = ? WHERE seq = ?',
+        [survivor, latest.read<int>('seq')],
+      );
+    }
   }
 
   /// Dodaje kolonu samo ako je nema: tabela napravljena iznova u ranijem
