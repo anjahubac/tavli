@@ -97,6 +97,8 @@ h1 { margin: 0; overflow-wrap: break-word; hyphens: auto; font-size: 1.75rem; li
 .dugme:hover { background: #2F6144; }
 .dugme:focus-visible { outline: 3px solid var(--na-tonalnoj); outline-offset: 3px; }
 
+.napomena { margin: 0; font-size: 0.875rem; line-height: 1.45; color: var(--tekst-2); text-align: center; }
+
 .kartica {
   border-radius: 20px;
   background: var(--kartica);

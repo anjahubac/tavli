@@ -214,4 +214,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(button('Promeni e-poštu'), findsOneWidget);
   });
+
+  // Prozor na Mac-u (845×645 sa naslovnom trakom) i druge veličine između
+  // telefona i računara: uz poruku o isteklom linku ništa ne ispada iz
+  // ekrana, a dno se skroluje.
+  for (final size in const [
+    Size(845, 590),
+    Size(600, 800),
+    Size(719, 560),
+    Size(1200, 480),
+    Size(844, 390),
+  ]) {
+    testTavli('"Proveri mejl" sa greškom na ${size.width.toInt()}×'
+        '${size.height.toInt()}', (tester) async {
+      final app = await toCheckEmail(tester, size: size);
+      app.links.add(Uri.parse('tavli://auth-callback?code=iskoriscen'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Promeni e-poštu'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(button('Promeni e-poštu')).bottom,
+        lessThanOrEqualTo(size.height),
+      );
+    });
+  }
+
+  testTavli('telefon: dno ekrana je dole kad ima mesta', (tester) async {
+    const size = Size(430, 1100);
+    await toCheckEmail(tester, size: size);
+    expect(
+      tester.getRect(button('Promeni e-poštu')).bottom,
+      greaterThan(size.height - 100),
+    );
+  });
 }

@@ -15,10 +15,10 @@ const resendAfter = Duration(seconds: 30);
 /// i ivica sadržaja.
 const _gap = 24.0;
 
-/// Od ove širine i visine prozora ekran je bela kartica u sredini (računar,
-/// tablet, web); uže ili niže je ceo ekran kao na telefonu.
+/// Od ove širine prozora ekran je bela kartica u sredini (računar, tablet,
+/// web); uže je ceo ekran kao na telefonu. Visina ne menja raspored: kad
+/// sadržaj ne staje, ekran se skroluje.
 const _panelMinWidth = 720.0;
-const _panelMinHeight = 600.0;
 
 /// Kartica na računaru: širina i unutrašnji razmak (kanvas, MacPrijava).
 const _panelMaxWidth = 528.0;
@@ -86,25 +86,18 @@ class AuthPage extends StatelessWidget {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, box) {
-            final panel =
-                box.maxWidth >= _panelMinWidth &&
-                box.maxHeight >= _panelMinHeight;
-            if (panel) {
-              // Kartica u sredini; kad je viša od prozora, ekran se skroluje.
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: box.maxHeight),
-                  child: _panel(context, back),
-                ),
-              );
-            }
-            return CustomScrollView(
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _phone(context, back),
-                ),
-              ],
+            final panel = box.maxWidth >= _panelMinWidth;
+            // Sadržaj je najmanje visok kao prozor (dno ekrana ostaje dole),
+            // a kad je viši, ekran se skroluje. Bez merenja „intrinsic“
+            // visine, koje za tekst u više redova ume da bude manje od
+            // stvarne i tada dno ispadne iz ekrana.
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: box.maxHeight),
+                child: panel
+                    ? _panel(context, back)
+                    : _phone(context, back, box.maxHeight),
+              ),
             );
           },
         ),
@@ -119,9 +112,13 @@ class AuthPage extends StatelessWidget {
     for (final child in children) ...[const SizedBox(height: _gap), child],
   ];
 
-  Widget _phone(BuildContext context, Widget? back) => Center(
+  Widget _phone(BuildContext context, Widget? back, double minHeight) => Center(
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: TavliWidth.dialog),
+      // Center ne prenosi najmanju visinu, pa je zadajemo ovde.
+      constraints: BoxConstraints(
+        maxWidth: TavliWidth.dialog,
+        minHeight: minHeight,
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           _gap,
@@ -129,22 +126,38 @@ class AuthPage extends StatelessWidget {
           _gap,
           _gap,
         ),
+        // Dva dela: gore znak, naslov i sadržaj, a dole dno ekrana. Ceo
+        // raspored je najmanje visok kao prozor, pa višak ide između njih.
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Red gore: visina dugmeta „Nazad“, da se znak i naslov ne
-            // pomeraju između ekrana sa „Nazad“ i bez njega.
-            ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 56),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: back,
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Red gore: visina dugmeta „Nazad“, da se znak i naslov ne
+                // pomeraju između ekrana sa „Nazad“ i bez njega.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 56),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: back,
+                  ),
+                ),
+                const SizedBox(height: TavliSpacing.small),
+                ..._content(fixedIntro: true),
+              ],
             ),
-            const SizedBox(height: TavliSpacing.small),
-            ..._content(fixedIntro: true),
-            const Spacer(),
-            if (footer.isNotEmpty) ...[const SizedBox(height: _gap), ...footer],
+            if (footer.isNotEmpty)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: _gap),
+                  ...footer,
+                ],
+              ),
           ],
         ),
       ),
