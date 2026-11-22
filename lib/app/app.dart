@@ -90,9 +90,21 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     final auth = ref.read(authControllerProvider.notifier);
     await auth.start();
     if (!mounted) return;
-    _links = ref
-        .read(appLinksProvider)
-        .listen((uri) => unawaited(auth.openLink(uri)), onError: (_) {});
+    _links = ref.read(appLinksProvider).listen((uri) {
+      unawaited(_bringToFront());
+      unawaited(auth.openLink(uri));
+    }, onError: (_) {});
+  }
+
+  /// macOS ne izbacuje aplikaciju ispred pregledača kad primi link iz mejla
+  /// („Otvori Tavli“), pa bi prijava ostala skrivena iza Chrome-a.
+  Future<void> _bringToFront() async {
+    if (!_observesMacosWindow) return;
+    try {
+      await _macosWindow.invokeMethod<void>('activate');
+    } on MissingPluginException {
+      // Testovi bez macOS runnera.
+    }
   }
 
   Future<void> _readMacosFullScreen() async {
@@ -106,9 +118,13 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     }
   }
 
-  void _onResume() {
-    unawaited(ref.read(authControllerProvider.notifier).restoreSession());
-    unawaited(ref.read(syncEngineProvider)?.onResume());
+  void _onResume() => unawaited(_resumeSync());
+
+  Future<void> _resumeSync() async {
+    await ref
+        .read(authControllerProvider.notifier)
+        .restoreSession(sync: ref.read(syncEngineProvider));
+    if (mounted) await ref.read(syncEngineProvider)?.onResume();
   }
 
   @override

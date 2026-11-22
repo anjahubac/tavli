@@ -8136,6 +8136,343 @@ class RatingsCompanion extends UpdateCompanion<RatingRow> {
   }
 }
 
+class $RatingSummariesTable extends RatingSummaries
+    with TableInfo<$RatingSummariesTable, RatingSummaryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RatingSummariesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _householdIdMeta = const VerificationMeta(
+    'householdId',
+  );
+  @override
+  late final GeneratedColumn<String> householdId = GeneratedColumn<String>(
+    'household_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recipeIdMeta = const VerificationMeta(
+    'recipeId',
+  );
+  @override
+  late final GeneratedColumn<String> recipeId = GeneratedColumn<String>(
+    'recipe_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _averageStarsMeta = const VerificationMeta(
+    'averageStars',
+  );
+  @override
+  late final GeneratedColumn<double> averageStars = GeneratedColumn<double>(
+    'average_stars',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ratingCountMeta = const VerificationMeta(
+    'ratingCount',
+  );
+  @override
+  late final GeneratedColumn<int> ratingCount = GeneratedColumn<int>(
+    'rating_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    householdId,
+    recipeId,
+    averageStars,
+    ratingCount,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rating_summaries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RatingSummaryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('household_id')) {
+      context.handle(
+        _householdIdMeta,
+        householdId.isAcceptableOrUnknown(
+          data['household_id']!,
+          _householdIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_householdIdMeta);
+    }
+    if (data.containsKey('recipe_id')) {
+      context.handle(
+        _recipeIdMeta,
+        recipeId.isAcceptableOrUnknown(data['recipe_id']!, _recipeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recipeIdMeta);
+    }
+    if (data.containsKey('average_stars')) {
+      context.handle(
+        _averageStarsMeta,
+        averageStars.isAcceptableOrUnknown(
+          data['average_stars']!,
+          _averageStarsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_averageStarsMeta);
+    }
+    if (data.containsKey('rating_count')) {
+      context.handle(
+        _ratingCountMeta,
+        ratingCount.isAcceptableOrUnknown(
+          data['rating_count']!,
+          _ratingCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_ratingCountMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {householdId, recipeId};
+  @override
+  RatingSummaryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RatingSummaryRow(
+      householdId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}household_id'],
+      )!,
+      recipeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recipe_id'],
+      )!,
+      averageStars: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}average_stars'],
+      )!,
+      ratingCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rating_count'],
+      )!,
+    );
+  }
+
+  @override
+  $RatingSummariesTable createAlias(String alias) {
+    return $RatingSummariesTable(attachedDatabase, alias);
+  }
+}
+
+class RatingSummaryRow extends DataClass
+    implements Insertable<RatingSummaryRow> {
+  final String householdId;
+  final String recipeId;
+  final double averageStars;
+  final int ratingCount;
+  const RatingSummaryRow({
+    required this.householdId,
+    required this.recipeId,
+    required this.averageStars,
+    required this.ratingCount,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['household_id'] = Variable<String>(householdId);
+    map['recipe_id'] = Variable<String>(recipeId);
+    map['average_stars'] = Variable<double>(averageStars);
+    map['rating_count'] = Variable<int>(ratingCount);
+    return map;
+  }
+
+  RatingSummariesCompanion toCompanion(bool nullToAbsent) {
+    return RatingSummariesCompanion(
+      householdId: Value(householdId),
+      recipeId: Value(recipeId),
+      averageStars: Value(averageStars),
+      ratingCount: Value(ratingCount),
+    );
+  }
+
+  factory RatingSummaryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RatingSummaryRow(
+      householdId: serializer.fromJson<String>(json['householdId']),
+      recipeId: serializer.fromJson<String>(json['recipeId']),
+      averageStars: serializer.fromJson<double>(json['averageStars']),
+      ratingCount: serializer.fromJson<int>(json['ratingCount']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'householdId': serializer.toJson<String>(householdId),
+      'recipeId': serializer.toJson<String>(recipeId),
+      'averageStars': serializer.toJson<double>(averageStars),
+      'ratingCount': serializer.toJson<int>(ratingCount),
+    };
+  }
+
+  RatingSummaryRow copyWith({
+    String? householdId,
+    String? recipeId,
+    double? averageStars,
+    int? ratingCount,
+  }) => RatingSummaryRow(
+    householdId: householdId ?? this.householdId,
+    recipeId: recipeId ?? this.recipeId,
+    averageStars: averageStars ?? this.averageStars,
+    ratingCount: ratingCount ?? this.ratingCount,
+  );
+  RatingSummaryRow copyWithCompanion(RatingSummariesCompanion data) {
+    return RatingSummaryRow(
+      householdId: data.householdId.present
+          ? data.householdId.value
+          : this.householdId,
+      recipeId: data.recipeId.present ? data.recipeId.value : this.recipeId,
+      averageStars: data.averageStars.present
+          ? data.averageStars.value
+          : this.averageStars,
+      ratingCount: data.ratingCount.present
+          ? data.ratingCount.value
+          : this.ratingCount,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RatingSummaryRow(')
+          ..write('householdId: $householdId, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('averageStars: $averageStars, ')
+          ..write('ratingCount: $ratingCount')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(householdId, recipeId, averageStars, ratingCount);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RatingSummaryRow &&
+          other.householdId == this.householdId &&
+          other.recipeId == this.recipeId &&
+          other.averageStars == this.averageStars &&
+          other.ratingCount == this.ratingCount);
+}
+
+class RatingSummariesCompanion extends UpdateCompanion<RatingSummaryRow> {
+  final Value<String> householdId;
+  final Value<String> recipeId;
+  final Value<double> averageStars;
+  final Value<int> ratingCount;
+  final Value<int> rowid;
+  const RatingSummariesCompanion({
+    this.householdId = const Value.absent(),
+    this.recipeId = const Value.absent(),
+    this.averageStars = const Value.absent(),
+    this.ratingCount = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RatingSummariesCompanion.insert({
+    required String householdId,
+    required String recipeId,
+    required double averageStars,
+    required int ratingCount,
+    this.rowid = const Value.absent(),
+  }) : householdId = Value(householdId),
+       recipeId = Value(recipeId),
+       averageStars = Value(averageStars),
+       ratingCount = Value(ratingCount);
+  static Insertable<RatingSummaryRow> custom({
+    Expression<String>? householdId,
+    Expression<String>? recipeId,
+    Expression<double>? averageStars,
+    Expression<int>? ratingCount,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (householdId != null) 'household_id': householdId,
+      if (recipeId != null) 'recipe_id': recipeId,
+      if (averageStars != null) 'average_stars': averageStars,
+      if (ratingCount != null) 'rating_count': ratingCount,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RatingSummariesCompanion copyWith({
+    Value<String>? householdId,
+    Value<String>? recipeId,
+    Value<double>? averageStars,
+    Value<int>? ratingCount,
+    Value<int>? rowid,
+  }) {
+    return RatingSummariesCompanion(
+      householdId: householdId ?? this.householdId,
+      recipeId: recipeId ?? this.recipeId,
+      averageStars: averageStars ?? this.averageStars,
+      ratingCount: ratingCount ?? this.ratingCount,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (householdId.present) {
+      map['household_id'] = Variable<String>(householdId.value);
+    }
+    if (recipeId.present) {
+      map['recipe_id'] = Variable<String>(recipeId.value);
+    }
+    if (averageStars.present) {
+      map['average_stars'] = Variable<double>(averageStars.value);
+    }
+    if (ratingCount.present) {
+      map['rating_count'] = Variable<int>(ratingCount.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RatingSummariesCompanion(')
+          ..write('householdId: $householdId, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('averageStars: $averageStars, ')
+          ..write('ratingCount: $ratingCount, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $UserProfilesTable extends UserProfiles
     with TableInfo<$UserProfilesTable, UserProfileRow> {
   @override
@@ -11169,6 +11506,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PantryConsumptionsTable pantryConsumptions =
       $PantryConsumptionsTable(this);
   late final $RatingsTable ratings = $RatingsTable(this);
+  late final $RatingSummariesTable ratingSummaries = $RatingSummariesTable(
+    this,
+  );
   late final $UserProfilesTable userProfiles = $UserProfilesTable(this);
   late final $UserAllergenSelectionsTable userAllergenSelections =
       $UserAllergenSelectionsTable(this);
@@ -11202,6 +11542,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'pantry_consumptions_identity',
     'CREATE UNIQUE INDEX pantry_consumptions_identity ON pantry_consumptions (event_id, pantry_item_id)',
   );
+  late final Index ratingsUserRecipeUnique = Index(
+    'ratings_user_recipe_unique',
+    'CREATE UNIQUE INDEX ratings_user_recipe_unique ON ratings (user_id, recipe_id)',
+  );
   late final Index syncOutboxAccountStateSeq = Index(
     'sync_outbox_account_state_seq',
     'CREATE INDEX sync_outbox_account_state_seq ON sync_outbox (account_id, state, seq)',
@@ -11224,6 +11568,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cookedEvents,
     pantryConsumptions,
     ratings,
+    ratingSummaries,
     userProfiles,
     userAllergenSelections,
     userFavorites,
@@ -11238,6 +11583,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     shoppingContributionsIdentity,
     supplyAllocationsIdentity,
     pantryConsumptionsIdentity,
+    ratingsUserRecipeUnique,
     syncOutboxAccountStateSeq,
   ];
 }
@@ -17735,6 +18081,208 @@ typedef $$RatingsTableProcessedTableManager =
       RatingRow,
       PrefetchHooks Function({bool recipeId})
     >;
+typedef $$RatingSummariesTableCreateCompanionBuilder =
+    RatingSummariesCompanion Function({
+      required String householdId,
+      required String recipeId,
+      required double averageStars,
+      required int ratingCount,
+      Value<int> rowid,
+    });
+typedef $$RatingSummariesTableUpdateCompanionBuilder =
+    RatingSummariesCompanion Function({
+      Value<String> householdId,
+      Value<String> recipeId,
+      Value<double> averageStars,
+      Value<int> ratingCount,
+      Value<int> rowid,
+    });
+
+class $$RatingSummariesTableFilterComposer
+    extends Composer<_$AppDatabase, $RatingSummariesTable> {
+  $$RatingSummariesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recipeId => $composableBuilder(
+    column: $table.recipeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get averageStars => $composableBuilder(
+    column: $table.averageStars,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ratingCount => $composableBuilder(
+    column: $table.ratingCount,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RatingSummariesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RatingSummariesTable> {
+  $$RatingSummariesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recipeId => $composableBuilder(
+    column: $table.recipeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get averageStars => $composableBuilder(
+    column: $table.averageStars,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ratingCount => $composableBuilder(
+    column: $table.ratingCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RatingSummariesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RatingSummariesTable> {
+  $$RatingSummariesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get householdId => $composableBuilder(
+    column: $table.householdId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recipeId =>
+      $composableBuilder(column: $table.recipeId, builder: (column) => column);
+
+  GeneratedColumn<double> get averageStars => $composableBuilder(
+    column: $table.averageStars,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get ratingCount => $composableBuilder(
+    column: $table.ratingCount,
+    builder: (column) => column,
+  );
+}
+
+class $$RatingSummariesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RatingSummariesTable,
+          RatingSummaryRow,
+          $$RatingSummariesTableFilterComposer,
+          $$RatingSummariesTableOrderingComposer,
+          $$RatingSummariesTableAnnotationComposer,
+          $$RatingSummariesTableCreateCompanionBuilder,
+          $$RatingSummariesTableUpdateCompanionBuilder,
+          (
+            RatingSummaryRow,
+            BaseReferences<
+              _$AppDatabase,
+              $RatingSummariesTable,
+              RatingSummaryRow
+            >,
+          ),
+          RatingSummaryRow,
+          PrefetchHooks Function()
+        > {
+  $$RatingSummariesTableTableManager(
+    _$AppDatabase db,
+    $RatingSummariesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RatingSummariesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RatingSummariesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RatingSummariesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> householdId = const Value.absent(),
+                Value<String> recipeId = const Value.absent(),
+                Value<double> averageStars = const Value.absent(),
+                Value<int> ratingCount = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RatingSummariesCompanion(
+                householdId: householdId,
+                recipeId: recipeId,
+                averageStars: averageStars,
+                ratingCount: ratingCount,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String householdId,
+                required String recipeId,
+                required double averageStars,
+                required int ratingCount,
+                Value<int> rowid = const Value.absent(),
+              }) => RatingSummariesCompanion.insert(
+                householdId: householdId,
+                recipeId: recipeId,
+                averageStars: averageStars,
+                ratingCount: ratingCount,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RatingSummariesTable, RatingSummaryRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $RatingSummariesTable,
+                    RatingSummaryRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RatingSummariesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RatingSummariesTable,
+      RatingSummaryRow,
+      $$RatingSummariesTableFilterComposer,
+      $$RatingSummariesTableOrderingComposer,
+      $$RatingSummariesTableAnnotationComposer,
+      $$RatingSummariesTableCreateCompanionBuilder,
+      $$RatingSummariesTableUpdateCompanionBuilder,
+      (
+        RatingSummaryRow,
+        BaseReferences<_$AppDatabase, $RatingSummariesTable, RatingSummaryRow>,
+      ),
+      RatingSummaryRow,
+      PrefetchHooks Function()
+    >;
 typedef $$UserProfilesTableCreateCompanionBuilder =
     UserProfilesCompanion Function({
       required String id,
@@ -19481,6 +20029,8 @@ class $AppDatabaseManager {
       $$PantryConsumptionsTableTableManager(_db, _db.pantryConsumptions);
   $$RatingsTableTableManager get ratings =>
       $$RatingsTableTableManager(_db, _db.ratings);
+  $$RatingSummariesTableTableManager get ratingSummaries =>
+      $$RatingSummariesTableTableManager(_db, _db.ratingSummaries);
   $$UserProfilesTableTableManager get userProfiles =>
       $$UserProfilesTableTableManager(_db, _db.userProfiles);
   $$UserAllergenSelectionsTableTableManager get userAllergenSelections =>

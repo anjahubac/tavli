@@ -32,11 +32,9 @@ contents of every retailer file.
 
 ## Synthetic comparison evidence
 
-The [fixture](fixtures/basket_comparison_test.dart.txt) holds three
-synthetic test cases for a basket comparison. It is stored as text and is not
-run by the team test suite: the `basket_comparison.dart` module it exercises
-does not exist in team `dev` at `928d655b`, so these cases are specifications
-of expected results for whoever implements the comparison, not passing tests.
+The [fixture](fixtures/basket_comparison_test.dart.txt) holds four synthetic
+test cases for basket comparison. It is stored as text because the
+`basket_comparison.dart` module is still absent from team `dev`.
 
 The synthetic cases cover full packages, missing or conflicting offers and
 sharing a single pack across repeated lines. One hand-checkable example is
@@ -46,10 +44,20 @@ a partial 200 RSD subtotal and an uncovered egg item; it is not a complete
 basket comparison. Another test confirms two 400 ml needs share one 1,000 ml
 pack. All prices, products and source URLs in the fixture are fictional.
 
-None of this tests the current team app, a server-owned importer, current
-retailer feeds or real price freshness. The
-fixture does not cover the full 024 three-priced-plus-one-unknown acceptance
-case, historical import idempotency, retries or live-data validity.
+For Trello #101, the four-item case adds 500 g of flour at 95 RSD per 1 kg
+bag and 1 kg of rice without an offer. Whole-package costs give a partial
+subtotal of `2 × 120 + 250 + 95 = 585 RSD`. The fixture checks coverage of
+3 out of 4 items, identifies rice as the only missing price and marks the
+basket incomplete. The eventual UI should show “Delimičan zbir: 585 RSD”,
+“3 od 4 stavke” and “Pirinač — nema cene”.
+
+The fixture is not run in this repository yet, because `dev` has no
+`lib/domain/basket_comparison.dart`, and the repository does not execute
+`.dart.txt` files. The arithmetic was checked by hand. When the comparison
+module lands, copy the fixture to `test/domain/basket_comparison_test.dart`
+and run `flutter test test/domain/basket_comparison_test.dart`; the module must
+export the `BasketOffer`, `BasketLine` and `BasketUnit` types that the fixture
+imports.
 
 ## Proposed price acceptance cases
 
@@ -78,9 +86,9 @@ team catalog. They are not results from the existing synthetic fixture.
   a product's display name alone is not proof of a pack size or food identity.
 - Keep household basket data private. Define bounded parsing, timeouts,
   redirects, source failures and stale-result disclosure before networking.
-- Test a three-priced-plus-one-unknown basket, same-source reimport without
-  duplicate history, different package sizes, conflicting same-date offers,
-  failed refresh and date boundaries. Recheck actual files and source terms
-  under the accepted review process before integration.
+- Verify the partial subtotal, coverage and missing item in the team UI once
+  implemented. Test same-source reimport without duplicate history, different
+  package sizes, conflicting same-date offers, failed refresh and date
+  boundaries. Recheck actual files and source terms before integration.
 
 No implementation, source approval or D1-017/D1-018 completion is claimed.

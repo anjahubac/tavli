@@ -41,15 +41,6 @@ String normalizeForSearch(String s) => s
     .replaceAll('đ', 'dj')
     .trim();
 
-List<Recipe> filterRecipes(List<Recipe> recipes, String query) {
-  final q = normalizeForSearch(query);
-  if (q.isEmpty) return recipes;
-  return [
-    for (final r in recipes)
-      if (normalizeForSearch(r.title).contains(q)) r,
-  ];
-}
-
 /// "1 porcija", "2 porcije", "5 porcija" (11–14 su "porcija").
 String servingsLabel(int n) {
   final lastTwo = n % 100;

@@ -1,4 +1,27 @@
-# Data model: member planning inputs
+# Data model: households and member planning
+
+## Direct household join
+
+Status: proposed for D3-005, pending Dev 1 review. The existing server account
+and recipe schemas are the migration baseline.
+
+| Area | Current | Target |
+| --- | --- | --- |
+| Household membership | Unique household/user pair; provisioned users start as owner | Database uniqueness on user; owner and member roles; serialize changes to both affected households |
+| Invite | No invite storage | One stable, high-entropy token per household, accessed through owner-share and authenticated preview/confirm operations. Source deletion invalidates the token |
+| Recipe provenance | `updated_by` is edit attribution | Immutable server-controlled creator. Existing unknowns stay unknown. Copy caller-created and unknown records only |
+| Recipe copy | Recipe and versions have household-scoped relations | Independent destination IDs, valid destination references, private photo copy where present, source originals retained until any confirmed source deletion |
+| Switch retry | No recorded switch operation | Identifiable receipt per authenticated caller and operation UUID, with the original request and result bound to it. Replays neither repeat changes nor grant access outside current authorization |
+| Source cleanup | Account deletion has a separate server path | Last-member switch requires explicit acknowledgement. Remove source shared rows transactionally after copying and queue cleanup of private source photo objects after commit |
+
+The migration must preserve existing memberships and detect duplicate legacy
+memberships before applying uniqueness. The receipt, token and cleanup data
+have restricted access. The online switch saves only server-side state; the
+app rebinds its offline cache to the verified membership. Any needed drift
+migration is planned with the sync consumer. Personal account rows retain
+their existing access and lifecycle.
+
+## Member planning inputs
 
 **Status**: personal storage and advisory resolver implemented on the 008 work branch. Remaining targets follow the
 [contract](contracts/member-planning-inputs.md). Allocate migrations with
@@ -8,12 +31,12 @@ Dev 1 after reviewing [the slice plan](plan.md).
 |---|---|---|
 | Personal tastes | Drift `user_profiles(id, profile_json)`; Supabase `taste_profiles(user_id, profile, updated_at)`; user-scoped sync | Keep the existing row/owner. Add typed JSON fields for liked/disliked food IDs, dish-kind wires and reviewed cuisine codes, plus an optional bounded note in a later slice. Missing new fields read as empty; preserve unrelated legacy keys on edits. Resolve conflicts in planning toward dislike for ranking. |
 | Sharing | No separate state | Owner-only SQL `user_planning_sharing(user_id, preferences, revision)` with a read grant and writes through the authenticated `set_planning_preferences_sharing` RPC. Missing row means off at revision 0. The RPC compares the expected revision. Consent mutations stay outside the outbox. The later note slice adds its separate flag. |
-| Favorite | Ratings are a separate personal entity | Drift v9 and SQL `user_favorites` hold one owner/recipe pair with the deterministic ID `user_id:recipe_id`. Active state is a boolean so clearing and adding again use the same outbox identity. A favorite follows its recipe: RLS allows it only for a recipe visible in the user's household. Leaving a household deletes favorites on that household's recipes and syncs tombstones. A recipe brought to a new household is copied, and the household join copies its favorite and rating to the copy. A favorite saved again after rejoining clears its old tombstone unless the recipe was deleted. |
+| Favorite | Ratings are a separate personal entity | Drift v9 and SQL `user_favorites` hold one owner/recipe pair with the deterministic ID `user_id:recipe_id`. Active state is a boolean so clearing and adding again use the same outbox identity. A favorite follows its recipe: RLS allows it only for a recipe visible in the user's household. Leaving a household deletes favorites on that household's recipes and syncs tombstones. A follow-up to household join will copy the user’s favorite and rating to a carried recipe. A favorite saved again after rejoining clears its old tombstone unless the recipe was deleted. |
 | Allergen selections | No personal relation | Drift v9 `user_allergen_selections(user_id, group_codes_json)` and owner-only SQL `user_allergen_selections(user_id, group_codes, updated_at)` store one validated set per account. A full replacement, including an empty list, is one outbox upsert. SQL migration `20261121173000_user_allergen_selections.sql` enforces the catalog codes. This keeps a selection atomic across retries and allows account deletion to cascade. An empty selection contributes zero codes and requires no additional confirmation record. The owner settings path may read and modify the owner's own choices. Only the server planner reads participant selections for planning, with verified membership. No participant selection data in member aggregates, client plan responses or AI payloads. |
 | Catalog mapping | Reviewed identity and matching are separate catalog work | `food_allergen_groups(food_id, group_code)` plus an agreed representation of mapping completeness. An empty relation alone cannot distinguish a reviewed mapping with no matching groups from an unknown one. Metadata describes the food; it carries no association with a member. |
 | Planning aggregate | No persisted aggregate or server resolver | Private SQL reads current membership and consent to derive preferences and visible favorites. Catalog food IDs are accepted only from a trusted server allowlist. The allergen union uses a separate private function. Return the allowlisted aggregate without person identifiers, raw personal rows or allergen data. Start with fresh authorized reads and no persisted aggregate. Any later offline cache and queued requests need explicit account/household scope and invalidation. |
 
-## Compatibility and lifecycle
+### Member planning compatibility and lifecycle
 
 - Reuse the existing account partitioning and transactional outbox for synced
   personal writes. Ordinary sign-out retains the account's cache; account

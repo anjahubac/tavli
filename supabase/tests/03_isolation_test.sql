@@ -122,7 +122,9 @@ select is(tests.affected($$update public.meal_plan_entries set is_cooked = true 
 select throws_ok(format($$update public.meal_plan_entries set household_id = %L where id = 'meal_plan_entries_new'$$, :'hb'), '42501', null, 'A ne premešta meal_plan_entries u B-ovo domaćinstvo');
 select is(tests.affected($$delete from public.meal_plan_entries where id = 'meal_plan_entries_new'$$), 1::bigint, 'A briše meal_plan_entries');
 select is((select count(*) from public.ratings), 1::bigint, 'A vidi samo svoju ocenu');
-select lives_ok($$insert into public.ratings (id, recipe_id, stars, cooked_at) values ('ratings_new', 'recipes_a', 4, now())$$, 'A ocenjuje svoj recept');
+insert into public.recipes (id, household_id, title, servings, source, ingredients, steps)
+values ('recipes_a_extra', :'ha', 't', 1, 'manual', '[]', '[]');
+select lives_ok($$insert into public.ratings (id, recipe_id, stars, cooked_at) values ('ratings_new', 'recipes_a_extra', 4, now())$$, 'A ocenjuje svoj recept');
 select is(tests.affected($$update public.ratings set stars = 2 where id = 'ratings_new'$$), 1::bigint, 'A menja ocenu');
 select throws_ok($$update public.ratings set recipe_id = 'recipes_b' where id = 'ratings_new'$$, '42501', null, 'A ne prebacuje ocenu na B-ov recept');
 select is(tests.affected($$delete from public.ratings where id = 'ratings_new'$$), 1::bigint, 'A briše ocenu');

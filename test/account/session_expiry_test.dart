@@ -5,6 +5,7 @@ import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/account/auth_gateway.dart';
 import 'package:tavli/account/session_store.dart';
 import 'package:tavli/sync/sync_remote.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/test_app.dart';
@@ -64,6 +65,30 @@ void main() {
     expect(find.text(expiredText), findsOneWidget);
     expect(await app.db.select(app.db.recipes).get(), isEmpty);
     expect(await app.db.select(app.db.accounts).get(), isEmpty);
+  });
+
+  testTavli('istekao link ima prednost nad obaveštenjem o isteku sesije', (
+    tester,
+  ) async {
+    final app = await pumpTavli(tester);
+    await container(tester)
+        .read(authControllerProvider.notifier)
+        .sessionExpired();
+    await tester.pumpAndSettle();
+
+    final notice = find.byType(TavliNotice);
+    expect(find.text(expiredText), findsOneWidget);
+    expect(tester.widget<TavliNotice>(notice).tone, TavliNoticeTone.info);
+
+    app.links.add(Uri.parse('tavli://auth-callback?code=star'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(expiredText), findsNothing);
+    expect(
+      find.textContaining('Link je istekao ili je već iskorišćen.'),
+      findsOneWidget,
+    );
+    expect(tester.widget<TavliNotice>(notice).tone, TavliNoticeTone.error);
   });
 
   testTavli('bez mreže: ostaje prijavljen, obnova pri povratku', (

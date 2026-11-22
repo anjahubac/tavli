@@ -179,10 +179,31 @@ class SyncEngine {
   /// prošlo do kraja.
   int get pullDeferred => _pullDeferred;
 
+  var _membershipCheck = false;
+
+  /// Waits for old-scope work and suspends sync during server reconciliation.
+  Future<T> reconcileMembership<T>(Future<T> Function() action) async {
+    if (_membershipCheck) throw StateError('Membership check in progress');
+    _membershipCheck = true;
+    try {
+      await _inFlight;
+      await _pullFinished?.future;
+      return await action();
+    } finally {
+      _membershipCheck = false;
+      kick();
+    }
+  }
+
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
   Future<void> pull() async {
     final downloader = _downloader;
-    if (_stopped || downloader == null || _pullFinished != null) return;
+    if (_stopped ||
+        _membershipCheck ||
+        downloader == null ||
+        _pullFinished != null) {
+      return;
+    }
     final finished = _pullFinished = Completer<void>();
     var adoptedWeek = false;
     try {
@@ -251,7 +272,7 @@ class SyncEngine {
 
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
-    if (_stopped) return Future.value();
+    if (_stopped || _membershipCheck) return Future.value();
     final pullFinished = _pullFinished;
     if (pullFinished != null) return pullFinished.future.then((_) => push());
     if (_running) {
@@ -264,9 +285,11 @@ class SyncEngine {
   Future<void> _push() async {
     _running = true;
     _retryTimer?.cancel();
+    var refreshRatings = false;
     try {
       do {
         _again = false;
+        final ratingChanges = await _hasRatingChanges();
         if (await _waitingCount() > 0) _emit(const Sending());
         final result = await _uploader.run();
         if (_stopped) return;
@@ -278,6 +301,7 @@ class SyncEngine {
           _scheduleRetry();
           return;
         }
+        refreshRatings |= ratingChanges;
         _failures = 0;
         if (await _hasPostponedPhotos()) _scheduleRetry();
         if (_movedWaiting > 0 && await _waitingCount() == 0) {
@@ -290,6 +314,8 @@ class SyncEngine {
       _running = false;
       if (!_stopped) await refreshStatus();
     }
+    // Pull waits for an active upload, so release the upload slot first.
+    if (refreshRatings) await pull();
   }
 
   void _scheduleRetry() {
@@ -312,6 +338,18 @@ class SyncEngine {
 
   Future<int> _waitingCount() async =>
       await _count(OutboxState.pending) + await _count(OutboxState.sending);
+
+  Future<bool> _hasRatingChanges() async =>
+      await (_db.select(_db.syncOutbox)
+            ..where(
+              (t) =>
+                  t.accountId.equals(_scope.userId) &
+                  t.entity.equals('rating') &
+                  t.state.isIn([OutboxState.pending, OutboxState.sending]),
+            )
+            ..limit(1))
+          .getSingleOrNull() !=
+      null;
 
   Future<bool> _hasPostponedPhotos() async =>
       await (_db.select(_db.syncOutbox)

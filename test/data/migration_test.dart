@@ -3,10 +3,26 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/sync/uploader.dart';
 
+import '../helpers/fake_backend.dart';
+import '../helpers/fake_photo_store.dart';
 import '../helpers/v3_schema.dart';
 import '../helpers/v4_schema.dart';
+
+/// v7 tabele koje dira migracija rejtinga.
+const _v7RatingTables = [
+  'CREATE TABLE ratings (id TEXT PRIMARY KEY, user_id TEXT, '
+      'recipe_id TEXT NOT NULL, stars INTEGER NOT NULL, cooked_at INTEGER '
+      'NOT NULL, comment TEXT, is_comfort_food INTEGER NOT NULL DEFAULT 0)',
+  'CREATE TABLE sync_outbox (seq INTEGER PRIMARY KEY AUTOINCREMENT, '
+      'account_id TEXT NOT NULL, entity TEXT NOT NULL, record_id TEXT NOT NULL, '
+      "op TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', "
+      'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
+      'last_error TEXT, created_at INTEGER NOT NULL)',
+];
 
 void main() {
   for (final from in [7, 8]) {
@@ -19,9 +35,21 @@ void main() {
               'CREATE TABLE user_profiles (id TEXT PRIMARY KEY, profile_json TEXT NOT NULL)',
             );
             raw.execute("INSERT INTO user_profiles VALUES ('member', '{}')");
+            _v7RatingTables.forEach(raw.execute);
             raw.execute(
-              'CREATE TABLE sync_outbox (seq INTEGER PRIMARY KEY, account_id TEXT, entity TEXT, record_id TEXT, op TEXT, state TEXT, attempts INTEGER, next_attempt_at INTEGER, last_error TEXT, created_at INTEGER)',
+              'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+              "VALUES ('rating', 'member', 'recipe', 4, 1)",
             );
+            if (from == 8) {
+              raw.execute(
+                'CREATE UNIQUE INDEX ratings_user_recipe_unique ON ratings (user_id, recipe_id)',
+              );
+              raw.execute(
+                'CREATE TABLE rating_summaries (household_id TEXT NOT NULL, '
+                'recipe_id TEXT NOT NULL, average_stars REAL NOT NULL, '
+                'rating_count INTEGER NOT NULL, PRIMARY KEY (household_id, recipe_id))',
+              );
+            }
             raw.execute(
               "INSERT INTO sync_outbox VALUES (1, 'member', 'taste_profile', 'member', 'upsert', 'pending', 0, NULL, NULL, 1)",
             );
@@ -32,6 +60,8 @@ void main() {
       );
       addTearDown(db.close);
       expect(await db.select(db.userFavorites).get(), isEmpty);
+      expect((await db.select(db.ratings).getSingle()).stars, 4);
+      expect(await db.select(db.ratingSummaries).get(), isEmpty);
       expect(await db.select(db.userAllergenSelections).get(), isEmpty);
       expect((await db.select(db.userProfiles).getSingle()).id, 'member');
       expect(
@@ -40,6 +70,116 @@ void main() {
       );
     });
   }
+
+  test(
+    'v7 to v8 keeps the latest rating and creates the summary cache',
+    () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            _v7RatingTables.forEach(raw.execute);
+            raw.execute(
+              'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+              "VALUES ('old', 'u', 'r', 1, 1), ('new', 'u', 'r', 4, 2)",
+            );
+            raw.execute('PRAGMA user_version = 7');
+          },
+        ),
+      );
+      addTearDown(db.close);
+      expect((await db.select(db.ratings).get()).single.id, 'new');
+      expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    },
+  );
+
+  group('v7 to v8 keeps pending rating edits', () {
+    late FakeBackend backend;
+    late AccountScope scope;
+
+    setUp(() async {
+      backend = FakeBackend();
+      final s = await backend.auth.verifyCode('ana@mail.com', FakeServer.code);
+      scope = AccountScope(
+        userId: s.userId,
+        householdId: backend.server.households[s.userId]!,
+      );
+    });
+
+    // Dva rejtinga istog recepta (old je ranije kuvan) i upserti u outboxu
+    // po redu upisa.
+    AppDatabase v7({required List<String> queued}) => AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          _v7RatingTables.forEach(raw.execute);
+          raw.execute(
+            'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at, '
+            "comment) VALUES ('old', ?, 'r', 5, 1, 'edited'), "
+            "('new', ?, 'r', 2, 2, 'kept')",
+            [scope.userId, scope.userId],
+          );
+          for (final id in queued) {
+            raw.execute(
+              'INSERT INTO sync_outbox (account_id, entity, record_id, op, '
+              "created_at) VALUES (?, 'rating', ?, 'upsert', 1)",
+              [scope.userId, id],
+            );
+          }
+          raw.execute('PRAGMA user_version = 7');
+        },
+      ),
+    );
+
+    Uploader uploader(AppDatabase db) => Uploader(
+      db: db,
+      remote: backend.sync,
+      photos: backend.photos,
+      photoStore: FakePhotoStore(),
+      scope: scope,
+      refreshSession: () async => true,
+    );
+
+    test(
+      'an edit of the removed rating moves to the survivor and uploads',
+      () async {
+        final db = v7(queued: ['old']);
+        addTearDown(db.close);
+
+        final rating = (await db.select(db.ratings).get()).single;
+        expect(rating.id, 'new');
+        expect(rating.stars, 5);
+        expect(rating.comment, 'edited');
+        expect(rating.cookedAt, DateTime.fromMillisecondsSinceEpoch(2000));
+        final queue = await db.select(db.syncOutbox).get();
+        expect(queue.map((e) => e.recordId), ['new']);
+
+        final result = await uploader(db).run();
+
+        expect(result.sent, 1);
+        expect(await db.select(db.syncOutbox).get(), isEmpty);
+        final sent = backend.server.rows('ratings').single;
+        expect(sent['id'], 'new');
+        expect(sent['stars'], 5);
+        expect(sent['comment'], 'edited');
+      },
+    );
+
+    test('the newest edit wins and the queue keeps one upsert', () async {
+      final db = v7(queued: ['old', 'new']);
+      addTearDown(db.close);
+
+      final rating = (await db.select(db.ratings).get()).single;
+      expect(rating.stars, 2);
+      expect(rating.comment, 'kept');
+      final queue = await db.select(db.syncOutbox).get();
+      expect(queue.map((e) => e.recordId), ['new']);
+
+      await uploader(db).run();
+
+      final sent = backend.server.rows('ratings').single;
+      expect(sent['id'], 'new');
+      expect(sent['stars'], 2);
+    });
+  });
 
   test('postojeća v4 struktura označena kao v3 čuva id-jeve i outbox pri otvaranju', () async {
     final directory = await Directory.systemTemp.createTemp(

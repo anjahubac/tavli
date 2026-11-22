@@ -20,6 +20,9 @@ abstract final class OutboxState {
   /// sa ovim), da ne bi bila izgubljena kad se ovaj obriše posle slanja.
   static const sending = 'sending';
   static const rejected = 'rejected';
+
+  /// Izmena iz prethodnog domaćinstva ostaje samo za lokalnu dijagnostiku.
+  static const quarantined = 'quarantined';
 }
 
 /// Upisuje izmene u red za slanje (outbox). Repozitorijumi ga zovu unutar
