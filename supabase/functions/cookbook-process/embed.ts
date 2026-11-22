@@ -2,7 +2,8 @@
 // zaglavlje (ne u URL, da ne završi u logovima), a greške nose samo status:
 // telo odgovora može da sadrži tekst knjige ili pitanja.
 
-import { EMBEDDING_DIMENSIONS } from "./process.ts";
+/** Dimenzija vektora u bazi (vector(768)); model dobija outputDimensionality. */
+export const EMBEDDING_DIMENSIONS = 768;
 
 export class EmbedError extends Error {
   constructor(public status: number | null, message: string) {

@@ -4,9 +4,10 @@
 // pa ponovljen ili prekinut poziv ne pravi duplikate. Ne loguje sadržaj knjige.
 
 import { chunkPage } from "./chunk.ts";
+import { EMBEDDING_DIMENSIONS } from "./embed.ts";
 import { ExtractError } from "./extract.ts";
 
-export const EMBEDDING_DIMENSIONS = 768;
+export { EMBEDDING_DIMENSIONS };
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
 /** Jedna stranica sa više chunkova od ovoga je neispravna knjiga, ne posao za embedding. */
 export const MAX_CHUNKS_PER_PAGE = 200;

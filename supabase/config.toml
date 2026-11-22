@@ -408,6 +408,10 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+[functions.cookbook-ask]
+enabled = true
+verify_jwt = true
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
