@@ -2,12 +2,16 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/domain/food_matcher.dart';
 import 'package:tavli/sync/catalog_status.dart';
 import 'package:tavli/sync/downloader.dart';
 import 'package:tavli/sync/entities.dart';
+import 'package:tavli/sync/sync_engine.dart';
 import 'package:tavli/sync/sync_remote.dart';
+import 'package:tavli/sync/uploader.dart';
 
 import '../helpers/fake_backend.dart';
+import '../helpers/fake_photo_store.dart';
 
 void main() {
   late AppDatabase db;
@@ -78,6 +82,72 @@ void main() {
     for (final c in await db.select(db.syncCursors).get())
       if (c.entity == 'food' || c.entity == 'food_alias') c.entity,
   };
+
+  SyncEngine engine() => SyncEngine(
+    db: db,
+    scope: scope,
+    uploader: Uploader(
+      db: db,
+      remote: backend.sync,
+      photos: backend.photos,
+      photoStore: FakePhotoStore(),
+      scope: scope,
+      refreshSession: () async => false,
+    ),
+    downloader: downloader(),
+  );
+
+  test(
+    'engine pamti nedostupan katalog i matcher ne koristi stari keš',
+    () async {
+      serverFood('f-shared');
+      final sync = engine();
+      addTearDown(sync.stop);
+      final lookup = FoodLookupScope(householdId: hid);
+      Future<FoodMatchResult> match(SyncEngine current) async =>
+          (await current.catalogMatcher()).findByName(
+            originalText: 'naziv f-shared',
+            scope: lookup,
+          );
+
+      await sync.pull();
+      expect(await match(sync), isA<Matched>());
+
+      backend.server.missingTables.add('food_aliases');
+      await sync.pull();
+      expect(await localFoods(), {'f-shared'});
+      expect(await match(sync), isA<Unresolved>());
+
+      final restarted = engine();
+      addTearDown(restarted.stop);
+      expect(await match(restarted), isA<Unresolved>());
+
+      backend.server.missingTables.clear();
+      await restarted.pull();
+      expect(await match(restarted), isA<Matched>());
+    },
+  );
+
+  test(
+    'gubitak članstva između tabela odbacuje upravo preuzete kućne redove',
+    () async {
+      serverFood('f-shared');
+      serverAlias('a-shared', 'f-shared');
+      serverFood('f-own', household: hid);
+      serverAlias('a-own', 'f-own', household: hid);
+      backend.server.beforeFetch = (table) {
+        if (table == 'food_aliases') {
+          backend.server.households.remove(scope.userId);
+        }
+      };
+
+      final result = await downloader().run();
+      expect(result.catalog, CatalogStatus.accessDenied);
+      expect(await localFoods(), {'f-shared'});
+      expect(await localAliases(), {'a-shared'});
+      expect(await catalogCursors(), isEmpty);
+    },
+  );
 
   test('deljeni katalog vide svi, kućni samo domaćinstvo', () async {
     serverFood('f-shared');

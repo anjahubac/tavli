@@ -429,6 +429,7 @@ class Accounts extends Table {
   BoolColumn get initialDownloadDone =>
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastPullAt => dateTime().nullable()();
+  TextColumn get catalogStatus => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -555,6 +556,7 @@ class AppDatabase extends _$AppDatabase {
   /// v8: keš kataloga namirnica (samo dodaje). Ponovljen korak (vraćen
   /// user_version) ne pada.
   Future<void> _migrateToFoodCatalog(Migrator m) async {
+    await _addMissingColumn(m, accounts, accounts.catalogStatus);
     final existing = {
       for (final r in await customSelect(
         "SELECT name FROM sqlite_master WHERE type IN ('table', 'index')",

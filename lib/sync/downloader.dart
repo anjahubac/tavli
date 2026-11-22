@@ -97,15 +97,19 @@ class Downloader {
       // RLS pri gubitku članstva samo sakrije redove (bez greške), pa se
       // članstvo proverava odvojeno od rezultata kataloga.
       if (!await _isMember()) {
-        await _dropHouseholdCatalog();
-        return (skipped: 0, status: CatalogStatus.accessDenied);
+        return await _catalogAccessDenied();
       }
       for (final e in catalogEntities) {
         skipped += await _pullCatalogEntity(e, deferred);
       }
+      if (!await _isMember()) {
+        return await _catalogAccessDenied();
+      }
     } on PermanentSyncError catch (error) {
       final status = catalogStatusFor(error);
-      if (status == CatalogStatus.accessDenied) await _dropHouseholdCatalog();
+      if (status == CatalogStatus.accessDenied) {
+        return await _catalogAccessDenied();
+      }
       return (skipped: skipped, status: status);
     }
     return (skipped: skipped, status: CatalogStatus.available);
@@ -176,19 +180,32 @@ class Downloader {
     return skipped;
   }
 
-  Future<void> _dropHouseholdCatalog() => _db.transaction(() async {
-    final hid = _scope.householdId;
-    await (_db.delete(
-      _db.foodAliases,
-    )..where((t) => t.householdId.equals(hid))).go();
-    await (_db.delete(_db.foods)..where((t) => t.householdId.equals(hid))).go();
-    await (_db.delete(_db.syncCursors)..where(
-          (t) =>
-              t.accountId.equals(_scope.userId) &
-              t.entity.isIn([for (final e in catalogEntities) e.name]),
-        ))
-        .go();
-  });
+  Future<({int skipped, CatalogStatus status})> _catalogAccessDenied() async {
+    await _db.transaction(() async {
+      final hid = _scope.householdId;
+      await (_db.delete(
+        _db.foodAliases,
+      )..where((t) => t.householdId.equals(hid))).go();
+      await (_db.delete(
+        _db.foods,
+      )..where((t) => t.householdId.equals(hid))).go();
+      await (_db.delete(_db.syncCursors)..where(
+            (t) =>
+                t.accountId.equals(_scope.userId) &
+                t.entity.isIn([for (final e in catalogEntities) e.name]),
+          ))
+          .go();
+      await (_db.update(_db.accounts)..where(
+            (t) => t.userId.equals(_scope.userId) & t.householdId.equals(hid),
+          ))
+          .write(
+            AccountsCompanion(
+              catalogStatus: Value(CatalogStatus.accessDenied.name),
+            ),
+          );
+    });
+    return (skipped: 0, status: CatalogStatus.accessDenied);
+  }
 
   /// Vraća broj odloženih redova.
   Future<int> _pull({

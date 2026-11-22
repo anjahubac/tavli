@@ -224,6 +224,7 @@ void main() {
       'fetch:households',
       'fetch:foods',
       'fetch:food_aliases',
+      'fetch:households',
       'fetch:deletions',
     ]);
     final recipe = (await db.select(db.recipes).get()).single;

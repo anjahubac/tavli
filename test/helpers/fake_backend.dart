@@ -48,6 +48,7 @@ class FakeServer {
 
   /// Posle toliko uspešnih preuzimanja sledeće pukne (prekinuto preuzimanje).
   int? fetchesBeforeFailure;
+  void Function(String table)? beforeFetch;
 
   Map<String, Map<String, Object?>> table(String name) =>
       tables.putIfAbsent(name, () => {});
@@ -252,6 +253,7 @@ class FakeServer {
     required String idColumn,
   }) {
     _check();
+    beforeFetch?.call(name);
     if (fetchesBeforeFailure case final n?) {
       fetchesBeforeFailure = n == 0 ? null : n - 1;
       if (n == 0) throw const TransientSyncError('interrupted');

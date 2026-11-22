@@ -4,6 +4,8 @@ import 'package:drift/drift.dart';
 
 import '../account/auth_controller.dart';
 import '../data/database.dart';
+import '../data/food_catalog_reader.dart';
+import '../domain/food_matcher.dart';
 import 'catalog_status.dart';
 import 'downloader.dart';
 import 'legacy_mover.dart';
@@ -180,6 +182,22 @@ class SyncEngine {
   /// prošlo do kraja.
   int get pullDeferred => _pullDeferred;
 
+  /// Matcher za aktivni nalog koristi poslednji sačuvani ishod i bez mreže.
+  Future<FoodMatcher> catalogMatcher() => _db.transaction(() async {
+    final account = await _account();
+    if (_stopped ||
+        account?.householdId != _scope.householdId ||
+        account?.initialDownloadDone != true) {
+      return AliasFoodMatcher(const []);
+    }
+    final status = CatalogStatus.values.asNameMap()[account?.catalogStatus];
+    if (status == null) return AliasFoodMatcher(const []);
+    return FoodCatalogReader(_db).matcherFor(
+      FoodLookupScope(householdId: _scope.householdId),
+      status: status,
+    );
+  });
+
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
   Future<void> pull() async {
     final downloader = _downloader;
@@ -195,6 +213,13 @@ class SyncEngine {
       if (first) setPhase(SyncPhase.downloading);
       final result = await _download(downloader);
       adoptedWeek = result.adoptedWeek;
+      if (_stopped) return;
+      await (_db.update(_db.accounts)..where(
+            (t) =>
+                t.userId.equals(_scope.userId) &
+                t.householdId.equals(_scope.householdId),
+          ))
+          .write(AccountsCompanion(catalogStatus: Value(result.catalog.name)));
       if (_stopped) return;
       await afterPull?.call();
       // Preuzimanje je stiglo do kraja i kad je neki red odložen: taj red

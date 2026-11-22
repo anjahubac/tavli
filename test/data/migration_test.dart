@@ -419,8 +419,15 @@ void main() {
     await first.customStatement('DROP TABLE food_aliases');
     await first.customStatement('DROP TABLE foods');
     await first.customStatement(
+      'ALTER TABLE accounts DROP COLUMN catalog_status',
+    );
+    await first.customStatement(
       'INSERT INTO pantry_items (id, name, quantity, unit, category, added_at) '
       "VALUES ('o1', 'brašno', 1000, 'g', 'ostalo', 1)",
+    );
+    await first.customStatement(
+      'INSERT INTO accounts (user_id, email, household_id, household_name, role, created_at) '
+      "VALUES ('u1', 'u@example.test', 'h1', 'Moje domaćinstvo', 'owner', 1)",
     );
     await first.customStatement('PRAGMA user_version = 7');
     await first.close();
@@ -429,6 +436,9 @@ void main() {
     expect((await db.select(db.pantryItems).get()).single.id, 'o1');
     expect(await db.select(db.foods).get(), isEmpty);
     expect(await db.select(db.foodAliases).get(), isEmpty);
+    final account = await db.select(db.accounts).getSingle();
+    expect(account.userId, 'u1');
+    expect(account.catalogStatus, isNull);
     expect(
       await db
           .customSelect(

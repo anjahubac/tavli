@@ -10324,6 +10324,17 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _catalogStatusMeta = const VerificationMeta(
+    'catalogStatus',
+  );
+  @override
+  late final GeneratedColumn<String> catalogStatus = GeneratedColumn<String>(
+    'catalog_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -10345,6 +10356,7 @@ class $AccountsTable extends Accounts
     role,
     initialDownloadDone,
     lastPullAt,
+    catalogStatus,
     createdAt,
   ];
   @override
@@ -10432,6 +10444,15 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('catalog_status')) {
+      context.handle(
+        _catalogStatusMeta,
+        catalogStatus.isAcceptableOrUnknown(
+          data['catalog_status']!,
+          _catalogStatusMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -10481,6 +10502,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_pull_at'],
       ),
+      catalogStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}catalog_status'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -10503,6 +10528,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final String role;
   final bool initialDownloadDone;
   final DateTime? lastPullAt;
+  final String? catalogStatus;
   final DateTime createdAt;
   const AccountRow({
     required this.userId,
@@ -10513,6 +10539,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.role,
     required this.initialDownloadDone,
     this.lastPullAt,
+    this.catalogStatus,
     required this.createdAt,
   });
   @override
@@ -10529,6 +10556,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['initial_download_done'] = Variable<bool>(initialDownloadDone);
     if (!nullToAbsent || lastPullAt != null) {
       map['last_pull_at'] = Variable<DateTime>(lastPullAt);
+    }
+    if (!nullToAbsent || catalogStatus != null) {
+      map['catalog_status'] = Variable<String>(catalogStatus);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -10548,6 +10578,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       lastPullAt: lastPullAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastPullAt),
+      catalogStatus: catalogStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(catalogStatus),
       createdAt: Value(createdAt),
     );
   }
@@ -10568,6 +10601,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
         json['initialDownloadDone'],
       ),
       lastPullAt: serializer.fromJson<DateTime?>(json['lastPullAt']),
+      catalogStatus: serializer.fromJson<String?>(json['catalogStatus']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -10583,6 +10617,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'role': serializer.toJson<String>(role),
       'initialDownloadDone': serializer.toJson<bool>(initialDownloadDone),
       'lastPullAt': serializer.toJson<DateTime?>(lastPullAt),
+      'catalogStatus': serializer.toJson<String?>(catalogStatus),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -10596,6 +10631,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     String? role,
     bool? initialDownloadDone,
     Value<DateTime?> lastPullAt = const Value.absent(),
+    Value<String?> catalogStatus = const Value.absent(),
     DateTime? createdAt,
   }) => AccountRow(
     userId: userId ?? this.userId,
@@ -10606,6 +10642,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     role: role ?? this.role,
     initialDownloadDone: initialDownloadDone ?? this.initialDownloadDone,
     lastPullAt: lastPullAt.present ? lastPullAt.value : this.lastPullAt,
+    catalogStatus: catalogStatus.present
+        ? catalogStatus.value
+        : this.catalogStatus,
     createdAt: createdAt ?? this.createdAt,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
@@ -10628,6 +10667,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       lastPullAt: data.lastPullAt.present
           ? data.lastPullAt.value
           : this.lastPullAt,
+      catalogStatus: data.catalogStatus.present
+          ? data.catalogStatus.value
+          : this.catalogStatus,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -10643,6 +10685,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('role: $role, ')
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
+          ..write('catalogStatus: $catalogStatus, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -10658,6 +10701,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     role,
     initialDownloadDone,
     lastPullAt,
+    catalogStatus,
     createdAt,
   );
   @override
@@ -10672,6 +10716,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.role == this.role &&
           other.initialDownloadDone == this.initialDownloadDone &&
           other.lastPullAt == this.lastPullAt &&
+          other.catalogStatus == this.catalogStatus &&
           other.createdAt == this.createdAt);
 }
 
@@ -10684,6 +10729,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<String> role;
   final Value<bool> initialDownloadDone;
   final Value<DateTime?> lastPullAt;
+  final Value<String?> catalogStatus;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const AccountsCompanion({
@@ -10695,6 +10741,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.role = const Value.absent(),
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
+    this.catalogStatus = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -10707,6 +10754,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     required String role,
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
+    this.catalogStatus = const Value.absent(),
     required DateTime createdAt,
     this.rowid = const Value.absent(),
   }) : userId = Value(userId),
@@ -10724,6 +10772,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<String>? role,
     Expression<bool>? initialDownloadDone,
     Expression<DateTime>? lastPullAt,
+    Expression<String>? catalogStatus,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -10737,6 +10786,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (initialDownloadDone != null)
         'initial_download_done': initialDownloadDone,
       if (lastPullAt != null) 'last_pull_at': lastPullAt,
+      if (catalogStatus != null) 'catalog_status': catalogStatus,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -10751,6 +10801,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<String>? role,
     Value<bool>? initialDownloadDone,
     Value<DateTime?>? lastPullAt,
+    Value<String?>? catalogStatus,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -10763,6 +10814,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       role: role ?? this.role,
       initialDownloadDone: initialDownloadDone ?? this.initialDownloadDone,
       lastPullAt: lastPullAt ?? this.lastPullAt,
+      catalogStatus: catalogStatus ?? this.catalogStatus,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -10795,6 +10847,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (lastPullAt.present) {
       map['last_pull_at'] = Variable<DateTime>(lastPullAt.value);
     }
+    if (catalogStatus.present) {
+      map['catalog_status'] = Variable<String>(catalogStatus.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -10815,6 +10870,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('role: $role, ')
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
+          ..write('catalogStatus: $catalogStatus, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -19483,6 +19539,7 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   required String role,
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
+  Value<String?> catalogStatus,
   required DateTime createdAt,
   Value<int> rowid,
 });
@@ -19495,6 +19552,7 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<String> role,
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
+  Value<String?> catalogStatus,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -19545,6 +19603,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<DateTime> get lastPullAt => $composableBuilder(
     column: $table.lastPullAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get catalogStatus => $composableBuilder(
+    column: $table.catalogStatus,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19603,6 +19666,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get catalogStatus => $composableBuilder(
+    column: $table.catalogStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -19652,6 +19720,11 @@ class $$AccountsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get catalogStatus => $composableBuilder(
+    column: $table.catalogStatus,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -19695,6 +19768,7 @@ class $$AccountsTableTableManager
                 Value<String> role = const Value.absent(),
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
+                Value<String?> catalogStatus = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion(
@@ -19706,6 +19780,7 @@ class $$AccountsTableTableManager
                 role: role,
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
+                catalogStatus: catalogStatus,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -19719,6 +19794,7 @@ class $$AccountsTableTableManager
                 required String role,
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
+                Value<String?> catalogStatus = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion.insert(
@@ -19730,6 +19806,7 @@ class $$AccountsTableTableManager
                 role: role,
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
+                catalogStatus: catalogStatus,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

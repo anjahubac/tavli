@@ -20,12 +20,21 @@ class FoodCatalogReader {
   }) async {
     if (status == CatalogStatus.notOnServer) return AliasFoodMatcher(const []);
     final hid = scope.householdId;
-    final foodRows = await (_db.select(
-      _db.foods,
-    )..where((t) => t.householdId.isNull() | t.householdId.equals(hid))).get();
-    final aliasRows = await (_db.select(
-      _db.foodAliases,
-    )..where((t) => t.householdId.isNull() | t.householdId.equals(hid))).get();
+    final sharedOnly = status == CatalogStatus.accessDenied;
+    final foodRows =
+        await (_db.select(_db.foods)..where(
+              (t) => sharedOnly
+                  ? t.householdId.isNull()
+                  : t.householdId.isNull() | t.householdId.equals(hid),
+            ))
+            .get();
+    final aliasRows =
+        await (_db.select(_db.foodAliases)..where(
+              (t) => sharedOnly
+                  ? t.householdId.isNull()
+                  : t.householdId.isNull() | t.householdId.equals(hid),
+            ))
+            .get();
 
     // Osnovna jedinica koju ova verzija ne zna: namirnica se preskače, a sa
     // njom i aliasi (sirova vrednost ostaje u kešu).
