@@ -263,6 +263,49 @@ void main() {
       },
     );
 
+    test('posle stop-a se provera ne pokreće', () async {
+      await addRecipe('a');
+      removeFromHousehold();
+      await guarded.push();
+      // Sign-out lands between the denial and the scheduled check.
+      guarded.stop();
+      await pumpQueue();
+      expect(checks, 0);
+    });
+
+    test(
+      'greška u proveri ne izlazi van engine-a i ne blokira sledeću',
+      () async {
+        var failing = 0;
+        final throwing = SyncEngine(
+          db: db,
+          scope: scope,
+          uploader: Uploader(
+            db: db,
+            remote: backend.sync,
+            photos: backend.photos,
+            photoStore: FakePhotoStore(),
+            scope: scope,
+            refreshSession: () async => true,
+          ),
+          timer: timers.call,
+          onForbidden: () async {
+            failing++;
+            throw StateError('nalog');
+          },
+        );
+        addTearDown(throwing.stop);
+        await addRecipe('a');
+        removeFromHousehold();
+        await throwing.push();
+        await pumpQueue();
+        await addRecipe('b');
+        await throwing.push();
+        await pumpQueue();
+        expect(failing, 2);
+      },
+    );
+
     test('ne pokreće se dok provera članstva već traje', () async {
       await addRecipe('a');
       removeFromHousehold();

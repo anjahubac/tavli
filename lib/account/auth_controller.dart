@@ -193,7 +193,23 @@ class AuthController extends Notifier<AuthState> {
     } finally {
       _restoringSession = false;
     }
+    final recheck = _pendingRecheck;
+    _pendingRecheck = null;
+    if (recheck != null && ref.mounted) await restoreSession(sync: recheck);
   }
+
+  /// The server denied a write (RLS 42501, Storage 403): the user may have
+  /// been removed from the household. When a check is already running, it may
+  /// have read membership before the removal, so one more check runs after it.
+  Future<void> recheckMembership(SyncEngine sync) async {
+    if (_restoringSession || _checkingMembership) {
+      _pendingRecheck = sync;
+      return;
+    }
+    await restoreSession(sync: sync);
+  }
+
+  SyncEngine? _pendingRecheck;
 
   var _restoringSession = false;
 

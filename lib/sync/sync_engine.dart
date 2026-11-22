@@ -337,7 +337,12 @@ class SyncEngine {
       () => unawaited(
         Future(() async {
           try {
-            await check();
+            // The engine may have stopped (sign-out, household switch)
+            // between the denial and this callback.
+            if (!_stopped) await check();
+          } on Object {
+            // A failed check is retried by the next denial or app resume.
+            // Nothing is logged: the error may carry account details.
           } finally {
             _accessCheck = false;
           }
