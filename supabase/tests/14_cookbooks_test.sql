@@ -75,6 +75,39 @@ delete from public.cookbooks where id = 'c0000000-0000-4000-8000-00000000000a';
 select is((select count(*) from public.cookbook_chunks where cookbook_id = 'c0000000-0000-4000-8000-00000000000a'), 0::bigint, 'brisanjem knjige nestaju chunkovi');
 select is((select count(*) from public.cookbook_chunks), 1::bigint, 'chunkovi drugog domaćinstva ostaju');
 
+
+-- Granica od 20 knjiga po domaćinstvu važi u bazi (trka dva zahteva ne sme da je prođe).
+select tests.clear_auth();
+insert into public.cookbooks (household_id, title, filename, storage_path)
+select :'hb', 'Knjiga ' || i, 'k' || i || '.pdf', :'hb' || '/k' || i || '.pdf' from generate_series(1, 19) i;
+select is((select count(*) from public.cookbooks where household_id = :'hb'), 20::bigint, 'B ima 20 knjiga (jedna od ranije i 19 novih)');
+select throws_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path) values (%L, 'dvadeset prva', 'x.pdf', %L)$$, :'hb', :'hb' || '/x.pdf'), '23514', 'cookbook_limit', '21. knjiga domaćinstva se odbija u bazi');
+select lives_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path) values (%L, 'drugo domaćinstvo', 'y.pdf', %L)$$, :'ha', :'ha' || '/y.pdf'), 'limit je po domaćinstvu');
+
+-- Atomsko preuzimanje obrade: samo jedan poziv dobija knjigu.
+insert into public.cookbooks (id, household_id, title, filename, storage_path) values
+  ('c0000000-0000-4000-8000-0000000000c1', :'ha', 'Za obradu', 'o.pdf', :'ha' || '/o.pdf');
+select set_config('role', 'service_role', true);
+select is(public.claim_cookbook('c0000000-0000-4000-8000-0000000000c1'), true, 'prvo preuzimanje uspeva');
+select is(public.claim_cookbook('c0000000-0000-4000-8000-0000000000c1'), false, 'drugo preuzimanje dok je prvo u toku ne uspeva');
+select tests.clear_auth();
+update public.cookbooks set claimed_at = now() - interval '200 seconds' where id = 'c0000000-0000-4000-8000-0000000000c1';
+select set_config('role', 'service_role', true);
+select is(public.claim_cookbook('c0000000-0000-4000-8000-0000000000c1'), true, 'zastarelo preuzimanje (srušen poziv) se može preuzeti');
+select public.release_cookbook('c0000000-0000-4000-8000-0000000000c1');
+select is(public.claim_cookbook('c0000000-0000-4000-8000-0000000000c1'), true, 'posle oslobađanja ponovo uspeva');
+select tests.clear_auth();
+update public.cookbooks set status = 'ready' where id = 'c0000000-0000-4000-8000-0000000000c1';
+select set_config('role', 'service_role', true);
+select public.release_cookbook('c0000000-0000-4000-8000-0000000000c1');
+select is(public.claim_cookbook('c0000000-0000-4000-8000-0000000000c1'), false, 'gotova knjiga se ne preuzima');
+select is(public.claim_cookbook('00000000-0000-4000-8000-0000000000ee'), false, 'nepoznata knjiga se ne preuzima');
+select tests.clear_auth();
+select tests.authenticate_as(:'ub');
+select throws_ok($$select public.claim_cookbook('c0000000-0000-4000-8000-0000000000c1')$$, '42501', null, 'klijent ne preuzima obradu');
+select throws_ok($$select public.release_cookbook('c0000000-0000-4000-8000-0000000000c1')$$, '42501', null, 'klijent ne oslobađa obradu');
+select tests.clear_auth();
+
 -- Skladište: prvi deo putanje je id domaćinstva čiji je korisnik član.
 select tests.authenticate_as(:'ub');
 select lives_ok(format($$insert into storage.objects (bucket_id, name, owner) values ('cookbooks', %L, %L)$$, :'hb' || '/b.pdf', :'ub'), 'član B upisuje u svoju putanju');

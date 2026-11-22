@@ -1,7 +1,7 @@
 // 026 / Task 3: registracija otpremljene knjige (autorizacija po putanji).
 import { assertEquals } from "jsr:@std/assert@1";
 
-import { MAX_BOOKS_PER_HOUSEHOLD, registerBook, type RegisterDeps } from "./register.ts";
+import { LimitReachedError, MAX_BOOKS_PER_HOUSEHOLD, registerBook, type RegisterDeps } from "./register.ts";
 
 const HH_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const HH_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -73,4 +73,10 @@ Deno.test("ponovna registracija iste putanje vraća postojeću knjigu", async ()
   const r = await registerBook(d, USER, { storagePath: `${HH_A}/a.pdf`, title: "t" });
   assertEquals(r, { ok: true, id: "old-id", status: "processing" });
   assertEquals(created.length, 0);
+});
+
+Deno.test("baza odbija 21. knjigu u trci: limit_reached, ne greška servera", async () => {
+  const { d } = deps({ createBook: async () => { throw new LimitReachedError(); } });
+  const r = await registerBook(d, USER, { storagePath: `${HH_A}/a.pdf`, title: "t" });
+  assertEquals(r, { ok: false, error: "limit_reached" });
 });

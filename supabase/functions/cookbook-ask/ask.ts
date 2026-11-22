@@ -102,7 +102,7 @@ function parseModel(raw: string): { answer: string; used: number[] } | null {
 export async function ask(
   deps: AskDeps,
   userId: string,
-  req: { question: unknown; bookId?: unknown },
+  req: { question?: unknown; bookId?: unknown },
 ): Promise<AskResult> {
   const question = typeof req.question === "string" ? req.question.trim() : "";
   if (question === "" || question.length > MAX_QUESTION_CHARS) {

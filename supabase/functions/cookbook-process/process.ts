@@ -36,6 +36,9 @@ export interface ChunkRow {
 
 export interface ProcessDeps {
   getBook: (id: string) => Promise<Book | null>;
+  /** Atomski preuzima obradu; false kad je već radi drugi poziv. */
+  claim: (id: string) => Promise<boolean>;
+  unclaim: (id: string) => Promise<void>;
   download: (storagePath: string) => Promise<Uint8Array>;
   /** Tekst po stranici; baca ExtractError za no_text, corrupt, too_many_pages. */
   extract: (filename: string, bytes: Uint8Array) => Promise<string[]>;
@@ -47,7 +50,7 @@ export interface ProcessDeps {
 }
 
 export interface ProcessResult {
-  status: "ready" | "failed" | "partial";
+  status: "ready" | "failed" | "partial" | "busy";
   nextPage: number;
 }
 
@@ -69,58 +72,63 @@ export async function processBook(
 
   if (!/\.(pdf|epub)$/i.test(book.filename)) return fail("unsupported_type");
 
-  const started = deps.now();
-  await deps.updateBook(book.id, { status: "processing" });
-
-  const bytes = await deps.download(book.storagePath);
-  if (bytes.byteLength > MAX_FILE_BYTES) return fail("too_large");
-
-  let pages: string[];
+  if (!(await deps.claim(book.id))) return { status: "busy", nextPage: book.nextPage };
   try {
-    pages = await deps.extract(book.filename, bytes);
-  } catch (e) {
-    return fail(e instanceof ExtractError ? e.code : "extract_failed");
-  }
-  await deps.updateBook(book.id, { pages: pages.length });
+    const started = deps.now();
+    await deps.updateBook(book.id, { status: "processing" });
 
-  const firstPage = book.nextPage;
-  for (let n = firstPage; n <= pages.length; n++) {
-    // Bar jedna stranica po pozivu, da obrada uvek napreduje.
-    if (n > firstPage && deps.now() - started > budgetMs) {
-      return { status: "partial", nextPage: n };
+    const bytes = await deps.download(book.storagePath);
+    if (bytes.byteLength > MAX_FILE_BYTES) return fail("too_large");
+
+    let pages: string[];
+    try {
+      pages = await deps.extract(book.filename, bytes);
+    } catch (e) {
+      return fail(e instanceof ExtractError ? e.code : "extract_failed");
     }
-    const chunks = chunkPage(pages[n - 1]);
-    if (chunks.length > MAX_CHUNKS_PER_PAGE) return fail("too_large");
-    if (chunks.length > 0) {
-      let vectors: number[][];
-      try {
-        vectors = await deps.embed(chunks);
-      } catch {
-        await deps.updateBook(book.id, { status: "processing", errorCode: "embed_failed" });
+    await deps.updateBook(book.id, { pages: pages.length });
+
+    const firstPage = book.nextPage;
+    for (let n = firstPage; n <= pages.length; n++) {
+      // Bar jedna stranica po pozivu, da obrada uvek napreduje.
+      if (n > firstPage && deps.now() - started > budgetMs) {
         return { status: "partial", nextPage: n };
       }
-      if (
-        vectors.length !== chunks.length ||
-        vectors.some((v) => v.length !== EMBEDDING_DIMENSIONS)
-      ) {
-        return fail("embed_invalid");
+      const chunks = chunkPage(pages[n - 1]);
+      if (chunks.length > MAX_CHUNKS_PER_PAGE) return fail("too_large");
+      if (chunks.length > 0) {
+        let vectors: number[][];
+        try {
+          vectors = await deps.embed(chunks);
+        } catch {
+          await deps.updateBook(book.id, { status: "processing", errorCode: "embed_failed" });
+          return { status: "partial", nextPage: n };
+        }
+        if (
+          vectors.length !== chunks.length ||
+          vectors.some((v) => v.length !== EMBEDDING_DIMENSIONS)
+        ) {
+          return fail("embed_invalid");
+        }
+        await deps.insertChunks(chunks.map((content, i) => ({
+          cookbookId: book.id,
+          householdId: book.householdId,
+          page: n,
+          chunkIndex: i,
+          content,
+          embedding: vectors[i],
+        })));
       }
-      await deps.insertChunks(chunks.map((content, i) => ({
-        cookbookId: book.id,
-        householdId: book.householdId,
-        page: n,
-        chunkIndex: i,
-        content,
-        embedding: vectors[i],
-      })));
+      await deps.updateBook(book.id, { nextPage: n + 1 });
     }
-    await deps.updateBook(book.id, { nextPage: n + 1 });
-  }
 
-  await deps.updateBook(book.id, {
-    status: "ready",
-    nextPage: pages.length + 1,
-    errorCode: null,
-  });
-  return { status: "ready", nextPage: pages.length + 1 };
+    await deps.updateBook(book.id, {
+      status: "ready",
+      nextPage: pages.length + 1,
+      errorCode: null,
+    });
+    return { status: "ready", nextPage: pages.length + 1 };
+  } finally {
+    await deps.unclaim(book.id).catch(() => {});
+  }
 }

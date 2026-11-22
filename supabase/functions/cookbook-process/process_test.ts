@@ -27,6 +27,7 @@ function fixture(opts: {
   embedFailAtCall?: number;
   embedDims?: number;
   clockStep?: number;
+  claim?: boolean;
   book?: Partial<Book>;
 } = {}) {
   const book: Book = {
@@ -42,8 +43,11 @@ function fixture(opts: {
   const rows: ChunkRow[] = [];
   const patches: Record<string, unknown>[] = [];
   let embedCalls = 0, downloads = 0, t = 0;
+  const claims = { claim: 0, unclaim: 0, allow: opts.claim ?? true };
   const deps: ProcessDeps = {
     getBook: async () => book,
+    claim: async () => { claims.claim++; return claims.allow; },
+    unclaim: async () => { claims.unclaim++; },
     download: async () => {
       downloads++;
       return new Uint8Array(opts.bytes ?? 100);
@@ -74,7 +78,7 @@ function fixture(opts: {
     },
     now: () => (t += opts.clockStep ?? 0),
   };
-  return { deps, book, rows, patches, calls: () => ({ embedCalls, downloads }) };
+  return { deps, book, rows, patches, claims, calls: () => ({ embedCalls, downloads }) };
 }
 
 Deno.test("cela knjiga: ready, chunkovi nose stranicu i indeks, jedan embed po stranici", async () => {
@@ -180,4 +184,37 @@ Deno.test("stranica sa previše chunkova: failed too_large, bez embeddinga", asy
   assertEquals(r.status, "failed");
   assertEquals(f.book.errorCode, "too_large");
   assertEquals(f.calls().embedCalls, 1);
+});
+
+Deno.test("obradu je već preuzeo drugi poziv: busy, bez preuzimanja fajla i troška", async () => {
+  const f = fixture({ claim: false });
+  const r = await processBook(f.deps, "b1");
+  assertEquals(r.status, "busy");
+  assertEquals(f.calls().downloads, 0);
+  assertEquals(f.calls().embedCalls, 0);
+  assertEquals(f.patches.length, 0);
+  assertEquals(f.claims.unclaim, 0);
+});
+
+Deno.test("preuzimanje se oslobađa posle uspeha, prekida i greške", async () => {
+  const ok = fixture();
+  await processBook(ok.deps, "b1");
+  assertEquals([ok.claims.claim, ok.claims.unclaim], [1, 1]);
+
+  const partial = fixture({ embedFailAtCall: 1 });
+  assertEquals((await processBook(partial.deps, "b1")).status, "partial");
+  assertEquals(partial.claims.unclaim, 1);
+
+  const failed = fixture({ extractError: new ExtractError("no_text") });
+  await processBook(failed.deps, "b1");
+  assertEquals(failed.claims.unclaim, 1);
+});
+
+Deno.test("izuzetak usred obrade ne ostavlja knjigu zaključanom", async () => {
+  const f = fixture();
+  f.deps.insertChunks = async () => { throw new Error("db down"); };
+  let threw = false;
+  try { await processBook(f.deps, "b1"); } catch { threw = true; }
+  assertEquals(threw, true);
+  assertEquals(f.claims.unclaim, 1);
 });

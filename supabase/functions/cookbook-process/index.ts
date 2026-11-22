@@ -14,7 +14,7 @@ import {
   type ProcessDeps,
   processBook,
 } from "./process.ts";
-import { registerBook, type RegisterDeps } from "./register.ts";
+import { LimitReachedError, registerBook, type RegisterDeps } from "./register.ts";
 
 const BUCKET = "cookbooks";
 
@@ -110,12 +110,25 @@ const registerDeps: RegisterDeps = {
       })
       .select("id,status")
       .single();
+    // 23514 sa porukom iz okidača: trka dva zahteva prešla je granicu knjiga.
+    if (error?.code === "23514" && error.message.includes("cookbook_limit")) {
+      throw new LimitReachedError();
+    }
     if (error) throw error;
     return { id: data.id, status: data.status };
   },
 };
 
 const processDeps: ProcessDeps = {
+  claim: async (id) => {
+    const { data, error } = await admin.rpc("claim_cookbook", { p_id: id });
+    if (error) throw error;
+    return data === true;
+  },
+  unclaim: async (id) => {
+    const { error } = await admin.rpc("release_cookbook", { p_id: id });
+    if (error) throw error;
+  },
   getBook: async (id) => {
     const { data, error } = await admin.from("cookbooks").select("*").eq("id", id).maybeSingle();
     if (error) throw error;

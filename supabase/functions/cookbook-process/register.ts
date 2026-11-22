@@ -4,6 +4,14 @@
 
 export const MAX_BOOKS_PER_HOUSEHOLD = 20;
 
+/** Baza je odbila upis zbog granice knjiga (trka dva zahteva). */
+export class LimitReachedError extends Error {
+  constructor() {
+    super("cookbook_limit");
+    this.name = "LimitReachedError";
+  }
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export interface RegisterDeps {
@@ -52,8 +60,13 @@ export async function registerBook(
   if ((await deps.countBooks(householdId)) >= MAX_BOOKS_PER_HOUSEHOLD) {
     return { ok: false, error: "limit_reached" };
   }
-  const book = await deps.createBook({ householdId, path, title, userId, filename: file });
-  return { ok: true, id: book.id, status: book.status };
+  try {
+    const book = await deps.createBook({ householdId, path, title, userId, filename: file });
+    return { ok: true, id: book.id, status: book.status };
+  } catch (e) {
+    if (e instanceof LimitReachedError) return { ok: false, error: "limit_reached" };
+    throw e;
+  }
 }
 
 function bad(): RegisterResult {

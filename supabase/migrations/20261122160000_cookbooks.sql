@@ -17,6 +17,8 @@ create table public.cookbooks (
   -- Obrada se nastavlja od ove stranice posle prekida (bez duplikata).
   next_page int not null default 1 check (next_page >= 1),
   error_code text check (error_code is null or char_length(error_code) <= 60),
+  -- Kad je obrada preuzeta (claim_cookbook); null kad niko ne radi na knjizi.
+  claimed_at timestamptz,
   created_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -58,6 +60,61 @@ create policy "cookbooks: members delete" on public.cookbooks
   for delete to authenticated using (private.is_member(household_id));
 create policy "cookbook_chunks: members select" on public.cookbook_chunks
   for select to authenticated using (private.is_member(household_id));
+
+-- Najviše 20 knjiga po domaćinstvu, u bazi: provera u funkciji pre upisa ne bi
+-- zaustavila dva istovremena zahteva. Advisory lock po domaćinstvu serijalizuje
+-- upise, pa drugi vidi red prvog.
+create or replace function private.limit_cookbooks()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform pg_advisory_xact_lock(hashtextextended('cookbooks:' || new.household_id::text, 0));
+  if (select count(*) from public.cookbooks where household_id = new.household_id) >= 20 then
+    raise exception 'cookbook_limit' using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function private.limit_cookbooks() from public, anon, authenticated;
+create trigger limit_cookbooks before insert on public.cookbooks
+  for each row execute function private.limit_cookbooks();
+
+-- Obradu knjige u jednom trenutku radi samo jedan poziv: dva istovremena poziva
+-- bi dvaput platila embedding. Preuzimanje starije od p_stale_seconds (srušen
+-- poziv) se može preuzeti ponovo. Gotova i neuspela knjiga se ne preuzima.
+create or replace function public.claim_cookbook(p_id uuid, p_stale_seconds int default 150)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.cookbooks
+  set claimed_at = clock_timestamp(), status = 'processing', updated_at = now()
+  where id = p_id
+    and status in ('uploaded', 'processing')
+    and (claimed_at is null
+         or claimed_at < clock_timestamp() - make_interval(secs => p_stale_seconds));
+  return found;
+end;
+$$;
+
+create or replace function public.release_cookbook(p_id uuid)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.cookbooks set claimed_at = null where id = p_id;
+$$;
+
+revoke execute on function public.claim_cookbook(uuid, int) from public, anon, authenticated;
+revoke execute on function public.release_cookbook(uuid) from public, anon, authenticated;
+grant execute on function public.claim_cookbook(uuid, int) to service_role;
+grant execute on function public.release_cookbook(uuid) to service_role;
 
 -- Najbliži chunkovi iz knjiga domaćinstava u kojima je korisnik član. Poziva ga
 -- samo funkcija koja je već proverila token; članstvo se ipak proverava ovde.
