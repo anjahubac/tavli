@@ -67,6 +67,20 @@ dart run msix:create
 Add-AppxPackage build\windows\x64\runner\Release\tavli.msix
 ```
 
+Installing the MSIX registers `tavli://` through the package manifest. For a
+local sign-up test, build the Release bundle with your local defines file and
+then package the existing bundle:
+
+```powershell
+flutter build windows --release --dart-define-from-file=secrets.json
+dart run msix:create --build-windows false
+Add-AppxPackage build\windows\x64\runner\Release\tavli.msix
+```
+
+Start Tavli from the Windows Start menu and use the email link from that
+session. If a previous local script registration selects an unpackaged build,
+remove that per-user registration before testing the installed package.
+
 For development, the tool offers to install its self-signed test certificate.
 That certificate establishes trust only on the test machine. It is not suitable
 for a public download or a release claim. Remove the installed test package with:

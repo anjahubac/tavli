@@ -85,8 +85,9 @@ to `tavli://auth-callback`. The app exchanges the code with the PKCE
 verifier kept in secure storage (`PkceStorage`); the page holds no keys and
 sends nothing anywhere. Android, iOS and macOS register the `tavli` scheme.
 The [local Windows build script](development/windows.md) registers the scheme
-for the current user and points it to the selected Debug or Release executable. Windows also
-supports typing the code from the email.
+for the current user and points it to the selected Debug or Release executable.
+Windows also registers the scheme when installing the MSIX package. On Windows
+the user can type the code from the email as well.
 The name is asked once: with no cached name the app checks the server profile
 before showing the name step. Apple/Google remain future work. Session tokens live
 in secure storage, not drift or logs. Email OTP length, confirmation templates
