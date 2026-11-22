@@ -2,7 +2,9 @@
 
 **Status**: logic-first implementation in progress.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 3 / Dev 1 and Dev 2
-**Baseline**: origin/dev; every implementing branch starts from then-current origin/dev.
+**Household join planning baseline**: origin/dev at 6e560f6; every implementing branch starts from then-current origin/dev.
+**Member planning baseline**: dev 0c286b6 (PR #77), with the server-only
+allergen decision recorded on this branch.
 
 ## Existing boundaries and proposed files
 

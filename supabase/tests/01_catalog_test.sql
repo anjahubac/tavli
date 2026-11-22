@@ -76,13 +76,12 @@ select is(
         where n.nspname in ('public', 'private')
           and has_function_privilege('authenticated', p.oid, 'execute')
         order by 1),
-  -- CHECK funkcije se izvršavaju sa pravima korisnika koji upisuje
-  -- (recipe_meal_types_valid, valid_allergen_selection).
+  -- CHECK functions and the named RPCs need authenticated execute.
   array[
     'private.is_member', 'private.join_photo_is_published', 'private.recipe_meal_types_valid',
-    'private.valid_allergen_selection',
-    'public.confirm_household_join', 'public.get_household_recipe_rating_summaries',
-    'public.household_invite_token', 'public.preview_household_join', 'public.remove_household_member',
+    'private.valid_allergen_selection', 'public.confirm_household_join',
+    'public.get_household_recipe_rating_summaries', 'public.household_invite_token',
+    'public.preview_household_join', 'public.remove_household_member',
     'public.set_planning_preferences_sharing'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'

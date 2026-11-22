@@ -216,7 +216,8 @@ contract.
   reused unchanged; a household food's canonical name has the priority of a
   confirmed household alias (Dev 4, 2026-11-18).
 - Open: a rollout plan for mixed-version writes and old outbox entries before
-  any persisted link is shipped.
+  any persisted link is shipped. A draft is in the
+  [link rollout plan](link-rollout-plan.md).
 
 Owners, decision dates, accepted examples and the producing PR must be recorded
 when decisions are actually made. This proposal does not mark T001 or D1-001
