@@ -101,8 +101,9 @@ instead of a guess when something is still unclear, writes names in ekavian
 Serbian and ignores filler or closing phrases. Ingredient names follow
 `ingredientNameRules`.
 
-When the gateway client (015 slice 4) is merged, the request carries task
-`voice_draft_actions` (text); the gateway allowlist adds it in the same PR.
+The request carries task `voice_draft_actions` (text, `AITask.voiceDraftActions`);
+the `ai-gateway` allowlist (`supabase/functions/ai-gateway/input.ts`) accepts it,
+so shared models answer dictation after the key cutover (PR #127).
 
 ## Evidence
 
