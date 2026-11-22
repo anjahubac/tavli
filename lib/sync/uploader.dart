@@ -42,6 +42,7 @@ class Uploader {
     required this._photoStore,
     required this._scope,
     required this._refreshSession,
+    this._beforeFavoriteUpload,
     DateTime Function()? clock,
     this.batchSize = 100,
   }) : _clock = clock ?? DateTime.now;
@@ -54,6 +55,7 @@ class Uploader {
 
   /// Obnavlja sesiju posle 401; false kad je obnova odbijena.
   final Future<bool> Function() _refreshSession;
+  final Future<void> Function()? _beforeFavoriteUpload;
   final DateTime Function() _clock;
   final int batchSize;
 
@@ -247,6 +249,7 @@ class Uploader {
       ); // nepoznat entitet (stariji build): nema šta da se pošalje
       return 0;
     }
+    if (entity is FavoriteEntity) await _beforeFavoriteUpload?.call();
     if (first.op == OutboxOp.delete) {
       await _remote.delete(entity.remoteTable, [
         for (final e in batch) e.recordId,

@@ -8,3 +8,8 @@
 - [ ] CHK006 Security 012 and testing 013 cases are attached; UI copy/accessibility finalized.
 - [ ] CHK007 Applicable checks have real evidence; external setup is not assumed.
 - [ ] CHK008 Release/rollback and unresolved limits reviewed before delivery Done.
+
+Evidence links: [implementation and remaining checks](../plan.md), [execution
+breakdown](../tasks.md), [server/client contract](../contracts/ai-gateway-contract.md),
+and [local quota model](../data-model.md). The server fake tests cover part of
+CHK007. The authenticated local Supabase and build evidence are still open.

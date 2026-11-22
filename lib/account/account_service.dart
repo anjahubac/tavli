@@ -80,7 +80,10 @@ class AccountService {
 
   static final _householdOutboxEntities = [
     for (final entity in syncEntities)
-      if (entity.scope == EntityScope.household || entity.name == 'rating')
+      // Ratings and favorites are user-scoped but tied to household recipes.
+      if (entity.scope == EntityScope.household ||
+          entity.name == 'rating' ||
+          entity.name == 'favorite')
         entity.name,
     'photo',
   ];
@@ -247,6 +250,13 @@ class AccountService {
         }
         // Deca pre roditelja: potrošnja i kuvanje, raspodela, doprinosi,
         // izvori, pa liste i ostava.
+        // Kućni katalog namirnica; deljeni ostaje (ne pripada nalogu).
+        await (_db.delete(
+          _db.foodAliases,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.foods,
+        )..where((t) => t.householdId.equals(hid))).go();
         await (_db.delete(
           _db.pantryConsumptions,
         )..where((t) => t.householdId.equals(hid))).go();
@@ -286,6 +296,12 @@ class AccountService {
       }
       await (_db.delete(
         _db.ratings,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
+        _db.userFavorites,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
+        _db.userAllergenSelections,
       )..where((t) => t.userId.equals(userId))).go();
       await (_db.delete(
         _db.userProfiles,

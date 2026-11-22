@@ -123,8 +123,13 @@ Last server write wins for record edits; deletion tombstones prevent resurrectio
 Future realtime is an authenticated invalidation signal that triggers the same
 pull path, with reconnect recovery. It never becomes an alternative UI database.
 
-Shared catalog/prices will download as read-only reference data; household-owned
-additions remain ordinary outbox-backed writes. Current theme/settings and AI
+The ingredient catalog (`foods`, `food_aliases`, spec 018) downloads read-only
+after the household entities and before tombstones, through `catalogEntities`
+outside the generic `syncEntities` loop. A server without the tables or a
+denied household read never stops the rest of the download (`CatalogStatus`).
+`FoodCatalogReader` builds the matcher from the local cache. Household catalog
+writes are not implemented yet; when added they become ordinary outbox-backed
+writes. Shared prices remain planned as read-only reference data. Current theme/settings and AI
 keys remain device-local. Planned cycle data is a deliberate device-only secure
 exception; do not add it to the generic sync/export pipeline.
 
@@ -174,8 +179,10 @@ Target: keep the same feature/router boundaries; add a gateway transport for
 built-in Tavli credentials through a Supabase Edge Function. Server validates
 identity, allowed tasks, size/budget and per-user limits, then adds provider
 credentials. Bring-your-own keys stay in secure device storage and can use the
-existing direct transport. Do not duplicate fallback/repair policy in the UI and
-server; the gateway contract must specify who owns each retry and cancellation.
+existing direct transport. The gateway serves the ordered shared text and photo
+model lists and runs one provider attempt per completion. AIRouter owns fallback,
+repair and cancellation. See [the 015 integration plan](../specs/015-ai-server-gateway/plan.md)
+for the Flutter cutover and current verification status.
 
 ```mermaid
 flowchart LR
@@ -188,9 +195,10 @@ flowchart LR
 ```
 
 After gateway acceptance, built-in provider keys must no longer ship in app
-builds. Existing build-time keys are a migration risk, not a new recommended
-production design. No credential-file changes or real provider calls belong in
-this documentation revision.
+builds. On the gateway implementation branch the app reads only Supabase
+client configuration and passes its session token to the Edge Function. Older
+builds that shipped shared provider keys still need the cutover and rotation
+procedure in 015.
 
 Future cookbook/RAG processing uses private household storage and authorized
 retrieval, page/chunk provenance and resumable background jobs. Future voice uses
@@ -213,14 +221,14 @@ Pantry has optional quantity, no expiry UX and no “use first” subsystem. Num
 stock is consumed once when cooked and restored on undo; unknown stock persists
 until removed. Those are future semantics to implement with a ledger contract.
 
-Household member preferences/allergies/favorites need a purpose-limited aggregate
-for planning. Do not expose personal profile or nutrition diary rows to all
-members merely to build an AI prompt. The exact aggregate/consent boundary must
-be accepted in the household contract before migrations. The product decision
-is to use selected participants' favorites, defaulting to all current members;
+Household planning targets a consent-filtered aggregate of selected members'
+tastes, notes and favorites, defaulting to all current members. Personal profile
+and diary rows stay owner-only. The 2026-11-21 decision keeps participant
+allergen selections within the future server planner for candidate filtering and
+final checks. The current client planner does not implement this behavior. See
 the [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
-still needs producer/consumer review. Cycle dates never leave the device; only an
-explicitly approved generic dietary hint can enter a request.
+and [logic-first plan](../specs/008-household-members/plan.md). Cycle dates never
+leave the device; only an explicitly approved generic dietary hint can enter a request.
 
 Nutrition is optional, off by default, computed from attributed reference values,
 not numbers invented by AI. Personal intake/targets stay private. Cookbooks and

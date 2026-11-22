@@ -58,8 +58,8 @@ class ChainConfig {
   );
   static const _groqVision = ModelSpec(
     provider: AIProvider.groq,
-    model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-    label: 'Groq Llama 4 Maverick',
+    model: 'qwen/qwen3.6-27b',
+    label: 'Groq Qwen 3.6 27B',
     supportsVision: true,
   );
   static const _groqTextStrong = ModelSpec(
@@ -98,4 +98,18 @@ class ChainConfig {
       _openRouterFree,
     ],
   );
+
+  static const _openAI = ModelSpec(
+    provider: AIProvider.openAI,
+    model: 'default',
+    label: 'OpenAI',
+    supportsVision: true,
+    timeout: Duration(seconds: 60),
+  );
+
+  static Map<String, ModelSpec> gatewayModels(TaskKind kind) => {
+    'openai/default': _openAI,
+    for (final model in defaults.chainFor(kind))
+      '${model.provider.name.toLowerCase()}/${model.model}': model,
+  };
 }

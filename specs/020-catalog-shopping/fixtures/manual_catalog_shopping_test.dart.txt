@@ -1,0 +1,52 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/data/database.dart';
+import 'package:tavli/data/shopping_repository.dart';
+
+void main() {
+  test('sabira izabranu pavlaku, a slobodan tekst ostaje odvojen', () {
+    const foodId = 'fixture-pavlaka';
+    ShoppingItemRow pavlaka(
+      String id,
+      double grams, {
+      required bool manual,
+      String? linkedFood,
+    }) => ShoppingItemRow(
+      id: id,
+      listId: 'fixture-week',
+      name: 'pavlaka',
+      quantity: grams,
+      unit: 'g',
+      category: 'mlečni proizvodi',
+      isBought: false,
+      isManual: manual,
+      fromRecipeIdsJson: manual ? '[]' : '["fixture-recipe"]',
+      approximate: false,
+      foodId: linkedFood,
+    );
+
+    final totals = ShoppingRepository.totalsOf([
+      pavlaka('from-recipe', 200, manual: false, linkedFood: foodId),
+      pavlaka('from-catalog', 100, manual: true, linkedFood: foodId),
+      pavlaka('free-text', 50, manual: true),
+    ]);
+
+    expect(totals, hasLength(2));
+    final linked = totals.singleWhere(
+      (total) => total.ingredient == 'food:$foodId',
+    );
+    expect(
+      (linked.name, linked.openMicros, linked.baseUnit),
+      ('pavlaka', 300000000, 'g'),
+    );
+    expect(linked.itemIds, unorderedEquals(['from-recipe', 'from-catalog']));
+
+    final freeText = totals.singleWhere(
+      (total) => total.ingredient == 'pavlaka',
+    );
+    expect(
+      (freeText.name, freeText.openMicros, freeText.baseUnit),
+      ('pavlaka', 50000000, 'g'),
+    );
+    expect(freeText.itemIds, ['free-text']);
+  });
+}
