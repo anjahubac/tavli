@@ -11,10 +11,15 @@ q() { docker exec -i "$CT" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -qtA 
 
 q < "$(dirname "$0")/../supabase/tests/00_helpers.sql" >/dev/null
 UID_A=$(q -c "select tests.create_user('ai-race-$$@test.local')")
-# Brisanje naloga ostavlja redove sa user_id null (to je i namena); brišu se samo
-# oni napravljeni od ovog pokretanja (posle trenutka GO), tuđi ostaju.
-cleanup() { q -c "delete from auth.users where id = '$UID_A'" >/dev/null 2>&1 || true
-            [ -z "${GO:-}" ] || q -c "delete from public.ai_calls where user_id is null and started_at >= to_timestamp($GO) - interval '10 seconds'" >/dev/null 2>&1 || true; }
+# Redove probnog naloga brišemo pre naloga, dok još imaju njegov user_id.
+cleanup() {
+  q -v uid="$UID_A" >/dev/null <<'SQL'
+begin;
+delete from public.ai_calls where user_id = :'uid';
+delete from auth.users where id = :'uid';
+commit;
+SQL
+}
 trap cleanup EXIT
 
 # Sesije se pokreću kroz docker različitim tempom, pa sve čekaju isti trenutak

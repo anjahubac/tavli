@@ -33,8 +33,11 @@ select is((select count(*) from public.ai_calls where user_id = :'ua'), 2::bigin
 select public.ai_release((select id from public.ai_calls where user_id = :'ua' order by started_at, id limit 1));
 select is((select count(*) from public.ai_calls where user_id = :'ua' and finished_at is null), 1::bigint, 'jedan red je oslobođen');
 select lives_ok($$select public.ai_release('00000000-0000-4000-8000-0000000000ff')$$, 'oslobađanje nepoznatog id-a ne baca grešku');
-select id as released_id, finished_at as first_finish from public.ai_calls where user_id = :'ua' and finished_at is not null limit 1 \gset
-select pg_sleep(0.05);
+-- now() ostaje isto u celoj transakciji; starije vreme čini promenu vidljivom.
+update public.ai_calls
+set finished_at = finished_at - interval '1 second'
+where user_id = :'ua' and finished_at is not null
+returning id as released_id, finished_at as first_finish \gset
 select public.ai_release(:'released_id');
 select is((select finished_at from public.ai_calls where id = :'released_id'), :'first_finish'::timestamptz, 'ponovljeno oslobađanje ne menja vreme završetka');
 select ok(pg_temp.reserve(:'ua', 'text', 5, 20, 2, 100) ? 'id', 'posle oslobađanja ponovo prolazi');
@@ -78,11 +81,11 @@ select pg_temp.reserve(:'ub', 'text', 50, 50, 5, 500);
 select is((select count(*) from public.ai_calls where started_at < now() - interval '2 days'), 0::bigint, 'redovi stariji od 2 dana su obrisani');
 
 -- Brisanje naloga: redovi ostaju bez korisnika i dalje se računaju u zajednički limit.
-select count(*) as ub_rows from public.ai_calls where user_id = :'ub' \gset
+select count(*) as ub_rows, array_agg(id) as ub_ids from public.ai_calls where user_id = :'ub' \gset
 select count(*) as before_global from public.ai_calls where started_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc' \gset
 delete from auth.users where id = :'ub';
 select is((select count(*) from public.ai_calls where user_id = :'ub'), 0::bigint, 'nijedan red ne pokazuje na obrisan nalog');
-select cmp_ok((select count(*) from public.ai_calls where user_id is null), '>=', :'ub_rows'::bigint, 'redovi obrisanog naloga su sačuvani bez korisnika');
+select is((select count(*) from public.ai_calls where user_id is null and id = any(:'ub_ids'::uuid[])), :'ub_rows'::bigint, 'redovi obrisanog naloga su sačuvani bez korisnika');
 select cmp_ok(:'ub_rows'::bigint, '>=', 1::bigint, 'nalog je imao bar jedan red pre brisanja');
 select is((select count(*) from public.ai_calls where started_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc'), :'before_global'::bigint, 'brisanje naloga ne smanjuje zajednički brojač');
 
