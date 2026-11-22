@@ -49,14 +49,15 @@
       window.close();
     }, 300);
   }
-  document.querySelectorAll('[data-otvori]').forEach(function (a) {
-    a.addEventListener('click', function () {
-      opened = true;
-      leftPage = false;
-      document.querySelectorAll('[data-posle-klika]').forEach(function (el) {
-        el.hidden = el.getAttribute('data-posle-klika') !== state;
-      });
+  function markOpened() {
+    opened = true;
+    leftPage = false;
+    document.querySelectorAll('[data-posle-klika]').forEach(function (el) {
+      el.hidden = el.getAttribute('data-posle-klika') !== state;
     });
+  }
+  document.querySelectorAll('[data-otvori]').forEach(function (a) {
+    a.addEventListener('click', markOpened);
   });
   window.addEventListener('blur', function () {
     if (opened) leftPage = true;
@@ -73,5 +74,18 @@
   // Kod ne ostaje u adresnoj traci, istoriji ni u obeleživaču.
   if (code || error) {
     window.history.replaceState(null, '', window.location.pathname);
+  }
+
+  // Posle potvrde, na računaru, Tavli se otvara odmah, bez klika (kao Zoom
+  // ili Slack): pregledač sam pita „Otvori Tavli?“, ili ga otvori odmah ako
+  // je to već dozvoljeno. Na telefonu samo dugme, jer Safari bez instalirane
+  // aplikacije prikazuje grešku „adresa nije važeća“. Dugme ostaje i na
+  // računaru, ako se pitanje zatvori.
+  var phone =
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (state === 'uspeh' && !phone) {
+    markOpened();
+    window.location.href = link;
   }
 })();
