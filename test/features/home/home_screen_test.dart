@@ -317,13 +317,12 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(button('Kuvaj')),
     );
-    final sync = container.read(syncEngineProvider)!;
+    expect(container.read(syncEngineProvider), isNull);
     await tapButton(tester, 'Skuvano');
 
     expect(find.text('Ručak · skuvano'), findsOneWidget);
     expect(find.text('SLEDEĆE · VEČERA'), findsOneWidget);
     expect(find.text('Skuvano: Pasulj prebranac'), findsOneWidget);
-    await sync.push();
     expect(server.rows('cooked_events'), isEmpty);
 
     await tester.tap(find.text('Poništi'));
@@ -332,6 +331,8 @@ void main() {
     expect(find.text('SLEDEĆE · RUČAK'), findsOneWidget);
 
     server.offline = false;
+    await container.read(authControllerProvider.notifier).restoreSession();
+    final sync = container.read(syncEngineProvider)!;
     await sync.push();
     await sync.pull();
     await sync.push();
