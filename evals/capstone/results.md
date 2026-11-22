@@ -4,6 +4,10 @@ Run on commit `3a32b93450a210b3d03b7e3b762fc873133f7e85`, macOS, Flutter 3.50.0,
 2026-11-21. Command: `flutter test test/evals`. Result: 11 tests passed (2
 registry checks and 9 deterministic cases). Cases are in `cases.jsonl`.
 
+Rerun on 2026-11-22 after tightening EV-12 (same app code, `dev` at
+`a5bd3c3`): `flutter test test/evals` passed 13 tests, the 11 above plus the
+two EV-12 before-and-after scenarios; the manual live test was skipped.
+
 | Case | Mode | Result at this commit |
 | --- | --- | --- |
 | EV-01 | live | See the live run below |
@@ -17,7 +21,7 @@ registry checks and 9 deterministic cases). Cases are in `cases.jsonl`.
 | EV-09 | live | See the live run below |
 | EV-10 | live | See the live run below |
 | EV-11 | deterministic | Pass: one call per model, `AllModelsExhausted`, no recipe |
-| EV-12 | deterministic | Pass: at most 4 calls for 2 models, `AllModelsExhausted`, no recipe |
+| EV-12 | deterministic | Pass: one repair to the same model (2 calls), then stop with `AllModelsExhausted`, no recipe; see the before and after below |
 | EV-13 | deterministic | Pass: withdrawn food is `Unresolved` |
 | EV-14 | deterministic | Pass: unknown `recipeId` rejected with `FormatException` |
 | EV-15 | deterministic | Pass: calls `gemini/pro`, `groq/text`, then `AllModelsExhausted` with 2 attempts and retry time 60 s after the clock |
@@ -49,6 +53,34 @@ what dish it chose was not recorded. EV-10 shows the output stayed a valid
 recipe without leaking password text; it does not prove the model ignored the
 instruction in every case.
 
+## Before and after: one repair of an invalid model answer (EV-12)
+
+The change is PR #69: before it, an answer that failed validation made the
+router send the same prompt again and then walk the whole model chain. After
+it, the router sends one repair request to the same model with the previous
+answer and the failed rule, and stops if that fails too.
+
+Same inputs on both sides, with a fake model client and no network or keys:
+`test/evals/ev12_repair_before_after_test.dart`, run with
+`flutter test test/evals/ev12_repair_before_after_test.dart` on the commit
+before #69 (`28fa253`), on the #69 merge (`3100d8f`) and on this branch
+(`a5bd3c3`). Each scenario prints one trace line; the lines are in
+`traces/ev12-repair-before-after.jsonl`.
+
+| Scenario | Before #69 | After #69 (same on `a5bd3c3`) |
+| --- | --- | --- |
+| EV-12a: every answer invalid | 4 calls (`gemini/pro` x2, `groq/text` x2), same prompt resent, `AllModelsExhausted` | 2 calls (`gemini/pro` x2), repair carries the previous answer, `AllModelsExhausted` |
+| EV-12b: invalid, then valid | 2 calls, same prompt resent, recipe returned | 2 calls, repair carries the previous answer, recipe returned |
+
+The test asserts the behavior after #69, so it fails on the commit before #69
+(both scenarios: 4 calls instead of 2, and no previous answer in the second
+request) and passes after it. The earlier EV-12 check ("at most 4 calls")
+passed on both sides and did not measure this change; it now expects exactly
+the two calls.
+
+Limits: the model is simulated, so this measures the router's control flow,
+not whether a real model fixes its answer after the repair request.
+
 ## Before and after: catalog-ready ingredient names
 
 The change from PR #102 measured on 30 fixed dishes, two runs per condition
@@ -68,4 +100,6 @@ are in `traces/`.
 ## Not covered
 
 All seven `live` cases ran once with one model. The before and after
-evidence is in `trace-ingredient-names.md`.
+evidence is in `trace-ingredient-names.md` (PR #102, live model) and in the
+EV-12 section above (PR #69, simulated model). The `live` cases EV-01 to EV-10
+have not been rerun after a change.

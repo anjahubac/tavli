@@ -27,6 +27,12 @@ fixed dishes (`dishes.json`), two runs per condition. Per-dish traces are in
 them. The runner is `test/evals/live_catalog_names_test.dart`; it is skipped
 unless run by hand with a label and a key from a file outside the repo.
 
+EV-12 also has a before and after on its own inputs: PR #69 (one repair of an
+invalid model answer) measured with `test/evals/ev12_repair_before_after_test.dart`
+on the commit before #69 and after it, without network or keys. The method and
+table are in `results.md`; the trace lines are in
+`traces/ev12-repair-before-after.jsonl`.
+
 ## Limits
 
 The deterministic cases prove the app-side decisions with a scripted model.
