@@ -51,8 +51,13 @@ subtotal of `2 × 120 + 250 + 95 = 585 RSD`. The fixture checks coverage of
 basket incomplete. The eventual UI should show “Delimičan zbir: 585 RSD”,
 “3 od 4 stavke” and “Pirinač — nema cene”.
 
-The four fixture cases passed against the local comparison prototype at
-`a2476c9`, together with seven existing comparison and price catalog tests.
+The fixture is not run in this repository yet, because `dev` has no
+`lib/domain/basket_comparison.dart`, and the repository does not execute
+`.dart.txt` files. The arithmetic was checked by hand. When the comparison
+module lands, copy the fixture to `test/domain/basket_comparison_test.dart`
+and run `flutter test test/domain/basket_comparison_test.dart`; the module must
+export the `BasketOffer`, `BasketLine` and `BasketUnit` types that the fixture
+imports.
 
 ## Proposed price acceptance cases
 
