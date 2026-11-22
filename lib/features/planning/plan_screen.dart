@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../app/animations/empty_tabs.dart';
 import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
 import '../../domain/meal_plan.dart';
@@ -53,7 +54,7 @@ class PlanScreen extends ConsumerWidget {
             if (plan == null) {
               return _Scrollable(
                 child: TavliEmptyState(
-                  glyph: TavliIcons.plan,
+                  art: const EmptyWeek(),
                   title: 'Još nemaš plan',
                   message:
                       'Izaberi nedelju ili mesec i obroke; predlog pregledaš '

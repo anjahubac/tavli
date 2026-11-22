@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/app/animations/egg_timer.dart';
+import 'package:tavli/app/animations/empty_basket.dart';
 import 'package:tavli/app/animations/empty_fridge.dart';
+import 'package:tavli/app/animations/empty_tabs.dart';
 import 'package:tavli/app/animations/ingredient_check.dart';
 import 'package:tavli/app/animations/intro_motif.dart';
 import 'package:tavli/app/animations/intro_overlay.dart';
@@ -40,6 +42,10 @@ void main() {
     'Lonac koji krčka': const SimmeringPot(),
     'Puna kesa za kupovinu': const ShoppingBagFull(),
     'Prazan frižider': const EmptyFridge(),
+    'Postavljen sto': const EmptyTable(),
+    'Obrok u nedelji': const EmptyWeek(),
+    'Prazna kuvarica': const EmptyCookbook(),
+    'Prazna korpa za nabavku': const EmptyBasket(),
     'Varjača u loncu': const SpoonPot(),
     'Recept na tanjiru': const PlatePlanDrop(),
     'Jaje se kuva': const EggTimer(),
@@ -78,7 +84,15 @@ void main() {
   });
 
   testWidgets('jednokratne animacije stanu na završnoj slici', (tester) async {
-    for (final w in const [ShoppingBagFull(), EmptyFridge(), PlatePlanDrop()]) {
+    for (final w in const [
+      ShoppingBagFull(),
+      EmptyFridge(),
+      PlatePlanDrop(),
+      EmptyTable(),
+      EmptyWeek(),
+      EmptyCookbook(),
+      EmptyBasket(),
+    ]) {
       await pumpArt(tester, w);
       await tester.pumpAndSettle();
       expect(tester.hasRunningAnimations, isFalse);
@@ -485,5 +499,21 @@ void main() {
     }
     expect(fridgeLight(0), 0);
     expect(fridgeLight(1), 1);
+  });
+
+  testWidgets('prazni ekrani: crtež raste sa širinom, najviše 200', (
+    tester,
+  ) async {
+    Future<double> widthIn(double box) async {
+      await pumpArt(
+        tester,
+        SizedBox(width: box, child: const EmptyTable()),
+        still: true,
+      );
+      return tester.getSize(find.byType(MotionCanvas)).width;
+    }
+
+    expect(await widthIn(250), closeTo(150, 0.01));
+    expect(await widthIn(900), 200);
   });
 }

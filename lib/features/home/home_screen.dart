@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../app/animations/empty_tabs.dart';
 import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
 import '../../domain/meal_plan.dart';
@@ -176,7 +177,7 @@ class _HomeEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TavliEmptyState(
-    glyph: TavliIcons.plan,
+    art: const EmptyTable(),
     title: hasPlans ? 'Za danas nema obroka u planu' : 'Još nema plana obroka',
     message: hasPlans
         ? 'Pogledaj plan ili napravi nov za ove dane.'

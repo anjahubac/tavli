@@ -23,7 +23,7 @@ void main() {
         ),
       ),
     );
-    expect(animationNames, hasLength(11)); // uvod ×3 + 8
+    expect(animationNames, hasLength(15)); // uvod ×3 + 12
     for (final name in animationNames) {
       await tester.scrollUntilVisible(
         find.text(name),
