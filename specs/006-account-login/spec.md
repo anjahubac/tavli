@@ -58,11 +58,6 @@ applies: sign-in and sign-up are separate screens. Tasks are T073–T078 in
   is in a top bar when the step has one. On wide windows (at least 720 × 600)
   the content is a white card, max width 528 px with radius 24, under a "Nazad"
   row. The success page follows the same rules.
-- **Hosted configuration** (owner action per environment, in order, after this
-  slice reaches the branch): custom SMTP with a 30 s minimum interval; Site URL
-  and Redirect URLs containing the page URL and `tavli://auth-callback`; "Confirm
-  email" ON; then a rerun of `deploy-supabase`, which refuses to publish while
-  the hosted settings differ from `config.toml`.
 - Security: no new keys in the app or page; the page sets CSP `'self'`,
   `no-referrer` and `noindex`. Email images come only from our bucket. Known
   risk: link-scanning mail gateways may open the button and use up the key;

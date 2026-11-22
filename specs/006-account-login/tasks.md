@@ -269,7 +269,5 @@ template; T070–T072 stay as history. New dependency `app_links` is justified i
 - [x] T077 Center the auth screens and use the white card on wide windows, as on
   the design canvas; widget tests for width and centering.
 - [ ] T078 Before merge: one manual sign-up on the local stack (Mailpit), green
-  CI and Uroš's review. After merge, per environment: SMTP, URL configuration,
-  "Confirm email" ON, a successful `deploy-supabase` run, then the five checks in
-  the slice's acceptance on a phone. Record the run evidence in the PR, not on
-  the branch.
+  CI and Uroš's review. After merge: the five checks in the slice's acceptance
+  on a phone. Record the run evidence in the PR, not on the branch.
