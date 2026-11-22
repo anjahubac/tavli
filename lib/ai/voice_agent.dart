@@ -253,6 +253,7 @@ class VoiceAgent {
         system: voiceSystemPrompt,
         prompt: voiceUserPrompt(draft, t),
         temperature: 0.1,
+        task: AITask.voiceDraftActions,
       ),
       (json) => parseVoiceTurn(json, draft: draft),
       cancel: cancel,

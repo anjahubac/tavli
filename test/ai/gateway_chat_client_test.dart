@@ -138,6 +138,7 @@ void main() {
       'recipe_refine',
       'plan_outline',
       'recipe_summaries',
+      'voice_draft_actions',
     ]);
     expect(bodies.first['images'], ['data:image/jpeg;base64,AQID']);
     expect(bodies.skip(1).every((body) => !body.containsKey('images')), isTrue);
