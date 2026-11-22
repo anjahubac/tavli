@@ -11,6 +11,7 @@ class HomeDay {
   const HomeDay({
     required this.date,
     required this.hasPlans,
+    this.todayPlan,
     this.today = const [],
     this.tomorrow = const [],
   });
@@ -19,6 +20,7 @@ class HomeDay {
 
   /// Domaćinstvo ima bar jedan sačuvan plan (bez plana: „Napravi plan“).
   final bool hasPlans;
+  final MealPlan? todayPlan;
 
   /// Današnji obroci, redom u danu.
   final List<PlannedMeal> today;
@@ -65,22 +67,28 @@ final homeDayProvider = Provider.autoDispose<AsyncValue<HomeDay>>((ref) {
   final plans = plansAsync.value;
   if (plans == null) return const AsyncLoading();
 
-  AsyncValue<List<PlannedMeal>> mealsFor(CivilDate day) {
-    final plan = planForDay(plans, day);
+  AsyncValue<List<PlannedMeal>> mealsFor(MealPlan? plan, CivilDate day) {
     if (plan == null) return const AsyncData([]);
     return ref
         .watch(plannedMealsProvider(plan.id))
         .whenData((meals) => mealsOn(meals, day));
   }
 
-  final today = mealsFor(date);
-  final tomorrow = mealsFor(tomorrowDate);
+  final todayPlan = planForDay(plans, date);
+  final today = mealsFor(todayPlan, date);
+  final tomorrow = mealsFor(planForDay(plans, tomorrowDate), tomorrowDate);
   for (final a in [today, tomorrow]) {
     if (a.hasError) return AsyncError(a.error!, a.stackTrace!);
   }
   final (t, s) = (today.value, tomorrow.value);
   if (t == null || s == null) return const AsyncLoading();
   return AsyncData(
-    HomeDay(date: date, hasPlans: plans.isNotEmpty, today: t, tomorrow: s),
+    HomeDay(
+      date: date,
+      hasPlans: plans.isNotEmpty,
+      todayPlan: todayPlan,
+      today: t,
+      tomorrow: s,
+    ),
   );
 });
