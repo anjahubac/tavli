@@ -7,6 +7,7 @@ import '../motion/motion.dart';
 import '../platform.dart';
 import '../theme/tavli_colors.dart';
 import 'shell_parts.dart';
+import 'tavli_window_frame.dart';
 
 /// Jedan tab glavne navigacije.
 @immutable
@@ -198,8 +199,14 @@ class _SideBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final platform = TavliPlatform.of(context);
     final windows = platform == TavliPlatform.windows;
-    // macOS: semafori prozora stoje u vrhu bočne trake.
-    final top = platform == TavliPlatform.macos ? 52.0 : 12.0;
+    final macos = platform == TavliPlatform.macos;
+    // Prostor za semafore i povlačenje prozora ostaje iznad skrola.
+    final titleBar = macos
+        ? TavliWindowFrame.macosTitleBarInsetOf(context)
+        : 0.0;
+    final top = titleBar > 0
+        ? 0.0
+        : 12.0 + (macos ? MediaQuery.paddingOf(context).top : 0);
     final order = [
       for (final (i, d) in nav.destinations.indexed)
         if (d.home) i,
@@ -213,6 +220,7 @@ class _SideBar extends StatelessWidget {
       label: 'Glavna navigacija',
       child: Container(
         width: 220,
+        padding: EdgeInsets.only(top: titleBar),
         decoration: BoxDecoration(
           color: shellSurface(context),
           border: Border(

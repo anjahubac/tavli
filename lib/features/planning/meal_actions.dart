@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../ai/meal_plan_ai.dart';
 import '../../data/meal_plan_repository.dart';
 import '../../domain/meal_plan.dart';
+import '../../domain/meal_rules.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/shopping_source.dart';
@@ -124,6 +125,8 @@ Future<void> replaceMeal(
     planId: plan.id,
     fingerprint: await repo.fingerprint(plan.id),
   );
+  final others = await repo.meals(plan.id);
+  final library = await ref.read(recipeRepositoryProvider).getAll();
   final request = PlanRequest(
     range: plan.range,
     mealTypes: plan.mealTypes,
@@ -133,6 +136,11 @@ Future<void> replaceMeal(
         ? null
         : 'Nešto drugačije od: ${meal.snapshot!.title}',
     only: {meal.slot},
+    // Ostala jela iz plana ostaju; pravila ih gledaju (jak obrok u danu,
+    // ponavljanje).
+    kept: plannedMealFacts(others.where((m) => m.slot != meal.slot), {
+      for (final r in library) r.id: r.labels,
+    }),
   );
   if (!context.mounted) return;
   final draft = choice == ReplacementSource.ai

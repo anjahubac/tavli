@@ -476,8 +476,17 @@ void main() {
     expect(find.textContaining('Ručak 4.11.'), findsNothing);
     expect(find.text('Promeni izbore'), findsNothing);
     final outline = app.adapter.requests.first.data.toString();
-    expect(outline, isNot(contains('2026-11-04')));
-    expect(outline, isNot(contains('2026-11-02')));
+    // Za zaključan i prošle dane ne traži se novo jelo; pominju se samo
+    // kao jela koja ostaju, da ih pravila rasporeda vide (TRELLO-39).
+    final slots = RegExp(r'Slots: (\[[^\]]*\])').firstMatch(outline)![1]!;
+    expect(slots, isNot(contains('2026-11-04')));
+    expect(slots, isNot(contains('2026-11-02')));
+    expect(slots, contains('2026-11-05'));
+    expect(
+      outline,
+      contains('These meals stay in the plan'),
+      reason: 'jela koja ostaju idu u upit kao kontekst',
+    );
 
     await tapText(tester, 'Prihvati');
 

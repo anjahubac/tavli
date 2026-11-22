@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Platforma za koju komponenta bira izgled i ponašanje.
@@ -27,4 +30,10 @@ enum TavliPlatform {
 
   /// Apple: iOS i macOS.
   bool get isApple => this == ios || this == macos;
+
+  /// Lagan sistemski otkucaj pri izboru (štikliranje, segment, oznaka),
+  /// samo na iOS-u; ostale platforme ga nemaju u obrascu.
+  static void selectionFeedback(BuildContext context) {
+    if (of(context) == ios) unawaited(HapticFeedback.selectionClick());
+  }
 }

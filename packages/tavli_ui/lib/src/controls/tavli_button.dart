@@ -6,12 +6,16 @@ import '../tokens.dart';
 
 /// Vrsta dugmeta iz standarda komponenti.
 enum TavliButtonVariant {
-  /// Glavno: visina 56, radijus 18, tekst 15 podebljan, boja teme.
+  /// Glavno: visina 48, radijus 16, tekst 15 podebljan, boja teme. Nije
+  /// više od sporednog: boja ga već ističe (Anja, 21.11.2026).
   primary,
 
-  /// Sporedno: visina 56 i radijus 18 kao glavno (iste visine u redu),
-  /// ivica 1 px.
+  /// Sporedno: visina 48 i radijus 16 kao glavno, ivica 1 px.
   secondary,
+
+  /// Tonsko: visina 48, radijus 16, svetla pozadina boje teme, bez ivice
+  /// (kanvas: „Pošalji mi kod“ u kartici).
+  tonal,
 
   /// Tekstualno: visina 48, radijus 14, bez pozadine.
   text,
@@ -24,7 +28,7 @@ enum TavliButtonVariant {
 /// radijus i visina dolaze iz standarda.
 ///
 /// Dva ili više dugmadi u istom redu idu u [TavliButtonRow]; glavno i
-/// sporedno su iste visine (56), kao „Kuvaj“ i „Skuvano“.
+/// sporedno su iste visine (48), kao „Kuvaj“ i „Skuvano“.
 class TavliButton extends StatelessWidget {
   const TavliButton.primary({
     super.key,
@@ -43,6 +47,15 @@ class TavliButton extends StatelessWidget {
     this.glyph,
   }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
        variant = TavliButtonVariant.secondary;
+
+  const TavliButton.tonal({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.glyph,
+  }) : assert(icon == null || glyph == null, 'ikonica ili Tavli ikonica'),
+       variant = TavliButtonVariant.tonal;
 
   const TavliButton.text({
     super.key,
@@ -74,11 +87,8 @@ class TavliButton extends StatelessWidget {
   /// `null` isključuje dugme.
   final VoidCallback? onPressed;
 
-  /// Visina bez obzira na red: 56 za glavno i sporedno, 48 za tekstualna.
-  double get baseHeight => switch (variant) {
-    TavliButtonVariant.primary || TavliButtonVariant.secondary => 56,
-    TavliButtonVariant.text || TavliButtonVariant.destructive => 48,
-  };
+  /// Visina bez obzira na red: 48 za sve vrste.
+  double get baseHeight => 48;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +102,7 @@ class TavliButton extends StatelessWidget {
     final radius = switch (variant) {
       TavliButtonVariant.primary => TavliRadius.button,
       TavliButtonVariant.secondary => TavliRadius.button,
+      TavliButtonVariant.tonal => TavliRadius.field,
       TavliButtonVariant.text ||
       TavliButtonVariant.destructive => TavliRadius.compact,
     };
@@ -128,8 +139,16 @@ class TavliButton extends StatelessWidget {
         TavliButtonVariant.secondary => _enabled(c.onSurface, c),
         TavliButtonVariant.text => _enabled(c.primary, c),
         TavliButtonVariant.destructive => _enabled(c.error, c),
+        TavliButtonVariant.tonal => _enabled(c.onPrimaryContainer, c),
         TavliButtonVariant.primary => null,
       },
+      backgroundColor: variant == TavliButtonVariant.tonal
+          ? WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.disabled)
+                  ? c.onSurface.withValues(alpha: 0.12)
+                  : c.primaryContainer,
+            )
+          : null,
     );
 
     final text = Text(label, textAlign: TextAlign.center);
@@ -150,7 +169,7 @@ class TavliButton extends StatelessWidget {
           );
 
     return switch (variant) {
-      TavliButtonVariant.primary => FilledButton(
+      TavliButtonVariant.primary || TavliButtonVariant.tonal => FilledButton(
         onPressed: onPressed,
         style: style,
         child: child,
@@ -183,10 +202,8 @@ extension on TavliButtonVariant {
 
 /// Dugmad u jednom redu.
 ///
-/// Sva dugmad u redu su iste visine: visina najvišeg dugmeta po vrsti
-/// (56 kad u redu ima glavno ili sporedno, inače 48). Kada veći tekst ili
-/// prelom poveća jedno dugme, i ostala rastu sa njim. U traci sa akcijama
-/// sva dugmad su 56.
+/// Sva dugmad u redu su iste visine (48). Kada veći tekst ili prelom
+/// poveća jedno dugme, i ostala rastu sa njim.
 ///
 /// [expand] deli širinu podjednako (traka sa akcijama, „Kuvaj“ i
 /// „Skuvano“ na kartici); bez njega dugmad su široka koliko tekst traži.
@@ -233,7 +250,7 @@ class TavliButtonRow extends StatelessWidget {
 /// Zadaje visinu dugmadi ispod sebe; koriste ga [TavliButtonRow] i
 /// traka sa akcijama.
 class TavliButtonScope extends StatelessWidget {
-  /// Dugmad u traci sa akcijama: uvek 56, manji unutrašnji razmak i tekst
+  /// Dugmad u traci sa akcijama: visina 48, manji unutrašnji razmak i tekst
   /// 15, da „Ponovo predloži“ i „Otvori nabavku“ stanu u jedan red.
   const TavliButtonScope.actionBar({super.key, required this.child});
 
@@ -241,7 +258,7 @@ class TavliButtonScope extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      _TavliButtonScope(height: 56, compact: true, child: child);
+      _TavliButtonScope(height: 48, compact: true, child: child);
 }
 
 class _TavliButtonScope extends InheritedWidget {

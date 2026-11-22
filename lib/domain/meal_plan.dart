@@ -2,7 +2,9 @@
 /// čuvanja. Nacrt živi samo u sesiji; čuva se tek odobren.
 library;
 
+import 'meal_rules.dart';
 import 'plan_calendar.dart';
+import 'recipe_labels.dart';
 import 'shopping_demand.dart' show maxServings, minServings;
 import 'shopping_source.dart';
 
@@ -60,8 +62,10 @@ class PlanRequest {
     this.wishes,
     this.pantryNames = const [],
     Set<MealSlot>? only,
+    Map<MealSlot, MealFacts> kept = const {},
   }) : mealTypes = Set.unmodifiable(mealTypes),
-       only = only == null ? null : Set.unmodifiable(only) {
+       only = only == null ? null : Set.unmodifiable(only),
+       kept = Map.unmodifiable(kept) {
     if (mealTypes.isEmpty) {
       throw ArgumentError('Izaberi bar jedan obrok');
     }
@@ -95,6 +99,11 @@ class PlanRequest {
   /// obroka); null = sva mesta plana.
   final Set<MealSlot>? only;
 
+  /// Jela iz sačuvanog plana koja ostaju (zaključana, skuvana, prošla ili
+  /// ostali dani kod zamene jednog jela). Ne predlažu se ponovo, ali ih
+  /// pravila rasporeda gledaju (jak obrok u danu, ponavljanje).
+  final Map<MealSlot, MealFacts> kept;
+
   /// Mesta za predlog, hronološki.
   List<MealSlot> get slots => [
     for (final d in range.days)
@@ -110,6 +119,8 @@ class SlotProposal {
     required this.title,
     this.libraryRecipeId,
     this.draftRecipeKey,
+    this.weight,
+    this.dishKind,
   }) : assert((libraryRecipeId == null) != (draftRecipeKey == null));
 
   final String title;
@@ -118,7 +129,22 @@ class SlotProposal {
   /// Ključ novog recepta u [PlanDraft.newRecipes].
   final String? draftRecipeKey;
 
+  /// Težina i vrsta jela za pravila rasporeda; null = nepoznato. Za recept
+  /// iz biblioteke važe njegove sačuvane oznake kad postoje.
+  final DishWeight? weight;
+  final DishKind? dishKind;
+
   bool get isNew => draftRecipeKey != null;
+
+  /// Isti ključ = isti recept (pravilo ponavljanja).
+  String get recipeKey => libraryRecipeId ?? draftRecipeKey!;
+
+  MealFacts get facts => MealFacts(
+    recipeKey: recipeKey,
+    title: title,
+    weight: weight,
+    dishKind: dishKind,
+  );
 }
 
 /// Ključ novog recepta: naziv bez razlike u velikim slovima i razmacima.

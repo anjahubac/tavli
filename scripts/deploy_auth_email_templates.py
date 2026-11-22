@@ -10,6 +10,19 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Templates in the repo load images from the local stack (`supabase start`,
+# API port in config.toml) so Mailpit shows them; deploy points them at the
+# hosted project's public `email-assets` bucket instead.
+LOCAL_PUBLIC_STORAGE = "http://127.0.0.1:55321/storage/v1/object/public/"
+
+
+def hosted_public_storage(project):
+    return f"https://{project}.supabase.co/storage/v1/object/public/"
+
+
+def render_template(html, project):
+    return html.replace(LOCAL_PUBLIC_STORAGE, hosted_public_storage(project))
+
 
 def request_auth_config(method, project, token, templates=None):
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
@@ -38,9 +51,9 @@ def deploy_templates(project, token):
     for name in ("confirmation", "magic_link"):
         template = email["template"][name]
         templates[f"mailer_subjects_{name}"] = template["subject"]
-        templates[f"mailer_templates_{name}_content"] = (
-            ROOT / template["content_path"]
-        ).read_text(encoding="utf-8")
+        templates[f"mailer_templates_{name}_content"] = render_template(
+            (ROOT / template["content_path"]).read_text(encoding="utf-8"), project
+        )
 
     expected_settings = {
         "mailer_autoconfirm": not email["enable_confirmations"],

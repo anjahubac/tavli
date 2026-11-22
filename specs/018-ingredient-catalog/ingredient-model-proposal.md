@@ -180,8 +180,12 @@ identity is valid. A later implementation must define additive serialization,
 old/new client behavior, migration and rollback before it changes persisted
 data. It must preserve pending outbox entries and original ingredient text, and
 test offline replay and two-account isolation. The ingredient link is additive
-JSON on the existing embedded ingredient. Today `Ingredient.fromJson` ignores
-unknown fields and `toJson` omits them, so a build that does not know `foodId`,
+JSON on the existing embedded ingredient. Current builds keep `foodId`,
+`matchedKey` and `linkSource` (`Ingredient.link`) through stored reads and saves,
+ingredient edits in the recipe form and AI recipe edits, where a link carries
+over to an ingredient whose `ingredientKey(name)` still equals its
+`matchedKey`. AI responses never set a link. Older builds ignore unknown fields
+and omit them in `toJson`, so a build that does not know `foodId`,
 `matchedKey` and `linkSource` drops them when it saves a recipe. Mixed-version
 writes and pending outbox entries created by an older build are an explicit
 rollout gate: it is not enough that team builds update together, and backfill

@@ -386,7 +386,7 @@ class ModelStatuses extends Table {
 }
 
 /// Nalozi prijavljeni na ovom uređaju: profil i domaćinstvo za pokretanje
-/// bez mreže. Sesija (tokeni) se nikad ne čuva ovde, samo u Keychain-u.
+/// bez mreže. Sesija (tokeni) se nikad ne čuva ovde, samo u bezbednom skladištu.
 @DataClassName('AccountRow')
 class Accounts extends Table {
   TextColumn get userId => text()();

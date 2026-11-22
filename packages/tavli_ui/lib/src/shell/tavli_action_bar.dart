@@ -12,8 +12,7 @@ import '../tokens.dart';
 /// pa ostaje na istom mestu kada se sadržaj promeni (Nedelja i Mesec).
 /// Na računaru iste akcije idu u `TavliPageHeader`.
 ///
-/// Dugmad u traci su uvek visine 56 (i sporedno, da budu iste visine kao
-/// glavno), sa manjim unutrašnjim razmakom i tekstom 15, da „Ponovo
+/// Dugmad u traci su visine 48 (glavno i sporedno isto), sa manjim unutrašnjim razmakom i tekstom 15, da „Ponovo
 /// predloži“ i „Otvori nabavku“ stanu u jedan red na telefonu.
 class TavliActionBar extends StatelessWidget {
   const TavliActionBar({super.key, required this.actions});
