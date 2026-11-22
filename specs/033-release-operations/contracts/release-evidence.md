@@ -7,7 +7,7 @@ Status: required template; no release has been performed by this revision.
 | Candidate | Version/build, immutable commit, platform, environment, artifact checksum | Dev 4 |
 | Validation | Same-SHA Flutter/SQL/security/device results; actual limitations, reviewer | Dev 3 + feature owners |
 | Compatibility | Supported older clients/cache versions, schema order, queued writes, cleanup limits | Dev 1 |
-| AI operations | Gateway task/model configuration version, limits, disable/rotation operator | Dev 2 |
+| AI operations | Gateway task/model configuration version, limits, disable/rotation operator. For 015 cutover, attach key-free artifact verification and same-build dev results for recipe name, photo import and meal plan, with the compatibility/rollback procedure. | Dev 2 |
 | Distribution | Verified signing/store access and URL, staged rollout where supported | Anja |
 | Recovery | Compatible artifact, forward-repair approach, synthetic restore drill, verified backup limits | Dev 1 + Dev 3 |
 | Operations | Sanitized alert categories/thresholds, on-call owner, redacted support procedure | Dev 3 |

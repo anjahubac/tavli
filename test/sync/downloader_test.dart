@@ -199,6 +199,12 @@ void main() {
         'profile': {'ljuto': true},
       },
     ], 'user_id');
+    s.upsert('user_allergen_selections', [
+      {
+        'user_id': scope.userId,
+        'group_codes': ['milk'],
+      },
+    ], 'user_id');
     s.profiles[scope.userId]!['display_name'] = 'Ana Petrović';
   }
 
@@ -271,6 +277,8 @@ void main() {
       'fetch:pantry_consumptions',
       'fetch:ratings',
       'fetch:taste_profiles',
+      'fetch:user_allergen_selections',
+      'fetch:user_favorites',
       'fetch:households',
       'fetch:foods',
       'fetch:food_aliases',
@@ -278,6 +286,9 @@ void main() {
       'fetch:deletions',
       'rating_summaries',
     ]);
+    final selection = await db.select(db.userAllergenSelections).getSingle();
+    expect(selection.userId, scope.userId);
+    expect(selection.groupCodesJson, '["milk"]');
     final recipe = (await db.select(db.recipes).get()).single;
     expect(recipe.householdId, hid);
     expect(recipe.imagePath, 'recipe_photos/slika-r1.jpg');

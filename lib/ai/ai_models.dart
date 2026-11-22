@@ -5,16 +5,31 @@ import 'dart:typed_data';
 enum AIProvider {
   gemini('Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai/'),
   groq('Groq', 'https://api.groq.com/openai/v1/'),
-  openRouter('OpenRouter', 'https://openrouter.ai/api/v1/');
+  openRouter('OpenRouter', 'https://openrouter.ai/api/v1/'),
+  openAI('OpenAI', '');
 
   const AIProvider(this.label, this.baseUrl);
 
   final String label;
   final String baseUrl;
+
+  bool get supportsPersonalKey => baseUrl.isNotEmpty;
 }
 
 /// Vrsta zadatka određuje koji lanac modela se koristi.
 enum TaskKind { vision, text }
+
+enum AITask {
+  recipeFromImage('recipe_from_image'),
+  recipeFromName('recipe_from_name'),
+  recipeRefine('recipe_refine'),
+  planOutline('plan_outline'),
+  recipeSummaries('recipe_summaries');
+
+  const AITask(this.wireName);
+
+  final String wireName;
+}
 
 class ModelSpec {
   const ModelSpec({
@@ -91,12 +106,14 @@ class AIRequest {
   const AIRequest({
     required this.system,
     required this.prompt,
+    this.task,
     this.images = const [],
     this.temperature = 0.4,
   });
 
   final String system;
   final String prompt;
+  final AITask? task;
   final List<AIImage> images;
   final double temperature;
 

@@ -29,6 +29,7 @@ class RecipeAI {
     return _router
         .run(
           AIRequest(
+            task: AITask.recipeFromImage,
             system: recipeSystemPrompt,
             prompt: recipeFromImagePrompt(),
             images: [image],
@@ -54,6 +55,7 @@ class RecipeAI {
     return _router
         .run(
           AIRequest(
+            task: AITask.recipeFromName,
             system: recipeSystemPrompt,
             prompt: recipeFromNamePrompt(
               dishName,
@@ -77,6 +79,7 @@ class RecipeAI {
     return _router
         .run(
           AIRequest(
+            task: AITask.recipeRefine,
             system: recipeSystemPrompt,
             prompt: refineRecipePrompt(current, instruction),
           ),

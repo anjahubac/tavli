@@ -491,6 +491,27 @@ class SyncCursors extends Table {
   Set<Column> get primaryKey => {accountId, entity};
 }
 
+@DataClassName('UserAllergenSelectionRow')
+class UserAllergenSelections extends Table {
+  TextColumn get userId => text()();
+  TextColumn get groupCodesJson => text()();
+
+  @override
+  Set<Column> get primaryKey => {userId};
+}
+
+@DataClassName('UserFavoriteRow')
+class UserFavorites extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get recipeId => text()();
+  TextColumn get recipeHouseholdId => text()();
+  BoolColumn get isFavorite => boolean()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Recipes,
@@ -510,6 +531,8 @@ class SyncCursors extends Table {
     Ratings,
     RatingSummaries,
     UserProfiles,
+    UserAllergenSelections,
+    UserFavorites,
     AppSettings,
     ModelStatuses,
     Accounts,
@@ -522,7 +545,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -543,8 +566,16 @@ class AppDatabase extends _$AppDatabase {
       if (from < 7) await transaction(() => _migrateToCookedEvents(m));
       if (from < 8) await transaction(_migrateToRecipeRatings);
       if (from < 9) await transaction(() => _migrateToFoodCatalog(m));
+      if (from < 10) await transaction(() => _migrateToMemberPlanning(m));
     },
   );
+
+  /// v10: private allergen selections and favorites. Drift creates tables
+  /// with IF NOT EXISTS, so a cache that already has them opens unchanged.
+  Future<void> _migrateToMemberPlanning(Migrator m) async {
+    await m.createTable(userAllergenSelections);
+    await m.createTable(userFavorites);
+  }
 
   /// v6: oznake recepta. Postojeći recepti ostaju neoznačeni (null).
   Future<void> _migrateToRecipeLabels(Migrator m) async {

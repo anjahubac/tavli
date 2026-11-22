@@ -7,6 +7,7 @@ import '../domain/ids.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
 import '../domain/recipe_version.dart';
+import '../sync/entities.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
 import 'recipe_photo_store.dart';
@@ -218,7 +219,7 @@ class RecipeRepository {
       for (final e in entries) {
         await _writer.upsert('meal_plan_entry', e.id);
       }
-      await (_db.delete(_db.recipes)..where((t) => t.id.equals(id))).go();
+      await const RecipeEntity().deleteLocal(_db, id);
       await _writer.delete(_recipe, id);
       // Slika se briše samo ako je nijedan drugi recept ni verzija ne koristi.
       for (final p in [...photoPaths]) {

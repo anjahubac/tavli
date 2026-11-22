@@ -38,7 +38,8 @@ flutter run -d macos
 ```
 
 Windows setup, builds and local MSIX packaging are documented in
-[Windows development](docs/development/windows.md).
+[Windows development](docs/development/windows.md). Linux builds and
+`tavli://` link registration are in [Linux development](docs/development/linux.md).
 
 Account-backed use needs the team's gitignored local configuration passed with
 `--dart-define-from-file`. Humans provision it using empty example placeholders;

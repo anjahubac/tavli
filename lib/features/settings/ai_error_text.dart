@@ -5,6 +5,10 @@ import '../../ai/recipe_ai.dart';
 String aiErrorText(Object error) => switch (error) {
   AuthError() => 'Ključ nije ispravan ili je opozvan.',
   RateLimitError() => 'Limit je trenutno potrošen. Pokušaj malo kasnije.',
+  GatewayAuthError(:final message) => message,
+  GatewayQuotaError(:final message) => message,
+  GatewayUnavailableError(:final message) => message,
+  GatewayRequestRejected(:final message) => message,
   TransientError() => 'Nema veze sa serverom. Proveri internet.',
   ModelNotFoundError() => 'Model nije dostupan za ovaj ključ.',
   InvalidOutputError() => 'AI je vratio neispravan odgovor.',
