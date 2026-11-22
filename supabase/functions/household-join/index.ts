@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const bucket = "recipe-photos";
 const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
@@ -31,34 +31,6 @@ async function readBody(request: Request): Promise<Record<string, unknown> | nul
     return null;
   } finally {
     await reader.cancel().catch(() => {});
-  }
-}
-
-async function cleanRetiredHomes(admin: SupabaseClient, uid: string) {
-  const scan = { caller_id: uid, completed_id: null };
-  const { data, error } = await admin.rpc("household_join_photo_cleanup", scan);
-  if (error || !Array.isArray(data)) return;
-  const storage = admin.storage.from(bucket);
-  for (const household of data) {
-    if (typeof household !== "string" || !uuid.test(household)) continue;
-    // Limit each invocation. The durable queue survives errors and timeouts.
-    for (let page = 0; page < 10; page++) {
-      const { data: rows, error: listError } = await storage.list(household, { limit: 100 });
-      if (listError) break;
-      if (!rows.length) {
-        await admin.rpc("household_join_photo_cleanup", {
-          ...scan,
-          completed_id: household,
-        });
-        break;
-      }
-      const paths = rows
-        .filter((row) => row.id !== null && /^[A-Za-z0-9_-]{1,96}\.jpg$/.test(row.name))
-        .map((row) => `${household}/${row.name}`);
-      if (!paths.length) break;
-      const { error: removeError } = await storage.remove(paths);
-      if (removeError) break;
-    }
   }
 }
 
@@ -99,16 +71,10 @@ Deno.serve(async (request: Request) => {
       operation_id: operation,
     });
     if (error) return response("unavailable", 503);
-    if (result?.status !== "photo_transfer_pending" && result?.status !== "joined") {
-      return Response.json(result);
-    }
-
-    const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth });
-    const uid = user.user.id;
-    let finalResult = result;
     if (result.status === "photo_transfer_pending") {
+      const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth });
       const input = {
-        caller_id: uid,
+        caller_id: user.user.id,
         token,
         source_id: source,
         recipe_choice: choice,
@@ -138,13 +104,9 @@ Deno.serve(async (request: Request) => {
         { ...input, photos: manifest.photos },
       );
       if (finishError) return response("unavailable", 503);
-      finalResult = finished;
+      return Response.json(finished);
     }
-
-    if (finalResult?.status === "joined") {
-      await cleanRetiredHomes(admin, uid).catch(() => {});
-    }
-    return Response.json(finalResult);
+    return Response.json(result);
   } catch {
     return response("unavailable", 503);
   }

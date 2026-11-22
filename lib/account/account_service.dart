@@ -38,12 +38,24 @@ class AccountService {
     return row == null ? null : _fromRow(row);
   }
 
-  /// Keširan nalog, a ako ga nema na uređaju — sa servera (prva prijava
-  /// na ovom uređaju). Baca `AuthFailure`.
-  Future<Account> loadOrFetch(AuthSession session) async {
+  /// Usklađuje članstvo pre uključivanja sinhronizacije.
+  Future<Account> loadOrFetch(
+    AuthSession session, {
+    bool allowOffline = true,
+  }) async {
     final local = await cached(session.userId);
-    if (local != null) return local;
-    final remote = await _api.fetch();
+    final RemoteAccount remote;
+    try {
+      remote = await _api.fetch();
+    } on Offline {
+      if (allowOffline && local != null) return local;
+      rethrow;
+    } on Unavailable {
+      if (allowOffline && local != null) return local;
+      rethrow;
+    }
+    if (remote.userId != session.userId) throw const SessionRevoked();
+    if (local != null) return _saveMembership(local, remote);
     await _db
         .into(_db.accounts)
         .insertOnConflictUpdate(
@@ -66,24 +78,43 @@ class AccountService {
     return _saveMembership(account, remote);
   }
 
+  static final _householdOutboxEntities = [
+    for (final entity in syncEntities)
+      if (entity.scope == EntityScope.household || entity.name == 'rating')
+        entity.name,
+    'photo',
+  ];
+
+  SimpleSelectStatement<$SyncOutboxTable, OutboxRow> _pendingHouseholdWrites(
+    String userId,
+  ) => _db.select(_db.syncOutbox)
+    ..where(
+      (t) =>
+          t.accountId.equals(userId) &
+          t.entity.isIn(_householdOutboxEntities) &
+          t.state.isIn([OutboxState.pending, OutboxState.sending]),
+    )
+    ..limit(1);
+
+  Future<bool> hasPendingHouseholdWrites(String userId) async =>
+      await _pendingHouseholdWrites(userId).getSingleOrNull() != null;
+
+  Stream<bool> watchPendingHouseholdWrites(String userId) =>
+      _pendingHouseholdWrites(userId)
+          .watch()
+          .map((rows) => rows.isNotEmpty)
+          .distinct();
+
   Future<HouseholdJoinResult> confirmHouseholdJoin({
     required Account account,
     required String token,
     required JoinRecipeChoice recipeChoice,
     required bool acknowledgeSourceDeletion,
     required String operationId,
+    bool proceedWithoutPendingWrites = false,
   }) async {
-    final queued =
-        await (_db.select(_db.syncOutbox)
-              ..where(
-                (t) =>
-                    t.accountId.equals(account.userId) &
-                    (t.lastError.isNull() |
-                        t.lastError.equals('household_changed').not()),
-              )
-              ..limit(1))
-            .getSingleOrNull();
-    if (queued != null) {
+    if (!proceedWithoutPendingWrites &&
+        await hasPendingHouseholdWrites(account.userId)) {
       return const HouseholdJoinResult(status: 'pending_sync');
     }
     final result = await _api.confirmHouseholdJoin(
@@ -93,6 +124,7 @@ class AccountService {
       acknowledgeSourceDeletion: acknowledgeSourceDeletion,
       operationId: operationId,
     );
+    if (result.status != 'joined') return result;
     if (result.account case final remote?) {
       if (remote.userId != account.userId) throw const SessionRevoked();
       await _saveMembership(account, remote);
@@ -108,21 +140,24 @@ class AccountService {
 
         final switched = current.householdId != remote.householdId;
         if (switched) {
-          final householdEntities = [
-            for (final entity in syncEntities)
-              if (entity.scope == EntityScope.household ||
-                  entity.name == 'rating')
-                entity.name,
-          ];
           await (_db.update(_db.syncOutbox)..where(
                 (t) =>
                     t.accountId.equals(account.userId) &
-                    t.entity.isIn([...householdEntities, 'photo']),
+                    t.entity.isIn(_householdOutboxEntities) &
+                    t.state.isNotValue(OutboxState.quarantined),
               ))
               .write(
-                const SyncOutboxCompanion(
-                  state: Value(OutboxState.rejected),
-                  lastError: Value('household_changed'),
+                SyncOutboxCompanion.custom(
+                  state: const Constant(OutboxState.quarantined),
+                  lastError: CaseWhenExpression(
+                    cases: [
+                      CaseWhen(
+                        _db.syncOutbox.state.equals(OutboxState.rejected),
+                        then: _db.syncOutbox.lastError,
+                      ),
+                    ],
+                    orElse: const Constant('household_changed'),
+                  ),
                 ),
               );
           await (_db.delete(
@@ -133,6 +168,9 @@ class AccountService {
           _db.accounts,
         )..where((t) => t.userId.equals(account.userId))).write(
           AccountsCompanion(
+            displayName: current.hasName
+                ? const Value.absent()
+                : Value(remote.displayName),
             householdId: Value(remote.householdId),
             householdName: Value(remote.householdName),
             role: Value(remote.role),
@@ -143,6 +181,7 @@ class AccountService {
           ),
         );
         return current.copyWith(
+          displayName: current.displayName ?? remote.displayName,
           householdId: remote.householdId,
           householdName: remote.householdName,
           role: remote.role,

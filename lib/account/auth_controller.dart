@@ -38,8 +38,9 @@ const noAccountScope = AccountScope(userId: '', householdId: '');
 
 enum SignOutReason { sessionExpired, accountDeleted, storageUnavailable }
 
-/// Stanje prijave. `CodeSent` se nikad ne čuva: posle ponovnog otvaranja
-/// aplikacije prikazuje se korak sa e-poštom.
+/// Stanje prijave. `CodeSent` i `ConfirmSent` se nikad ne čuvaju: posle
+/// ponovnog otvaranja aplikacije prikazuje se korak sa e-poštom (link iz
+/// mejla za potvrdu i dalje prijavljuje, jer je PKCE verifikator sačuvan).
 sealed class AuthState {
   const AuthState();
 }
@@ -50,11 +51,16 @@ class Starting extends AuthState {
 }
 
 class SignedOut extends AuthState {
-  const SignedOut([this.reason]);
+  const SignedOut([this.reason, this.linkError]);
 
   final SignOutReason? reason;
+
+  /// Link iz mejla nije uspeo (npr. [LinkExpired]) pre nego što je u ovom
+  /// pokretanju poslat mejl.
+  final AuthFailure? linkError;
 }
 
+/// "Prijava": kod je poslat postojećem nalogu ("Upiši kod").
 class CodeSent extends AuthState {
   const CodeSent(this.email, this.sentAt);
 
@@ -62,17 +68,31 @@ class CodeSent extends AuthState {
   final DateTime sentAt;
 }
 
+/// "Registracija": poslat je mejl za potvrdu ("Proveri mejl"), sa dugmetom
+/// i kodom.
+class ConfirmSent extends AuthState {
+  const ConfirmSent(this.email, this.sentAt, {this.linkError});
+
+  final String email;
+  final DateTime sentAt;
+
+  /// Link iz mejla nije uspeo; prikazuje se uz "Pošalji mejl ponovo".
+  final AuthFailure? linkError;
+}
+
 /// Prijavljen, ali još bez imena (obavezan korak).
 class NeedsName extends AuthState {
-  const NeedsName(this.account);
+  const NeedsName(this.account, {this.membershipVerified = true});
 
   final Account account;
+  final bool membershipVerified;
 }
 
 class SignedIn extends AuthState {
-  const SignedIn(this.account);
+  const SignedIn(this.account, {this.membershipVerified = true});
 
   final Account account;
+  final bool membershipVerified;
 }
 
 /// userId iz sačuvanog JSON-a sesije (bez mreže).
@@ -102,12 +122,14 @@ class AuthController extends Notifier<AuthState> {
         .watch(authGatewayProvider)
         .sessionChanges
         .listen(_onSessionChanged);
-    ref.onDispose(() => _sessions?.cancel());
+    ref.onDispose(() {
+      unawaited(_sessions?.cancel());
+      _membershipRetry?.cancel();
+    });
     return const Starting();
   }
 
-  /// Otvara aplikaciju iz sačuvane sesije i keširanog naloga, bez mreže.
-  /// Sesija se obnavlja u pozadini kad ima mreže.
+  /// Proverava članstvo pre pokretanja sync-a. Keš radi i bez mreže.
   Future<void> start() async {
     final store = _store, gateway = _gateway, service = _service;
     final String? json;
@@ -123,27 +145,59 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
     final account = await service.cached(uid);
-    if (account != null) {
-      _set(_signedIn(account));
-      unawaited(restoreSession());
-      return;
-    }
-    // Sesija postoji, ali nalog nije keširan (prekinuta prva prijava).
     try {
       final session = await gateway.restore(json);
       await store.write(session.json);
-      _set(_signedIn(await service.loadOrFetch(session)));
+      _set(_signedIn(await service.loadOrFetch(session, allowOffline: false)));
     } on SecretStorageException {
       await _lockSession(gateway);
-    } on AuthFailure {
-      _set(const SignedOut());
+    } on AuthFailure catch (f) {
+      if (account == null) {
+        _set(const SignedOut());
+      } else if (f is Offline || f is Unavailable) {
+        _useOfflineCache(account);
+      } else {
+        _set(NeedsName(account));
+        await sessionExpired(accountGone: f is AccountGone);
+      }
     }
+  }
+
+  Timer? _membershipRetry;
+
+  void _useOfflineCache(Account account) {
+    _set(_signedIn(account, membershipVerified: false));
+    _retryMembership();
+  }
+
+  void _retryMembership() {
+    if (!ref.mounted || !_hasAccount) return;
+    _membershipRetry?.cancel();
+    _membershipRetry = Timer(const Duration(seconds: 5), () {
+      unawaited(restoreSession());
+    });
   }
 
   /// Obnavlja sačuvanu sesiju (start, povratak u aplikaciju). Bez mreže
   /// ostaje prijavljen; odbijena obnova vraća na prijavu.
   Future<void> restoreSession({SyncEngine? sync}) async {
-    if (!ref.mounted || !_hasAccount) return;
+    if (!ref.mounted ||
+        !_hasAccount ||
+        _restoringSession ||
+        _checkingMembership) {
+      return;
+    }
+    _restoringSession = true;
+    try {
+      await _restoreSession(sync);
+    } finally {
+      _restoringSession = false;
+    }
+  }
+
+  var _restoringSession = false;
+
+  Future<void> _restoreSession(SyncEngine? sync) async {
     final store = _store, gateway = _gateway;
     final String? json;
     try {
@@ -158,6 +212,10 @@ class AuthController extends Notifier<AuthState> {
       if (!ref.mounted) return;
       await store.write(session.json);
       if (!ref.mounted || _checkingMembership) return;
+      if (state is NeedsName) {
+        await _refetchName(session);
+        return;
+      }
       final initial = state;
       if (initial is! SignedIn || initial.account.userId != session.userId) {
         return;
@@ -169,7 +227,9 @@ class AuthController extends Notifier<AuthState> {
           final account = await service.refreshMembership(initial.account);
           if (!ref.mounted || !identical(state, initial)) return;
           if (account.householdId != initial.account.householdId) sync?.stop();
-          if (account.householdId != initial.account.householdId ||
+          _membershipRetry?.cancel();
+          if (!initial.membershipVerified ||
+              account.householdId != initial.account.householdId ||
               account.role != initial.account.role ||
               account.householdName != initial.account.householdName) {
             _set(_signedIn(account));
@@ -185,11 +245,20 @@ class AuthController extends Notifier<AuthState> {
     } on SecretStorageException {
       await _lockSession(gateway);
     } on Offline {
-      // Pokušava se ponovo pri povratku u aplikaciju.
+      _retryIfUnverified();
     } on Unavailable {
-      // Isto.
+      _retryIfUnverified();
     } on AuthFailure catch (f) {
       if (ref.mounted) await sessionExpired(accountGone: f is AccountGone);
+    }
+  }
+
+  void _retryIfUnverified() {
+    if (!ref.mounted) return;
+    if (state
+        case SignedIn(membershipVerified: false) ||
+            NeedsName(membershipVerified: false)) {
+      _retryMembership();
     }
   }
 
@@ -202,9 +271,13 @@ class AuthController extends Notifier<AuthState> {
     required bool acknowledgeSourceDeletion,
     required String operationId,
     required SyncEngine? sync,
+    bool proceedWithoutPendingWrites = false,
   }) async {
     final initial = state;
-    if (initial is! SignedIn || _checkingMembership) {
+    if (initial is! SignedIn ||
+        !initial.membershipVerified ||
+        _checkingMembership ||
+        _restoringSession) {
       return const HouseholdJoinResult(status: 'unavailable');
     }
     if (initial.account.householdId != expectedSourceHouseholdId) {
@@ -213,7 +286,11 @@ class AuthController extends Notifier<AuthState> {
     final service = _service;
     _checkingMembership = true;
     try {
-      await sync?.push();
+      if (!proceedWithoutPendingWrites &&
+          await service.hasPendingHouseholdWrites(initial.account.userId)) {
+        sync?.kick();
+        return const HouseholdJoinResult(status: 'pending_sync');
+      }
       Future<HouseholdJoinResult> confirm() async {
         if (!ref.mounted || !identical(state, initial)) {
           return const HouseholdJoinResult(status: 'unavailable');
@@ -224,6 +301,7 @@ class AuthController extends Notifier<AuthState> {
           recipeChoice: recipeChoice,
           acknowledgeSourceDeletion: acknowledgeSourceDeletion,
           operationId: operationId,
+          proceedWithoutPendingWrites: proceedWithoutPendingWrites,
         );
         if (result.account != null &&
             ref.mounted &&
@@ -247,7 +325,8 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  /// Šalje kod (i ponovo, posle 30 s). Baca [AuthFailure]; stanje ostaje.
+  /// "Prijava": šalje kod postojećem nalogu (i ponovo, posle 30 s). Baca
+  /// [AuthFailure] ([NoAccount] za nepoznatu adresu); stanje ostaje.
   Future<void> sendCode(String email) async {
     final e = normalizeEmail(email);
     final clock = ref.read(authClockProvider);
@@ -255,20 +334,102 @@ class AuthController extends Notifier<AuthState> {
     _set(CodeSent(e, clock()));
   }
 
-  /// Proverava kod; ispravan kod čuva sesiju i otvara aplikaciju (ili
-  /// korak sa imenom). Baca [AuthFailure]; stanje ostaje.
-  Future<void> verify(String code) async {
+  /// "Registracija": pravi nalog i šalje mejl za potvrdu ("Proveri mejl").
+  /// Kad server ne traži potvrdu adrese, odmah prijavljuje. Baca
+  /// [AuthFailure] ([AlreadyRegistered] za postojeći nalog); stanje ostaje.
+  Future<void> signUp(String email) async {
+    final e = normalizeEmail(email);
+    final clock = ref.read(authClockProvider);
+    final session = await _gateway.signUp(e);
+    if (session == null) {
+      _set(ConfirmSent(e, clock()));
+    } else {
+      await _signInWith(session);
+    }
+  }
+
+  /// "Pošalji mejl ponovo" na ekranu "Proveri mejl". Baca [AuthFailure].
+  Future<void> resendConfirmation() async {
     final s = state;
-    if (s is! CodeSent) return;
+    if (s is! ConfirmSent) return;
+    final clock = ref.read(authClockProvider);
+    await _gateway.resendConfirmation(s.email);
+    _set(ConfirmSent(s.email, clock()));
+  }
+
+  /// "Pošalji mi kod" na ekranu "Proveri mejl" (adresa potvrđena na drugom
+  /// uređaju): kod za prijavu se upisuje u isto polje. Baca [AuthFailure].
+  Future<void> sendCodeInstead() async {
+    final s = state;
+    if (s is! ConfirmSent) return;
+    final clock = ref.read(authClockProvider);
+    await _gateway.sendCode(s.email);
+    _set(ConfirmSent(s.email, clock()));
+  }
+
+  /// Proverava kod (prijava ili potvrda adrese); ispravan kod čuva sesiju
+  /// i otvara aplikaciju (ili korak sa imenom). Baca [AuthFailure]; stanje
+  /// ostaje.
+  Future<void> verify(String code) async {
+    final email = switch (state) {
+      CodeSent(:final email) || ConfirmSent(:final email) => email,
+      _ => null,
+    };
+    if (email == null) return;
+    await _signInWith(await _gateway.verifyCode(email, normalizeCode(code)));
+  }
+
+  /// Link iz mejla za potvrdu ([authCallbackUrl]): prijavljuje novu adresu
+  /// i otvara aplikaciju (ili jednom korak sa imenom). Greška (istekao ili
+  /// iskorišćen link, bez mreže) ostaje u stanju, uz "Pošalji mejl
+  /// ponovo". Ako je neko već prijavljen, link se zanemaruje.
+  Future<void> openLink(Uri link) async {
+    if (!isAuthCallback(link)) return;
+    if (state is SignedIn || state is NeedsName) return;
+    try {
+      await _signInWith(await _gateway.exchangeLink(link));
+    } on AuthFailure catch (f) {
+      _set(switch (state) {
+        ConfirmSent(:final email, :final sentAt) => ConfirmSent(
+          email,
+          sentAt,
+          linkError: f,
+        ),
+        SignedOut(:final reason) => SignedOut(reason, f),
+        final other => other,
+      });
+    }
+  }
+
+  Future<void> _signInWith(AuthSession session) async {
     final store = _store, service = _service, gateway = _gateway;
-    final session = await gateway.verifyCode(s.email, normalizeCode(code));
     try {
       await store.write(session.json);
     } on SecretStorageException {
       await gateway.signOutLocal();
       throw const SecureStorageUnavailable();
     }
-    _set(_signedIn(await service.loadOrFetch(session)));
+    try {
+      _set(_signedIn(await service.loadOrFetch(session, allowOffline: false)));
+    } on AuthFailure catch (failure) {
+      if (failure is! Offline && failure is! Unavailable) rethrow;
+      final account = await service.cached(session.userId);
+      if (account == null) rethrow;
+      _useOfflineCache(account);
+    }
+  }
+
+  /// Ime je možda u međuvremenu sačuvano na drugom uređaju.
+  Future<void> _refetchName(AuthSession session) async {
+    try {
+      final account = await _service.loadOrFetch(session, allowOffline: false);
+      _membershipRetry?.cancel();
+      if (ref.mounted && state is NeedsName) _set(_signedIn(account));
+    } on Offline {
+      _retryIfUnverified();
+    } on Unavailable {
+      _retryIfUnverified();
+    }
   }
 
   /// Čuva ime (obavezan korak ili "Izmeni ime"). Baca [ArgumentError] za
@@ -279,18 +440,32 @@ class AuthController extends Notifier<AuthState> {
       _ => null,
     };
     if (account == null) return;
-    _set(SignedIn(await _service.saveName(account, name)));
+    final verified = switch (state) {
+      SignedIn(:final membershipVerified) ||
+      NeedsName(:final membershipVerified) => membershipVerified,
+      _ => false,
+    };
+    _set(
+      SignedIn(
+        await _service.saveName(account, name),
+        membershipVerified: verified,
+      ),
+    );
   }
 
-  /// "Promeni e-poštu": nazad na prvi korak.
+  /// "Promeni e-poštu" i "Nazad": nazad na korak sa e-poštom.
   void changeEmail() => state = const SignedOut();
 
   /// Posle čekanja kontroler je možda već uklonjen (test, odjava).
   void _set(AuthState s) {
-    if (ref.mounted) state = s;
+    if (!ref.mounted) return;
+    if (s is SignedOut) _membershipRetry?.cancel();
+    state = s;
   }
 
-  AuthState _signedIn(Account a) => a.hasName ? SignedIn(a) : NeedsName(a);
+  AuthState _signedIn(Account a, {bool membershipVerified = true}) => a.hasName
+      ? SignedIn(a, membershipVerified: membershipVerified)
+      : NeedsName(a, membershipVerified: membershipVerified);
 
   bool get _hasAccount => state is SignedIn || state is NeedsName;
 

@@ -122,15 +122,43 @@ from a successful switch with a different request yields a conflict.
   unchanged and source photos available. After acknowledged deletion commits,
   use a durable, retryable cleanup for empty-source photo objects. A cleanup
   retry uses verified old-household paths only.
-- Joining requires connectivity. The proposed client sequence pauses new
-  old-scope edits, drains that scope's existing outbox and verifies the server
-  response before rebinding the cache and downloader. If pending writes or
-  required photo uploads cannot finish, keep the old scope and let the user retry.
-  On success use scoped download cursors and segregate remaining old-scope
-  records. Never replay old-household writes under the new ID. Revalidate
-  membership when older or offline clients reconnect. Resolve server-side
-  compatibility and concurrent old-scope writes before exposing the new join
-  flow to existing app versions.
+- Joining requires connectivity. The confirmation waits for pending or sending
+  household rows and keeps normal background retries active. Terminal failures
+  retain the local error code and allow the join to proceed. After 30 seconds
+  the user can continue waiting or explicitly proceed without the remaining
+  old-household edits. A failed join leaves pending writes eligible for retry.
+  A confirmed membership change quarantines old-household writes in the same
+  local transaction that clears download cursors. Personal writes stay queued.
+  Cold start and sign-in with an existing cache reconcile membership before
+  starting the sync engine. Cached offline data stays available while membership
+  verification is retried.
+- Preserve source `recipe_versions.created_at` so Undo still restores the
+  latest snapshot first after a copy.
+- Photo preparation reserves the copied object names for 24 hours. Retrying
+  the same operation renews the reservation while it is available. Publication
+  and releasing the reservation happen in one transaction. The scheduled
+  photo cleanup worker deletes expired unpublished objects and files from
+  retired source households with bounded batches through the Storage API.
+  A deletion or completion error leaves the batch eligible for another run.
+  The worker uses server-only RPCs and validates object paths. No user session,
+  new join request or log of object names is required.
+
+### Photo cleanup deployment
+
+The Supabase migration registers the `household-photo-cleanup` job every five
+minutes. In each deployed environment, configure that project's own HTTPS
+base URL in Vault as `household_photo_cleanup_url`. Configure the same
+dedicated random value of at least 32 characters in Vault as
+`household_photo_cleanup_token` and in Edge Function secrets as
+`HOUSEHOLD_PHOTO_CLEANUP_TOKEN`. This credential grants only access to the
+cleanup endpoint. A missing or invalid credential leaves queued work intact.
+Use only isolated synthetic fixtures to verify scheduler and Storage behavior.
+Before enabling the deployment in an environment, confirm its schedule invokes
+that environment's endpoint and a queued operation completes.
+
+Photo staging is private, cleanup is bounded and authenticated, and no client
+credential or network destination is added. The related changes require an
+additive migration and Edge deployment. AI and provider access are N/A.
 
 ### Implementation status
 
@@ -143,8 +171,7 @@ handles the code only in authenticated request bodies.
 Matija (Dev 3) accepted the unverified `tavli://` custom scheme for the
 initial release. Another installed app registered for the scheme may receive
 the invite code, which remains usable by a signed-in bearer. Native delivery
-and browser behavior need platform verification. The in-app QR scanner and
-manual entry handle codes directly. macOS requires registering the scheme and
+and browser behavior need platform verification. Profile accepts invite codes directly. The in-app QR scanner remains a separate UI slice. macOS requires registering the scheme and
 routing it into the app. Windows support is planned and will require its own
 protocol registration when the desktop app becomes available.
 

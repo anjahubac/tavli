@@ -16,9 +16,11 @@ import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/domain/account.dart';
+import 'package:tavli/sync/synced_writer.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_photo_store.dart';
+import '../helpers/fake_secret_storage.dart';
 import '../helpers/fake_supabase.dart';
 
 void main() {
@@ -31,6 +33,7 @@ void main() {
       requests = [];
       client = createSupabaseClient(
         const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+        secrets: MapSecretStorage(),
         httpClient: mockHttp((r) {
           requests.add(r);
           return handler(r);
@@ -182,7 +185,7 @@ void main() {
       final outbox = await db.select(db.syncOutbox).get();
       expect(
         outbox.firstWhere((row) => row.entity == 'photo').state,
-        'rejected',
+        OutboxState.quarantined,
       );
       expect(
         outbox.firstWhere((row) => row.entity == 'profile').state,
@@ -191,20 +194,84 @@ void main() {
       expect((await service.cached(account.userId))?.householdId, 'new-home');
     });
 
-    test('potvrda čeka dok postoje neposlate izmene', () async {
-      final account = await service.loadOrFetch(await signIn());
-      await service.saveName(account, 'Ana');
-      final result = await service.confirmHouseholdJoin(
+    group('red za slanje pre prelaska', () {
+      Future<void> queue(Account account, String state) => db
+          .into(db.syncOutbox)
+          .insert(
+            SyncOutboxCompanion.insert(
+              accountId: account.userId,
+              entity: 'recipe',
+              recordId: state,
+              op: 'upsert',
+              createdAt: DateTime.utc(2026),
+              state: Value(state),
+              lastError: Value(state == OutboxState.rejected ? '42501' : null),
+            ),
+          );
+
+      Future<HouseholdJoinResult> confirm(
+        Account account, {
+        bool skip = false,
+      }) => service.confirmHouseholdJoin(
         account: account,
         token: 'test-token',
         recipeChoice: JoinRecipeChoice.leaveRecipes,
         acknowledgeSourceDeletion: true,
         operationId: 'test-operation',
+        proceedWithoutPendingWrites: skip,
       );
-      expect(result.status, 'pending_sync');
-      expect(
-        (await service.cached(account.userId))?.householdId,
-        account.householdId,
+
+      test('čeka upise na redu i one čije slanje već traje', () async {
+        final account = await service.loadOrFetch(await signIn());
+        for (final state in [OutboxState.pending, OutboxState.sending]) {
+          await queue(account, state);
+          expect((await confirm(account)).status, 'pending_sync');
+          expect(backend.accounts.joinCalls, 0);
+          await db.delete(db.syncOutbox).go();
+        }
+      });
+
+      test('odbijen upis čuva razlog i ne blokira prelazak', () async {
+        final account = await service.loadOrFetch(await signIn());
+        backend.accounts.joinTargetHousehold = 'new-home';
+        await queue(account, OutboxState.rejected);
+
+        expect((await confirm(account)).status, 'joined');
+        final row = await db.select(db.syncOutbox).getSingle();
+        expect(row.state, OutboxState.quarantined);
+        expect(row.lastError, '42501');
+      });
+
+      test(
+        'preskakanje čuva izmene do potvrde i ostavlja lične upise na redu',
+        () async {
+          final account = await service.loadOrFetch(await signIn());
+          backend.accounts.joinTargetHousehold = 'new-home';
+          backend.accounts.joinFailureStatus = 'unavailable';
+          await queue(account, OutboxState.pending);
+          await service.saveName(account, 'Ana');
+
+          expect((await confirm(account, skip: true)).status, 'unavailable');
+          expect(
+            (await service.cached(account.userId))?.householdId,
+            account.householdId,
+          );
+          expect(
+            (await db.select(db.syncOutbox).get()).map((row) => row.state),
+            everyElement(OutboxState.pending),
+          );
+
+          backend.accounts.joinFailureStatus = null;
+          expect((await confirm(account, skip: true)).status, 'joined');
+          final entries = await db.select(db.syncOutbox).get();
+          final recipe = entries.firstWhere((row) => row.entity == 'recipe');
+          expect(recipe.state, OutboxState.quarantined);
+          expect(recipe.lastError, 'household_changed');
+          expect(
+            entries.firstWhere((row) => row.entity == 'profile').state,
+            OutboxState.pending,
+          );
+        },
       );
     });
 

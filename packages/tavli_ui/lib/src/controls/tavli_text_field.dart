@@ -5,9 +5,10 @@ import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 import 'tavli_icon_button.dart';
 
-/// Zajednički izgled polja: visina 48, radijus 16, tekst 16.
+/// Zajednički izgled polja: visina 48 (60 za [tall]), radijus 16, tekst 16.
 InputDecoration _decoration(
   BuildContext context, {
+  bool tall = false,
   String? hint,
   String? error,
   bool enabled = true,
@@ -29,8 +30,11 @@ InputDecoration _decoration(
     filled: true,
     fillColor: enabled ? c.surface : Color.lerp(x.bg, x.line, 0.5),
     isDense: true,
-    constraints: const BoxConstraints(minHeight: 48),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    constraints: BoxConstraints(minHeight: tall ? 60 : 48),
+    contentPadding: EdgeInsets.symmetric(
+      horizontal: 16,
+      vertical: tall ? 18 : 12,
+    ),
     prefixIcon: prefix,
     prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 48),
     suffixIcon: suffix,
@@ -79,6 +83,7 @@ class TavliTextField extends StatelessWidget {
     this.isCode = false,
     this.trailing,
     this.textCapitalization = TextCapitalization.none,
+    this.tall = false,
   }) : assert(controller == null || initialValue == null),
        assert(minLines <= maxLines);
 
@@ -121,6 +126,10 @@ class TavliTextField extends StatelessWidget {
   /// npr. [TextCapitalization.words] za ime.
   final TextCapitalization textCapitalization;
 
+  /// Visoko polje (60) za jedino polje na ekranu, kao na prijavi i
+  /// registraciji (kanvas).
+  final bool tall;
+
   @override
   Widget build(BuildContext context) {
     final style = _textStyle(context, enabled: enabled);
@@ -151,6 +160,7 @@ class TavliTextField extends StatelessWidget {
           : style,
       decoration: _decoration(
         context,
+        tall: tall,
         hint: hint,
         error: errorText,
         enabled: enabled,
@@ -198,6 +208,7 @@ class TavliSearchField extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.autofocus = false,
+    this.focusNode,
   });
 
   /// Npr. „Pretraži recepte“; čita ga i čitač ekrana.
@@ -206,6 +217,9 @@ class TavliSearchField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final bool autofocus;
+
+  /// Za prečicu ⌘F, koja premešta fokus u pretragu.
+  final FocusNode? focusNode;
 
   @override
   State<TavliSearchField> createState() => _TavliSearchFieldState();
@@ -254,6 +268,7 @@ class _TavliSearchFieldState extends State<TavliSearchField> {
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
       autofocus: widget.autofocus,
+      focusNode: widget.focusNode,
       textInputAction: TextInputAction.search,
       style: _textStyle(context),
       decoration: _decoration(

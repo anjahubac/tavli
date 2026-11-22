@@ -163,10 +163,10 @@ void main() {
     }
   });
 
-  testTavli('Početna je podrazumevani tab i za sada je prazna', (tester) async {
-    await pumpTavli(tester, location: homeLocation, settle: false);
-    // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
-    await tester.pump(const Duration(seconds: 1));
+  testTavli('Početna je podrazumevani tab; bez plana nudi „Napravi plan“', (
+    tester,
+  ) async {
+    await pumpTavli(tester, location: homeLocation);
 
     expect(currentTab(tester), 'Početna');
     expect(
@@ -177,11 +177,8 @@ void main() {
       findsOneWidget,
     );
     expect(profileAvatar(), findsOneWidget);
-    expect(find.text('Ovde će biti današnji obroci'), findsOneWidget);
-    expect(
-      find.text('Uskoro: šta se danas kuva i šta treba da uradiš.'),
-      findsOneWidget,
-    );
+    expect(find.text('Još nema plana obroka'), findsOneWidget);
+    expect(find.text('Napravi plan'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

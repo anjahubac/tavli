@@ -8,8 +8,10 @@ See [review findings](development/review-2026-11-13.md) and
 
 ## 1. Current stack and repository layout
 
-One Flutter application targets Android, iOS and macOS. Windows is a planned
-fourth target; this baseline has no `windows/` folder. Dart's constraint is
+One Flutter application targets Android, iOS, macOS and Windows. The Windows x64
+runner and local MSIX packaging are documented in
+[Windows development](development/windows.md); public distribution is not yet
+claimed. Dart's constraint is
 `^3.13.7` in `pubspec.yaml`; obtain exact packages from `pubspec.lock`, not this
 prose. Material 3, Riverpod, go_router, drift/SQLite, dio, the pure-Dart Supabase
 client, secure storage and image_picker are already used. No new framework,
@@ -71,8 +73,21 @@ shared providers stay in `lib/providers.dart`; do not invent a parallel DI layer
 ## 3. Account and data lifecycle
 
 An account is mandatory. Auth states (`Starting`, `SignedOut`, `CodeSent`,
-`NeedsName`, `SignedIn`) control route access and the one-time name step. Email
-code is the current method; Apple/Google remain future work. Session tokens live
+`ConfirmSent`, `NeedsName`, `SignedIn`) control route access and the one-time
+name step. Sign-in (`/sign-in`) only sends a code to an existing account
+(`shouldCreateUser: false`, unknown address → `NoAccount`). Sign-up
+(`/sign-up`) creates the account and sends the confirmation email, which has a
+"Potvrdi adresu" button and the same 6-digit code. On hosted projects the
+button lands on the static "Uspešna registracija" page (`site/potvrda/`, Cloudflare
+Pages, URL in `AUTH_CONFIRM_PAGE_URL`), whose "Otvori Tavli" button passes the
+same code on to `tavli://auth-callback?code=…`; locally the button goes straight
+to `tavli://auth-callback`. The app exchanges the code with the PKCE
+verifier kept in secure storage (`PkceStorage`); the page holds no keys and
+sends nothing anywhere. Android, iOS and macOS
+register the `tavli` scheme; Windows signs in with the code until the Windows
+installer registers `tavli://` under `HKEY_CURRENT_USER\Software\Classes\tavli`.
+The name is asked once: with no cached name the app checks the server profile
+before showing the name step. Apple/Google remain future work. Session tokens live
 in secure storage, not drift or logs. Email OTP length, confirmation templates
 and redirect settings must agree for each local/dev/production environment;
 configure them explicitly rather than assuming the email template determines

@@ -10,6 +10,7 @@ import '../../sync/sync_engine.dart';
 import '../account/account_dialogs.dart';
 import '../account/account_header.dart' show syncStatusText;
 import '../account/auth_error_text.dart';
+import '../account/household_join_dialog.dart';
 import 'settings_page.dart';
 
 /// Stanje čuvanja u nalogu kao napomena (FR-018).
@@ -18,6 +19,14 @@ class SyncStatusNotice extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(authControllerProvider) case SignedIn(
+      membershipVerified: false,
+    )) {
+      return const TavliNotice(
+        message: 'Sinhronizacija čeka proveru članstva.',
+        tone: TavliNoticeTone.warning,
+      );
+    }
     final status = ref.watch(syncStatusProvider).value ?? const AllSaved();
     final tone = switch (status) {
       AllSaved() => TavliNoticeTone.success,
@@ -114,6 +123,11 @@ class AccountSection extends ConsumerWidget {
                 if (next == null) return;
                 await ref.read(authControllerProvider.notifier).saveName(next);
               },
+            ),
+            TavliListRow(
+              title: 'Pridruži se domaćinstvu',
+              leading: const Icon(Icons.group_add_outlined),
+              onTap: () => showHouseholdJoinDialog(context),
             ),
             TavliListRow(
               title: 'Odjavi se',

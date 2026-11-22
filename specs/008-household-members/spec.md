@@ -91,6 +91,25 @@ Switch confirmation: “Da li ste sigurni da želite da napustite domaćinstvo?�
 Actions: “Da, ponesi moje recepte”, “Da, bez recepata”, “Ne, ostani ovde”.
 Last-member warning: “Poslednji ste član ovog domaćinstva. Ako odete, domaćinstvo i podaci koji ostanu u njemu biće trajno obrisani.” Show the destination name and explain which recipes will be copied before confirmation.
 
+The code entry in “Profil” uses “Pridruži se domaćinstvu”, “Kod pozivnice”
+and “Proveri pozivnicu”. The destination is “Prelaziš u domaćinstvo „{name}“.”
+and the recipe choice explains “Možeš da poneseš recepte koje si dodao i one bez autora.”
+Recovery uses “Prijavi se ponovo.”, “Članstvo se promenilo. Proveri pozivnicu ponovo.”,
+“Prenos fotografija još nije uspeo. Pokušaj ponovo.”, or
+“Prelazak nije uspeo. Pokušaj ponovo.” with “Pokušaj ponovo”. An offline
+device shows “Nema interneta. Za prelazak je potrebna veza.” and a temporary
+invite error shows “Pozivnica trenutno nije dostupna. Pokušaj ponovo.”
+
+If the offline cache opens before the server confirms membership, Profile shows
+“Sinhronizacija čeka proveru članstva.”
+
+While waiting for old-household edits, show “Sinhronizujemo izmene…”. After
+30 seconds, show “Neke izmene u starom domaćinstvu još nisu sačuvane na serveru.”
+with “Nastavi da čekaš” and “Pređi bez nesinhronizovanih izmena”. Retry in the
+meantime. A terminal rejection retains its diagnostic code locally and does
+not block the switch. The explicit skip applies only to old-household edits,
+and takes effect only after the server confirms the membership change.
+
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 

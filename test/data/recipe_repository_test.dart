@@ -7,6 +7,7 @@ import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli/domain/recipe_version.dart';
+import 'package:tavli/sync/entities.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
 import '../helpers/fake_photo_store.dart';
@@ -63,6 +64,31 @@ void main() {
     expect(list.map((r) => r.title), ['Sarma', 'Pasulj']);
     expect((await repo.get('a'))!.ingredients.single.name, 'kupus');
     expect(await repo.get('nema'), isNull);
+  });
+
+  test('undo kopiranog recepta koristi originalni redosled verzija', () async {
+    const copiedId = 'join-recipe';
+    await repo.create(recipe(copiedId, title: 'Trenutni recept'));
+    // The download can insert the latest snapshot before the earliest snapshot.
+    final versions = entityByName('recipe_version')!;
+    for (final (id, title, createdAt) in [
+      ('join-latest', 'Pre poslednje izmene', '2026-11-20T12:00:02Z'),
+      ('join-earliest', 'Početni recept', '2026-11-20T12:00:01Z'),
+    ]) {
+      await versions.write(db, {
+        'id': id,
+        'household_id': scope.householdId,
+        'recipe_id': copiedId,
+        'recipe_json': recipe(copiedId, title: title).toJson(),
+        'change_kind': 'ai',
+        'created_at': createdAt,
+      });
+    }
+
+    expect(await repo.undoLast(copiedId), isTrue);
+    expect((await repo.get(copiedId))?.title, 'Pre poslednje izmene');
+    expect(await repo.undoLast(copiedId), isTrue);
+    expect((await repo.get(copiedId))?.title, 'Početni recept');
   });
 
   test('izmena čuva prethodnu verziju sa vrstom, zahtevom i modelom', () async {

@@ -18,8 +18,14 @@ if [[ -z "$changed" ]]; then
   exit 0
 fi
 
-# shellcheck disable=SC2086 # putanje u repou nemaju razmake
-tests=$(scripts/with-sdk-env.sh dart run scripts/affected_tests.dart $changed)
+# Windows ograničava dužinu komandne linije. Veliki merge može imati dovoljno
+# fajlova da Dart proces ne može ni da se pokrene, pa tada bezbedno vrti sve.
+if (( ${#changed} > 7000 )); then
+  tests=ALL
+else
+  # shellcheck disable=SC2086 # putanje u repou nemaju razmake
+  tests=$(scripts/with-sdk-env.sh dart run scripts/affected_tests.dart $changed)
+fi
 
 ui=packages/tavli_ui
 

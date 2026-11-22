@@ -15,9 +15,12 @@ select tests.clear_auth();
 
 insert into public.recipes (id, household_id, title, servings, source, ingredients, steps, image_path)
 values ('source-photo-recipe', :'source_home', 'Recept za prenos', 1, 'manual', '[]', '[]', 'origin.jpg');
-insert into public.recipe_versions (id, household_id, recipe_id, recipe_json, change_kind)
+insert into public.recipe_versions (id, household_id, recipe_id, recipe_json, change_kind, created_at)
 values ('source-photo-version', :'source_home', 'source-photo-recipe',
-  '{"id":"source-photo-recipe","imagePath":"recipe_photos/origin.jpg"}', 'ai');
+  '{"id":"source-photo-recipe","imagePath":"recipe_photos/origin.jpg","title":"Pre poslednje izmene"}',
+  'ai', '2026-11-18 11:00:00+00'),
+  ('source-old-version', :'source_home', 'source-photo-recipe',
+  '{"id":"source-photo-recipe","title":"Početni recept"}', 'ai', '2026-11-17 11:00:00+00');
 insert into storage.objects (bucket_id, name, version, metadata)
 values ('recipe-photos', :'source_home' || '/origin.jpg', 'original-v1',
   '{"size":7,"eTag":"test-etag"}');
@@ -66,8 +69,16 @@ select is((select created_by from public.recipes where household_id = :'target_h
   :'source_user'::uuid, 'kopija sa slikom pripada osobi koja je donela recept');
 select is((select image_path from public.recipes where household_id = :'target_home'),
   split_part(:'copied_path', '/', 2), 'recept koristi putanju kopije');
-select is((select recipe_json->>'imagePath' from public.recipe_versions where household_id = :'target_home'),
+select is((select recipe_json->>'imagePath' from public.recipe_versions where household_id = :'target_home' and recipe_json ? 'imagePath'),
   'recipe_photos/' || split_part(:'copied_path', '/', 2), 'istorija koristi istu kopiju');
+select is(
+  array(select created_at from public.recipe_versions where household_id = :'target_home' order by created_at desc),
+  array['2026-11-18 11:00:00+00'::timestamptz, '2026-11-17 11:00:00+00'::timestamptz],
+  'redosled kopiranih verzija ostaje dostupan za poništavanje');
+select is(
+  (select recipe_json->>'title' from public.recipe_versions
+    where household_id = :'target_home' order by created_at desc limit 1),
+  'Pre poslednje izmene', 'Undo bira poslednji snimak');
 select tests.clear_auth();
 
 select * from finish();

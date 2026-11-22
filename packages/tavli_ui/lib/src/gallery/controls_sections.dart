@@ -25,7 +25,7 @@ class TavliControlsGallerySections extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GalleryLabeled(
-                'Glavno · 56',
+                'Glavno · 48',
                 Wrap(
                   spacing: TavliSpacing.small,
                   runSpacing: TavliSpacing.small,
@@ -86,7 +86,7 @@ class TavliControlsGallerySections extends StatelessWidget {
               ),
               gap,
               GalleryLabeled(
-                'U istom redu: iste visine (56)',
+                'U istom redu: iste visine (48)',
                 TavliButtonRow(
                   expand: true,
                   children: [
