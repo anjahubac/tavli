@@ -118,6 +118,14 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
+# Slike u mejlovima prijave (znak Tavli). Javna kanta: mejl klijenti ne
+# šalju prijavu. Deploy je puni sa `supabase seed buckets --linked`.
+[storage.buckets.email-assets]
+public = true
+file_size_limit = "1MiB"
+allowed_mime_types = ["image/png"]
+objects_path = "./email-assets"
+
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
 # public = false
@@ -250,8 +258,8 @@ subject = "Tvoj Tavli kod"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.confirmation]
-subject = "Tvoj Tavli kod"
-content_path = "./supabase/templates/magic_link.html"
+subject = "Potvrdi adresu za Tavli"
+content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -396,6 +404,14 @@ deno_version = 2
 enabled = true
 verify_jwt = true
 
+[functions.household-invite]
+enabled = true
+verify_jwt = false
+
+[functions.household-join]
+enabled = true
+verify_jwt = true
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
@@ -426,3 +442,7 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.household-photo-cleanup]
+enabled = true
+verify_jwt = false

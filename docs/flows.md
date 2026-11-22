@@ -36,7 +36,8 @@ accepted; **missing** = only requirements or open questions exist.
 | From → to | What passes | Contract | Status | Owner |
 | --- | --- | --- | --- | --- |
 | Sign-in → all flows | Account, session, household scope, sync outbox | [account app interfaces](../specs/006-account-login/contracts/app-interfaces.md), [server schema](../specs/006-account-login/contracts/server-schema.md) | agreed, implemented | Dev 3 |
-| Household members → Plan | Minimum planning view of members' allergies, preferences, favorites; invite/leave transitions | C3 checklist in shared contracts; open questions in [008](../specs/008-household-members/spec.md) | missing | Dev 3 |
+| Invite link, QR or code → membership and sync | Preview, confirm switch, optional recipe transfer, source household handling and sync scope change | [008 plan](../specs/008-household-members/plan.md) | draft | Dev 3, Dev 1 for sync |
+| Household members → Plan | Minimum planning view of members' allergies, preferences and favorites | C3 checklist in shared contracts; open questions in [008](../specs/008-household-members/spec.md) | missing | Dev 3 |
 | AI → Recipes, Plan | Validated recipe and plan responses; gateway requests and errors | [AI response contract](../specs/014-ai-response-contracts/contracts/ai-response-contract.md), [AI gateway contract](../specs/015-ai-server-gateway/contracts/ai-gateway-contract.md) | draft | Dev 2 |
 | Recipes → Plan | Recipe identity and snapshot; meal slots and recipe labels | [recipe repository](../specs/003-recipe-screens/contracts/recipe-repository.md); [meal slots](../specs/019-meal-selection-rules/contracts/meal-slots-contract.md), [recipe labels](../specs/019-meal-selection-rules/contracts/recipe-labels-contract.md) | repository agreed; slots and labels draft | Dev 2 |
 | Ingredient identity → Nabavka, Ostava, nutrition | Food identity, aliases, units and conversions | C1 checklist; [kitchen measures proposal](../specs/017-kitchen-unit-conversion/measure-contract-proposal.md); catalog model on branch `docs/catalog-model-contract` (not merged) | draft | Dev 1 |
@@ -46,6 +47,9 @@ accepted; **missing** = only requirements or open questions exist.
 | Početna / Plan → Skuvano | One cooked/undo operation for a plan entry or recipe | cooked meal contract (`specs/021-home-and-cooking/contracts/cooked-meal-contract.md`, added in its own PR) | draft | Dev 4 |
 | Skuvano → Ostava | Known quantities consumed once as a ledger; undo restores once; manual count wins | cooked meal contract | draft | Dev 4 |
 | Skuvano → Nutrition diary | Optional intake for the cook only; other members confirm their own | cooked meal contract; C6 checklist; [023](../specs/023-optional-nutrition/spec.md) | draft | Dev 3 |
+| Orthodox calendar → Početna, Plan | Dietary rule per civil date, including time restrictions, and current or next named fast | calendar API in [035 plan](../specs/035-fasting-holidays/plan.md) | missing | Dev 2 |
+| Fasting knowledge base → AI gateway | Retrieved calendar facts and passages, server-validated `fasting_question` answers with sources | [035](../specs/035-fasting-holidays/spec.md) FR-002/FR-003 and [proposed gateway extension](../specs/015-ai-server-gateway/contracts/ai-gateway-contract.md#proposed-extension-for-spec-035) | draft | Dev 2 |
+| Household “Pratim post” → Plan | Default fasting scope and strictness with an explicit per-plan override | [035](../specs/035-fasting-holidays/spec.md) FR-005/FR-006 | missing | Dev 3 → Dev 2 |
 | Screens ↔ routes | Tab order, Home route, deep links, return routes | [010 navigation table](../specs/010-plan-and-shopping/contracts/app-interfaces.md); [UI standard](development/ui-standard.md); C7 checklist | partly agreed; Home route open in [021](../specs/021-home-and-cooking/spec.md) | Dev 4 |
 
 ## Missing contracts to write next

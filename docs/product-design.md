@@ -31,7 +31,13 @@ shortcut badges. Preserve `/home`, `/plan`, `/shopping`, `/recipes`,
 Home shows today's approved meals (including snacks), the next uncooked meal,
 “Kuvaj” and “Skuvano”, tomorrow's meal names and at most one useful notice.
 Notice priority: today's allergen warning → missing shopping today/tomorrow →
-plan ending. Without a plan offer “Napravi plan”. Optional calorie strip appears
+plan ending. Fasts are never announced in this slot: one “Post i praznici”
+status card (today's fasting state and the next or current fast) is the only
+entry to fasting questions, right of “Danas” on desktop and under today's
+meals on phone. Visibility when “Pratim post” is off is pending in
+[035 Q4](../specs/035-fasting-holidays/spec.md#dependencies-and-open-decisions).
+On desktop the right column starts level with the meal cards and places its
+labels inside the cards. Without a plan offer “Napravi plan”. Optional calorie strip appears
 only when tracking is enabled. Cooked meals use a green circular check and muted
 card. When all of today's meals are cooked, show “Svi današnji obroci su skuvani.”
 Offer “Poništi” after marking a meal and keep it available in the meal detail.
@@ -124,10 +130,19 @@ inputs feed the same validation/preview/persistence path.
 
 ## Household and personal data
 
-Invitation by link, six-character code or QR: seven-day validity and revocation,
-review household name before joining. Joining moves recipes as specified, not
-old plan/shopping/pantry. Owner can remove members/transfer ownership; member
-can leave. Review offline queues and account scope before switching household.
+The owner shares one reusable invitation as a link, a QR payload or a code
+that the recipient can type. The QR scanner in Tavli reads the same code. The
+invite has no scheduled expiry or owner-facing deactivation. Any signed-in bearer
+can see the destination household name and confirm a direct switch. The
+confirmation offers joining with eligible recipes, joining without recipes,
+or staying. Plans, shopping and pantry stay outside the transfer. If the
+owner leaves, ownership passes automatically to a remaining member. A
+household and its remaining shared data are permanently deleted when the last
+member leaves after acknowledging the warning. The successor is the
+longest-serving remaining member. The recipe option copies recipes created by
+the departing user and recipes with no recorded creator. The current owner
+can also remove members. See [spec 008](../specs/008-household-members/spec.md).
+Review offline queues and account scope before switching household.
 
 Household shares recipes, plans, shopping and pantry. Taste preferences,
 favorites, ratings, diary/targets and cycle data are personal. Planning receives

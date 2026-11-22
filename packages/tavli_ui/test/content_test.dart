@@ -429,6 +429,9 @@ void main() {
         tester.widget<Text>(find.text('Nabavka')).style?.color,
         warning.foreground,
       );
+      final target = tester.getSize(find.byType(InkWell));
+      expect(target.width, greaterThanOrEqualTo(48));
+      expect(target.height, greaterThanOrEqualTo(48));
       await tester.tap(find.text('Nabavka'));
       expect(opened, 1);
     });

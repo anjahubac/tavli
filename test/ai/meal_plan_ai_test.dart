@@ -11,8 +11,10 @@ import 'package:tavli/ai/meal_plan_ai.dart';
 import 'package:tavli/ai/meal_plan_prompts.dart' show snackHint;
 import 'package:tavli/ai/model_status_store.dart';
 import 'package:tavli/domain/meal_plan.dart';
+import 'package:tavli/domain/meal_rules.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 
 const model = ModelSpec(
   provider: AIProvider.gemini,
@@ -422,43 +424,64 @@ void main() {
       }
     });
 
+    // Četiri dana, isti recept prvog i četvrtog: dovoljno razmaka za
+    // pravilo ponavljanja (TRELLO-39).
+    final fourDays = PlanRequest(
+      range: DateRange(monday, monday.addDays(3)),
+      mealTypes: const {MealType.lunch},
+    );
+    String titleOn(Object? date, String repeated) =>
+        date == monday.toString() || date == monday.addDays(3).toString()
+        ? repeated
+        : 'Jelo $date';
+
     test('isti nov recept dva puta se piše jednom', () async {
       client.handler = (r) => isOutline(r)
           ? jsonEncode({
               'meals': [
                 for (final s in slotsIn(r))
-                  {...s, 'recipeId': null, 'title': 'Sarma'},
+                  {
+                    ...s,
+                    'recipeId': null,
+                    'title': titleOn(s['date'], 'Sarma'),
+                  },
               ],
             })
           : goodAnswer(r);
 
-      final draft = await ai.propose(weekRequest());
+      final draft = await ai.propose(fourDays);
 
-      expect(draft.newRecipes.keys, ['sarma']);
+      expect(draft.newRecipes.keys, contains('sarma'));
+      expect(draft.newRecipes, hasLength(3));
       expect(draft.isComplete, isTrue);
       expect(client.requests.length, 2);
     });
 
     test('recept iz biblioteke se ne piše ponovo; snimak je iz '
         'biblioteke', () async {
+      const ids = {1: 'r2', 2: 'r3'};
       client.handler = (r) => isOutline(r)
           ? jsonEncode({
               'meals': [
-                for (final s in slotsIn(r))
-                  {...s, 'recipeId': 'r1', 'title': 'x'},
+                for (final (i, s) in slotsIn(r).indexed)
+                  {...s, 'recipeId': ids[i] ?? 'r1', 'title': 'x'},
               ],
             })
           : throw StateError('ne treba recept');
 
       final draft = await ai.propose(
-        weekRequest(),
-        library: [libraryRecipe('r1', 'Pasulj')],
+        fourDays,
+        library: [
+          libraryRecipe('r1', 'Pasulj'),
+          libraryRecipe('r2', 'Gulaš'),
+          libraryRecipe('r3', 'Musaka'),
+        ],
       );
 
       expect(draft.isComplete, isTrue);
       expect(client.requests.length, 1);
       expect(client.requests.single.prompt, contains('"id":"r1"'));
-      final snap = draft.snapshotFor(weekRequest().slots.first)!;
+      final snap = draft.snapshotFor(fourDays.slots.first)!;
       expect(snap.title, 'Pasulj');
       expect(snap.steps, ['Skuvaj.']);
     });
@@ -693,6 +716,297 @@ void main() {
     test('nastavak drugog zahteva se odbija', () {
       final other = PlanDraft(request: weekRequest());
       expect(() => ai.propose(twoWeeks, resume: other), throwsArgumentError);
+    });
+  });
+
+  group('pravila rasporeda (TRELLO-39)', () {
+    // Jedan dan sa ručkom i večerom.
+    final day = PlanRequest(
+      range: DateRange(monday, monday),
+      mealTypes: const {MealType.lunch, MealType.dinner},
+    );
+    final lunch = MealSlot(monday, MealType.lunch);
+    final dinner = MealSlot(monday, MealType.dinner);
+
+    /// Raspored iz [dishes] (obrok → naziv, težina, vrsta), samo za
+    /// tražena mesta.
+    String outlineOf(
+      AIRequest r,
+      Map<String, (String, String, String)> dishes, {
+      Map<String, String> ids = const {},
+    }) => jsonEncode({
+      'meals': [
+        for (final s in slotsIn(r))
+          {
+            ...s,
+            'recipeId': ids[s['meal']],
+            'title': dishes[s['meal']]!.$1,
+            'weight': dishes[s['meal']]!.$2,
+            'dishKind': dishes[s['meal']]!.$3,
+          },
+      ],
+    });
+
+    Recipe labelled(String id, String title, String weight, String kind) =>
+        libraryRecipe(id, title).copyWith(
+          labels: RecipeLabels(weight: weight, dishKind: kind, source: 'user'),
+        );
+
+    test('upit nosi pravila i oznake recepata iz biblioteke', () async {
+      await ai.propose(
+        day,
+        library: [labelled('r1', 'Salata', 'light', 'salad')],
+      );
+      final prompt = client.requests.first.prompt;
+      expect(prompt, contains('lunch is the main meal'));
+      expect(prompt, contains('dinner is "light" or "medium"'));
+      expect(prompt, contains('at most one "hearty" meal per day'));
+      expect(prompt, contains('"weight":"light","dishKind":"salad"'));
+      expect(prompt, contains('"weight": "light" | "medium" | "hearty"'));
+    });
+
+    test('ručak i večera koji su zamenili mesta vraćaju se bez novog '
+        'zahteva', () async {
+      client.handler = (r) => isOutline(r)
+          ? outlineOf(r, {
+              'lunch': ('Salata', 'light', 'salad'),
+              'dinner': ('Sarma', 'hearty', 'cooked'),
+            })
+          : goodAnswer(r);
+
+      final draft = await ai.propose(day);
+
+      expect(draft.proposals[lunch]!.title, 'Sarma');
+      expect(draft.proposals[dinner]!.title, 'Salata');
+      expect(client.requests.where(isOutline), hasLength(1));
+    });
+
+    test('loše mesto dobija jedan novi zahtev, samo za sebe', () async {
+      var outlines = 0;
+      client.handler = (r) {
+        if (!isOutline(r)) return goodAnswer(r);
+        outlines++;
+        return outlineOf(
+          r,
+          outlines == 1
+              ? {
+                  'lunch': ('Gulaš', 'hearty', 'cooked'),
+                  'dinner': ('Sarma', 'hearty', 'cooked'),
+                }
+              : {'dinner': ('Omlet', 'light', 'eggs_breakfast')},
+        );
+      };
+
+      final draft = await ai.propose(day);
+
+      expect(draft.proposals[lunch]!.title, 'Gulaš');
+      expect(draft.proposals[dinner]!.title, 'Omlet');
+      final retry = client.requests.where(isOutline).last;
+      expect(slotsIn(retry).map((s) => s['meal']), ['dinner']);
+      expect(retry.prompt, contains('broke the rules'));
+      expect(retry.prompt, contains('Sarma'));
+      expect(draft.isComplete, isTrue);
+      expect(draft.newRecipes.keys, isNot(contains('sarma')));
+    });
+
+    test('ako ni novi zahtev ne prođe, uzima se odgovarajući sačuvan '
+        'recept', () async {
+      client.handler = (r) => isOutline(r)
+          ? outlineOf(r, {
+              'lunch': ('Gulaš', 'hearty', 'cooked'),
+              'dinner': ('Sarma', 'hearty', 'cooked'),
+            })
+          : goodAnswer(r);
+
+      final draft = await ai.propose(
+        day,
+        library: [
+          labelled('r1', 'Pasulj', 'hearty', 'cooked'),
+          labelled('r2', 'Salata sa tunjevinom', 'light', 'salad'),
+        ],
+      );
+
+      expect(draft.proposals[dinner]!.libraryRecipeId, 'r2');
+      expect(draft.snapshotFor(dinner)!.title, 'Salata sa tunjevinom');
+      expect(client.requests.where(isOutline), hasLength(2));
+      expect(draft.isComplete, isTrue);
+    });
+
+    test('bez odgovarajućeg recepta jelo ostaje, bez greške', () async {
+      client.handler = (r) => isOutline(r)
+          ? outlineOf(r, {
+              'lunch': ('Gulaš', 'hearty', 'cooked'),
+              'dinner': ('Sarma', 'hearty', 'cooked'),
+            })
+          : goodAnswer(r);
+
+      final draft = await ai.propose(day);
+
+      expect(draft.proposals[dinner]!.title, 'Sarma');
+      expect(draft.isComplete, isTrue);
+      expect(client.requests.where(isOutline), hasLength(2));
+    });
+
+    test('pao novi zahtev ne ruši plan; jelo ostaje', () async {
+      var outlines = 0;
+      client.handler = (r) {
+        if (!isOutline(r)) return goodAnswer(r);
+        outlines++;
+        if (outlines > 1) throw const TransientError('mreža');
+        return outlineOf(r, {
+          'lunch': ('Gulaš', 'hearty', 'cooked'),
+          'dinner': ('Sarma', 'hearty', 'cooked'),
+        });
+      };
+
+      final draft = await ai.propose(day);
+
+      expect(draft.proposals[dinner]!.title, 'Sarma');
+      expect(draft.isComplete, isTrue);
+    });
+
+    test('za recept iz biblioteke važe sačuvane oznake, ne AI-jeve', () async {
+      client.handler = (r) => isOutline(r)
+          ? outlineOf(
+              r,
+              {
+                'lunch': ('x', 'light', 'salad'),
+                'dinner': ('Omlet', 'light', 'eggs_breakfast'),
+              },
+              ids: {'lunch': 'r1'},
+            )
+          : goodAnswer(r);
+
+      final draft = await ai.propose(
+        day,
+        library: [labelled('r1', 'Pasulj', 'hearty', 'cooked')],
+      );
+
+      // AI je rekao "light", ali Pasulj je sačuvan kao jak: ručak je u redu.
+      expect(draft.proposals[lunch]!.weight, DishWeight.hearty);
+      expect(draft.proposals[lunch]!.libraryRecipeId, 'r1');
+      expect(client.requests.where(isOutline), hasLength(1));
+    });
+
+    test('jela koja ostaju u planu ulaze u proveru i u upit', () async {
+      // Ručak ostaje (jak); predlaže se samo doručak istog dana.
+      final breakfast = MealSlot(monday, MealType.breakfast);
+      final request = PlanRequest(
+        range: DateRange(monday, monday),
+        mealTypes: const {MealType.breakfast, MealType.lunch},
+        only: {breakfast},
+        kept: {
+          lunch: const MealFacts(
+            recipeKey: 'r9',
+            title: 'Pasulj',
+            weight: DishWeight.hearty,
+          ),
+        },
+      );
+      var outlines = 0;
+      client.handler = (r) {
+        if (!isOutline(r)) return goodAnswer(r);
+        outlines++;
+        return outlineOf(r, {
+          'breakfast': outlines == 1
+              ? ('Prebranac', 'hearty', 'cooked')
+              : ('Kajgana', 'light', 'eggs_breakfast'),
+        });
+      };
+
+      final draft = await ai.propose(request);
+
+      final first = client.requests.where(isOutline).first;
+      expect(first.prompt, contains('These meals stay in the plan'));
+      expect(first.prompt, contains('Pasulj'));
+      expect(slotsIn(first).map((s) => s['meal']), ['breakfast']);
+      expect(draft.proposals[breakfast]!.title, 'Kajgana');
+      expect(draft.proposals.containsKey(lunch), isFalse);
+    });
+
+    test('zadržan jak doručak: popravlja se nov jak ručak', () async {
+      final breakfast = MealSlot(monday, MealType.breakfast);
+      final request = PlanRequest(
+        range: DateRange(monday, monday),
+        mealTypes: const {MealType.breakfast, MealType.lunch},
+        only: {lunch},
+        kept: {
+          breakfast: const MealFacts(
+            recipeKey: 'r9',
+            title: 'Prebranac',
+            weight: DishWeight.hearty,
+          ),
+        },
+      );
+      var outlines = 0;
+      client.handler = (r) {
+        if (!isOutline(r)) return goodAnswer(r);
+        outlines++;
+        return outlineOf(r, {
+          'lunch': outlines == 1
+              ? ('Sarma', 'hearty', 'cooked')
+              : ('Piletina sa povrćem', 'medium', 'cooked'),
+        });
+      };
+
+      final draft = await ai.propose(request);
+
+      expect(outlines, 2);
+      expect(draft.proposals[lunch]!.title, 'Piletina sa povrćem');
+      expect(draft.proposals.containsKey(breakfast), isFalse);
+    });
+
+    test('Zameni jelo: isti recept kao zadržan sutrašnji se menja', () async {
+      final tuesday = monday.addDays(1);
+      final tuesdayLunch = MealSlot(tuesday, MealType.lunch);
+      final request = PlanRequest(
+        range: DateRange(monday, tuesday),
+        mealTypes: const {MealType.lunch},
+        only: {lunch},
+        kept: {
+          tuesdayLunch: MealFacts(
+            recipeKey: draftRecipeKey('Sarma'),
+            title: 'Sarma',
+            weight: DishWeight.hearty,
+          ),
+        },
+      );
+      var outlines = 0;
+      client.handler = (r) {
+        if (!isOutline(r)) return goodAnswer(r);
+        outlines++;
+        return outlineOf(r, {
+          'lunch': outlines == 1
+              ? ('Sarma', 'hearty', 'cooked')
+              : ('Pasulj', 'hearty', 'cooked'),
+        });
+      };
+
+      final draft = await ai.propose(request);
+
+      expect(outlines, 2);
+      expect(draft.proposals[lunch]!.title, 'Pasulj');
+      expect(draft.proposals.containsKey(tuesdayLunch), isFalse);
+    });
+
+    test('izostavljena ili nepoznata oznaka se ne odbija', () {
+      final r = parseOutline(
+        {
+          'meals': [
+            {
+              'date': monday.toString(),
+              'meal': 'lunch',
+              'recipeId': null,
+              'title': 'Sarma',
+              'weight': 'ogromno',
+            },
+          ],
+        },
+        slots: [lunch],
+        library: const {},
+      );
+      expect(r[lunch]!.weight, isNull);
+      expect(r[lunch]!.dishKind, isNull);
     });
   });
 }

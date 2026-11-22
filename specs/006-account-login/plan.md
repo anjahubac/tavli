@@ -45,6 +45,7 @@ deletion goes through an Edge Function with the service role kept server-side.
 
 - `supabase` — Auth (email OTP, token refresh), PostgREST, Storage and Functions client for the decided Supabase backend; the pure Dart package lets the session live only in Keychain/Keystore and takes an injectable HTTP client for tests (research R1).
 - `http` — `http.Client` type passed to `SupabaseClient` (already transitive) and `MockClient` for adapter tests.
+- `app_links` — delivers the `tavli://auth-callback` link from the sign-up confirmation email (cold start and while running) on Android, iOS and macOS; the pure Dart `supabase` package has no deep-link handling of its own.
 
 ## Constitution Check
 

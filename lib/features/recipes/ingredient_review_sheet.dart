@@ -101,16 +101,12 @@ class _IngredientReviewSheetState extends ConsumerState<IngredientReviewSheet> {
 
   Ingredient _scaled(Ingredient i) => i.quantity == null
       ? i
-      : Ingredient(
-          name: i.name,
+      : i.copyWith(
           quantity: scaleQuantity(
             i.quantity,
             baseServings: widget.snapshot.baseServings,
             servings: _servings,
           ),
-          unit: i.unit,
-          category: i.category,
-          note: i.note,
         );
 
   Future<void> _add({required bool repeat}) async {

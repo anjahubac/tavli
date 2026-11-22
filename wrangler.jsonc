@@ -1,0 +1,10 @@
+// Cloudflare Worker "welcome" (welcome.tavli.workers.dev): only static files
+// from site/, no Worker code. Cloudflare Workers Builds deploys it on every
+// push to dev (`npx wrangler deploy`); no keys live in the repo.
+{
+  "name": "welcome",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./site"
+  }
+}

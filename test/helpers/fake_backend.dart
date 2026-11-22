@@ -87,6 +87,7 @@ class FakeServer {
     'pantry_items': 'pantry_item',
     'meal_plans': 'meal_plan',
     'meal_plan_entries': 'meal_plan_entry',
+    'cooked_events': 'cooked_event',
     'shopping_sources': 'shopping_source',
     'shopping_contributions': 'shopping_contribution',
     'supply_allocations': 'supply_allocation',
@@ -110,6 +111,7 @@ class FakeServer {
     'recipe_versions': [('recipe', 'recipe_id')],
     'shopping_items': [('shopping_list', 'list_id')],
     'meal_plan_entries': [('meal_plan', 'plan_id')],
+    'cooked_events': [('meal_plan_entry', 'plan_entry_id')],
     'ratings': [('recipe', 'recipe_id')],
     'shopping_sources': [
       ('shopping_list', 'list_id'),
@@ -222,6 +224,7 @@ class FakeServer {
         setNull('shopping_lists', 'meal_plan_id');
       case 'meal_plan_entries':
         cascade('shopping_sources', 'plan_entry_id');
+        cascade('cooked_events', 'plan_entry_id');
       case 'shopping_items':
         setNull('shopping_contributions', 'shopping_item_id');
         setNull('pantry_items', 'source_shopping_item_id');
@@ -333,6 +336,27 @@ class FakeAuth implements AuthGateway {
   /// Koliko puta je sesija obnovljena.
   int refreshes = 0;
 
+  /// Mejlovi za potvrdu adrese (registracija i "Pošalji mejl ponovo").
+  final sentConfirmations = <String>[];
+
+  /// Adrese registrovane, a još nepotvrđene (kodom ili linkom).
+  final unconfirmed = <String>{};
+
+  /// Server ne traži potvrdu adrese (kao cloud pre uključivanja "Confirm
+  /// email"): registracija odmah prijavljuje.
+  bool autoconfirm = false;
+
+  /// Linkovi za potvrdu: kod iz linka → e-pošta (iskorišćen link se briše).
+  final _links = <String, String>{};
+  var _linkN = 0;
+
+  /// Link iz mejla za potvrdu nove adrese (kao da ga je GoTrue poslao).
+  Uri linkFor(String email) {
+    final code = 'link-${++_linkN}';
+    _links[code] = email;
+    return Uri.parse('$authCallbackUrl?code=$code');
+  }
+
   AuthSession sessionFor(String email) {
     final uid = server.userFor(email);
     return AuthSession(
@@ -356,13 +380,43 @@ class FakeAuth implements AuthGateway {
   @override
   Future<void> sendCode(String email) async {
     _check();
+    if (!server.users.containsKey(email)) throw const NoAccount();
     sentCodes.add(email);
+  }
+
+  @override
+  Future<AuthSession?> signUp(String email) async {
+    _check();
+    if (server.users.containsKey(email) && !unconfirmed.contains(email)) {
+      throw const AlreadyRegistered();
+    }
+    server.userFor(email);
+    if (autoconfirm) return current = sessionFor(email);
+    unconfirmed.add(email);
+    sentConfirmations.add(email);
+    return null;
+  }
+
+  @override
+  Future<void> resendConfirmation(String email) async {
+    _check();
+    sentConfirmations.add(email);
   }
 
   @override
   Future<AuthSession> verifyCode(String email, String code) async {
     _check();
     if (code != FakeServer.code) throw const WrongCode();
+    unconfirmed.remove(email);
+    return current = sessionFor(email);
+  }
+
+  @override
+  Future<AuthSession> exchangeLink(Uri link) async {
+    _check();
+    final email = _links.remove(link.queryParameters['code']);
+    if (email == null) throw const LinkExpired();
+    unconfirmed.remove(email);
     return current = sessionFor(email);
   }
 
@@ -414,9 +468,14 @@ class FakeAccountApi implements AccountApi {
 
   /// Brisanje naloga baca ovu grešku.
   DeleteFailure? deleteFails;
+  Future<void> Function()? beforeFetch;
+  String? joinTargetHousehold;
+  String? joinFailureStatus;
+  int joinCalls = 0;
 
   @override
   Future<RemoteAccount> fetch() async {
+    await beforeFetch?.call();
     if (server.offline) throw const Offline();
     final uid = auth.current!.userId;
     final p = server.profiles[uid]!;
@@ -428,6 +487,56 @@ class FakeAccountApi implements AccountApi {
       householdName: 'Moje domaćinstvo',
       role: 'owner',
     );
+  }
+
+  @override
+  Future<String> householdInviteToken() async => throw const Unavailable();
+
+  @override
+  Future<HouseholdPreview> previewHouseholdJoin(String token) async {
+    if (joinTargetHousehold == null) throw const Unavailable();
+    return HouseholdPreview(
+      householdName: 'Zajedničko domaćinstvo',
+      sourceHouseholdId: server.households[auth.current!.userId]!,
+      requiresSourceDeletionAcknowledgement: true,
+    );
+  }
+
+  @override
+  Future<HouseholdJoinResult> confirmHouseholdJoin({
+    required String token,
+    required String expectedSourceHouseholdId,
+    required JoinRecipeChoice recipeChoice,
+    required bool acknowledgeSourceDeletion,
+    required String operationId,
+  }) async {
+    joinCalls++;
+    if (joinFailureStatus case final status?) {
+      return HouseholdJoinResult(status: status);
+    }
+    if (joinTargetHousehold case final destination?) {
+      final uid = auth.current!.userId;
+      if (server.households[uid] != expectedSourceHouseholdId) {
+        return const HouseholdJoinResult(status: 'stale_source');
+      }
+      server.households[uid] = destination;
+      return HouseholdJoinResult(status: 'joined', account: await fetch());
+    }
+    throw const Unavailable();
+  }
+
+  /// Uklanjanje kao na serveru: samo član istog domaćinstva, ne sebe.
+  @override
+  Future<String> removeHouseholdMember(String memberId) async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if (memberId == uid) return 'invalid_request';
+    final home = server.households[uid];
+    if (home == null || server.households[memberId] != home) {
+      return 'not_allowed';
+    }
+    server.households[memberId] = 'home-$memberId';
+    return 'removed';
   }
 
   @override
@@ -550,14 +659,15 @@ class FakePhotoRemote implements PhotoRemote {
 
 /// Sve lažne granice nad jednim serverom.
 class FakeBackend {
-  FakeBackend() {
+  FakeBackend({FakeServer? sharedServer})
+    : server = sharedServer ?? FakeServer() {
     auth = FakeAuth(server);
     accounts = FakeAccountApi(server, auth);
     sync = FakeSyncRemote(server, auth);
     photos = FakePhotoRemote(server);
   }
 
-  final server = FakeServer();
+  final FakeServer server;
   late final FakeAuth auth;
   late final FakeAccountApi accounts;
   late final FakeSyncRemote sync;

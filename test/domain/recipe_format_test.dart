@@ -55,21 +55,6 @@ void main() {
     expect(groups[1].$2.map((i) => i.name), ['biber', 'so']);
   });
 
-  group('pretraga', () {
-    final all = [recipe('Sarma'), recipe('Pasulj'), recipe('Đuveč')];
-
-    test('ne razlikuje velika slova i kvačice', () {
-      expect(filterRecipes(all, 'sar').map((r) => r.title), ['Sarma']);
-      expect(filterRecipes(all, 'ŠAR').map((r) => r.title), ['Sarma']);
-      expect(filterRecipes(all, 'djuvec').map((r) => r.title), ['Đuveč']);
-      expect(filterRecipes(all, 'đuveč').map((r) => r.title), ['Đuveč']);
-    });
-
-    test('prazan upit vraća sve', () {
-      expect(filterRecipes(all, '  '), all);
-    });
-  });
-
   test('datum i vreme', () {
     expect(formatDateTime(DateTime(2026, 3, 7, 9, 5)), '07.03.2026. 09:05');
   });

@@ -139,7 +139,7 @@ class TavliDialog<T> extends StatelessWidget {
               ],
               if (content != null) ...[
                 const SizedBox(height: TavliSpacing.medium),
-                content,
+                Flexible(child: content),
               ],
               const SizedBox(height: TavliSpacing.large),
               Align(

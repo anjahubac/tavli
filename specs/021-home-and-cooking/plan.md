@@ -1,7 +1,7 @@
 # Implementation plan: Home, adaptive navigation and cooking
 
-**Status**: five-tab shell and local UI library are in dev. The cooked-operation
-producer is in progress. The adoption and user journey below await acceptance.
+**Status**: five-tab shell, local UI library, cooked/undo operation, Home meals
+and cooking mode are merged into dev. The notice slice is in implementation.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 4 / Dev 2 and Dev 1
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
@@ -14,7 +14,7 @@ producer is in progress. The adoption and user journey below await acceptance.
 - `packages/tavli_ui/` (shared theme, components and gallery)
 - `lib/features/planning/`
 - `lib/features/recipes/`
-- `lib/features/home/` (existing placeholder)
+- `lib/features/home/` (approved meals and prioritized notices)
 
 Items marked new/proposed/external do not exist at baseline. Verify exact existing
 files and consumers before editing; new files remain in current feature/domain/
@@ -53,6 +53,22 @@ If no schema change is needed, explicitly record that decision in the slice PR.
    separate personal-intake integration with Dev 3. Verify known and unknown
    stock, an intervening manual count, offline replay and visible undo.
    Complete the consumer checks in 020/022 as their dependencies land.
+3. **Home notice, first slice** (FR-009, T018/T019, Trello #84). Anja (Dev 4)
+   coordinates `lib/features/home/home_{screen,today,notice}.dart`, Home tests
+   and the shared notice link's 48×48 target in
+   `packages/tavli_ui/lib/src/content/tavli_notice.dart`.
+   Dev 1 coordinates and reviews the read-only query in
+   `lib/data/shopping_items.dart`. It reads the existing household-scoped
+   contribution-to-open-item links, which the shopping reconciler assigns
+   only to uncovered demand. No change to allocation or reconciliation.
+   Verify priority, purchase/undo, and exclusion of later meals on synthetic
+   offline fixtures. Check phone, wide, 2× text and reduced motion. Allergen
+   warnings follow the reviewed member and catalog producers
+   ([PR #96](https://github.com/anjahubac/tavli/pull/96),
+   [Trello #63](https://trello.com/c/LvMLi58T)).
+
+The notice uses existing scoped cache data. No schema, credentials, files,
+abuse surface, external service or deployment changes.
 
 The navigation and UI consumer slices use existing accounts, records and
 repository interfaces. Privacy remains account or household scoped, with

@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/recipe_labels.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -12,6 +16,8 @@ void main() {
     String quantity = '',
     String unit = '',
   }) async {
+    await tester.ensureVisible(find.text('Dodaj sastojak'));
+    await tester.pumpAndSettle();
     await tapButton(tester, 'Dodaj sastojak');
     final dialog = find.byType(AlertDialog);
     Finder dialogField(String label) => find.descendant(
@@ -186,5 +192,170 @@ void main() {
     expect(await app.titles(), isEmpty);
     expect(find.text('Recept je obrisan.'), findsOneWidget);
     expect(find.text('Još nema recepata'), findsOneWidget);
+  });
+  testTavli('izmena količine čuva vezu sastojka', (tester) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [
+        Recipe(
+          id: 'a',
+          title: 'Kajgana',
+          servings: 2,
+          ingredients: const [
+            Ingredient(
+              name: 'jaja',
+              quantity: 3,
+              unit: 'kom',
+              category: 'mlečni proizvodi i jaja',
+              link: IngredientLink(
+                foodId: '00000000-0000-4000-8000-000000000001',
+                matchedKey: 'jaja',
+                linkSource: LinkSource.confirmed,
+              ),
+            ),
+          ],
+          source: RecipeSource.manual,
+          createdAt: DateTime.utc(2026),
+        ),
+      ],
+    );
+
+    await tester.tap(iconButton('Izmeni'));
+    await tester.pumpAndSettle();
+    // Oznake u formi guraju sastojak ispod ekrana.
+    await tester.ensureVisible(find.text('3 kom jaja'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3 kom jaja'));
+    await tester.pumpAndSettle();
+    final dialog = find.byType(AlertDialog);
+    await tester.enterText(
+      find.descendant(
+        of: dialog,
+        matching: find.widgetWithText(TextField, 'Količina'),
+      ),
+      '4',
+    );
+    await tester.pump();
+    await tester.tap(find.descendant(of: dialog, matching: button('Sačuvaj')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sačuvaj'));
+    await tester.pumpAndSettle();
+
+    final row = await app.db.select(app.db.recipes).getSingle();
+    final stored = (jsonDecode(row.ingredientsJson) as List).single as Map;
+    expect(stored['quantity'], 4);
+    expect(stored['foodId'], '00000000-0000-4000-8000-000000000001');
+    expect(stored['matchedKey'], 'jaja');
+    expect(stored['linkSource'], 'confirmed');
+  });
+
+  group('oznake u ručnoj formi (TRELLO-102)', () {
+    Future<void> tapChip(WidgetTester tester, String label) async {
+      await tester.ensureVisible(find.text(label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+    }
+
+    testTavli('nov recept čuva izabrane oznake kao korisnikove', (
+      tester,
+    ) async {
+      final app = await pumpTavli(tester, location: '/recipes/new/manual');
+      await tester.enterText(field('Naziv'), 'Grčka');
+      await tapChip(tester, 'Večera');
+      await tapChip(tester, 'Lagan');
+      await tapChip(tester, 'Salata');
+      await addIngredient(tester, name: 'paradajz');
+      await tapButton(tester, 'Sačuvaj');
+
+      final row = await app.db.select(app.db.recipes).getSingle();
+      expect(row.mealTypesJson, '["dinner"]');
+      expect(row.weight, 'light');
+      expect(row.dishKind, 'salad');
+      expect(row.labelsSource, 'user');
+    });
+
+    for (final size in [
+      const Size(320, 640),
+      const Size(400, 800),
+      const Size(1200, 800),
+    ]) {
+      testTavli('${size.width} px, tekst 2×, tamna tema, bez animacija: '
+          'oznake bez preliva', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        await pumpTavli(
+          tester,
+          size: size,
+          location: '/recipes/new/manual',
+          settings: {'theme_mode': 'dark'},
+        );
+        await tapChip(tester, 'Doručak');
+        await tapChip(tester, 'Kuvano jelo');
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testTavli('bez izbora recept ostaje bez oznaka', (tester) async {
+      final app = await pumpTavli(tester, location: '/recipes/new/manual');
+      await tester.enterText(field('Naziv'), 'Kajgana');
+      await addIngredient(tester, name: 'jaja');
+      await tapButton(tester, 'Sačuvaj');
+
+      final row = await app.db.select(app.db.recipes).getSingle();
+      expect(row.weight, isNull);
+      expect(row.labelsSource, isNull);
+    });
+
+    testTavli('izmena: promenjene oznake se čuvaju, nedirnute AI ostaju AI', (
+      tester,
+    ) async {
+      final aiLabelled = sampleRecipe('a', 'Sarma').copyWith(
+        labels: const RecipeLabels(
+          meals: ['lunch'],
+          weight: 'hearty',
+          dishKind: 'cooked',
+          source: 'ai',
+        ),
+      );
+      final app = await pumpTavli(
+        tester,
+        location: '/recipes/a',
+        recipes: [aiLabelled, sampleRecipe('b', 'Pasulj')],
+      );
+
+      await tester.tap(iconButton('Izmeni'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('Naziv'), 'Posna sarma');
+      await tapButton(tester, 'Sačuvaj');
+      var row = await (app.db.select(
+        app.db.recipes,
+      )..where((r) => r.id.equals('a'))).getSingle();
+      expect(row.labelsSource, 'ai');
+      expect(row.weight, 'hearty');
+
+      final versions = app.db.select(app.db.recipeVersions)
+        ..where((v) => v.recipeId.equals('a'));
+      expect(await versions.get(), hasLength(1));
+
+      await tester.tap(iconButton('Izmeni'));
+      await tester.pumpAndSettle();
+      await tapChip(tester, 'Srednji');
+      await tapButton(tester, 'Sačuvaj');
+      row = await (app.db.select(
+        app.db.recipes,
+      )..where((r) => r.id.equals('a'))).getSingle();
+      expect(row.labelsSource, 'user');
+      expect(row.weight, 'medium');
+      expect(row.dishKind, 'cooked');
+      // Samo oznake: nema nove verzije recepta.
+      expect(await versions.get(), hasLength(1));
+    });
   });
 }

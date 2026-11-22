@@ -1,0 +1,10 @@
+# Cloudflare Pages: zaglavlja za ceo sajt.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Permissions-Policy: interest-cohort=()
+
+/potvrda/*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/session_store.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/data/database.dart';
@@ -112,8 +111,10 @@ void main() {
 
     // Drugi nalog na istom uređaju.
     app.backend.server.offline = false;
+    // Bojan već ima nalog (bez imena), napravljen na drugom uređaju.
+    app.backend.server.userFor('bojan@mail.com');
     await signInWithCode(tester, 'bojan@mail.com');
-    await tester.enterText(find.widgetWithText(TextField, 'Ime'), 'Bojan');
+    await tester.enterText(textField('Ime'), 'Bojan');
     await tester.pump();
     await tester.tap(button('Nastavi'));
     await tester.pumpAndSettle();

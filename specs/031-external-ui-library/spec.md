@@ -32,9 +32,11 @@ quantity, snapshot, offline and account invariants.
 - **D5 Parallel work**: phases 1–2 run in parallel with meal plan work.
 - **D6 Canvas over the earlier standard** (Anja): where the two differed, the
   canvas wins. Button labels are 15/700 and the checkbox radius is 6.
-  Exception (Anja, 2026-11-20): a secondary button is 56 high, the same as a
-  primary button, because uneven buttons side by side look wrong; buttons in
-  one row always share one height.
+  Button height (Anja, 2026-11-20, updated 2026-11-21): primary and secondary
+  buttons are both 48 high with radius 16. Uneven buttons side by side look
+  wrong, and a primary button does not need extra height because its fill
+  already draws attention. Buttons in one row always share one height. The
+  floating action button keeps its own size.
 
 ## Delivery order (Trello "UI biblioteka 1–14")
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +9,9 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../domain/ids.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
+import '../../domain/recipe_labels.dart';
 import '../../domain/recipe_version.dart';
+import 'recipe_labels_sheet.dart';
 import 'recipe_providers.dart';
 
 /// Ručni unos novog recepta ([id] == null) ili izmena postojećeg.
@@ -27,6 +30,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   final _prep = TextEditingController();
   final _steps = TextEditingController();
   List<Ingredient> _ingredients = [];
+  LabelChoice _labels = labelChoiceOf(RecipeLabels.none);
   Recipe? _original;
   bool _loading = false;
   bool _dirty = false;
@@ -56,6 +60,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _prep.text = recipe.prepMinutes?.toString() ?? '';
         _steps.text = recipe.steps.join('\n');
         _ingredients = [...recipe.ingredients];
+        _labels = labelChoiceOf(recipe.labels);
       }
     });
   }
@@ -124,6 +129,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         steps: steps,
         source: RecipeSource.manual,
         createdAt: now,
+        labels: isEmptyChoice(_labels)
+            ? RecipeLabels.none
+            : labelsByUser(_labels),
       );
       await repo.create(recipe);
     } else {
@@ -135,7 +143,16 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         ingredients: _ingredients,
         steps: steps,
       );
-      await repo.update(recipe, kind: ChangeKind.manual);
+      // Nova verzija samo kad se sadržaj promenio; izmena samo oznaka ne
+      // pravi praznu verziju koju bi „Poništi“ prvo potrošio.
+      if (jsonEncode(recipe.toAiJson()) != jsonEncode(original.toAiJson())) {
+        await repo.update(recipe, kind: ChangeKind.manual);
+      }
+      // Oznake nisu deo verzije recepta; menjaju se samo ako ih je korisnik
+      // promenio, da AI oznake koje nije dirao ostanu AI.
+      if (!sameChoice(_labels, labelChoiceOf(original.labels))) {
+        await repo.setLabels(recipe.id, labelsByUser(_labels));
+      }
     }
     if (!mounted) return;
     setState(() => _dirty = false);
@@ -220,6 +237,15 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                               onChanged: (_) => _changed(),
                               keyboardType: TextInputType.number,
                             ),
+                          ),
+                          const SizedBox(height: TavliSpacing.medium),
+                          Text('Oznake', style: theme.textTheme.titleMedium),
+                          RecipeLabelsPicker(
+                            value: _labels,
+                            onChanged: (update) => setState(() {
+                              _labels = update(_labels);
+                              _dirty = true;
+                            }),
                           ),
                           const SizedBox(height: 20),
                           Text('Sastojci', style: theme.textTheme.titleMedium),
@@ -357,6 +383,9 @@ class _IngredientDialogState extends State<_IngredientDialog> {
         'unit': _unit.text,
         'category': _category,
         'note': _note.text,
+        // Veza sa katalogom ostaje; ako se naziv promeni, prestaje da važi
+        // sama (matchedKey se više ne poklapa, ugovor #30).
+        ...?widget.initial?.link?.toJson(),
       }),
     );
   }

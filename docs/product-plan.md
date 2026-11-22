@@ -16,7 +16,7 @@ start in phase 2 without waiting for catalog contents. Exact assignments and
 | 1 — foundations | Close open auth/shopping defects; agree food, AI and member-input contracts; strict AI validation; image-through-gateway spike then server credentials; dates without zone; kitchen measures; split shopping repository; meal tags/snacks/list-based slots/rules; five-tab Home shell and UI standard | Producer contracts merged; local checks; current auth/deep links and quantity ledger preserved |
 | 2 — catalog + household | Foods/aliases/conversions/overrides; 300–400 reviewed foods; attributed nutrition; one matcher; existing recipe mapping; unresolved UI; catalog-ready AI ingredients; preferences; invitations/roles; Home, cooking and add-to-plan | Catalog identity/download/mapping tests; two-household isolation; an accepted vertical slice per domain |
 | 3 — catalog consumers | Shopping by food/unit; approximate/unknown amounts; pantry coverage; calories per portion; no-step meals; allergen-safe plans and favorites; member allergies/favorites; realtime; pantry CRUD, explicit transfer, consume/undo | No duplicated supply or intake; restriction validation; offline replay, reversal and account-switch tests |
-| 4 — extensions | Store-price import and basket estimate; receipt QR spike; cookbook RAG; private intake/targets and ratings; voice draft agent; Windows and Linux desktop support; calorie strip; real website download links | Separate spikes and implementation slices; privacy/source terms; actual platform smoke evidence |
+| 4 — extensions | Store-price import and basket estimate; receipt QR spike; cookbook RAG; Orthodox fasts and holidays (computed calendar, RAG answers, fasting-aware plans); private intake/targets and ratings; voice draft agent; Windows and Linux desktop support; calorie strip; real website download links | Separate spikes and implementation slices; privacy/source terms; actual platform smoke evidence |
 | 5 — cycle | Explicit consent, secure device-only dates, optional generic dietary hints and local indicator | No raw cycle data in sync/export/AI; stale-data/disable/delete tests |
 | 6 — imported plans | Image/text first, PDF/alternatives/repeat later; catalog mapping; explicit diary/target/allergen integration; capture/crop | Review before save; original text/exact grams; locked meals; explicit upload retention |
 
@@ -105,7 +105,7 @@ operations. See [full spec index](../specs/README.md) and
 | DATES | Dev 1 | CivilDate, schema coordination | Old-client serialization and upgrade path |
 | UNITS | Dev 1 | Existing shopping demand | Defaults, approximation and override precedence |
 | CATALOG | Dev 1 | Date/unit contracts | UUID/slug, alias scope, seed review, nutrition provenance/licenses |
-| HOUSEHOLD (008) | Dev 3 | Auth/member contract | Inviting rights, transfer/leave semantics, purpose-limited personal aggregates |
+| HOUSEHOLD (008) | Dev 3 | Auth/member contract | Direct link/QR join, recipe transfer, owner succession, acknowledged empty-household deletion, purpose-limited personal aggregates |
 | REALTIME (009) | Dev 3 | Household transitions | Authorized invalidation/reconnect/conflicts |
 | MEAL-RULES | Dev 2 | AI schema/member aggregate | Snack identity, suitability/intensity/kind enums, review of selected-member favorites contract |
 | SHOPPING-FOODS | Dev 1 | Catalog/supply contract | Dictionary versions, legacy snapshots and conversions |
@@ -118,6 +118,7 @@ operations. See [full spec index](../specs/README.md) and
 | VOICE | Dev 4; Dev 2 gateway | Gateway/catalog | Recording retention, STT, command schema, Serbian speech on each target |
 | WINDOWS | Dev 4 | Plugin audit | Secure store, deep links/auth, file picker, wake lock, CI/hardware |
 | LINUX | Dev 3 (Matija), platform review Dev 4 (Anja) | Flutter GTK scaffold and plugin audit | Ubuntu 24.04 x86_64 smoke, libsecret/keyring, Linux build CI and required-check settings |
+| FAST (035) | Dev 2; Dev 3 setting; Dev 4 Home card and question screen; Dev 1 catalog label | Gateway (015), recipe labels (019), shared vector table (026) | SPC rule review, vector table order with 026, per household or member, daily limit |
 | CYCLE | Dev 3, Dev 2 hints, Dev 4 indicator | Preferences/hint boundary | Consent, stale rules, six source-proposal questions |
 | PLAN-IMPORT | Dev 2; Dev 1/3/4 consumers | Slots/catalog/nutrition | Ten source-proposal questions, crop/retention, exact quantities/alternatives |
 | UI-PACKAGE | Dev 4; started 2026-11-19 | Design canvas and UI standard | Local `packages/tavli_ui` in this repository; icon set source |

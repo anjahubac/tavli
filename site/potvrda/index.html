@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light">
+<title>Tavli · potvrda adrese</title>
+<link rel="icon" href="tavli-znak.png">
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<div class="strana">
+  <div class="panel">
+  <header class="zaglavlje"><img class="znak" src="tavli-znak.png" alt="Tavli" width="64" height="64"></header>
+  <main>
+
+    <!-- Adresa potvrđena: Supabase je preusmerio ovde sa ?code=… -->
+    <div class="uvod" data-stanje="uspeh">
+      <h1>Uspešna registracija</h1>
+      <p>Tvoja adresa je potvrđena. Dobrodošao/la za sto!</p>
+    </div>
+    <div class="obavestenje" data-stanje="uspeh">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M8 12.5l2.7 2.7L16 9.8"></path></svg>
+      <span><strong>Još samo jedan dodir.</strong><span>Otvori Tavli i već si prijavljen/a. Sledeće pitamo samo za ime.</span></span>
+    </div>
+    <a class="dugme" data-stanje="uspeh" data-otvori href="tavli://auth-callback">Otvori Tavli</a>
+    <p class="napomena" data-posle-klika="uspeh" role="status" hidden>Kad se Tavli otvori, ovaj prozor se sam zatvara. Ako ostane otvoren, možeš da ga zatvoriš.</p>
+    <section class="kartica" data-stanje="uspeh">
+      <h2>Tavli ti je na drugom uređaju?</h2>
+      <p>Tamo, na ekranu „Proveri mejl“, dodirni „Pošalji mi kod“ i upiši kod koji stigne.</p>
+    </section>
+
+    <!-- Link istekao ili već iskorišćen: ?error=…&error_code=otp_expired -->
+    <div class="uvod" data-stanje="greska" hidden>
+      <h1>Link više ne važi</h1>
+      <p>Link iz mejla važi 10 minuta i radi samo jednom.</p>
+    </div>
+    <div class="obavestenje greska" data-stanje="greska" hidden>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.8v5"></path><path d="M12 16.2h.01"></path></svg>
+      <span><strong>Ako si ga već iskoristio/la, adresa je potvrđena.</strong><span>Ako nisi, otvori Tavli i dodirni „Pošalji mejl ponovo“.</span></span>
+    </div>
+    <a class="dugme" data-stanje="greska" data-otvori href="tavli://auth-callback" hidden>Otvori Tavli</a>
+    <p class="napomena" data-posle-klika="greska" role="status" hidden>Kad se Tavli otvori, ovaj prozor se sam zatvara. Ako ostane otvoren, možeš da ga zatvoriš.</p>
+
+    <!-- Stranica otvorena bez linka iz mejla -->
+    <div class="uvod" data-stanje="prazno" hidden>
+      <h1>Potvrda adrese</h1>
+      <p>Ovu stranicu otvara dugme „Potvrdi adresu“ iz Tavli mejla. Ako si stigao/la ovamo drugačije, ovde nema šta da se uradi.</p>
+    </div>
+
+  </main>
+  </div>
+  <div class="razmak"></div>
+  <p class="podnozje">Ovu stranicu možeš da zatvoriš.</p>
+</div>
+</body>
+</html>
