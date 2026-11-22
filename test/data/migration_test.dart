@@ -28,6 +28,57 @@ const _v7RatingTables = [
 ];
 
 void main() {
+  for (final from in [7, 8, 9]) {
+    test('v$from upgrade creates allergen and favorite tables and preserves '
+        'the personal outbox', () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute(
+              'CREATE TABLE user_profiles (id TEXT PRIMARY KEY, profile_json TEXT NOT NULL)',
+            );
+            raw.execute("INSERT INTO user_profiles VALUES ('member', '{}')");
+            _v7RatingTables.forEach(raw.execute);
+            raw.execute(
+              'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+              "VALUES ('rating', 'member', 'recipe', 4, 1)",
+            );
+            if (from >= 8) {
+              raw.execute(
+                'CREATE UNIQUE INDEX ratings_user_recipe_unique ON ratings (user_id, recipe_id)',
+              );
+              raw.execute(
+                'CREATE TABLE rating_summaries (household_id TEXT NOT NULL, '
+                'recipe_id TEXT NOT NULL, average_stars REAL NOT NULL, '
+                'rating_count INTEGER NOT NULL, PRIMARY KEY (household_id, recipe_id))',
+              );
+            }
+            if (from == 9) {
+              raw.execute(
+                'ALTER TABLE accounts ADD COLUMN catalog_status TEXT',
+              );
+            }
+            raw.execute(
+              "INSERT INTO sync_outbox VALUES (1, 'member', 'taste_profile', 'member', 'upsert', 'pending', 0, NULL, NULL, 1)",
+            );
+            // v8 is recipe ratings, v9 the food catalog: no member planning tables.
+            raw.execute('PRAGMA user_version = $from');
+          },
+        ),
+      );
+      addTearDown(db.close);
+      expect(await db.select(db.userFavorites).get(), isEmpty);
+      expect((await db.select(db.ratings).getSingle()).stars, 4);
+      expect(await db.select(db.ratingSummaries).get(), isEmpty);
+      expect(await db.select(db.userAllergenSelections).get(), isEmpty);
+      expect((await db.select(db.userProfiles).getSingle()).id, 'member');
+      expect(
+        (await db.select(db.syncOutbox).getSingle()).entity,
+        'taste_profile',
+      );
+    });
+  }
+
   test('v7 to v9 keeps the latest rating and creates both caches', () async {
     final db = AppDatabase(
       NativeDatabase.memory(
@@ -282,7 +333,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 9);
+    expect(db.schemaVersion, 10);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));

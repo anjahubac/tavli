@@ -17,9 +17,13 @@ import 'ai/chat_client.dart';
 import 'ai/key_store.dart';
 import 'ai/meal_plan_ai.dart';
 import 'ai/recipe_ai.dart';
+import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
+import 'data/favorite_repository.dart';
+import 'data/planning_sharing_repository.dart';
 import 'data/shopping_repository.dart';
+import 'data/taste_profile_repository.dart';
 import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
@@ -147,6 +151,12 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
   final photos = ref.watch(photoRemoteProvider);
   if (scope == null || remote == null || photos == null) return null;
   final db = ref.watch(databaseProvider);
+  // Reconciliation only touches the cache and never queues an upload.
+  final favorites = FavoriteRepository(
+    db,
+    scope: scope,
+    writer: SyncedWriter(db, accountId: scope.userId),
+  );
   final engine = SyncEngine(
     db: db,
     scope: scope,
@@ -157,6 +167,7 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
       photoStore: ref.watch(recipePhotoStoreProvider),
       scope: scope,
       refreshSession: () => _refreshSession(ref),
+      beforeFavoriteUpload: favorites.dropStaleFavorites,
     ),
     downloader: Downloader(db: db, remote: remote, scope: scope),
     photoSync: PhotoSync(
@@ -173,6 +184,7 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     // izvodi iz zapisa kuvanja.
     afterPull: () async {
       await ref.read(cookingRepositoryProvider).reconcileCookedFlags();
+      await favorites.dropStaleFavorites();
     },
   );
   ref.onDispose(engine.stop);
@@ -254,3 +266,38 @@ final shoppingRepositoryProvider = Provider<ShoppingRepository>(
     clock: ref.watch(clockProvider),
   ),
 );
+
+final favoriteRepositoryProvider = Provider<FavoriteRepository>(
+  (ref) => FavoriteRepository(
+    ref.watch(databaseProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    writer: ref.watch(syncedWriterProvider),
+  ),
+);
+
+final allergenRepositoryProvider = Provider<AllergenRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return AllergenRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
+
+final tasteProfileRepositoryProvider = Provider<TasteProfileRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return TasteProfileRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
+
+final planningSharingRepositoryProvider = Provider<PlanningSharingRepository?>((
+  ref,
+) {
+  final scope = ref.watch(accountScopeProvider);
+  final client = ref.watch(supabaseClientProvider);
+  if (scope == null || client == null) return null;
+  return SupabasePlanningSharingRepository(client, userId: scope.userId);
+});

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../data/database.dart';
+import '../domain/allergen_group.dart';
 import '../domain/plan_calendar.dart';
 
 /// Pripada li zapis domaćinstvu ili osobi.
@@ -90,6 +91,15 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
   Expression<String> idColumn($RecipesTable t) => t.id;
   @override
   GeneratedColumn<String> scopeColumn($RecipesTable t) => t.householdId;
+
+  @override
+  Future<void> deleteLocal(AppDatabase db, String id) =>
+      db.transaction(() async {
+        await (db.delete(
+          db.userFavorites,
+        )..where((row) => row.recipeId.equals(id))).go();
+        await super.deleteLocal(db, id);
+      });
 
   @override
   Map<String, Object?> toRemote(RecipeRow r) => {
@@ -664,6 +674,85 @@ class TasteProfileEntity
       );
 }
 
+class FavoriteEntity extends SyncEntity<$UserFavoritesTable, UserFavoriteRow> {
+  const FavoriteEntity();
+
+  @override
+  String get name => 'favorite';
+  @override
+  String get remoteTable => 'user_favorites';
+  @override
+  EntityScope get scope => EntityScope.user;
+  @override
+  List<(String, String)> get parentKeys => const [('recipe', 'recipe_id')];
+  @override
+  $UserFavoritesTable table(AppDatabase db) => db.userFavorites;
+  @override
+  Expression<String> idColumn($UserFavoritesTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($UserFavoritesTable t) => t.userId;
+
+  @override
+  Map<String, Object?> toRemote(UserFavoriteRow row) => {
+    'id': row.id,
+    'user_id': row.userId,
+    'recipe_id': row.recipeId,
+    'recipe_household_id': row.recipeHouseholdId,
+    'is_favorite': row.isFavorite,
+  };
+
+  @override
+  UserFavoritesCompanion fromRemote(Map<String, Object?> json) =>
+      UserFavoritesCompanion.insert(
+        id: json['id']! as String,
+        userId: json['user_id']! as String,
+        recipeId: json['recipe_id']! as String,
+        recipeHouseholdId: json['recipe_household_id']! as String,
+        isFavorite: json['is_favorite']! as bool,
+      );
+}
+
+/// Owner-only allergen settings, synced as one replaceable selection.
+class AllergenSelectionEntity
+    extends SyncEntity<$UserAllergenSelectionsTable, UserAllergenSelectionRow> {
+  const AllergenSelectionEntity();
+
+  @override
+  String get name => 'allergen_selection';
+  @override
+  String get remoteTable => 'user_allergen_selections';
+  @override
+  String get remoteId => 'user_id';
+  @override
+  EntityScope get scope => EntityScope.user;
+  @override
+  $UserAllergenSelectionsTable table(AppDatabase db) =>
+      db.userAllergenSelections;
+  @override
+  Expression<String> idColumn($UserAllergenSelectionsTable t) => t.userId;
+  @override
+  GeneratedColumn<String> scopeColumn($UserAllergenSelectionsTable t) =>
+      t.userId;
+
+  @override
+  Map<String, Object?> toRemote(UserAllergenSelectionRow row) => {
+    'user_id': row.userId,
+    'group_codes': jsonDecode(row.groupCodesJson),
+  };
+
+  @override
+  UserAllergenSelectionsCompanion fromRemote(Map<String, Object?> json) {
+    final selection = AllergenGroup.parseSelection(json['group_codes']);
+    return UserAllergenSelectionsCompanion.insert(
+      userId: json['user_id']! as String,
+      groupCodesJson: jsonEncode([
+        for (final group in AllergenGroup.values)
+          if (selection.contains(group)) group.code,
+      ]),
+    );
+  }
+}
+
 /// Obrok označen kao skuvan (zapis operacije; poništavanje ga ne briše).
 class CookedEventEntity extends SyncEntity<$CookedEventsTable, CookedEventRow> {
   const CookedEventEntity();
@@ -873,6 +962,8 @@ const List<SyncEntity<Table, Object?>> syncEntities = [
   PantryConsumptionEntity(),
   RatingEntity(),
   TasteProfileEntity(),
+  AllergenSelectionEntity(),
+  FavoriteEntity(),
 ];
 
 /// Katalog namirnica: van [syncEntities], jer se preuzima posebno (server

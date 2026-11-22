@@ -80,7 +80,10 @@ class AccountService {
 
   static final _householdOutboxEntities = [
     for (final entity in syncEntities)
-      if (entity.scope == EntityScope.household || entity.name == 'rating')
+      // Ratings and favorites are user-scoped but tied to household recipes.
+      if (entity.scope == EntityScope.household ||
+          entity.name == 'rating' ||
+          entity.name == 'favorite')
         entity.name,
     'photo',
   ];
@@ -293,6 +296,12 @@ class AccountService {
       }
       await (_db.delete(
         _db.ratings,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
+        _db.userFavorites,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
+        _db.userAllergenSelections,
       )..where((t) => t.userId.equals(userId))).go();
       await (_db.delete(
         _db.userProfiles,
