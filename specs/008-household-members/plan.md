@@ -159,7 +159,8 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
   (`user_id:recipe_id`), allowed only for a recipe visible in the user's
   household. Leaving a household deletes favorites on its recipes (trigger on
   `household_members`). The household join copies favorites and ratings to the
-  recipes it brings along; recipes left behind lose them. Sync drops cached
+  recipes it brings along; recipes left behind lose them. That join change is
+  added here after the invitations PR merges. Sync drops cached
   favorites and queued writes for recipes outside the active household before
   upload and after pulls. Tastes, allergens and consent belong to the profile
   and survive a household change. Drift v9 holds both new tables, after recipe
@@ -195,7 +196,7 @@ exhausted; the 008 delivery does not depend on building that planner behavior.
 | D3-004 | `TasteProfileRepository` reads, watches and writes dish-kind, catalog food and cuisine choices. `PlanningSharingRepository` reads and changes owner consent online. The private resolver applies consent and resolves ranking conflicts. | Dev 2 to apply the five cuisine codes and define consumer limits. Connect the profile UI and the visible food catalog. |
 | D3-009 | `AllergenRepository` reads, watches and replaces owner selections. `public.planning_allergen_codes` checks household scope and resolves the selected union. | Connect profile UI and Dev 2 server planning. |
 | D3-010 | `RecipeAllergens` derives visible recipe groups, warns on unresolved links or unreviewed mappings and compares with the viewer's own selection. The domain fixture covers seven reviewed ingredients out of eight. | Dev 1 supplies linked food IDs and reviewed mappings. Connect the recipe warning UI. Dev 2 applies the same completeness requirement in recommendation eligibility and result checks. |
-| D3-011 | `FavoriteRepository` reads, watches and edits private favorites. The server resolver counts visible favorites after consent. Favorites follow the recipe; leaving a household removes them. | Copy favorites and ratings for brought recipes in the invitations PR, connect the recipe heart and list filter, and run the integrated planner acceptance. |
+| D3-011 | `FavoriteRepository` reads, watches and edits private favorites. The server resolver counts visible favorites after consent. Favorites follow the recipe; leaving a household removes them. | After the invitations PR merges, extend its join in this slice to copy favorites and ratings for brought recipes, connect the recipe heart and list filter, and run the integrated planner acceptance. |
 
 At `origin/dev` 5fc4485, PR #90 has merged the alias matcher. That baseline
 has no food catalog migrations, embedded recipe food links or reviewed
