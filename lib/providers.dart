@@ -23,9 +23,12 @@ import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
 import 'data/favorite_repository.dart';
+import 'data/food_catalog_reader.dart';
 import 'data/planning_sharing_repository.dart';
+import 'data/planning_tastes_remote.dart';
 import 'data/shopping_repository.dart';
 import 'data/taste_profile_repository.dart';
+import 'domain/planning_tastes.dart';
 import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
@@ -265,8 +268,28 @@ final recipeAIProvider = Provider<RecipeAI>(
   (ref) => RecipeAI(ref.watch(aiRouterProvider)),
 );
 
+/// Ukusi članova za plan (TRELLO-41); bez Supabase klijenta nema ukusa.
+final planningTastesProvider = Provider<PlanningTastesSource?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  final db = ref.watch(databaseProvider);
+  return RemotePlanningTastes.supabase(
+    client,
+    householdId: () => ref.read(accountScopeProvider)?.householdId,
+    foodNames: (household) async => {
+      for (final food in await CatalogFoodList(
+        db,
+      ).watchVisible(household).first)
+        food.id: food.name,
+    },
+  );
+});
+
 final mealPlanAIProvider = Provider<MealPlanAI>(
-  (ref) => MealPlanAI(ref.watch(aiRouterProvider)),
+  (ref) => MealPlanAI(
+    ref.watch(aiRouterProvider),
+    tastes: ref.watch(planningTastesProvider),
+  ),
 );
 
 final pantryAIProvider = Provider<PantryAI>(

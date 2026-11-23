@@ -2,8 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli/domain/meal_plan.dart';
+import 'package:tavli/domain/planning_tastes.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli/providers.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
@@ -361,4 +363,62 @@ void main() {
       expect(await app.titles(), contains('Jelo 3'));
     });
   });
+
+  group('ukusi članova (TRELLO-41)', () {
+    testTavli('nedostupni ukusi: plan se pravi, a pregled to kaže', (
+      tester,
+    ) async {
+      await pumpTavli(
+        tester,
+        location: '/plan',
+        ai: fullWeek,
+        overrides: [
+          clockProvider.overrideWithValue(() => today),
+          planningTastesProvider.overrideWithValue(
+            const _Tastes(PlanningTastesUnavailable()),
+          ),
+        ],
+      );
+      await tapButton(tester, 'Napravi plan');
+      await tapButton(tester, 'Predloži plan');
+
+      expect(find.text('Sačuvaj plan'), findsOneWidget);
+      expect(
+        find.textContaining('Ukusi članova trenutno nisu dostupni'),
+        findsOneWidget,
+      );
+    });
+
+    testTavli('odbijeni ukusi: plan staje sa porukom, bez AI poziva', (
+      tester,
+    ) async {
+      final app = await pumpTavli(
+        tester,
+        location: '/plan',
+        ai: fullWeek,
+        overrides: [
+          clockProvider.overrideWithValue(() => today),
+          planningTastesProvider.overrideWithValue(
+            const _Tastes(PlanningTastesDenied()),
+          ),
+        ],
+      );
+      await tapButton(tester, 'Napravi plan');
+      await tapButton(tester, 'Predloži plan');
+
+      expect(
+        find.textContaining('Ukusi domaćinstva nisu mogli da se provere'),
+        findsOneWidget,
+      );
+      expect(app.adapter.requests, isEmpty);
+    });
+  });
+}
+
+class _Tastes implements PlanningTastesSource {
+  const _Tastes(this.error);
+  final Exception error;
+
+  @override
+  Future<PlanningTastes> current() async => throw error;
 }
