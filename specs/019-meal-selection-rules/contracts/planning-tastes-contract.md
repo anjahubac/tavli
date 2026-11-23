@@ -80,7 +80,7 @@ dishes. It is not an unconditional guarantee:
 ## Open items
 
 - A durable per-user limit would need a migration (a limit table like `household_join_limits`). This is follow-up hardening, not required for TRELLO-41. The endpoint only reads, needs a session, returns only the caller's household's consented tastes, and spends no AI quota.
-- 008 `PlanLeakGuard`. This slice sends no names, emails or notes, and the response schema has no free-text field about people. The guard is deferred to the note slice, pending Dev 3 confirmation.
+- 008 `PlanLeakGuard`. This slice sends no names, emails or notes, and the response schema has no free-text field about people. The guard is deferred to the note slice, confirmed by Dev 3 (Matija) on 2026-11-23 in the review of PR #146. It is wanted once free-text profile notes are introduced, and belongs to that slice.
 - Explicit participant subsets ("who eats this week") are deferred.
 - Server-side candidate filtering and final validation (FR-104/105) remain with TRELLO-45 and TRELLO-43.
 - Deno tests for Edge Functions are not run by CI. Run them locally with `deno test` in the function folder.
