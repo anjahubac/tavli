@@ -140,13 +140,13 @@ void main() {
     expect(find.widgetWithText(TavliBackAppBar, 'Profil'), findsOneWidget);
   });
 
-  testTavli('alergen se čuva odmah i vidi se u zbiru', (tester) async {
+  testTavli('alergen se čuva odmah', (tester) async {
     final app = await _open(tester);
-    expect(find.text('Nijedan'), findsOneWidget);
+    expect(find.text('Nijedan'), findsNothing);
 
     await _tapText(tester, 'Mleko');
     expect(await _allergens(app).getSelection(), {AllergenGroup.milk});
-    expect(find.text('Izabrano: 1'), findsOneWidget);
+    expect(find.text('Izabrano: 1'), findsNothing);
 
     await _tapText(tester, 'Mleko');
     expect(await _allergens(app).getSelection(), isEmpty);

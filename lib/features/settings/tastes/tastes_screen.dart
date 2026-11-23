@@ -101,24 +101,6 @@ class _TasteSection extends StatelessWidget {
   );
 }
 
-/// Kratak tekst desno od naslova odeljka („Izabrano: 2“).
-class _HeaderNote extends StatelessWidget {
-  const _HeaderNote(this.text, {this.strong = false});
-
-  final String text;
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.labelLarge
-          ?.copyWith(color: strong ? c.primary : c.onSurfaceVariant),
-    );
-  }
-}
-
 /// Bela kartica sa ivicom, kao odeljci na računaru.
 class _Panel extends StatelessWidget {
   const _Panel({required this.child});
@@ -154,14 +136,9 @@ class _AllergensSection extends ConsumerWidget {
       'Jela sa ovim sastojcima ne ulaze u plan.',
       style: _helpStyle(context),
     );
-    final summary = _HeaderNote(
-      selected.isEmpty ? 'Nijedan' : 'Izabrano: ${selected.length}',
-      strong: true,
-    );
     if (!wide) {
       return _TasteSection(
         title: 'Alergeni',
-        trailing: summary,
         help: help,
         child: TavliChipWrap(
           children: [
@@ -187,7 +164,6 @@ class _AllergensSection extends ConsumerWidget {
     ];
     return _TasteSection(
       title: 'Alergeni',
-      trailing: summary,
       child: _Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -423,7 +399,6 @@ class _FavoritesSection extends ConsumerWidget {
     if (!wide) {
       return _TasteSection(
         title: 'Omiljeni recepti',
-        trailing: _HeaderNote('${favorites.length}'),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           clipBehavior: Clip.none,
@@ -441,37 +416,35 @@ class _FavoritesSection extends ConsumerWidget {
         ),
       );
     }
+    // Računar: „Dodaj“ je prva (prazna) pločica u mreži, kao na telefonu.
     const columns = 3;
+    final items = [
+      TavliAddTile(label: 'Dodaj', onTap: add),
+      for (final (i, r) in favorites.indexed) tile(i, r, expand: true),
+    ];
     return _TasteSection(
       title: 'Omiljeni recepti',
-      trailing: TavliButton.text(
-        label: 'Dodaj',
-        glyph: TavliIcons.add,
-        onPressed: add,
-      ),
-      child: favorites.isEmpty
-          ? Text('Još nema omiljenih recepata.', style: _helpStyle(context))
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: TavliSpacing.small,
-              children: [
-                for (var i = 0; i < favorites.length; i += columns)
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: TavliSpacing.small,
-                      children: [
-                        for (var j = i; j < i + columns; j++)
-                          Expanded(
-                            child: j < favorites.length
-                                ? tile(j, favorites[j], expand: true)
-                                : const SizedBox.shrink(),
-                          ),
-                      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: TavliSpacing.small,
+        children: [
+          for (var i = 0; i < items.length; i += columns)
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: TavliSpacing.small,
+                children: [
+                  for (var j = i; j < i + columns; j++)
+                    Expanded(
+                      child: j < items.length
+                          ? items[j]
+                          : const SizedBox.shrink(),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
+        ],
+      ),
     );
   }
 }
@@ -682,11 +655,17 @@ class _SharingSection extends ConsumerWidget {
         children: [
           TavliListGroup(
             children: [
-              TavliSwitchRow(
-                title: 'Deli ukuse i omiljene',
-                subtitle: 'Pomaže u preporuci recepata pomoću AI-a.',
-                value: value,
-                onChanged: ready ? change : null,
+              // Više vazduha oko reda nego u običnim listama.
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: TavliSpacing.small,
+                ),
+                child: TavliSwitchRow(
+                  title: 'Deli ukuse i omiljene',
+                  subtitle: 'Pomaže u preporuci recepata pomoću AI-a.',
+                  value: value,
+                  onChanged: ready ? change : null,
+                ),
               ),
             ],
           ),
@@ -712,7 +691,9 @@ class _AllergenAssurance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = _helpStyle(context);
+    final c = Theme.of(context).colorScheme;
+    final style = Theme.of(context).textTheme.bodySmall
+        ?.copyWith(color: c.onSurfaceVariant);
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(
         horizontal: TavliSpacing.small / 2,
@@ -721,7 +702,7 @@ class _AllergenAssurance extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: TavliSpacing.small,
         children: [
-          TavliIcon(TavliIcons.lock, size: 16, color: style?.color),
+          TavliIcon(TavliIcons.lock, size: 14, color: style?.color),
           Expanded(
             child: Text(
               'Alergene plan uvek poštuje, i kad je deljenje isključeno.',
