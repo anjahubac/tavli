@@ -96,22 +96,28 @@ void main() {
     expect(matched.food.nutrition?.kcalPer100g, 77);
     expect(matched.food.nutrition?.sourceVersion, 'SR Legacy 2018-04');
 
-    await db
-        .into(db.foods)
-        .insert(
-          FoodsCompanion.insert(
-            id: 'f-unattributed',
-            slug: 'nepoznato poreklo',
-            name: 'nepoznato poreklo',
-            category: 'ostalo',
-            baseUnit: 'gram',
-            kcalPer100g: const Value(1),
-            createdAt: t,
-            updatedAt: t,
-          ),
-        );
-    final unattributed = await find('nepoznato poreklo') as Matched;
-    expect(unattributed.food.nutrition, isNull);
+    for (final sourceRef in [null, '  ']) {
+      final name = sourceRef == null ? 'nepoznato poreklo' : 'prazno poreklo';
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: name,
+              slug: name,
+              name: name,
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(1),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: Value(sourceRef),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      final unattributed = await find(name) as Matched;
+      expect(unattributed.food.nutrition, isNull);
+    }
   });
 
   test(

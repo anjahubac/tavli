@@ -167,7 +167,14 @@ class FoodCatalogReader {
     final source = row.nutritionSource;
     final version = row.nutritionSourceVersion;
     final ref = row.nutritionSourceRef;
-    if (source == null || version == null || ref == null) return null;
+    if (source == null ||
+        source.trim().isEmpty ||
+        version == null ||
+        version.trim().isEmpty ||
+        ref == null ||
+        ref.trim().isEmpty) {
+      return null;
+    }
     final values = [
       row.kcalPer100g,
       row.proteinGramsPer100g,
