@@ -52,6 +52,7 @@ jobs:
       - run: supabase db push --include-all --yes
       - run: supabase functions deploy ai-gateway --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy delete-account --project-ref "$SUPABASE_PROJECT_REF"
+      - run: supabase functions deploy voice-transcribe --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy household-invite --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy household-join --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy household-photo-cleanup --project-ref "$SUPABASE_PROJECT_REF"

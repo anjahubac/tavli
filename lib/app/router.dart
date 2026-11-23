@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
+import '../domain/voice_draft.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
@@ -19,6 +20,7 @@ import '../features/recipes/from_photo_screen.dart';
 import '../features/recipes/recipe_chat_screen.dart';
 import '../features/recipes/recipe_form_screen.dart';
 import '../features/recipes/recipes_screen.dart';
+import '../features/recipes/voice_recipe_screen.dart';
 import '../features/settings/ai_keys_screen.dart';
 import '../features/settings/animations_gallery_screen.dart';
 import '../features/settings/appearance_screen.dart';
@@ -218,7 +220,16 @@ GoRouter createRouter({
                 ),
                 GoRoute(
                   path: 'new/manual',
-                  builder: (context, state) => const RecipeFormScreen(),
+                  builder: (context, state) => RecipeFormScreen(
+                    draft: switch (state.extra) {
+                      final VoiceDraft draft => draft,
+                      _ => null,
+                    },
+                  ),
+                ),
+                GoRoute(
+                  path: 'new/voice',
+                  builder: (context, state) => const VoiceRecipeScreen(),
                 ),
                 GoRoute(
                   path: ':id',

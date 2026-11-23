@@ -17,6 +17,8 @@
 	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Tavli koristi kameru da slikaš recept.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Tavli snima samo od „Govori“ do „Zaustavi“, da upiše recept koji izgovoriš.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Tavli čita sliku recepta iz tvoje galerije.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
