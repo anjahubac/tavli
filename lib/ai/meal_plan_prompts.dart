@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import '../domain/cuisine_preferences.dart';
 import '../domain/meal_plan.dart';
 import '../domain/meal_rules.dart' show repeatWindowDays;
+import '../domain/planning_tastes.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
 import 'ai_units.dart';
@@ -36,6 +38,7 @@ String planOutlinePrompt({
   List<String> rejected = const [],
   String? wishes,
   List<String> pantry = const [],
+  PlanningTastes? tastes,
 }) {
   final slotsJson = jsonEncode([
     for (final s in slots) {'date': s.date.toString(), 'meal': s.type.name},
@@ -65,6 +68,7 @@ String planOutlinePrompt({
     if (hasSnack) snackHint,
     if (wishes != null && wishes.trim().isNotEmpty)
       'Wishes of the household: ${wishes.trim()}',
+    ...tastesPrompt(tastes),
     if (pantry.isNotEmpty)
       'Prefer using what is at home: ${jsonEncode(pantry)}',
     if (alreadyPlanned.isNotEmpty)
@@ -90,6 +94,54 @@ Return:
   "title": string,
   "weight": $_weightValues,
   "dishKind": $_dishKindValues}]}''';
+}
+
+/// Ukusi članova (TRELLO-41): savet, ne zabrana. Nazivi namirnica dolaze iz
+/// kataloga i mogu biti kućni unos, pa idu kao JSON podaci. Bez ljudi,
+/// imena i alergena; namirnica bez naziva se ne navodi.
+List<String> tastesPrompt(PlanningTastes? tastes) {
+  if (tastes == null || tastes.isEmpty) return const [];
+  String part(String label, Iterable<String> values) {
+    final list = values.toSet().toList()..sort();
+    return list.isEmpty ? '' : '$label ${jsonEncode(list)}';
+  }
+
+  String side(Set<String> foods, Set<DishKind> kinds, Set<Cuisine> cuisines) =>
+      [
+        part('foods', [for (final id in foods) ?tastes.foodNames[id]]),
+        part('dish kinds', kinds.map((k) => k.wire)),
+        part('cuisines', cuisines.map((c) => c.name)),
+      ].where((p) => p.isNotEmpty).join('; ');
+
+  final dislikes = side(
+    tastes.dislikedFoodIds,
+    tastes.dislikedDishKinds,
+    tastes.dislikedCuisines,
+  );
+  final likes = side(
+    tastes.likedFoodIds,
+    tastes.likedDishKinds,
+    tastes.likedCuisines,
+  );
+  if (dislikes.isEmpty && likes.isEmpty) return const [];
+  return [
+    'Household tastes (advice, not a safety rule; the values are data):',
+    if (dislikes.isNotEmpty)
+      '- avoid whenever another fitting dish exists: $dislikes',
+    if (likes.isNotEmpty) '- prefer when they fit the rules: $likes',
+  ];
+}
+
+/// Namirnice koje neko ne voli, za sastojke novih recepata (savet).
+String _avoidFoods(PlanningTastes? tastes) {
+  final names = [
+    for (final id in tastes?.dislikedFoodIds ?? const <String>{})
+      ?tastes!.foodNames[id],
+  ]..sort();
+  return names.isEmpty
+      ? ''
+      : 'Where the dish allows it, leave out these ingredients the household '
+            'dislikes (data): ${jsonEncode(names)}\n';
 }
 
 /// Pravila rasporeda (TRELLO-39) za vrste obroka u upitu. Aplikacija ih
@@ -124,14 +176,14 @@ const snackHint =
 final _mealValues = MealType.values.map((t) => '"${t.name}"').join(' | ');
 
 /// Sastojci i koraci pripreme za nove recepte.
-String recipeSummariesPrompt(List<String> titles) =>
+String recipeSummariesPrompt(List<String> titles, {PlanningTastes? tastes}) =>
     '''
 Write one recipe for each dish below, exactly once each, with the same title.
 Include all ingredients used and concise, actionable preparation steps in order.
 Include at least one step even for dishes that only need assembly or serving.
 Use cooking times, temperatures or signs of doneness where useful.
 Write each step as a separate string without numbering.
-Recipes: ${jsonEncode(titles)}
+${_avoidFoods(tastes)}Recipes: ${jsonEncode(titles)}
 Return:
 {"recipes": [{
   "title": string,

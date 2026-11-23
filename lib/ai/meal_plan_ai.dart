@@ -1,6 +1,7 @@
 import '../domain/meal_plan.dart';
 import '../domain/meal_rules.dart';
 import '../domain/plan_calendar.dart';
+import '../domain/planning_tastes.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
 import '../domain/shopping_demand.dart' show maxServings;
@@ -41,10 +42,17 @@ class PlanGenerationCancelled implements Exception {
 /// Predlaže plan obroka preko [AIRouter]-a: raspored po nedeljnim delovima,
 /// pa sastojci i koraci novih recepata u malim grupama. Ništa ne čuva; nacrt ostaje
 /// u sesiji dok ga osoba ne odobri.
+///
+/// Ukusi članova (`tastes`, TRELLO-41) se čitaju pre svakog rasporeda i pre
+/// novih recepata, da povučen pristanak važi odmah. Recepti iz biblioteke
+/// sa namirnicom ili vrstom jela koju neko ne voli nude se AI-ju poslednji
+/// (savet, ne zabrana). Kad ukusi nisu dostupni, plan se pravi bez njih i
+/// nacrt to beleži; kad ih server odbije (drugo domaćinstvo), plan staje.
 class MealPlanAI {
-  MealPlanAI(this._router);
+  MealPlanAI(this._router, {this._tastes});
 
   final AIRouter _router;
+  final PlanningTastesSource? _tastes;
 
   /// Vraća pun nacrt. Kad grupa ne uspe baca [PlanGenerationFailed], a kad
   /// je [cancel] prekinut [PlanGenerationCancelled]; oba nose gotov deo,
@@ -60,11 +68,19 @@ class MealPlanAI {
       throw ArgumentError('Nastavak pripada drugom zahtevu');
     }
     var draft = resume ?? PlanDraft(request: request);
-    final offered = library
+    final eligible = library
         .where((recipe) => recipe.steps.any((step) => step.trim().isNotEmpty))
-        .take(maxLibraryInPrompt)
         .toList();
-    final byId = {for (final r in offered) r.id: r};
+    final byId = {for (final r in eligible) r.id: r};
+    var tastes = PlanningTastes.none;
+
+    // Recepti koje neko ne voli idu na kraj, pre ograničenja broja, pa ih
+    // zamene drugi kad ih ima dovoljno. Redosled ostalih se ne menja.
+    List<Recipe> offeredFor(PlanningTastes t) => [
+      ...eligible.where((r) => !t.dislikes(r)),
+      ...eligible.where(t.dislikes),
+    ].take(maxLibraryInPrompt).toList();
+    var offered = offeredFor(tastes);
 
     Future<T> step<T>(Future<T> Function() run) async {
       if (cancel?.isCancelled ?? false) throw PlanGenerationCancelled(draft);
@@ -75,6 +91,20 @@ class MealPlanAI {
       } on Object catch (e) {
         throw PlanGenerationFailed(draft, e);
       }
+    }
+
+    // Sveži ukusi pre zahteva ka AI-ju; odbijanje zaustavlja plan.
+    Future<void> refreshTastes() async {
+      final source = _tastes;
+      if (source == null) return;
+      try {
+        tastes = await step(source.current);
+      } on PlanGenerationFailed catch (e) {
+        if (e.error is! PlanningTastesUnavailable) rethrow;
+        tastes = PlanningTastes.none;
+        draft = draft.copyWith(withoutTastes: true);
+      }
+      offered = offeredFor(tastes);
     }
 
     final requested = request.slots.toSet();
@@ -118,7 +148,9 @@ class MealPlanAI {
       List<MealSlot> slots, {
       List<String> rejected = const [],
     }) async {
+      await refreshTastes();
       final planned = {for (final p in draft.proposals.values) p.title};
+      final offeredNow = offered;
       final result = await step(
         () => _router.run(
           AIRequest(
@@ -128,7 +160,7 @@ class MealPlanAI {
               slots: slots,
               servings: request.servings,
               library: [
-                for (final r in offered)
+                for (final r in offeredNow)
                   (
                     id: r.id,
                     title: r.title,
@@ -141,13 +173,14 @@ class MealPlanAI {
               rejected: rejected,
               wishes: request.wishes,
               pantry: request.usePantry ? request.pantryNames : const [],
+              tastes: tastes,
             ),
             temperature: 0.8,
           ),
           (json) => parseOutline(
             json,
             slots: slots,
-            library: {for (final r in offered) r.id: r.title},
+            library: {for (final r in offeredNow) r.id: r.title},
           ),
           cancel: cancel,
         ),
@@ -187,6 +220,7 @@ class MealPlanAI {
     }
 
     final missingKeys = draft.missingRecipeKeys;
+    if (missingKeys.isNotEmpty) await refreshTastes();
     final titles = {
       for (final p in draft.proposals.values) ?p.draftRecipeKey: p.title,
     };
@@ -200,7 +234,7 @@ class MealPlanAI {
           AIRequest(
             task: AITask.recipeSummaries,
             system: mealPlanSystemPrompt,
-            prompt: recipeSummariesPrompt(batch),
+            prompt: recipeSummariesPrompt(batch, tastes: tastes),
           ),
           (json) => parseSummaries(json, titles: batch),
           cancel: cancel,

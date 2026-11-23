@@ -19,7 +19,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-001**: Deliver **Annotate recipes with meal suitability and dish type**. Source D2-005; Dev 2; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
 - **FR-002**: Deliver **Represent daily meals as a list including snacks**. Source D2-006; Dev 2; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
 - **FR-003**: Deliver **Validate meal placement rules**. Source D2-007; Dev 2; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
-- **FR-004**: Deliver **Include authorized tastes and preferences in plan requests**. Source D2-009; Dev 2; phase 2. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-004**: Deliver **Include authorized tastes and preferences in plan requests**. Source D2-009; Dev 2; phase 2. Completion must satisfy the behavior and evidence below, not only code presence. Transport, prompt, ranking and failure behaviour: [planning tastes contract](contracts/planning-tastes-contract.md) (TRELLO-41).
 - **FR-005**: Deliver **Enforce allergen restrictions in plans**. Source D2-011; Dev 2; phase 3. Completion must satisfy the behavior and evidence below, not only code presence.
 - **FR-006**: Deliver **Prefer favorite recipes in plans**. Source D2-012; Dev 2; phase 3. Completion must satisfy the behavior and evidence below, not only code presence.
 - **FR-007**: Deliver **Select saved recipes locally before generating new ones**. Source D2-013; Dev 2; phase 3. Completion must satisfy the behavior and evidence below, not only code presence.

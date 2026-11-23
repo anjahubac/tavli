@@ -170,6 +170,7 @@ class PlanDraft {
     Map<String, RecipeSnapshot> newRecipes = const {},
     Map<String, RecipeSnapshot> libraryRecipes = const {},
     this.base,
+    this.withoutTastes = false,
   }) : proposals = Map.unmodifiable(proposals),
        newRecipes = Map.unmodifiable(newRecipes),
        libraryRecipes = Map.unmodifiable(libraryRecipes);
@@ -185,6 +186,10 @@ class PlanDraft {
 
   /// Snimci recepata iz biblioteke po id-ju, u trenutku predloga.
   final Map<String, RecipeSnapshot> libraryRecipes;
+
+  /// Ukusi članova nisu bili dostupni (mreža, server), pa je bar deo
+  /// predloga napravljen bez njih. Pregled to kaže (spec 019 FR-004).
+  final bool withoutTastes;
 
   List<MealSlot> get missingSlots => [
     for (final s in request.slots)
@@ -222,12 +227,14 @@ class PlanDraft {
     Map<MealSlot, SlotProposal>? proposals,
     Map<String, RecipeSnapshot>? newRecipes,
     Map<String, RecipeSnapshot>? libraryRecipes,
+    bool? withoutTastes,
   }) => PlanDraft(
     request: request,
     proposals: proposals ?? this.proposals,
     newRecipes: newRecipes ?? this.newRecipes,
     libraryRecipes: libraryRecipes ?? this.libraryRecipes,
     base: base,
+    withoutTastes: withoutTastes ?? this.withoutTastes,
   );
 }
 
