@@ -24,7 +24,8 @@ enum AITask {
   recipeFromName('recipe_from_name'),
   recipeRefine('recipe_refine'),
   planOutline('plan_outline'),
-  recipeSummaries('recipe_summaries');
+  recipeSummaries('recipe_summaries'),
+  pantryFromPhoto('pantry_from_photo');
 
   const AITask(this.wireName);
 

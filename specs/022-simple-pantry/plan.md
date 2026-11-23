@@ -17,7 +17,13 @@
 - `packages/tavli_ui`: `TavliTableRow.onRemove` (hover/focus trash),
   `showTavliMessage` returns its controller
 
-No schema change, no new dependency, no AI task and no server change.
+Photo of food (same PR): `lib/ai/pantry_ai.dart`, `lib/ai/ai_models.dart`
+(task `pantry_from_photo`), `lib/providers.dart` (`pantryAIProvider`),
+`lib/features/pantry/pantry_photo_screen.dart`, route `/pantry/photo`,
+`lib/features/settings/ai_error_text.dart`, `PantryRepository.addAll`,
+`supabase/functions/ai-gateway/input.ts` (allowlist).
+
+No schema change and no new dependency.
 
 ## Contract and data plan
 

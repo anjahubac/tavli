@@ -108,7 +108,9 @@ preserve data and older-client compatibility explicitly.
 Swipe left to reveal “Ukloni” on phone; on desktop a trash action appears on
 hover or keyboard focus. Removal offers “Vrati”. Tap an entry to edit quantity
 with minus/plus and direct input. The same food and unit show as one row with
-the summed quantity, also after “Prebaci u ostavu”. Cooking consumes known quantities once, never below zero; undo restores
+the summed quantity, also after “Prebaci u ostavu”. “Slikaj namirnice” suggests
+foods from a photo of one item or an open fridge; the person reviews them
+before they are added, and the photo is not kept. Cooking consumes known quantities once, never below zero; undo restores
 them once. Unknown quantities persist until the person removes the item.
 Repeated events, partial failures and offline replay must not duplicate consumption or receipts.
 

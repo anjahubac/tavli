@@ -374,6 +374,25 @@ class PantryRepository {
     if (changed > 0) await _writer.upsert(_pantryItem, itemId);
   });
 
+  /// Dodaje više namirnica odjednom (npr. sa slike), jedna transakcija.
+  /// Vraća broj obrađenih stavki.
+  Future<int> addAll(
+    Iterable<({String name, double? quantity, String? unit, String category})>
+    items,
+  ) => _db.transaction(() async {
+    var n = 0;
+    for (final i in items) {
+      await add(
+        i.name,
+        quantity: i.quantity,
+        unit: i.unit,
+        category: i.category,
+      );
+      n++;
+    }
+    return n;
+  });
+
   /// Raspoloživa količina svake stavke ostave (u njenoj jedinici), uživo:
   /// upisana količina minus važeće kuvanje posle poslednjeg brojanja, nikad
   /// ispod nule; null kad količina nije poznata.

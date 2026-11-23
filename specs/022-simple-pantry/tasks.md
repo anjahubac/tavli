@@ -14,7 +14,10 @@ Lead: Dev 4; proposed reviewer: Dev 1. Function list and evidence: spec.md.
 - [x] T009 [US4] D4-017 / FR-004: quantity edit sheet on row tap.
 - [x] T011 [US6] D4-014 / FR-005: test for "šta imam" with a fake catalog matcher.
 - [x] T012 [US6] D4-014 / FR-005: `PantryRepository.whatIHave`, `pantryStockProvider`.
-- [ ] T013 Canvas boards for the edit sheet approved by Anja.
+- [x] T014 [US7] FR-006: tests for photo parsing (`test/ai/pantry_ai_test.dart`) and the photo screen (`test/features/pantry/pantry_photo_screen_test.dart`).
+- [x] T015 [US7] FR-006: `PantryAI.fromPhoto`, "Namirnice sa slike" screen, `PantryRepository.addAll`, gateway task `pantry_from_photo`.
+- [ ] T013 Canvas boards for the edit sheet approved by Anja (photo flow approved 2026-11-23).
+- [ ] T016 Anja reviews the photo prompt and the gateway task.
 - [ ] T010 Independent review, merged PR, Trello cards moved; record check results.
 
 ## Sequencing and effort

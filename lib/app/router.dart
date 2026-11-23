@@ -8,6 +8,7 @@ import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/pantry/pantry_photo_screen.dart';
 import '../features/pantry/pantry_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
@@ -245,6 +246,17 @@ GoRouter createRouter({
             GoRoute(
               path: '/pantry',
               builder: (context, state) => const PantryScreen(),
+              routes: [
+                GoRoute(
+                  path: 'photo',
+                  builder: (context, state) => PantryPhotoScreen(
+                    initialPhoto: switch (state.extra) {
+                      final Uint8List photo => photo,
+                      _ => null,
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),

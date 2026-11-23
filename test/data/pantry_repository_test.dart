@@ -206,6 +206,17 @@ void main() {
     expect(await db.select(db.pantryItems).get(), isEmpty);
   });
 
+  test('addAll upisuje sve stavke i spaja iste', () async {
+    await pantry.add('Mleko', quantity: 1, unit: 'l');
+    await pantry.addAll([
+      (name: 'mleko', quantity: 2.0, unit: 'l', category: 'ostalo'),
+      (name: 'Hleb', quantity: null, unit: null, category: 'ostalo'),
+    ]);
+    final rows = await pantry.watchEntries().first;
+    expect(rows.map((e) => e.name), ['Hleb', 'Mleko']);
+    expect(rows.last.quantity, 3);
+  });
+
   test('setQuantity menja jedinicu samo uz changeUnit', () async {
     final id = await pantry.add('Brašno', quantity: 1, unit: 'kg');
     await pantry.setQuantity(id, 500);

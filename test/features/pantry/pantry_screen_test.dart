@@ -314,4 +314,15 @@ void main() {
     expect([eggs.quantity, eggs.unit], [7, 'kom']);
     expect(find.text('Količina (nije obavezna)'), findsNothing);
   });
+
+  testTavli('„Slikaj namirnice“ u dodavanju vodi na ekran slike', (
+    tester,
+  ) async {
+    await pumpTavli(tester, location: '/pantry', setup: pantry(_items));
+    await tester.tap(find.text('Dodaj namirnicu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Slikaj namirnice'));
+    await tester.pumpAndSettle();
+    expect(find.text('Namirnice sa slike'), findsOneWidget);
+  });
 }

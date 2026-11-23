@@ -8,7 +8,7 @@ import '../../domain/recipe_format.dart';
 const pantryUnits = ['kom', 'g', 'kg', 'ml', 'l'];
 
 /// Količina (nije obavezna) sa minus/plus i jedinicom, i dugme za čuvanje.
-/// Zajedničko za „Dodaj namirnicu“ i izmenu količine.
+/// Zajedničko za „Dodaj namirnicu“, izmenu količine i pregled slike.
 /// [onSave] dobija količinu (`null` kad je polje prazno ili 0) i jedinicu
 /// (`null` bez količine).
 class PantryAmountForm extends StatefulWidget {

@@ -17,6 +17,7 @@ import 'ai/chat_client.dart';
 import 'ai/gateway_chat_client.dart';
 import 'ai/key_store.dart';
 import 'ai/meal_plan_ai.dart';
+import 'ai/pantry_ai.dart';
 import 'ai/recipe_ai.dart';
 import 'data/allergen_repository.dart';
 import 'data/database.dart';
@@ -266,6 +267,10 @@ final recipeAIProvider = Provider<RecipeAI>(
 
 final mealPlanAIProvider = Provider<MealPlanAI>(
   (ref) => MealPlanAI(ref.watch(aiRouterProvider)),
+);
+
+final pantryAIProvider = Provider<PantryAI>(
+  (ref) => PantryAI(ref.watch(aiRouterProvider)),
 );
 
 /// Lista prijavljenog domaćinstva; demo koristi zasebnu bazu u memoriji.

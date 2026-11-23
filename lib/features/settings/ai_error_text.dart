@@ -1,4 +1,5 @@
 import '../../ai/ai_errors.dart';
+import '../../ai/pantry_ai.dart';
 import '../../ai/recipe_ai.dart';
 
 /// Poruka za korisnika umesto tehničke greške.
@@ -28,6 +29,7 @@ String aiErrorText(Object error) => switch (error) {
         '${_hhmm(nextAvailableAt.toLocal())}.',
   AllModelsExhausted() => 'Nijedan model nije dostupan. Proveri ključeve.',
   NotARecipeException() => 'Na slici nije pronađen recept.',
+  NoFoodOnPhotoException() => 'Na slici nisu prepoznate namirnice.',
   _ => 'Nešto nije u redu: $error',
 };
 

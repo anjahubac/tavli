@@ -10,6 +10,7 @@ export const tasks: ReadonlyMap<string, Kind> = new Map([
   ["recipe_refine", "text"],
   ["plan_outline", "text"],
   ["recipe_summaries", "text"],
+  ["pantry_from_photo", "vision"],
 ]);
 
 export interface Completion {

@@ -2,8 +2,9 @@
 
 **ID**: 022-simple-pantry | **Feature key**: PANTRY
 **Created**: 2026-11-14 | **Revised**: 2026-11-23 | **Baseline**: dev 5d181e4
-**Status**: Implemented in one slice (Ostava tab, add/edit/remove, receiving
-purchases, "šta imam" query); acceptance pending independent review and merge.
+**Status**: Implemented in one PR (Ostava tab, add/edit/remove, receiving
+purchases, "šta imam" query, adding from a photo of food); acceptance pending
+independent review and merge.
 **Lead**: Dev 4 | **Proposed independent reviewer**: Dev 1
 
 ## Scope and source
@@ -31,7 +32,8 @@ placeholder. This revision adds the Ostava screen and the functions below.
 | P7 | Cooking consumes known quantities once, floors at 0, undo restores once; a manual count wins | D4-017, 021 contract | Existing, unchanged |
 | P8 | "Šta imam" query for shopping (Dev 1) and recipe suggestions (Dev 2) | D4-014 | New |
 | P9 | Manual entry (teammate suggestion) | Team 2026-11-23 | Covered by P2 |
-| P10 | Camera intake (receipt or fridge photo) | Team 2026-11-23 | Dropped by Anja 2026-11-23 |
+| P10 | Add from a photo of food: one item, a shelf or an open fridge, reviewed before saving | Team suggestion, Anja 2026-11-23 | New |
+| P11 | Add from a shop receipt photo | Team suggestion | Dropped by Anja 2026-11-23 |
 
 ## Requirements and source traceability
 
@@ -40,6 +42,7 @@ placeholder. This revision adds the Ostava screen and the functions below.
 - **FR-003**: Deliver **Receive checked purchases into the pantry** (P5, P6). Source D4-016; Dev 4; phase 3.
 - **FR-004**: Deliver **Consume and edit pantry quantities with reversal** (P3, P7). Source D4-017; Dev 4; phase 3.
 - **FR-005**: Deliver the **"šta imam" query** (P8). Source D4-014; Dev 4; consumers Dev 1 and Dev 2.
+- **FR-006**: Deliver **add from a photo of food** (P10). Source: team suggestion, Anja 2026-11-23; Dev 4.
 
 ## Behavioral requirements
 
@@ -82,6 +85,18 @@ placeholder. This revision adds the Ostava screen and the functions below.
   food or alias. Unmatched foods keep `foodId == null`. Without a downloaded
   catalog every food stays by name.
 
+- **FR-111**: "Slikaj namirnice" in the add sheet opens "Namirnice sa slike"
+  (phone: Slikaj / Izaberi iz galerije; desktop picks a file first). The
+  downscaled photo goes through `AIRouter` with task `pantry_from_photo`
+  (vision). The answer is validated (`photoItemsFromAiResponse`): at most 60
+  items, names trimmed and non-empty, quantity only for countable pieces
+  (> 0) or null, unit canonical or dropped, unknown category → "ostalo"; no
+  valid item → repair request; `{"error":"no_food"}` → "Na slici nisu
+  prepoznate namirnice.". Recognition is a suggestion: the person reviews the
+  list (check/uncheck, edit quantity) and confirms "Dodaj u ostavu (N)"; the
+  chosen items are added in one transaction with the merge rules of FR-103.
+  The photo is not stored or logged.
+
 ## User scenarios and acceptance
 
 - **US1 / SC-001**: Press transfer twice or replay after offline restart: stock/coverage does not double.
@@ -97,19 +112,30 @@ placeholder. This revision adds the Ostava screen and the functions below.
 - **US6 / SC-006**: "Šta imam" returns each food once with its quantity and the
   catalog id for catalog names.
 
+- **US7 / SC-007**: With a fake AI answer, a photo yields a list; unchecking
+  one item adds only the rest. Cancel, "Odbaci" and a no-food answer add
+  nothing.
+
 Evidence: `test/features/pantry/`, `test/data/pantry_repository_test.dart`,
-`test/data/food_catalog_reader_test.dart`,
+`test/data/food_catalog_reader_test.dart`, `test/ai/pantry_ai_test.dart`,
 `packages/tavli_ui/test/content_test.dart`; existing P6/P7 coverage in
 `test/data/shopping_repository_test.dart` and `test/data/cooking_repository_test.dart`.
 
-## Data and privacy
+## Data, AI and privacy
 
-No schema change, no AI and no server change. Rows use the existing
-`pantry_items` columns (name, optional quantity/unit, category,
-`quantitySetAt`, `sourceShoppingItemId`, household scope) through
-`PantryRepository` and the outbox. Pantry rows do not store a catalog food id;
-"šta imam" resolves it by name through the catalog matcher. Storing the id on
-the row is a later reviewed migration if matching by name proves insufficient.
+No schema change. Rows use the existing `pantry_items` columns (name,
+optional quantity/unit, category, `quantitySetAt`, `sourceShoppingItemId`,
+household scope) through `PantryRepository` and the outbox. Pantry rows do not
+store a catalog food id; "šta imam" resolves it by name through the catalog
+matcher. Storing the id on the row is a later reviewed migration if matching
+by name proves insufficient.
+
+The food photo is personal content (it may show a home interior): it is sent
+only to the configured AI route for that request, never stored or logged. AI
+output is untrusted and validated before display; nothing is saved without the
+person's confirmation. The gateway allowlist gets `pantry_from_photo` as a
+vision task (`supabase/functions/ai-gateway/input.ts`, contract in spec 015);
+Anja owns the AI part of this feature.
 
 ## Exact UI copy
 
@@ -120,7 +146,14 @@ the row is a later reviewed migration if matching by name proves insufficient.
 "Dodaj „…“ kao novu namirnicu", "Količina (nije obavezna)", "Jedinica", "Manje",
 "Više", "Sačuvaj", "Dodaj u ostavu", "Upisana količina je novo stanje u
 ostavi.", "Namirnice iz kataloga; ono čega nema dodaješ kao novu.",
-"Potraži namirnicu", "Prebaci u ostavu".
+"Potraži namirnicu", "Prebaci u ostavu", "Slikaj namirnice", "Jedna namirnica
+ili ceo frižider", "Izaberi sliku namirnica ili frižidera", "Namirnice sa
+slike", "Slikaj jednu namirnicu, policu ili otvoren frižider. Slika se ne čuva,
+samo se prepoznaju namirnice.", "Slikaj", "Izaberi iz galerije", "Prepoznajem
+namirnice…", "Ovo je prepoznato na slici. Proveri nazive, štikliraj ono što
+želiš u ostavi i, ako hoćeš, upiši količinu.", "Odbaci", "Dodaj u ostavu (N)",
+"Dodato u ostavu: N", "Na slici nisu prepoznate namirnice.", "Pokušaj
+ponovo", "Izaberi drugu sliku", "Prepoznavanje je prekinuto.".
 
 "Vrati" replaces the earlier "Poništi" for removal, matching shopping-list
 removal.
@@ -135,12 +168,13 @@ removal.
   displayed stock floors at 0, a manual count wins over earlier cooking, undo
   restores only consumption not superseded by a later count.
 - 2026-11-23 (Anja): add flow drawn on the canvas first; all pantry functions
-  from her Trello cards ship in one PR; camera intake (receipt or fridge
-  photo) is dropped from this feature.
+  from her Trello cards ship in one PR; receipt photos are dropped; adding
+  from a photo of food (one item or a fridge) is added to the same PR; its
+  canvas boards were approved.
 
 ## Open items
 
-- Canvas boards for the edit sheet await approval; add/edit open as a bottom
+- Canvas boards for the edit sheet await approval (photo flow approved 2026-11-23); add/edit open as a bottom
   sheet on desktop too (canvas draws a dialog), pending Anja's choice.
 - The shopping screen keeps received purchases visible with "U ostavi"; hiding
   them is shopping-list UI (Dev 1 area) and is not changed here.

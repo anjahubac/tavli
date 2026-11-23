@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
@@ -11,6 +13,9 @@ import '../../domain/food_matcher.dart';
 import '../../domain/recipe_format.dart' show formatQuantity;
 import '../../providers.dart';
 import '../../sync/catalog_status.dart';
+import '../recipes/from_photo_screen.dart'
+    show isPhonePlatform, photoPickErrorText;
+import '../recipes/recipe_providers.dart' show photoPickerProvider;
 import '../shopping/shopping_providers.dart' show pantryRepositoryProvider;
 import 'pantry_amount_form.dart';
 import 'pantry_providers.dart';
@@ -77,6 +82,30 @@ class _AddPantryItemSheetState extends ConsumerState<AddPantryItemSheet> {
         _unit = _suggestedUnit(base);
       });
 
+  /// Telefon otvara ekran sa kamerom i galerijom; na računaru se odmah bira
+  /// slika, kao kod recepta sa slike.
+  Future<void> _fromPhoto({required bool phone}) async {
+    final router = GoRouter.of(context);
+    final picker = ref.read(photoPickerProvider);
+    final navigator = Navigator.of(context);
+    if (phone) {
+      navigator.pop();
+      unawaited(router.push('/pantry/photo'));
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    navigator.pop();
+    final Uint8List? picked;
+    try {
+      picked = await picker.pick(camera: false);
+    } on Exception catch (e) {
+      showTavliMessageOn(messenger, photoPickErrorText(e, camera: false));
+      return;
+    }
+    if (picked == null) return;
+    unawaited(router.push('/pantry/photo', extra: picked));
+  }
+
   Future<void> _save(double? quantity, String? unit) async {
     final name = _name;
     if (name == null) return;
@@ -94,6 +123,7 @@ class _AddPantryItemSheetState extends ConsumerState<AddPantryItemSheet> {
   Widget _searchStep(BuildContext context) {
     final theme = Theme.of(context);
     final query = _query.trim();
+    final phone = isPhonePlatform(context);
     final found = ref.watch(_catalogSearchProvider(query)).value ?? const [];
     final inPantry = {
       for (final e
@@ -146,13 +176,27 @@ class _AddPantryItemSheetState extends ConsumerState<AddPantryItemSheet> {
               ),
             ),
           )
-        else
+        else ...[
+          TavliListGroup(
+            children: [
+              TavliListRow(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: 'Slikaj namirnice',
+                subtitle: phone
+                    ? 'Jedna namirnica ili ceo frižider'
+                    : 'Izaberi sliku namirnica ili frižidera',
+                showChevron: true,
+                onTap: () => unawaited(_fromPhoto(phone: phone)),
+              ),
+            ],
+          ),
           Text(
             'Namirnice iz kataloga; ono čega nema dodaješ kao novu.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+        ],
       ],
     );
   }
