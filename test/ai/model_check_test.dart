@@ -17,6 +17,21 @@ void main() {
     expect(result.length, byModel.length);
   });
 
+  test('OpenAI: model za sopstveni ključ, bez modela sa servera', () {
+    for (final (ids, listed) in [
+      (['gpt-4o-mini', 'gpt-4o'], true),
+      (['gpt-4o'], false),
+    ]) {
+      final result = checkChainModels(
+        ChainConfig.defaults,
+        AIProvider.openAI,
+        ids,
+      );
+      expect(result.single.spec.model, 'gpt-4o-mini');
+      expect(result.single.listed, listed);
+    }
+  });
+
   test('vraća samo modele traženog provajdera', () {
     final result = checkChainModels(
       ChainConfig.defaults,

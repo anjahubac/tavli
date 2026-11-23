@@ -115,10 +115,7 @@ void main() {
       AIRouter(
         config: () => const ChainConfig(vision: [model], text: [model, backup]),
         client: ai,
-        keys: LayeredKeySource(
-          InMemoryKeyStore({AIProvider.gemini: 'k'}),
-          const BuiltInKeys(),
-        ),
+        keys: OwnKeySource(InMemoryKeyStore({AIProvider.gemini: 'k'})),
         status: InMemoryModelStatusStore(),
       ),
     ),

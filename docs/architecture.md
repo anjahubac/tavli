@@ -171,8 +171,9 @@ Test local rollback, duplicate event/retry, undo, account switch and deletion.
 ## 5. Runtime AI, current and target
 
 Current: `RecipeAI`/`MealPlanAI` → `AIRouter` → fakeable `ChatClient` (dio).
-`ChainConfig` owns models/capabilities; `KeySource` supplies own keys then built-in
-credentials; model cooldown state persists in drift. Parsers throw
+`ChainConfig` owns models/capabilities; `KeySource` supplies own keys
+(paid or free services first, `OwnKeyOrder`); the gateway comes after them. Model
+cooldown state persists in drift. Parsers throw
 `FormatException` for shape/domain mismatch; the router has bounded repair and
 fallback. UI receives typed errors mapped to Serbian. JSON-object decoding alone
 is not sufficient semantic validation.

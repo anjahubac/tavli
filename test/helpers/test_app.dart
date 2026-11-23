@@ -211,7 +211,7 @@ class TestApp {
   ];
 }
 
-/// Cela aplikacija sa bazom u memoriji, lažnim AI-jem (ugrađeni test ključ)
+/// Cela aplikacija sa bazom u memoriji, lažnim AI-jem (test ključ)
 /// i lažnim izborom slike.
 Future<TestApp> pumpTavli(
   WidgetTester tester, {
@@ -264,8 +264,8 @@ Future<TestApp> pumpTavli(
         syncRemoteProvider.overrideWithValue(app.backend.sync),
         photoRemoteProvider.overrideWithValue(app.backend.photos),
         keyStoreProvider.overrideWithValue(app.keys),
-        builtInKeysProvider.overrideWithValue(
-          const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),
+        keySourceProvider.overrideWithValue(
+          OwnKeySource(InMemoryKeyStore({AIProvider.gemini: 'fake-test-key'})),
         ),
         chatClientProvider.overrideWithValue(
           OpenAICompatibleClient(

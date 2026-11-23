@@ -8,8 +8,9 @@ precedence; this file explains how to follow them day to day.
 
 Tavli is a Flutter app (Android, iOS, macOS) for recipes, meal plans, pantry
 and shopping lists. AI turns a photo or a dish name into a recipe and edits
-recipes via chat. AI runs on free tiers of Gemini, Groq and OpenRouter through
-one OpenAI-compatible client and a router with fallback chains.
+recipes via chat. AI runs through one OpenAI-compatible client and a router with fallback chains.
+Built-in access uses free tiers of Gemini, Groq and OpenRouter; a person can also
+add their own key, free or paid, for any service in the service list (spec 004).
 
 **An account is required.** After the intro the user signs in (email with a
 one-time code; Apple/Google later) and synced business data is stored on
@@ -99,7 +100,7 @@ flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
-flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend + built-in AI keys (see secrets.example.json)
+flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend (see secrets.example.json)
 flutter run -d macos --dart-define-from-file=secrets.json       # local stack (`supabase start`) or your own config
 scripts/check.sh                                            # format check + analyze (fast, no tests)
 scripts/test-changed.sh                                     # tests affected by staged changes
@@ -260,7 +261,7 @@ An independent human review and merged PR are required for delivery Done.
   docs, commit messages, or chat output.
 - User keys and the auth session live only in secure storage (`SecureKeyStore`,
   Keychain/Keystore). Tests use `InMemoryKeyStore` and fake backends with fake values.
-- Current build-time values (Supabase URL and anon key, built-in AI keys) go in the
+- Current build-time values (Supabase URL and anon key) go in the
   gitignored `secrets.json` passed via `--dart-define-from-file`;
   `secrets.example.json` has empty placeholders only; never read them in tests.
 - The Supabase service-role key never goes into the app, the repo or chat output.

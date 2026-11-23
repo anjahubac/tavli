@@ -79,6 +79,15 @@ class ChainConfig {
     supportsVision: true,
   );
 
+  /// Za korisnikov OpenAI ključ. Zajednički OpenAI model je [_openAI], njega
+  /// bira server.
+  static const _openAIPersonal = ModelSpec(
+    provider: AIProvider.openAI,
+    model: 'gpt-4o-mini',
+    label: 'OpenAI GPT-4o mini',
+    supportsVision: true,
+  );
+
   static const defaults = ChainConfig(
     // Za čitanje recepta sa slike Flash je dovoljno dobar i višestruko brži
     // od Pro modela, koji pre odgovora dugo "razmišlja".
@@ -88,6 +97,7 @@ class ChainConfig {
       _geminiPro,
       _geminiFlashLite,
       _openRouterFree,
+      _openAIPersonal,
     ],
     text: [
       _geminiPro,
@@ -96,6 +106,7 @@ class ChainConfig {
       _groqTextNext,
       _geminiFlashLite,
       _openRouterFree,
+      _openAIPersonal,
     ],
   );
 
@@ -110,6 +121,7 @@ class ChainConfig {
   static Map<String, ModelSpec> gatewayModels(TaskKind kind) => {
     'openai/default': _openAI,
     for (final model in defaults.chainFor(kind))
-      '${model.provider.name.toLowerCase()}/${model.model}': model,
+      if (model.provider != AIProvider.openAI)
+        '${model.provider.name.toLowerCase()}/${model.model}': model,
   };
 }

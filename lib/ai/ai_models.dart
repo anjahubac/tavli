@@ -1,17 +1,37 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-/// AI provajderi koji govore OpenAI-kompatibilan API.
+/// AI provajderi koji govore OpenAI-kompatibilan API. Jedini spisak servisa
+/// u aplikaciji: nov servis je nov red ovde.
 enum AIProvider {
-  gemini('Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai/'),
-  groq('Groq', 'https://api.groq.com/openai/v1/'),
-  openRouter('OpenRouter', 'https://openrouter.ai/api/v1/'),
-  openAI('OpenAI', '');
+  gemini(
+    'Gemini',
+    'https://generativelanguage.googleapis.com/v1beta/openai/',
+    prefixes: ['AIza'],
+  ),
+  groq('Groq', 'https://api.groq.com/openai/v1/', prefixes: ['gsk_']),
+  openRouter(
+    'OpenRouter',
+    'https://openrouter.ai/api/v1/',
+    prefixes: ['sk-or-'],
+  ),
+  openAI('OpenAI', 'https://api.openai.com/v1/', prefixes: ['sk-'], paid: true);
 
-  const AIProvider(this.label, this.baseUrl);
+  const AIProvider(
+    this.label,
+    this.baseUrl, {
+    required this.prefixes,
+    this.paid = false,
+  });
 
   final String label;
   final String baseUrl;
+
+  /// Počeci ključeva po kojima se servis prepoznaje.
+  final List<String> prefixes;
+
+  /// Da li servis naplaćuje zahteve (važi za ceo servis, ne za plan naloga).
+  final bool paid;
 
   bool get supportsPersonalKey => baseUrl.isNotEmpty;
 }

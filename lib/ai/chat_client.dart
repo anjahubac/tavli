@@ -13,7 +13,7 @@ abstract interface class ChatClient {
   });
 }
 
-/// Jedan klijent za Gemini, Groq i OpenRouter preko
+/// Jedan klijent za Gemini, Groq, OpenRouter i OpenAI preko
 /// OpenAI-kompatibilnog `/chat/completions` endpointa.
 class OpenAICompatibleClient implements ChatClient {
   OpenAICompatibleClient({
@@ -141,6 +141,10 @@ AIError mapDioException(DioException e) {
       ),
       isDaily: looksLikeDailyLimit(body),
     );
+  }
+  // OpenAI za projekat bez pristupa modelu vraća 403: ključ je ispravan.
+  if (status == 403 && body.contains('model_not_found')) {
+    return ModelNotFoundError('HTTP 403: $short');
   }
   if (status == 401 || status == 403) return AuthError('HTTP $status: $short');
   // Gemini za nevažeći ključ vraća 400 "API key not valid".
