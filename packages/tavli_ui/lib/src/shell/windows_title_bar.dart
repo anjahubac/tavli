@@ -51,6 +51,12 @@ class WindowsTitleBar extends StatelessWidget {
   /// Debljina gornje ivice koja menja visinu prozora.
   static const _resizeEdge = 4.0;
 
+  /// Širina dugmeta prozora.
+  static const _captionWidth = 46.0;
+
+  /// Najmanji prazan deo trake za pomeranje prozora.
+  static const _minDrag = 46.0;
+
   @override
   Widget build(BuildContext context) {
     final menus = TavliMenuBar.windowsMenusOf(context);
@@ -69,47 +75,56 @@ class WindowsTitleBar extends StatelessWidget {
       child: child,
     );
 
-    final bar = Row(
-      children: [
-        Flexible(
-          child: UnconstrainedBox(
-            constrainedAxis: Axis.vertical,
-            alignment: AlignmentDirectional.centerStart,
-            clipBehavior: Clip.hardEdge,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                drag(
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Center(
-                      child: Text(title, maxLines: 1, style: titleStyle),
+    // Naziv i meni zauzimaju koliko im treba, najviše do dugmadi i
+    // najmanjeg dela za pomeranje; ostatak trake je za pomeranje, pa su
+    // dugmad uvek uz desnu ivicu.
+    final bar = LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: (constraints.maxWidth - 3 * _captionWidth - _minDrag)
+                  .clamp(0.0, double.infinity),
+            ),
+            child: UnconstrainedBox(
+              constrainedAxis: Axis.vertical,
+              alignment: AlignmentDirectional.centerStart,
+              clipBehavior: Clip.hardEdge,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  drag(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Center(
+                        child: Text(title, maxLines: 1, style: titleStyle),
+                      ),
                     ),
                   ),
-                ),
-                if (menus.isNotEmpty) _WindowsMenus(groups: menus),
-              ],
+                  if (menus.isNotEmpty) _WindowsMenus(groups: menus),
+                ],
+              ),
             ),
           ),
-        ),
-        Expanded(child: drag(const SizedBox.expand())),
-        _CaptionButton(
-          kind: _Caption.minimize,
-          label: 'Umanji',
-          onPressed: controls.onMinimize,
-        ),
-        _CaptionButton(
-          kind: controls.maximized ? _Caption.restore : _Caption.maximize,
-          label: controls.maximized ? 'Vrati' : 'Uvećaj',
-          onPressed: controls.onToggleMaximize,
-        ),
-        _CaptionButton(
-          kind: _Caption.close,
-          label: 'Zatvori',
-          onPressed: controls.onClose,
-        ),
-      ],
+          Expanded(child: drag(const SizedBox.expand())),
+          _CaptionButton(
+            kind: _Caption.minimize,
+            label: 'Umanji',
+            onPressed: controls.onMinimize,
+          ),
+          _CaptionButton(
+            kind: controls.maximized ? _Caption.restore : _Caption.maximize,
+            label: controls.maximized ? 'Vrati' : 'Uvećaj',
+            onPressed: controls.onToggleMaximize,
+          ),
+          _CaptionButton(
+            kind: _Caption.close,
+            label: 'Zatvori',
+            onPressed: controls.onClose,
+          ),
+        ],
+      ),
     );
 
     final resize = controls.onStartResizeTop;
@@ -342,7 +357,7 @@ class _CaptionButtonState extends State<_CaptionButton> {
             child: ColoredBox(
               color: background,
               child: SizedBox(
-                width: 46,
+                width: WindowsTitleBar._captionWidth,
                 height: TavliWindowFrame.windowsTitleBarHeight,
                 child: Center(
                   child: CustomPaint(

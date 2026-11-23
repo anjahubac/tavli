@@ -146,6 +146,24 @@ void main() {
       expect(find.bySemanticsLabel('Zatvori'), findsOneWidget);
     });
 
+    testWidgets('dugmad prozora su uz desnu ivicu', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pump(tester, TargetPlatform.windows, frame());
+      final close = tester.getRect(find.bySemanticsLabel('Zatvori'));
+      expect(close.right, 1280);
+    });
+
+    testWidgets('uzan prozor: meni se seče, dugmad ostaju', (tester) async {
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pump(tester, TargetPlatform.windows, frame());
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.bySemanticsLabel('Zatvori')).right, 320);
+    });
+
     testWidgets('prečica ⌘ postaje Ctrl', (tester) async {
       final groups = const TavliMenuBar(
         groups: [
