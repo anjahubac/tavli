@@ -402,6 +402,22 @@ void main() {
       },
     );
 
+    test(
+      'realtime pull reports transient download failures for retry',
+      () async {
+        backend.server.failures.add(const TransientSyncError('503'));
+        expect(await full.pullAfterCurrent(), PullOutcome.retryableFailure);
+        expect((await account()).lastPullAt, isNull);
+
+        backend.server.failures.add(const PermanentSyncError('403'));
+        expect(await full.pullAfterCurrent(), PullOutcome.settled);
+        expect((await account()).lastPullAt, isNull);
+
+        expect(await full.pullAfterCurrent(), PullOutcome.settled);
+        expect((await account()).lastPullAt, isNotNull);
+      },
+    );
+
     test('povratak u aplikaciju preuzima tek posle 15 minuta', () async {
       await full.onStart();
       backend.server.calls.clear();

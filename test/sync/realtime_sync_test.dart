@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/sync/realtime_sync.dart';
+import 'package:tavli/sync/sync_engine.dart';
 
 import '../helpers/fake_timers.dart';
 
@@ -15,6 +16,7 @@ void main() {
   late DateTime now;
   late List<String> work;
   Completer<void>? blockedPull;
+  late int transientFailures;
 
   setUp(() {
     remote = _Remote();
@@ -22,6 +24,7 @@ void main() {
     now = DateTime.utc(2026, 11, 23);
     work = [];
     blockedPull = null;
+    transientFailures = 0;
     sync = RealtimeSync(
       remote: remote,
       userId: 'account',
@@ -32,6 +35,11 @@ void main() {
         final blocked = blockedPull;
         blockedPull = null;
         await blocked?.future;
+        if (transientFailures > 0) {
+          transientFailures--;
+          return PullOutcome.retryableFailure;
+        }
+        return PullOutcome.settled;
       },
       timer: timers.call,
       clock: () => now,
@@ -76,6 +84,71 @@ void main() {
       expect(work, isEmpty);
     },
   );
+
+  test('healthy channels retry a failed pull with capped backoff', () async {
+    await connectBoth();
+    transientFailures = 4;
+    remote.household.signal();
+    await timers.fire(quiet);
+    expect(work, ['pull']);
+
+    remote.household.signal();
+    await timers.fire(quiet);
+    expect(work, ['pull']);
+
+    final delays = [...SyncEngine.backoff, SyncEngine.backoff.last];
+    for (final (index, delay) in delays.indexed) {
+      expect(timers.durations, [delay]);
+      await timers.fire(delay);
+      expect(work, List.filled(index + 2, 'pull'));
+    }
+    expect(timers.pending, isEmpty);
+
+    transientFailures = 1;
+    remote.household.signal();
+    await timers.fire(quiet);
+    expect(timers.durations, [SyncEngine.backoff.first]);
+  });
+
+  test(
+    'background pauses retries, resume catches up, and disposal cancels',
+    () async {
+      await connectBoth();
+      transientFailures = 2;
+      remote.household.signal();
+      await timers.fire(quiet);
+
+      sync.setForeground(false);
+      expect(timers.pending, isEmpty);
+      await timers.fire();
+      expect(work, ['pull']);
+
+      sync.setForeground(true);
+      await pumpQueue();
+      expect(work, ['pull', 'pull']);
+      expect(timers.durations, [SyncEngine.backoff[1]]);
+
+      sync.dispose();
+      expect(timers.pending, isEmpty);
+      await timers.fire();
+      expect(work, ['pull', 'pull']);
+    },
+  );
+
+  test('membership changes are checked during pull backoff', () async {
+    await connectBoth();
+    transientFailures = 1;
+    remote.household.signal();
+    await timers.fire(quiet);
+    expect(timers.durations, [SyncEngine.backoff.first]);
+
+    remote.eligible = null;
+    remote.account.signal();
+    await pumpQueue();
+    expect(work, ['pull', 'membership']);
+    expect(remote.household.closed, isTrue);
+    expect(timers.durations, [fallback]);
+  });
 
   test('continuous signals wait at most one second before one pull', () async {
     await connectBoth();

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'sync_engine.dart';
+
 typedef _TimerFactory = Timer Function(Duration, void Function());
 
 enum SyncSignalScope {
@@ -40,7 +42,7 @@ class RealtimeSync {
   final String userId;
   final String householdId;
   final Future<void> Function() refreshMembership;
-  final Future<void> Function() pull;
+  final Future<PullOutcome> Function() pull;
   final Duration fallbackEvery;
   final _TimerFactory _timer;
   final DateTime Function() _clock;
@@ -49,6 +51,8 @@ class RealtimeSync {
   void Function()? _closeHousehold;
   Timer? _fallback;
   Timer? _batch;
+  Timer? _retry;
+  var _retryStep = 0;
   DateTime? _firstSignal;
   bool? _eligible;
   var _householdGeneration = 0;
@@ -68,6 +72,7 @@ class RealtimeSync {
       _fallback = null;
       _pending |= _batch != null;
       _clearBatch();
+      _cancelRetry();
       return;
     }
     _closeAccount ??= remote.subscribe(
@@ -159,7 +164,10 @@ class RealtimeSync {
     if (_running || _disposed || !_foreground) return;
     _running = true;
     try {
-      while (_pending && _foreground && !_disposed) {
+      while (_pending &&
+          _foreground &&
+          !_disposed &&
+          (_retry == null || _membership)) {
         final checkMembership = _membership;
         _pending = _membership = false;
         if (checkMembership) {
@@ -171,6 +179,8 @@ class RealtimeSync {
             if (eligible == null) {
               _configureHousehold(false);
               _eligible = null;
+              _cancelRetry();
+              _retryStep = 0;
               continue;
             }
             _configureHousehold(eligible);
@@ -180,7 +190,19 @@ class RealtimeSync {
             continue;
           }
         }
-        if (_foreground && !_disposed && _eligible != null) await pull();
+        if (_eligible == null) continue;
+        if (!_foreground || _retry != null) {
+          _pending = true;
+          continue;
+        }
+        final outcome = await pull();
+        if (_disposed) return;
+        if (outcome == PullOutcome.retryableFailure) {
+          _pending = true;
+          if (_foreground) _scheduleRetry();
+        } else {
+          _retryStep = 0;
+        }
       }
     } finally {
       _running = false;
@@ -188,9 +210,24 @@ class RealtimeSync {
     }
   }
 
+  void _scheduleRetry() {
+    final delay = SyncEngine.backoff[_retryStep];
+    if (_retryStep < SyncEngine.backoff.length - 1) _retryStep++;
+    _retry = _timer(delay, () {
+      _retry = null;
+      unawaited(_drain());
+    });
+  }
+
+  void _cancelRetry() {
+    _retry?.cancel();
+    _retry = null;
+  }
+
   void dispose() {
     _disposed = true;
     _clearBatch();
+    _cancelRetry();
     _fallback?.cancel();
     _closeAccount?.call();
     _closeHousehold?.call();

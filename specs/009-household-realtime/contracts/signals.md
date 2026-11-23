@@ -45,7 +45,12 @@ cannot verify membership in that household.
 One scheduler owns pulls for each active account and household. It batches
 household signals with a 250 ms quiet period capped at one second of intentional
 waiting. If a pull is busy, preserve a pending request and run the follow-up
-serially. Membership checks precede new work for a possibly changed scope.
+serially. Transient download failures keep a pull pending, even when both
+channels are healthy. Retry from the saved cursors after 5 seconds, 10 seconds
+and then every 30 seconds while in the foreground. Membership checks can run
+during backoff and discard pending retries if the scope is no longer verified.
+Backgrounding pauses the retry timer and foregrounding drains pending work.
+A settled pull resets the backoff.
 For an unavailable applicable stream, run a check every 15 minutes while
 foregrounded. If the membership stream is unavailable, that check includes
 membership before a pull. Stop the timer when the stream recovers, on
