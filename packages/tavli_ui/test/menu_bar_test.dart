@@ -157,6 +157,52 @@ void main() {
       ).windowsGroups();
       expect(groups.map((g) => g.label), ['Datoteka', 'Uređivanje']);
     });
+
+    testWidgets('Pomoć aplikacije i „O aplikaciji“ su u jednom meniju', (
+      tester,
+    ) async {
+      var about = 0;
+      var shortcuts = 0;
+      final bar = TavliMenuBar(
+        onAbout: () => about++,
+        groups: [
+          const TavliMenuGroup('Datoteka', [
+            TavliMenuCommand('Novi recept', onSelected: _noop),
+          ]),
+          TavliMenuGroup('Pomoć', [
+            TavliMenuCommand(
+              'Prečice na tastaturi',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.slash,
+                meta: true,
+              ),
+              onSelected: () => shortcuts++,
+            ),
+          ]),
+        ],
+        child: const TavliWindowFrame(child: Text('sadržaj')),
+      );
+      final groups = bar.windowsGroups();
+      expect(groups.map((g) => g.label), ['Datoteka', 'Uređivanje', 'Pomoć']);
+      expect(groups.last.items.map((c) => c?.label), [
+        'Prečice na tastaturi',
+        null,
+        'O aplikaciji Tavli',
+      ]);
+      final shortcut = groups.last.items.first!.shortcut! as SingleActivator;
+      expect(shortcut.control, isTrue);
+      expect(shortcut.meta, isFalse);
+
+      await pump(tester, TargetPlatform.windows, bar);
+      expect(find.text('Pomoć'), findsOneWidget);
+      for (final label in ['Prečice na tastaturi', 'O aplikaciji Tavli']) {
+        await tester.tap(find.text('Pomoć'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      }
+      expect((shortcuts, about), (1, 1));
+    });
   });
 }
 

@@ -129,14 +129,23 @@ class TavliMenuBar extends StatelessWidget {
       ],
       if (quit != null) ...[null, TavliMenuCommand('Izlaz', onSelected: quit)],
     ]);
+    // Pomoć je jedna i poslednja: „O aplikaciji“ ide iza stavki aplikacije.
+    const helpLabel = 'Pomoć';
+    final rest = app.skip(1);
+    final help = [
+      for (final g in rest)
+        if (g.label == helpLabel) ...g.items,
+    ];
+    if (about != null) {
+      if (help.isNotEmpty) help.add(null);
+      help.add(TavliMenuCommand('O aplikaciji $appName', onSelected: about));
+    }
     return [
       if (file.items.isNotEmpty) file,
       TavliMenuGroup('Uređivanje', _windowsEdit),
-      ...app.skip(1),
-      if (about != null)
-        TavliMenuGroup('Pomoć', [
-          TavliMenuCommand('O aplikaciji $appName', onSelected: about),
-        ]),
+      for (final g in rest)
+        if (g.label != helpLabel) g,
+      if (help.isNotEmpty) TavliMenuGroup(helpLabel, help),
     ];
   }
 
