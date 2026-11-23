@@ -136,6 +136,20 @@ RecipeLabels aiLabels(Map<String, dynamic> json) {
   );
 }
 
+/// Najduži opis slike koji se čuva (server ga ponovo skraćuje).
+const maxImageDescriptionLength = 600;
+
+/// I1: opis slike je opcion i nikad ne odbija recept. Pogrešan tip ili
+/// prazan tekst postaje `null`; razmaci se sažimaju, a predugačak tekst se
+/// skraćuje na [maxImageDescriptionLength].
+String? aiImageDescription(Object? v) {
+  if (v is! String) return null;
+  final s = v.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (s.isEmpty) return null;
+  if (s.length <= maxImageDescriptionLength) return s;
+  return s.substring(0, maxImageDescriptionLength).trimRight();
+}
+
 /// Ceo recept iz AI odgovora (`recipe.v1`, R1–R10, L1–L3). Odgovor
 /// `{"error": "not_a_recipe"}` (R11) obrađuje pozivalac pre ovoga.
 Recipe recipeFromAiResponse(
@@ -155,4 +169,5 @@ Recipe recipeFromAiResponse(
   createdAt: createdAt,
   imagePath: imagePath,
   labels: aiLabels(json),
+  imageDescription: aiImageDescription(json['image_description']),
 );

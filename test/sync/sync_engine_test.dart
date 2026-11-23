@@ -26,6 +26,7 @@ void main() {
   late SyncEngine engine;
   late List<SyncStatus> seen;
   var unauthorized = 0;
+  var forbidden = 0;
   var refreshOk = true;
 
   setUp(() async {
@@ -33,6 +34,7 @@ void main() {
     backend = FakeBackend();
     timers = FakeTimers();
     unauthorized = 0;
+    forbidden = 0;
     refreshOk = true;
     final s = await backend.auth.verifyCode('ana@mail.com', FakeServer.code);
     scope = AccountScope(
@@ -52,6 +54,9 @@ void main() {
       ),
       timer: timers.call,
       onUnauthorized: () async => unauthorized++,
+      onForbidden: () => engine.reconcileMembership(() async {
+        forbidden++;
+      }),
     );
     writer = SyncedWriter(db, accountId: scope.userId, onChange: engine.kick);
     seen = [];
@@ -167,6 +172,21 @@ void main() {
     expect(unauthorized, 1);
     expect(backend.server.table('recipes'), isEmpty);
   });
+
+  test(
+    'permission denial rechecks membership after the upload stops',
+    () async {
+      await addRecipe('a');
+      backend.server.failures.addAll(const [
+        PermanentSyncError('42501'),
+        PermanentSyncError('42501'),
+      ]);
+      await timers.fire();
+      expect(forbidden, 1);
+      expect(backend.server.table('recipes'), isEmpty);
+      expect(engine.status, isA<Rejected>());
+    },
+  );
 
   test('stop gasi tajmere i slanje', () async {
     await addRecipe('a');
@@ -504,6 +524,52 @@ void main() {
 
         await full.push();
         expect(backend.server.calls, ['upsert:recipes:1']);
+      },
+    );
+
+    test(
+      'a realtime pull follows a pull that already read the changed table',
+      () async {
+        final firstApplied = Completer<void>();
+        final releaseFirst = Completer<void>();
+        afterPull = () async {
+          if (firstApplied.isCompleted) return;
+          firstApplied.complete();
+          await releaseFirst.future;
+        };
+
+        final first = full.pull();
+        await firstApplied.future;
+        backend.server.upsert('pantry_items', [
+          {
+            'id': 'o2',
+            'household_id': scope.householdId,
+            'name': 'biber',
+            'category': 'ostalo',
+            'added_at': '2026-10-30T10:00:00.000Z',
+          },
+        ], 'id');
+        final following = full.pullAfterCurrent();
+        expect(await db.select(db.pantryItems).get(), hasLength(1));
+        releaseFirst.complete();
+        await Future.wait([first, following]);
+        expect(await db.select(db.pantryItems).get(), hasLength(2));
+      },
+    );
+
+    test(
+      'realtime pull reports transient download failures for retry',
+      () async {
+        backend.server.failures.add(const TransientSyncError('503'));
+        expect(await full.pullAfterCurrent(), PullOutcome.retryableFailure);
+        expect((await account()).lastPullAt, isNull);
+
+        backend.server.failures.add(const PermanentSyncError('403'));
+        expect(await full.pullAfterCurrent(), PullOutcome.settled);
+        expect((await account()).lastPullAt, isNull);
+
+        expect(await full.pullAfterCurrent(), PullOutcome.settled);
+        expect((await account()).lastPullAt, isNotNull);
       },
     );
 

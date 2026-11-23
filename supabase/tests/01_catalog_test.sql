@@ -28,11 +28,12 @@ select is(
           and has_table_privilege('authenticated', c.oid, p)
         order by 1),
   array[
+    'account_sync_signals:select',
     'cooked_events:delete', 'cooked_events:insert', 'cooked_events:select', 'cooked_events:update',
     'deletions:select',
     'food_aliases:delete', 'food_aliases:insert', 'food_aliases:select', 'food_aliases:update',
     'foods:delete', 'foods:insert', 'foods:select', 'foods:update',
-    'household_members:select', 'households:select',
+    'household_members:select', 'household_sync_signals:select', 'households:select',
     'meal_plan_entries:delete', 'meal_plan_entries:insert', 'meal_plan_entries:select', 'meal_plan_entries:update',
     'meal_plans:delete', 'meal_plans:insert', 'meal_plans:select', 'meal_plans:update',
     'pantry_consumptions:delete', 'pantry_consumptions:insert', 'pantry_consumptions:select', 'pantry_consumptions:update',
@@ -81,8 +82,8 @@ select is(
     'private.is_member', 'private.join_photo_is_published', 'private.recipe_meal_types_valid',
     'private.valid_allergen_selection', 'public.confirm_household_join',
     'public.get_household_recipe_rating_summaries', 'public.household_invite_token',
-    'public.household_members_overview', 'public.prepare_new_household',
-    'public.preview_household_join',
+    'public.household_members_overview', 'public.household_realtime_eligible',
+    'public.prepare_new_household', 'public.preview_household_join',
     'public.regenerate_household_invite', 'public.remove_household_member',
     'public.rename_household',
     'public.set_planning_preferences_sharing', 'public.take_household_removal'

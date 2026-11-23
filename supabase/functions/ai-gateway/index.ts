@@ -76,4 +76,57 @@ Deno.serve(gateway({
     const result = await rpc("ai_release", { p_id: id });
     await result.body?.cancel();
   },
+  async reserveImage(uid, recipeId, limits) {
+    const result = await rpc("ai_image_reserve", {
+      p_user_id: uid,
+      p_recipe_id: recipeId,
+      p_user_limit: limits.user,
+      p_project_limit: limits.project,
+      p_attempt_limit: limits.attempts,
+    });
+    const value = record(await result.json());
+    if (value?.error === "no_household") return { error: "no_household" };
+    if (
+      typeof value?.id === "string" && typeof value.household_id === "string"
+    ) {
+      return { id: value.id, householdId: value.household_id };
+    }
+    const limit = value?.limit;
+    const seconds = value?.retry_after_seconds;
+    if (
+      (limit === "user" || limit === "project") &&
+      typeof seconds === "number" && Number.isSafeInteger(seconds) &&
+      seconds >= 0
+    ) {
+      return { limit, retryAfterSeconds: seconds };
+    }
+    throw new Error("invalid_ai_image_quota_response");
+  },
+  // Service role upisuje u {household_id}/ (domaćinstvo iz članstva, ne iz
+  // zahteva aplikacije).
+  async storeImage(householdId, file, jpeg) {
+    if (
+      !/^[0-9a-f-]{36}$/.test(householdId) ||
+      !/^ai_[0-9a-f-]{36}\.jpg$/.test(file)
+    ) {
+      throw new Error("invalid_ai_image_path");
+    }
+    const result = await send(
+      url + "/storage/v1/object/recipe-photos/" + householdId + "/" + file,
+      {
+        method: "POST",
+        headers: {
+          apikey: roleKey!,
+          Authorization: "Bearer " + roleKey,
+          "Content-Type": "image/jpeg",
+          "x-upsert": "false",
+        },
+        body: jpeg,
+        redirect: "error",
+        signal: AbortSignal.timeout(15000),
+      },
+    );
+    await result.body?.cancel().catch(() => {});
+    if (!result.ok) throw new Error("ai_image_store_failed");
+  },
 }));

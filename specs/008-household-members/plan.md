@@ -98,7 +98,7 @@ The initial SQL fixture uses these proposed RPC signatures and response keys:
 
 | RPC | Result |
 | --- | --- |
-| `household_invite_token()` | Stable token as text for any member; SQLSTATE `42501` without a membership (owner-only until migration `20261123130000`) |
+| `household_invite_token()` | Stable token as text for any member; SQLSTATE `42501` without a membership (owner-only until migration `20261123180000`) |
 | `regenerate_household_invite()` | New token as text for the owner; the old token stops resolving; SQLSTATE `42501` for members and unauthenticated callers |
 | `preview_household_join(token text)` | JSON object with `status`, and on success `household_name`, `source_household_id` and `requires_source_deletion_ack` |
 | `confirm_household_join(token text, expected_source_household_id uuid, recipe_choice text, source_deletion_ack boolean, operation_id uuid)` | JSON object with `status` and verified scope on success |
@@ -221,7 +221,7 @@ the drift change: Dev 1.
   step on the server. Existing profiles are backfilled to `true`; new profiles
   start at `false`. `rename_household(name)` completes the step for the
   owner. A membership insert with the `member` role completes it on join in
-  the same transaction. The app caches the flag in drift v11
+  the same transaction. The app caches the flag in drift v12
   (`accounts.household_ready`, default `true`) and adds the `NeedsHousehold`
   auth state with the `/sign-in/household` route. Joining from this step
   copies no recipes. It acknowledges deletion of the new empty household as

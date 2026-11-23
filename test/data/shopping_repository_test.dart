@@ -1047,6 +1047,17 @@ void main() {
         await shop.reconcilePlan('p1');
         await shop.reconcilePlan('p1');
         expect(await open(list), ['Kupus 100.0 g']);
+        final received = (await db.select(db.pantryItems).get()).singleWhere(
+          (p) => p.sourceShoppingItemId == bought.id,
+        );
+        await pantryRepo.setQuantity(received.id, null);
+        expect(
+          await open(list),
+          ['Kupus 300.0 g'],
+          reason:
+              'primljena kupovina više ne pokriva brojčanu potrebu kada '
+              'količina u ostavi postane nepoznata',
+        );
         expect(
           (await db.select(db.pantryItems).get()).map((p) => p.id),
           hasLength(2),

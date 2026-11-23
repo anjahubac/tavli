@@ -222,4 +222,27 @@ void main() {
       const MealFacts(recipeKey: 'sarma', title: 'Sarma'),
     );
   });
+
+  group('omiljeni recepti (TRELLO-44)', () {
+    test('omiljen recept ponovljen u 7 dana krši pravilo, ostali u 3', () {
+      final meals = {
+        slot(0, MealType.lunch): dish('fav'),
+        slot(5, MealType.lunch): dish('fav'),
+        slot(1, MealType.lunch): dish('other'),
+        slot(4, MealType.lunch): dish('other'),
+      };
+      expect(mealRuleBreaks(meals), isEmpty);
+      expect(mealRuleBreaks(meals, favorites: {'fav'}), {
+        slot(5, MealType.lunch): {MealRule.repeated},
+      });
+    });
+
+    test('posle 7 dana omiljen recept sme ponovo', () {
+      final meals = {
+        slot(0, MealType.lunch): dish('fav'),
+        slot(7, MealType.lunch): dish('fav'),
+      };
+      expect(mealRuleBreaks(meals, favorites: {'fav'}), isEmpty);
+    });
+  });
 }

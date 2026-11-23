@@ -23,7 +23,8 @@ final _recipeSchema =
   "meals": [one of ${jsonEncode([for (final m in MealSuitability.values) m.wire])}],
                              // meals the dish suits, one or more
   "weight": one of ${jsonEncode([for (final w in DishWeight.values) w.wire])},
-  "dishKind": one of ${jsonEncode([for (final k in DishKind.values) k.wire])}
+  "dishKind": one of ${jsonEncode([for (final k in DishKind.values) k.wire])},
+  "image_description": string // in ENGLISH, see below
 }
 weight: light = small and easy (salad, yoghurt, toast); medium = a normal
 meal; hearty = a filling main meal (pasulj, sarma, roast).
@@ -31,7 +32,35 @@ dishKind: soup = čorba or supa; cooked = stew or cooked dish (pasulj, gulaš,
 sarma, rižoto); baked_fried = from the oven, grill or pan (musaka, piletina,
 ćevapi, riba); pasta; salad; pie_pizza_sandwich = gibanica, pica, tost;
 eggs_breakfast = kajgana, omlet, kaša; cold = spreads or a cold platter;
-sweet = desserts and sweet dishes.''';
+sweet = desserts and sweet dishes.
+$imageDescriptionRules''';
+
+/// Pravila za opis slike gotovog jela (TRELLO-130). Deli ih rezervni upit
+/// kad AI recept nema opis ([imageDescriptionPrompt]).
+const imageDescriptionRules = '''
+image_description: 2-3 sentences in ENGLISH (about 50 words) describing only
+what the finished dish looks like in a photo: its recognizable shape, colors,
+the dish or vessel it is served in, a top-down view and any garnish. Always
+state the distinctive shape explicitly, for example zeljanica = "one thick
+rope of rolled phyllo coiled into a flat snail spiral, whole pie uncut, in a
+round black pan, top-down"; sarma = "rolled cabbage leaf parcels in a pot of
+reddish sauce". No text, people, hands, logos or brands.''';
+
+/// Sistemski upit kad AI recept nema opis slike (jedan mali poziv).
+const imageDescriptionSystemPrompt = '''
+You describe finished home-cooked dishes for a food photographer.
+Always answer with ONE JSON object and nothing else:
+{"image_description": string}
+$imageDescriptionRules''';
+
+String imageDescriptionPrompt(Recipe recipe) =>
+    '''
+Describe how this finished dish looks.
+${jsonEncode({
+      'title': recipe.title,
+      'ingredients': [for (final i in recipe.ingredients) i.name],
+      'steps': recipe.steps,
+    })}''';
 
 /// Kako se piše naziv sastojka, da bi se povezao sa katalogom namirnica
 /// (TRELLO-40, spec 018 FR-008). Deli se sa upitom za plan.

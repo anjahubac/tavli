@@ -80,7 +80,7 @@ void main() {
   }
 
   for (final columnExists in [false, true]) {
-    test('v10 upgrade marks existing accounts as past the household step '
+    test('v11 upgrade marks existing accounts as past the household step '
         '(column already present: $columnExists)', () async {
       final db = AppDatabase(
         NativeDatabase.memory(
@@ -99,7 +99,7 @@ void main() {
               "household_name, role, created_at) VALUES ('u', 'a@b.rs', "
               "'h', 'Kuća', 'owner', 1)",
             );
-            raw.execute('PRAGMA user_version = 10');
+            raw.execute('PRAGMA user_version = 11');
           },
         ),
       );
@@ -364,7 +364,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 11);
+    expect(db.schemaVersion, 12);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
@@ -686,5 +686,37 @@ void main() {
     addTearDown(again.close);
     expect((await again.select(again.foods).get()).single.id, 'f1');
     expect((await again.select(again.foodAliases).get()).single.id, 'a1');
+  });
+
+  test('migration 10 → 11 adds recipe image columns and the local image '
+      'queue; a repeated step does not fail', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v11-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    await first.customStatement(
+      'INSERT INTO recipes (id, title, servings, source, ingredients_json, '
+      "steps_json, image_path, created_at, updated_at) VALUES ('r1', "
+      "'Sarma', 4, 'photo', '[]', '[]', 'recipe_photos/a.jpg', 1, 2)",
+    );
+    for (final c in ['image_description', 'image_source']) {
+      await first.customStatement('ALTER TABLE recipes DROP COLUMN $c');
+    }
+    await first.customStatement('DROP TABLE recipe_image_jobs');
+    await first.customStatement('PRAGMA user_version = 10');
+    await first.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    final row = (await upgraded.select(upgraded.recipes).get()).single;
+    expect(row.imagePath, 'recipe_photos/a.jpg');
+    expect(row.imageDescription, isNull);
+    expect(row.imageSource, isNull);
+    expect(await upgraded.select(upgraded.recipeImageJobs).get(), isEmpty);
+    await upgraded.customStatement('PRAGMA user_version = 10');
+    await upgraded.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.recipes).get()).single.title, 'Sarma');
   });
 }
