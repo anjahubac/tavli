@@ -99,17 +99,20 @@ preserving the same action on compact views.
 ## Pantry
 
 Presence means available; do not display a redundant “imam” badge. Quantity is
-optional. Search/add from the catalog, group by category and display plain names
-when quantity is unknown. There is no expiry entry, expiry warning or “use first”
-feature in this target. Legacy expiry columns are not dropped by documentation:
-a later migration must preserve data and older-client compatibility explicitly.
+optional. The list is flat, sorted by name, with search; add from the catalog or
+as a new name, and display plain names when quantity is unknown. There is no
+expiry entry, expiry warning or “use first” feature in this target. Legacy
+expiry columns are not dropped by documentation: a later migration must
+preserve data and older-client compatibility explicitly.
 
-Swipe to remove on phone. Provide “Ukloni” in a reachable row menu on compact
-layouts and a keyboard-accessible remove action on desktop. Offer “Poništi”.
-Tap a numeric entry to edit quantity with minus/plus and direct input. Cooking
-consumes known quantities once, never below zero; undo restores them once.
-Unknown quantities persist until the person removes the item. Repeated events,
-partial failures and offline replay must not duplicate consumption or receipts.
+Swipe left to reveal “Ukloni” on phone; on desktop a trash action appears on
+hover or keyboard focus. Removal offers “Vrati”. Tap an entry to edit quantity
+with minus/plus and direct input. The same food and unit show as one row with
+the summed quantity, also after “Prebaci u ostavu”. “Slikaj namirnice” suggests
+foods from a photo of one item or an open fridge; the person reviews them
+before they are added, and the photo is not kept. Cooking consumes known quantities once, never below zero; undo restores
+them once. Unknown quantities persist until the person removes the item.
+Repeated events, partial failures and offline replay must not duplicate consumption or receipts.
 
 ## Recipes and cooking
 

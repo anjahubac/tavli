@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -396,6 +397,73 @@ void main() {
       expect(tester.widget<Text>(find.text('1 kg')).textAlign, TextAlign.end);
       await tester.tap(find.text('Brašno'));
       expect(tapped, 'b');
+    });
+
+    testWidgets('kanta se vidi kad je miš iznad reda i uklanja red', (
+      tester,
+    ) async {
+      final removed = <String>[];
+      await pump(
+        tester,
+        SizedBox(
+          width: 600,
+          child: TavliDataTable(
+            columns: const [
+              TavliColumn('Namirnica', flex: 3),
+              TavliColumn('Količina', alignEnd: true),
+            ],
+            rows: [
+              TavliTableRow(
+                const ['Brašno', '1 kg'],
+                onRemove: () => removed.add('b'),
+                removeLabel: 'Ukloni iz ostave',
+              ),
+              TavliTableRow(
+                const ['So', ''],
+                onRemove: () => removed.add('s'),
+                removeLabel: 'Ukloni iz ostave',
+              ),
+            ],
+          ),
+        ),
+        size: const Size(800, 600),
+      );
+      final trash = find.byWidgetPredicate(
+        (w) => w is Tooltip && w.message == 'Ukloni iz ostave',
+      );
+      expect(trash, findsNothing);
+      // Red sa kantom ostaje iste visine kao red bez nje.
+      final rowHeight = tester
+          .getSize(
+            find.ancestor(of: find.text('So'), matching: find.byType(InkWell)),
+          )
+          .height;
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('So')));
+      await tester.pumpAndSettle();
+      expect(trash, findsOneWidget);
+      expect(
+        tester
+            .getSize(
+              find.ancestor(
+                of: find.text('So'),
+                matching: find.byType(InkWell),
+              ),
+            )
+            .height,
+        rowHeight,
+      );
+      await tester.tap(trash);
+      expect(removed, ['s']);
+
+      // Čitač ekrana: ista radnja na redu, bez miša.
+      final semantics = tester.ensureSemantics();
+      final node = tester.getSemantics(find.text('Brašno'));
+      expect(node.getSemanticsData().customSemanticsActionIds, isNotEmpty);
+      semantics.dispose();
     });
   });
 
