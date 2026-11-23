@@ -15,6 +15,7 @@ import '../../domain/recipe_format.dart';
 import '../../domain/recipe_labels.dart';
 import '../../domain/recipe_search.dart';
 import 'add_recipe_sheet.dart';
+import 'cook_from_pantry_screen.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
 import 'recipe_providers.dart';
@@ -132,6 +133,13 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
     onChanged: ref.read(recipeSearchProvider.notifier).setQuery,
   );
 
+  /// „Šta da skuvam?“ (TRELLO-103): recepti od onoga što je u ostavi.
+  Widget _pantryButton() => TavliIconButton(
+    glyph: TavliIcons.cook,
+    semanticLabel: 'Šta da skuvam?',
+    onPressed: () => context.push(cookFromPantryPath),
+  );
+
   Widget _filterButton(RecipeFilter filter) => TavliIconButton(
     glyph: TavliIcons.filter,
     semanticLabel: filter.hasFilters
@@ -220,6 +228,8 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                   Expanded(child: _searchField()),
                   const SizedBox(width: TavliSpacing.small),
                   _filterButton(filter),
+                  const SizedBox(width: TavliSpacing.small),
+                  _pantryButton(),
                 ],
               ),
             ),
@@ -242,6 +252,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
             actions: [
               SizedBox(width: _searchWidth, child: _searchField()),
               _filterButton(filter),
+              _pantryButton(),
               TavliButton.primary(
                 label: 'Dodaj recept',
                 icon: Icons.add,

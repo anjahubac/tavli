@@ -5,7 +5,8 @@ TRELLO-102), pending review.
 **Author**: Dev 2 | **Reviewer**: Dev 4 (Recipes screen)
 **Date**: 2026-11-20 | **Builds on**: [recipe labels](recipe-labels-contract.md)
 **Consumers**: the Recipes list now; plan from saved recipes (TRELLO-45, 019
-FR-007) and the pantry suggestion (TRELLO-103) later.
+FR-007) later; the pantry suggestion (TRELLO-103) is in the
+[pantry suggestions contract](pantry-suggestions-contract.md).
 
 ## Function
 
