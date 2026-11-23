@@ -10,7 +10,6 @@ import '../../sync/sync_engine.dart';
 import '../account/account_dialogs.dart';
 import '../account/account_header.dart' show syncStatusText;
 import '../account/auth_error_text.dart';
-import '../account/household_join_dialog.dart';
 import 'settings_page.dart';
 
 /// Stanje čuvanja u nalogu kao napomena (FR-018).
@@ -56,7 +55,7 @@ Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// Odeljak „Nalog“: avatar, ime, adresa, domaćinstvo, stanje čuvanja i
+/// Odeljak „Nalog“: avatar, ime, adresa, stanje čuvanja i
 /// svakodnevne radnje (FR-026).
 class AccountSection extends ConsumerWidget {
   const AccountSection({super.key});
@@ -81,10 +80,6 @@ class AccountSection extends ConsumerWidget {
           ),
         ),
         Text(a.email, style: t.bodyMedium?.copyWith(color: c.onSurfaceVariant)),
-        Text(
-          '${a.householdName} · ${a.roleLabel}',
-          style: t.bodySmall?.copyWith(color: c.onSurfaceVariant),
-        ),
       ],
     );
     return SettingsSection(
@@ -123,11 +118,6 @@ class AccountSection extends ConsumerWidget {
                 if (next == null) return;
                 await ref.read(authControllerProvider.notifier).saveName(next);
               },
-            ),
-            TavliListRow(
-              title: 'Pridruži se domaćinstvu',
-              leading: const TavliIcon(TavliIcons.joinHousehold),
-              onTap: () => showHouseholdJoinDialog(context),
             ),
             TavliListRow(
               title: 'Odjavi se',

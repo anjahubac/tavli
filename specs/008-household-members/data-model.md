@@ -21,6 +21,18 @@ app rebinds its offline cache to the verified membership. Any needed drift
 migration is planned with the sync consumer. Personal account rows retain
 their existing access and lifecycle.
 
+### First sign-in step, rename and member list
+
+| Data | Change |
+| --- | --- |
+| `profiles.household_setup_done` | New boolean. Existing rows are `true`; new rows default to `false`. Not client-writable (column grants unchanged). Set by `rename_household` and by a `household_members` insert with role `member`. |
+| `rename_household(name)` | Owner-only RPC that trims and accepts 1–40 characters. Returns `renamed`, `invalid_name` or `not_allowed`. Locks the household row. |
+| `household_members_overview()` | Security-definer read of the caller's own household: `user_id`, `display_name`, `role`, `joined_at`. No email. |
+| Drift v12 `accounts.household_ready` | Cached copy of the server flag, default `true`, so the step survives an offline cold start. Migration adds the column only when missing. |
+
+Migration `20261123170000_household_setup_and_members.sql`; pgTAP
+`15_household_setup_test.sql`.
+
 ## Member planning inputs
 
 **Status**: personal storage and advisory resolver implemented on the 008 work branch. Remaining targets follow the

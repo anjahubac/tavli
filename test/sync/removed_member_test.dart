@@ -25,7 +25,7 @@ void main() {
         location: '/profile',
         backend: backend,
       );
-      expect(find.text('Moje domaćinstvo · Vlasnik'), findsOneWidget);
+      expect(find.text('Moje domaćinstvo'), findsOneWidget);
 
       // The owner removes the member on the server; the app is still open.
       backend.server.enforceMembership = true;
@@ -42,7 +42,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();
 
-      expect(find.text('Novo domaćinstvo · Vlasnik'), findsOneWidget);
+      expect(find.text('Novo domaćinstvo'), findsOneWidget);
       final account = await app.db.select(app.db.accounts).getSingle();
       expect(account.householdId, 'new-home');
       expect(backend.server.rows('recipes'), isEmpty);
@@ -102,14 +102,14 @@ void main() {
       final outbox = app.db.select(app.db.syncOutbox)
         ..where((t) => t.recordId.equals('stale-edit'));
       expect((await outbox.getSingle()).state, OutboxState.rejected);
-      expect(find.text('Moje domaćinstvo · Vlasnik'), findsOneWidget);
+      expect(find.text('Moje domaćinstvo'), findsOneWidget);
       final rejectedAttempts = uploadAttempts;
 
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
 
       expect(membershipFetches, 3);
-      expect(find.text('Novo domaćinstvo · Vlasnik'), findsOneWidget);
+      expect(find.text('Novo domaćinstvo'), findsOneWidget);
       final queued = await outbox.getSingle();
       expect(queued.state, OutboxState.quarantined);
       expect(queued.lastError, '42501');

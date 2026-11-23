@@ -40,7 +40,12 @@ started at `6e560f6` and upstream has advanced. Use the local Supabase stack
 and synthetic accounts for backend checks. Local credentials come from the
 existing setup on the new machine. Follow the repo preference about app launches.
 
-1. With Dev 4, agree the Profile and join screens. Wire sharing, QR display
+1. Branch `008-household-onboarding-ui` implements the Profile, sharing, QR,
+   join, rename and removal screens and the first sign-in step from the
+   chosen canvas variants (A and C). See the
+   [UI slice plan](plan.md#household-ui-and-first-sign-in-slice-t010t015).
+   Dev 4 still reviews the recorded canvas deviations. Originally:
+   with Dev 4, agree the Profile and join screens. Wire sharing, QR display
    and scanning, and manual entry to the same preview and confirmation flow.
    Preserve the invite through sign-in. Use the Serbian copy in the spec.
 2. Register and route `tavli://` on Android, iOS, macOS and Linux. On Linux

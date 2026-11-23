@@ -79,6 +79,37 @@ void main() {
     });
   }
 
+  for (final columnExists in [false, true]) {
+    test('v11 upgrade marks existing accounts as past the household step '
+        '(column already present: $columnExists)', () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute(_v7RatingTables.first);
+            raw.execute('ALTER TABLE accounts ADD COLUMN catalog_status TEXT');
+            if (columnExists) {
+              // Repeated step after user_version was reset.
+              raw.execute(
+                'ALTER TABLE accounts ADD COLUMN household_ready INTEGER '
+                'NOT NULL DEFAULT 1',
+              );
+            }
+            raw.execute(
+              'INSERT INTO accounts (user_id, email, household_id, '
+              "household_name, role, created_at) VALUES ('u', 'a@b.rs', "
+              "'h', 'Kuća', 'owner', 1)",
+            );
+            raw.execute('PRAGMA user_version = 11');
+          },
+        ),
+      );
+      addTearDown(db.close);
+      final row = await db.select(db.accounts).getSingle();
+      expect(row.householdReady, isTrue);
+      expect(row.householdName, 'Kuća');
+    });
+  }
+
   test('v7 to v9 keeps the latest rating and creates both caches', () async {
     final db = AppDatabase(
       NativeDatabase.memory(
@@ -333,7 +364,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 11);
+    expect(db.schemaVersion, 12);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));

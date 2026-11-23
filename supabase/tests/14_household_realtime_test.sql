@@ -126,7 +126,8 @@ select is((
     and c.column_name = 'household_id'
     and c.table_name not in (
       'household_members', -- personal signals, see signal_membership_change
-      'deletions'          -- written by the delete triggers of the tables above
+      'deletions',         -- written by the delete triggers of the tables above
+      'cookbooks', 'cookbook_chunks' -- online-only; not part of offline sync
     )
     and not exists (
       select 1 from pg_catalog.pg_trigger g

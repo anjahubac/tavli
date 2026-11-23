@@ -4,12 +4,31 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
 
 const _skip = 'Pređi bez nesinhronizovanih izmena';
 const _wait = 'Nastavi da čekaš';
+
+/// Profil > „Pridruži se novom domaćinstvu“: izbor novog ili postojećeg.
+Future<void> openHouseholdChoice(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('Pridruži se novom domaćinstvu'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Pridruži se novom domaćinstvu'));
+  await tester.pumpAndSettle();
+}
+
+/// Profil > „Pridruži se novom domaćinstvu“ > „Pridruži se postojećem
+/// domaćinstvu“ > kod > „Nastavi“.
+Future<void> enterInviteCode(WidgetTester tester) async {
+  await openHouseholdChoice(tester);
+  await tapButton(tester, 'Pridruži se postojećem domaćinstvu');
+  await tester.enterText(textField('Kod pozivnice'), '0123-4567-89ab');
+  await tester.pump();
+  await tapButton(tester, 'Nastavi');
+}
 
 void main() {
   Future<TestApp> openJoin(
@@ -26,26 +45,21 @@ void main() {
       backend: backend,
       overrides: [if (!useSync) syncEngineProvider.overrideWithValue(null)],
     );
-    await tester.ensureVisible(find.text('Pridruži se domaćinstvu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Pridruži se domaćinstvu'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(EditableText), '0123-4567-89AB');
-    await tester.pump();
-    await tester.ensureVisible(find.text('Proveri pozivnicu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Proveri pozivnicu'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Prelaziš u domaćinstvo „Zajedničko domaćinstvo“.'),
-      findsOneWidget,
-    );
+    await enterInviteCode(tester);
+    expect(find.text('Pozvan si u'), findsOneWidget);
+    expect(find.text('Zajedničko domaćinstvo'), findsOneWidget);
     if (useSync) backend.server.offline = true;
     await app.repo.create(sampleRecipe('old-draft', 'Nesinhronizovan recept'));
-    await tester.ensureVisible(find.text('Da, bez recepata'));
+    await tapButton(tester, 'Da, bez recepata');
+    // Poslednji član: brisanje se potvrđuje pre prelaska.
+    expect(find.text('Trajno brisanje domaćinstva'), findsWidgets);
+    await tapButton(tester, 'Pridruži se');
+    expect(backend.accounts.joinCalls, 0, reason: 'bez potvrde nema prelaska');
+    await tester.ensureVisible(find.text('Razumem da je brisanje trajno'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Da, bez recepata'));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('Razumem da je brisanje trajno'));
+    await tester.pump();
+    await tapButton(tester, 'Pridruži se');
     expect(find.text('Sinhronizujemo izmene…'), findsOneWidget);
     expect(find.text(_skip), findsNothing);
     expect(backend.accounts.joinCalls, 0);
@@ -124,5 +138,171 @@ void main() {
     expect(app.backend.accounts.joinCalls, 1);
     expect(app.backend.server.rows('recipes').single['id'], 'old-draft');
     expect(app.scope.householdId, 'destination');
+  });
+
+  testTavli('„Ne, ostani ovde“ ne menja domaćinstvo', (tester) async {
+    final backend = FakeBackend();
+    backend.accounts.joinTargetHousehold = 'destination';
+    final app = await pumpTavli(tester, location: '/profile', backend: backend);
+    final home = app.scope.householdId;
+    await enterInviteCode(tester);
+    await tapButton(tester, 'Ne, ostani ovde');
+    expect(find.text('Pozvan si u'), findsNothing);
+    expect(backend.accounts.joinCalls, 0);
+    expect(app.scope.householdId, home);
+  });
+
+  testTavli('kada članovi ostaju, prelazak ne traži potvrdu brisanja', (
+    tester,
+  ) async {
+    final backend = FakeBackend()
+      ..accounts.joinTargetHousehold = 'destination'
+      ..accounts.joinRequiresAck = false;
+    final app = await pumpTavli(
+      tester,
+      location: '/profile',
+      backend: backend,
+      overrides: [syncEngineProvider.overrideWithValue(null)],
+    );
+    await enterInviteCode(tester);
+    expect(
+      find.textContaining('ostaju u domaćinstvu „Moje domaćinstvo“'),
+      findsOneWidget,
+    );
+    await tapButton(tester, 'Da, ponesi moje recepte');
+    expect(find.text('Trajno brisanje domaćinstva'), findsNothing);
+    expect(backend.accounts.joinCalls, 1);
+    expect(backend.accounts.lastJoinAck, 0);
+    expect(app.scope.householdId, 'destination');
+  });
+
+  testTavli(
+    'neispravan kod ne šalje zahtev; nedostupna pozivnica se objašnjava',
+    (tester) async {
+      final backend = FakeBackend();
+      await pumpTavli(
+        tester,
+        size: wide,
+        location: '/profile',
+        backend: backend,
+      );
+      await openHouseholdChoice(tester);
+      await tapButton(tester, 'Pridruži se postojećem domaćinstvu');
+      // Širok ekran: dijalog umesto donjeg lista.
+      expect(find.byType(TavliSheet), findsNothing);
+      expect(find.byType(TavliDialog<void>), findsOneWidget);
+      await tester.enterText(textField('Kod pozivnice'), 'ABC');
+      await tester.pump();
+      expect(tester.widget<FilledButton>(button('Nastavi')).onPressed, isNull);
+      await tester.enterText(textField('Kod pozivnice'), '0123 4567 89AB');
+      await tester.pump();
+      await tapButton(tester, 'Nastavi');
+      expect(
+        find.text('Pozivnica trenutno nije dostupna. Pokušaj ponovo.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  group('Kreiraj novo domaćinstvo', () {
+    for (final size in [phone, wide]) {
+      testTavli('naziv, pa ista potvrda kao pridruživanje (${size.width} px)', (
+        tester,
+      ) async {
+        final backend = FakeBackend()..accounts.joinRequiresAck = false;
+        final app = await pumpTavli(
+          tester,
+          size: size,
+          location: '/profile',
+          backend: backend,
+          overrides: [syncEngineProvider.overrideWithValue(null)],
+        );
+        await openHouseholdChoice(tester);
+        expect(find.text('Kreiraj novo domaćinstvo'), findsOneWidget);
+        expect(find.text('Pridruži se postojećem domaćinstvu'), findsOneWidget);
+        await tapButton(tester, 'Kreiraj novo domaćinstvo');
+
+        // Samo naziv: nema koda ni skeniranja.
+        expect(find.text('Novo domaćinstvo'), findsOneWidget);
+        expect(find.text('Kod pozivnice'), findsNothing);
+        expect(find.text('Skeniraj QR kod'), findsNothing);
+        expect(
+          tester.widget<FilledButton>(button('Nastavi')).onPressed,
+          isNull,
+        );
+        await tester.enterText(textField('Naziv domaćinstva'), '  Vikendica ');
+        await tester.pump();
+        await tapButton(tester, 'Nastavi');
+
+        expect(backend.accounts.prepareNewCalls, 1);
+        expect(find.text('Novo domaćinstvo'), findsOneWidget);
+        expect(find.text('Vikendica'), findsOneWidget);
+        expect(
+          find.text('Da li ste sigurni da želite da napustite domaćinstvo?'),
+          findsOneWidget,
+        );
+        await tapButton(tester, 'Da, ponesi moje recepte');
+
+        expect(backend.accounts.joinCalls, 1);
+        expect(app.scope.householdId, startsWith('new-'));
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testTavli('poslednji član potvrđuje brisanje kao kod pridruživanja', (
+      tester,
+    ) async {
+      final backend = FakeBackend();
+      final app = await pumpTavli(
+        tester,
+        location: '/profile',
+        backend: backend,
+        overrides: [syncEngineProvider.overrideWithValue(null)],
+      );
+      final home = app.scope.householdId;
+      await openHouseholdChoice(tester);
+      await tapButton(tester, 'Kreiraj novo domaćinstvo');
+      await tester.enterText(textField('Naziv domaćinstva'), 'Vikendica');
+      await tester.pump();
+      await tapButton(tester, 'Nastavi');
+      await tapButton(tester, 'Da, bez recepata');
+      expect(find.text('Trajno brisanje domaćinstva'), findsWidgets);
+      await tapButton(tester, 'Odustani');
+      expect(backend.accounts.joinCalls, 0);
+      expect(app.scope.householdId, home);
+    });
+
+    testTavli('bez interneta naziv ostaje i greška se objašnjava', (
+      tester,
+    ) async {
+      final backend = FakeBackend();
+      final app = await pumpTavli(
+        tester,
+        location: '/profile',
+        backend: backend,
+      );
+      final home = app.scope.householdId;
+      await openHouseholdChoice(tester);
+      await tapButton(tester, 'Kreiraj novo domaćinstvo');
+      backend.server.offline = true;
+      await tester.enterText(textField('Naziv domaćinstva'), 'Vikendica');
+      await tester.pump();
+      await tapButton(tester, 'Nastavi');
+      expect(
+        find.text('Nema interneta. Za novo domaćinstvo je potrebna veza.'),
+        findsOneWidget,
+      );
+      expect(backend.accounts.joinCalls, 0);
+      expect(app.scope.householdId, home);
+    });
+
+    testTavli('„Odustani“ u izboru ne otvara ništa', (tester) async {
+      final backend = FakeBackend();
+      await pumpTavli(tester, location: '/profile', backend: backend);
+      await openHouseholdChoice(tester);
+      await tapButton(tester, 'Odustani');
+      expect(find.text('Kreiraj novo domaćinstvo'), findsNothing);
+      expect(backend.accounts.prepareNewCalls, 0);
+    });
   });
 }

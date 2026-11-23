@@ -5,9 +5,14 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
 import '../domain/voice_draft.dart';
+import '../features/account/household_setup_screen.dart';
+import '../features/account/household_share_screen.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
+import '../features/cookbooks/cookbook_ask_screen.dart';
+import '../features/cookbooks/cookbooks_screen.dart';
+import '../features/fasting/fasting_questions.dart';
 import '../features/home/home_screen.dart';
 import '../features/pantry/pantry_photo_screen.dart';
 import '../features/pantry/pantry_screen.dart';
@@ -41,10 +46,13 @@ const componentsPath = '/components';
 const signUpPath = '/sign-up';
 const signInPath = '/sign-in';
 
+/// Korak "Tvoje domaćinstvo" posle imena.
+const householdSetupPath = '/sign-in/household';
+
 /// Kuda vodi stanje prijave: bez naloga samo "Prijava" ili "Registracija",
 /// posle poslatog koda "Upiši kod" (na "Prijava"), posle poslatog mejla za
 /// potvrdu "Proveri mejl" (na "Registracija"), bez imena samo korak sa
-/// imenom (FR-001). Tražena adresa se pamti u `from`; Početna
+/// imenom (FR-001), pa korak "Tvoje domaćinstvo". Tražena adresa se pamti u `from`; Početna
 /// ([homeLocation]) je podrazumevana pa se ne pamti.
 /// Uz [debugTools] galerija komponenti se otvara i bez prijave.
 String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
@@ -64,6 +72,8 @@ String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
     CodeSent() => path == signInPath ? null : withFrom(signInPath),
     ConfirmSent() => path == signUpPath ? null : withFrom(signUpPath),
     NeedsName() => path == '/sign-in/name' ? null : withFrom('/sign-in/name'),
+    NeedsHousehold() =>
+      path == householdSetupPath ? null : withFrom(householdSetupPath),
     SignedIn() => _isAuthPath(path) ? (from ?? homeLocation) : null,
   };
 }
@@ -102,6 +112,10 @@ GoRouter createRouter({
       builder: (context, state) => const SignInScreen(),
       routes: [
         GoRoute(path: 'name', builder: (context, state) => const NameScreen()),
+        GoRoute(
+          path: 'household',
+          builder: (context, state) => const HouseholdSetupScreen(),
+        ),
       ],
     ),
     GoRoute(
@@ -133,6 +147,10 @@ GoRouter createRouter({
             GoRoute(
               path: 'ai-keys',
               builder: (context, state) => const AiKeysScreen(),
+            ),
+            GoRoute(
+              path: 'household-share',
+              builder: (context, state) => const HouseholdShareScreen(),
             ),
             GoRoute(
               path: 'appearance',
@@ -169,11 +187,15 @@ GoRouter createRouter({
                 ),
                 GoRoute(
                   path: 'new',
-                  builder: (context, state) => const PlanSetupScreen(),
+                  builder: (context, state) => PlanSetupScreen(
+                    fastingDraft: state.uri.queryParameters['posni'] == '1',
+                  ),
                   routes: [
                     GoRoute(
                       path: 'preview',
-                      builder: (context, state) => const PlanPreviewScreen(),
+                      builder: (context, state) => PlanPreviewScreen(
+                        fastingDraft: state.uri.queryParameters['posni'] == '1',
+                      ),
                     ),
                   ],
                 ),
@@ -196,6 +218,12 @@ GoRouter createRouter({
             GoRoute(
               path: homeLocation,
               builder: (context, state) => const HomeScreen(),
+              routes: [
+                GoRoute(
+                  path: 'fasting',
+                  builder: (context, state) => const FastingQuestions(),
+                ),
+              ],
             ),
           ],
         ),
@@ -204,7 +232,9 @@ GoRouter createRouter({
           routes: [
             GoRoute(
               path: '/recipes',
-              builder: (context, state) => const RecipesScreen(),
+              builder: (context, state) => RecipesScreen(
+                fastingOnly: state.uri.queryParameters['posni'] == '1',
+              ),
               routes: [
                 GoRoute(
                   path: 'new/name',
@@ -220,13 +250,24 @@ GoRouter createRouter({
                   ),
                 ),
                 GoRoute(
+                  path: 'cookbooks',
+                  builder: (context, state) => const CookbooksScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'ask',
+                      builder: (context, state) => const CookbookAskScreen(),
+                    ),
+                  ],
+                ),
+                GoRoute(
                   path: 'new/manual',
-                  builder: (context, state) => RecipeFormScreen(
-                    draft: switch (state.extra) {
-                      final VoiceDraft draft => draft,
-                      _ => null,
-                    },
-                  ),
+                  builder: (context, state) => switch (state.extra) {
+                    final RecipeDraft draft => RecipeFormScreen(draft: draft),
+                    final VoiceDraft draft => RecipeFormScreen(
+                      voiceDraft: draft,
+                    ),
+                    _ => const RecipeFormScreen(),
+                  },
                 ),
                 GoRoute(
                   path: 'new/voice',

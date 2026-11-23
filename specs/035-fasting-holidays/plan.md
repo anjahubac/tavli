@@ -96,3 +96,28 @@ tests make no network calls. Risks: calendar rules wrong for fish/oil days
 shared vector table ordering with 026 (Q2). The generator runs once a year and
 before each release that changes rules. UI follows the design canvas and the UI
 standard; do not invent layouts.
+
+## Question screen and household food search slice
+
+This slice adds the Home entry, the phone question screen and the desktop
+panel. Calendar date answers are selected and rendered from computed civil
+dates on the device, with no model call. Daily rules cover the principal
+fasts and general rules in the Dečani guide. The device returns an unknown
+answer for unsupported calendar questions. It does not infer unlisted
+saints' feast dispensations.
+
+Food questions use the authenticated 026 endpoint. The server shortlists
+saved recipes under the caller's recipe SELECT policy, embeds only the
+shortlist, and ranks it with pages from indexed household cookbooks. No recipe
+vector is persisted. A document embedding provider sees the shortlisted
+recipe text, and the generation provider sees only retrieved recipe and book
+passages. The request and passages are not logged. Private PDF/EPUB import
+can accept multiple files and continues to use the existing resumable jobs and
+household storage. Files are not bundled in public builds.
+
+“Novi posni plan” adds a request for fasting meals to that draft. This slice
+does not enforce the calendar per meal or implement a saved fasting
+preference. “Posni recepti” limits results to recipes explicitly identified
+as fasting in their title and excludes recipes categorized as containing
+meat, fish, dairy or eggs. A verified recipe fasting label and rule-based
+planning remain separate requirements.
