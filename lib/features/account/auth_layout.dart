@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,6 +24,9 @@ const _panelMinWidth = 720.0;
 /// Kartica na računaru: širina i unutrašnji razmak (kanvas, MacPrijava).
 const _panelMaxWidth = 528.0;
 const _panelPadding = EdgeInsets.symmetric(vertical: 32, horizontal: 44);
+
+/// Red za „Nazad“ iznad kartice na računaru (kanvas).
+const _panelBackRow = 40.0;
 
 /// Adresa upisana na „Prijava“ ili „Registracija“, da se ne kuca ponovo
 /// posle „Registruj se“, „Prijavi se“ ili „Prijavi se umesto toga“.
@@ -82,6 +86,11 @@ class AuthPage extends StatelessWidget {
             icon: Icons.chevron_left,
             onPressed: onBack,
           );
+    // Prostor za semafore na macOS-u (ili statusnu traku) stoji iznad
+    // sadržaja. Kartica na računaru dobija isto toliko i ispod, da bude u
+    // sredini celog prozora, a ne samo dela ispod trake.
+    final padding = MediaQuery.paddingOf(context);
+    final balance = math.max(0.0, padding.top - padding.bottom);
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -95,7 +104,7 @@ class AuthPage extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: box.maxHeight),
                 child: panel
-                    ? _panel(context, back)
+                    ? _panel(context, back, balance)
                     : _phone(context, back, box.maxHeight),
               ),
             );
@@ -164,12 +173,12 @@ class AuthPage extends StatelessWidget {
     ),
   );
 
-  Widget _panel(BuildContext context, Widget? back) {
+  Widget _panel(BuildContext context, Widget? back, double balance) {
     final c = Theme.of(context).colorScheme;
     final x = TavliColors.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(_gap),
+        padding: EdgeInsets.fromLTRB(_gap, _gap, _gap, _gap + balance),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: _panelMaxWidth),
           child: Column(
@@ -177,7 +186,7 @@ class AuthPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 40),
+                constraints: const BoxConstraints(minHeight: _panelBackRow),
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: back,
@@ -206,6 +215,9 @@ class AuthPage extends StatelessWidget {
                   ),
                 ),
               ),
+              // Isto toliko prazno ispod kartice kao red za „Nazad“ iznad,
+              // pa je kartica u sredini i na ekranima bez „Nazad“.
+              const SizedBox(height: _panelBackRow),
             ],
           ),
         ),
