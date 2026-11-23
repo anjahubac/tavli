@@ -140,6 +140,24 @@ void main() {
     expect(left.lastError, '23514');
   });
 
+  test('odbijanje zbog prava se prijavljuje kao forbidden', () async {
+    await addRecipe('tudji');
+    backend.server.enforceMembership = true;
+    backend.server.households[scope.userId] = 'drugo-domacinstvo';
+    final res = await uploader.run();
+    expect(res.rejected, 1);
+    expect(res.forbidden, isTrue);
+    expect((await outbox()).single.lastError, pgInsufficientPrivilege);
+  });
+
+  test('druga trajna greška nije forbidden', () async {
+    await addRecipe('los');
+    backend.server.rejectIds.add('los');
+    final res = await uploader.run();
+    expect(res.rejected, 1);
+    expect(res.forbidden, isFalse);
+  });
+
   test('trajno odbijena izmena ne blokira kasnije', () async {
     await addRecipe('los');
     await addVersion('v1', 'los');
@@ -221,6 +239,16 @@ void main() {
     await uploader.run();
     expect(await outbox(), isEmpty);
     expect(backend.server.photos.keys, ['${scope.householdId}/p0.jpg']);
+  });
+
+  test('Storage odbijanje slike (403) je forbidden', () async {
+    final path = await photoStore.save(Uint8List.fromList([1, 2]));
+    await writer.photoUpload(path);
+    backend.server.photoUploadForbidden = true;
+    final res = await uploader.run();
+    expect(res.rejected, 1);
+    expect(res.forbidden, isTrue);
+    expect((await outbox()).single.state, OutboxState.rejected);
   });
 
   test('brisanje slike briše objekat', () async {

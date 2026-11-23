@@ -172,6 +172,7 @@ void main() {
         final e = await errorFor(() => pg(code, status));
         expect(e, isA<PermanentSyncError>());
         expect(e.code, code);
+        expect((e as PermanentSyncError).forbidden, code == '42501');
         expect(e.toString(), isNot(contains('sadržaj')));
       }
       expect(
@@ -200,6 +201,23 @@ void main() {
       expect(await photos.download('h1/a.jpg'), [7, 8]);
       await photos.remove(['h1/a.jpg']);
       expect(requests.last.method, 'DELETE');
+    });
+
+    test('Storage RLS odbijanje (400 sa statusCode 403) → forbidden', () async {
+      // The shape the local Storage API returns for a policy denial.
+      handler = (_) => jsonResponse({
+        'statusCode': '403',
+        'error': 'Unauthorized',
+        'message': 'new row violates row-level security policy',
+      }, 400);
+      try {
+        await SupabasePhotoRemote(client)
+            .upload('h1/a.jpg', Uint8List.fromList([1]));
+        fail('očekivana greška');
+      } on PermanentSyncError catch (e) {
+        expect(e.code, '403');
+        expect(e.forbidden, isTrue);
+      }
     });
 
     test('nema slike → trajna greška; 5xx → privremena', () async {
