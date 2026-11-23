@@ -20,6 +20,7 @@ class SettingsPage extends StatelessWidget {
     required this.children,
     required this.fallbackLocation,
     this.backLabel,
+    this.backWhenWide = true,
     this.centered = false,
   });
 
@@ -36,6 +37,10 @@ class SettingsPage extends StatelessWidget {
 
   /// Naziv prethodnog ekrana (iOS traka i povratak na širokom ekranu).
   final String? backLabel;
+
+  /// Povratak iznad naslova na širokom ekranu. Profil ga nema: na
+  /// računaru je u bočnoj navigaciji, kao tab (platno).
+  final bool backWhenWide;
 
   @override
   Widget build(BuildContext context) {
@@ -68,11 +73,13 @@ class SettingsPage extends StatelessWidget {
                         spacing: TavliSpacing.large,
                         children: [
                           if (wide)
-                            TavliPageHeader(
-                              title: title,
-                              backLabel: label,
-                              onBack: back,
-                            ),
+                            backWhenWide
+                                ? TavliPageHeader(
+                                    title: title,
+                                    backLabel: label,
+                                    onBack: back,
+                                  )
+                                : TavliPageHeader(title: title),
                           ...children,
                         ],
                       ),

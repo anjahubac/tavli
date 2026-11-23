@@ -43,7 +43,7 @@ final homeNoticeProvider = Provider.autoDispose<HomeNotice?>((ref) {
     if (missing.contains(meal.id)) return MissingShoppingNotice(meal);
   }
 
-  return day.todayPlan?.range.end == day.date.addDays(2)
+  return day.todayPlan?.endsSoonAfter(day.date) ?? false
       ? const PlanEndingNotice()
       : null;
 });

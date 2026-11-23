@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../icons/tavli_icons.dart';
 import '../theme/tavli_colors.dart';
 import '../tokens.dart';
 import 'tavli_icon_button.dart';
@@ -60,6 +61,10 @@ TextStyle? _textStyle(BuildContext context, {bool enabled = true}) {
 /// Polje za unos sa nazivom iznad. Varijante: obično, sa greškom
 /// ([errorText]) i isključeno ([enabled]).
 class TavliTextField extends StatelessWidget {
+  /// Najviše redova kratke napomene (npr. „Posebni zahtevi“ za plan): polje
+  /// raste do ovoliko redova, pa se pomera.
+  static const noteLines = 3;
+
   const TavliTextField({
     super.key,
     this.label,
@@ -279,12 +284,16 @@ class _TavliSearchFieldState extends State<TavliSearchField> {
             start: 14,
             end: TavliSpacing.small - 2,
           ),
-          child: Icon(Icons.search, size: 22, color: c.onSurfaceVariant),
+          child: TavliIcon(
+            TavliIcons.search,
+            size: 20,
+            color: c.onSurfaceVariant,
+          ),
         ),
         suffix: _controller.text.isEmpty
             ? null
             : TavliIconButton(
-                icon: Icons.close,
+                glyph: TavliIcons.close,
                 semanticLabel: 'Obriši pretragu',
                 onPressed: _clear,
               ),

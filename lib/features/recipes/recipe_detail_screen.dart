@@ -28,7 +28,7 @@ class RecipeDetailScreen extends ConsumerWidget {
           error: (_, _) => Scaffold(
             appBar: AppBar(),
             body: const TavliEmptyState(
-              icon: Icons.error_outline,
+              glyph: TavliIcons.info,
               title: 'Recept nije učitan.',
             ),
           ),
@@ -36,7 +36,7 @@ class RecipeDetailScreen extends ConsumerWidget {
               ? Scaffold(
                   appBar: AppBar(),
                   body: const TavliEmptyState(
-                    icon: Icons.menu_book_outlined,
+                    glyph: TavliIcons.recipes,
                     title: 'Recept više ne postoji.',
                   ),
                 )
@@ -85,7 +85,7 @@ class _Detail extends ConsumerWidget {
           const KeepScreenOnButton(),
           TavliIconButton(
             semanticLabel: 'Izmeni',
-            icon: Icons.edit_outlined,
+            glyph: TavliIcons.edit,
             onPressed: () => context.go('/recipes/${recipe.id}/edit'),
           ),
           TavliMenuButton(
@@ -114,6 +114,7 @@ class _Detail extends ConsumerWidget {
       ),
       body: KeepScreenOnScope(
         child: ReadableScroll(
+          maxWidth: TavliWidth.page,
           children: [
             Semantics(
               header: true,
