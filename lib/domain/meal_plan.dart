@@ -232,6 +232,9 @@ class PlanDraft {
 }
 
 /// Sačuvan plan, kako ga je osoba odobrila.
+/// Porcije po obroku za nov plan dok osoba ne izabere drugačije.
+const defaultPlanServings = 2;
+
 class MealPlan {
   const MealPlan({
     required this.id,
@@ -254,6 +257,14 @@ class MealPlan {
       for (final t in MealType.values)
         if (mealTypes.contains(t)) MealSlot(d, t),
   ];
+
+  /// Koliko dana pre kraja plana Početna kaže „Plan se završava za dva
+  /// dana.“
+  static const endingNoticeDays = 2;
+
+  /// Plan se završava tačno [endingNoticeDays] dana posle [date].
+  bool endsSoonAfter(CivilDate date) =>
+      range.end == date.addDays(endingNoticeDays);
 }
 
 /// Obrok u sačuvanom planu, sa receptom odobrenim u trenutku planiranja.

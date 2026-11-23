@@ -166,3 +166,48 @@ class TavliLoading extends StatelessWidget {
     );
   }
 }
+
+/// Napredak posla koji traje (npr. pravljenje plana): traka visine 6,
+/// zaobljena, u boji teme, i tekst ispod („Pripremljeno 3 od 7 obroka.“).
+/// Bez [value] traka ide bez kraja; kad se traži smanjeno kretanje, miruje.
+class TavliProgressBar extends StatelessWidget {
+  const TavliProgressBar({
+    super.key,
+    this.value,
+    this.message,
+    required this.semanticLabel,
+  });
+
+  /// Od 0 do 1; `null` kada se ne zna koliko je ostalo.
+  final double? value;
+  final String? message;
+
+  /// npr. „Napredak predloga“.
+  final String semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final message = this.message;
+    final value = this.value ?? (reduceMotion(context) ? 0 : null);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: TavliSpacing.small,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(
+            value: value,
+            minHeight: 6,
+            color: c.primary,
+            backgroundColor: c.surfaceContainerHighest,
+            semanticsLabel: semanticLabel,
+          ),
+        ),
+        if (message != null)
+          Text(message, style: t.bodyMedium?.copyWith(color: c.onSurface)),
+      ],
+    );
+  }
+}

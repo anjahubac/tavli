@@ -244,7 +244,6 @@ class _FavoritePickerState extends ConsumerState<_FavoritePicker> {
               subtitle: _facts(r),
               leading: TavliThumbnail.row(
                 tintIndex: i,
-                icon: Icons.soup_kitchen_outlined,
                 photo: switch (r.imagePath) {
                   final path? => RecipePhoto(path),
                   null => null,
@@ -286,7 +285,6 @@ class _FavoritePickerState extends ConsumerState<_FavoritePicker> {
                 children: [
                   TavliThumbnail.cardTop(
                     tintIndex: i,
-                    icon: Icons.soup_kitchen_outlined,
                     photo: switch (r.imagePath) {
                       final path? => RecipePhoto(path),
                       null => null,
