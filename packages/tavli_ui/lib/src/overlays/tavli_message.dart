@@ -102,7 +102,11 @@ class TavliMessageBar extends StatelessWidget {
 /// i kada ima akciju; nova poruka zamenjuje prethodnu. Sa čitačem ekrana
 /// (pristupačna navigacija) ostaje dok se ne zatvori dugmetom „Zatvori“,
 /// da akcija („Poništi“) ne nestane pre nego što se pročita.
-void showTavliMessage(
+///
+/// Vraća kontroler poruke: `closed` kaže da li je izabrana akcija
+/// ([SnackBarClosedReason.action]), npr. da se uklanjanje potvrdi tek
+/// kad „Vrati“ više nije moguće.
+ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showTavliMessage(
   BuildContext context,
   String message, {
   String? actionLabel,
@@ -116,7 +120,7 @@ void showTavliMessage(
 
 /// Isto što i [showTavliMessage], preko [messenger] uzetog ranije: za
 /// poruku posle radnje koja zatvara ekran (npr. brisanje recepta).
-void showTavliMessageOn(
+ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showTavliMessageOn(
   ScaffoldMessengerState messenger,
   String message, {
   String? actionLabel,
@@ -124,33 +128,32 @@ void showTavliMessageOn(
 }) {
   final stays =
       MediaQuery.maybeAccessibleNavigationOf(messenger.context) ?? false;
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        duration: tavliMessageDuration,
-        persist: stays,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        padding: EdgeInsets.zero,
-        content: TavliMessageBar(
-          message: message,
-          actionLabel: actionLabel,
-          onAction: onAction == null
-              ? null
-              : () {
-                  messenger.hideCurrentSnackBar(
-                    reason: SnackBarClosedReason.action,
-                  );
-                  onAction();
-                },
-          onClose: stays
-              ? () => messenger.hideCurrentSnackBar(
-                  reason: SnackBarClosedReason.dismiss,
-                )
-              : null,
-        ),
+  messenger.hideCurrentSnackBar();
+  return messenger.showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      duration: tavliMessageDuration,
+      persist: stays,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      padding: EdgeInsets.zero,
+      content: TavliMessageBar(
+        message: message,
+        actionLabel: actionLabel,
+        onAction: onAction == null
+            ? null
+            : () {
+                messenger.hideCurrentSnackBar(
+                  reason: SnackBarClosedReason.action,
+                );
+                onAction();
+              },
+        onClose: stays
+            ? () => messenger.hideCurrentSnackBar(
+                reason: SnackBarClosedReason.dismiss,
+              )
+            : null,
       ),
-    );
+    ),
+  );
 }

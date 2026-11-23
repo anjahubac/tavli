@@ -11,6 +11,9 @@ export const tasks: ReadonlyMap<string, Kind> = new Map([
   ["plan_outline", "text"],
   ["recipe_summaries", "text"],
   ["recipe_image_description", "text"],
+  ["pantry_from_photo", "vision"],
+  // Glasovni nacrt recepta (spec 027): prepis i nacrt, odgovor su radnje.
+  ["voice_draft_actions", "text"],
 ]);
 
 export interface Completion {

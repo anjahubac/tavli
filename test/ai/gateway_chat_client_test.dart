@@ -118,7 +118,8 @@ void main() {
       },
     );
     for (final task in AITask.values) {
-      final vision = task == AITask.recipeFromImage;
+      final vision =
+          task == AITask.recipeFromImage || task == AITask.pantryFromPhoto;
       final request = AIRequest(
         task: task,
         system: 'Return JSON',
@@ -139,9 +140,15 @@ void main() {
       'plan_outline',
       'recipe_summaries',
       'recipe_image_description',
+      'pantry_from_photo',
+      'voice_draft_actions',
     ]);
+    final withImages = {
+      for (final body in bodies)
+        if (body.containsKey('images')) body['task'],
+    };
+    expect(withImages, {'recipe_from_image', 'pantry_from_photo'});
     expect(bodies.first['images'], ['data:image/jpeg;base64,AQID']);
-    expect(bodies.skip(1).every((body) => !body.containsKey('images')), isTrue);
     expect(bodies.every((body) => !body.containsKey('apiKey')), isTrue);
   });
 

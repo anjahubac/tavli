@@ -11,14 +11,19 @@ import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/recipe_labels.dart';
 import '../../domain/recipe_version.dart';
+import '../../domain/voice_draft.dart';
 import 'recipe_labels_sheet.dart';
 import 'recipe_providers.dart';
 
 /// Ručni unos novog recepta ([id] == null) ili izmena postojećeg.
 class RecipeFormScreen extends ConsumerStatefulWidget {
-  const RecipeFormScreen({super.key, this.id});
+  const RecipeFormScreen({super.key, this.id, this.draft});
 
   final String? id;
+
+  /// Nacrt iz „Recept glasom“: popunjava nov recept, a osoba ga pregleda i
+  /// čuva (spec 027, pravilo 3).
+  final VoiceDraft? draft;
 
   @override
   ConsumerState<RecipeFormScreen> createState() => _RecipeFormScreenState();
@@ -45,6 +50,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     if (id != null) {
       _loading = true;
       unawaited(_load(id));
+    } else if (widget.draft case final draft?) {
+      _title.text = draft.title ?? '';
+      if (draft.servings case final n?) _servings.text = '$n';
+      _steps.text = draft.steps.join('\n');
+      _ingredients = [...draft.ingredients];
+      // Nesačuvan nacrt: izlazak traži potvrdu.
+      _dirty = !draft.isEmpty;
     }
   }
 

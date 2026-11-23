@@ -52,6 +52,8 @@ validator; the gateway does not parse recipes.
 | `recipe_summaries` | text | `MealPlanAI` summaries |
 | `recipe_image_description` | text | `RecipeAI.describeImage` (recipe without a description) |
 | `recipe_image` | image | `RecipeImageClient` (see Recipe images) |
+| `pantry_from_photo` | vision | `PantryAI.fromPhoto` (spec 022) |
+| `voice_draft_actions` | text | `VoiceAgent.interpret` (spec 027) |
 
 Any other value is `400 bad_request`. A new AI feature adds its task here first.
 

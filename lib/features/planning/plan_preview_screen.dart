@@ -194,6 +194,12 @@ class PlanPreviewScreen extends ConsumerWidget {
           linkLabel: 'Nastavi',
           onLink: () => unawaited(controller.generate()),
         ),
+      if (draft.withoutTastes && phase != GenerationPhase.generating)
+        const TavliNotice(
+          message:
+              'Ukusi članova trenutno nisu dostupni, pa ovaj predlog ne '
+              'uzima u obzir šta ko voli.',
+        ),
       if (phase == GenerationPhase.cancelled)
         TavliNotice(
           message:

@@ -4,10 +4,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
+import '../domain/voice_draft.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/pantry/pantry_photo_screen.dart';
+import '../features/pantry/pantry_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
 import '../features/planning/plan_setup_screen.dart';
@@ -17,16 +20,15 @@ import '../features/recipes/from_photo_screen.dart';
 import '../features/recipes/recipe_chat_screen.dart';
 import '../features/recipes/recipe_form_screen.dart';
 import '../features/recipes/recipes_screen.dart';
+import '../features/recipes/voice_recipe_screen.dart';
 import '../features/settings/ai_keys_screen.dart';
 import '../features/settings/animations_gallery_screen.dart';
 import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
 import '../features/settings/tastes/tastes_screen.dart';
 import '../features/shopping/shopping_screen.dart';
-import 'animations/empty_fridge.dart';
 import 'app_menu.dart';
 import 'home_shell.dart';
-import 'placeholder_screen.dart';
 
 /// Glavni ekran: Početna, srednji tab (021 FR-002).
 const homeLocation = '/home';
@@ -218,7 +220,16 @@ GoRouter createRouter({
                 ),
                 GoRoute(
                   path: 'new/manual',
-                  builder: (context, state) => const RecipeFormScreen(),
+                  builder: (context, state) => RecipeFormScreen(
+                    draft: switch (state.extra) {
+                      final VoiceDraft draft => draft,
+                      _ => null,
+                    },
+                  ),
+                ),
+                GoRoute(
+                  path: 'new/voice',
+                  builder: (context, state) => const VoiceRecipeScreen(),
                 ),
                 GoRoute(
                   path: ':id',
@@ -251,11 +262,18 @@ GoRouter createRouter({
           routes: [
             GoRoute(
               path: '/pantry',
-              builder: (context, state) => const EmptyStateScreen(
-                art: EmptyFridge(),
-                title: 'Još nema unetih namirnica',
-                body: 'Ovde ćeš pratiti namirnice koje imaš kod kuće.',
-              ),
+              builder: (context, state) => const PantryScreen(),
+              routes: [
+                GoRoute(
+                  path: 'photo',
+                  builder: (context, state) => PantryPhotoScreen(
+                    initialPhoto: switch (state.extra) {
+                      final Uint8List photo => photo,
+                      _ => null,
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),
