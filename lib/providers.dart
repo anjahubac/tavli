@@ -30,6 +30,8 @@ import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
 import 'sync/legacy_mover.dart';
 import 'sync/photo_sync.dart';
+import 'sync/realtime_sync.dart';
+import 'sync/supabase_sync_signals.dart';
 import 'sync/sync_engine.dart';
 import 'sync/sync_remote.dart';
 import 'sync/synced_writer.dart';
@@ -158,7 +160,8 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     scope: scope,
     writer: SyncedWriter(db, accountId: scope.userId),
   );
-  final engine = SyncEngine(
+  late final SyncEngine engine;
+  engine = SyncEngine(
     db: db,
     scope: scope,
     uploader: Uploader(
@@ -181,6 +184,8 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    onForbidden: () =>
+        ref.read(authControllerProvider.notifier).restoreSession(sync: engine),
     // Ceo red obroka može da stigne zastareo; oznaka „skuvano“ se ponovo
     // izvodi iz zapisa kuvanja.
     afterPull: () async {
@@ -191,6 +196,23 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
   ref.onDispose(engine.stop);
   unawaited(engine.onStart());
   return engine;
+});
+
+final realtimeSyncProvider = Provider.autoDispose<RealtimeSync?>((ref) {
+  final scope = ref.watch(accountScopeProvider);
+  final engine = ref.watch(syncEngineProvider);
+  final client = ref.watch(supabaseClientProvider);
+  if (scope == null || engine == null || client == null) return null;
+  final realtime = RealtimeSync(
+    remote: SupabaseSyncSignals(client),
+    userId: scope.userId,
+    householdId: scope.householdId,
+    refreshMembership: () =>
+        ref.read(authControllerProvider.notifier).restoreSession(sync: engine),
+    pull: engine.pullAfterCurrent,
+  );
+  ref.onDispose(realtime.dispose);
+  return realtime;
 });
 
 /// Stanje čuvanja u nalogu za "Profil".

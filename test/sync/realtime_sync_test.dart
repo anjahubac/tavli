@@ -1,0 +1,193 @@
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/sync/realtime_sync.dart';
+
+import '../helpers/fake_timers.dart';
+
+const quiet = Duration(milliseconds: 250);
+const fallback = Duration(minutes: 15);
+
+void main() {
+  late _Remote remote;
+  late FakeTimers timers;
+  late RealtimeSync sync;
+  late DateTime now;
+  late List<String> work;
+  Completer<void>? blockedPull;
+
+  setUp(() {
+    remote = _Remote();
+    timers = FakeTimers();
+    now = DateTime.utc(2026, 11, 23);
+    work = [];
+    blockedPull = null;
+    sync = RealtimeSync(
+      remote: remote,
+      userId: 'account',
+      householdId: 'home',
+      refreshMembership: () async => work.add('membership'),
+      pull: () async {
+        work.add('pull');
+        final blocked = blockedPull;
+        blockedPull = null;
+        await blocked?.future;
+      },
+      timer: timers.call,
+      clock: () => now,
+    );
+    sync.setForeground(true);
+  });
+
+  tearDown(() => sync.dispose());
+
+  Future<void> connectBoth() async {
+    remote.eligible = true;
+    remote.account.connection(true);
+    await pumpQueue();
+    remote.household.connection(true);
+    await pumpQueue();
+    work.clear();
+  }
+
+  test(
+    'personal signals enable and disable the shared stream at two members',
+    () async {
+      remote.account.connection(true);
+      await pumpQueue();
+      expect(remote.subscriptions, hasLength(1));
+      expect(timers.pending, isEmpty);
+      expect(work, ['membership', 'pull']);
+
+      remote.eligible = true;
+      remote.account.signal();
+      await pumpQueue();
+      final old = remote.household;
+      expect(old.id, 'home');
+
+      remote.eligible = false;
+      remote.account.signal();
+      await pumpQueue();
+      expect(old.closed, isTrue);
+      work.clear();
+      old.signal();
+      old.connection(true);
+      await timers.fire();
+      expect(work, isEmpty);
+    },
+  );
+
+  test('continuous signals wait at most one second before one pull', () async {
+    await connectBoth();
+    remote.household.signal();
+    for (var i = 0; i < 5; i++) {
+      now = now.add(const Duration(milliseconds: 180));
+      remote.household.signal();
+    }
+    expect(timers.durations, [const Duration(milliseconds: 100)]);
+    await timers.fire();
+    expect(work, ['pull']);
+  });
+
+  test('a signal during pull schedules one serial follow-up', () async {
+    await connectBoth();
+    final first = blockedPull = Completer<void>();
+    remote.household.signal();
+    await timers.fire(quiet);
+    remote.household.signal();
+    remote.household.signal();
+    await timers.fire(quiet);
+    expect(work, ['pull']);
+    first.complete();
+    await pumpQueue();
+    expect(work, ['pull', 'pull']);
+  });
+
+  test(
+    'reconnect catches up and an overlapping fallback stays serial',
+    () async {
+      await connectBoth();
+      remote.household.connection(false);
+      expect(timers.durations, [fallback]);
+      final first = blockedPull = Completer<void>();
+      await timers.fire(fallback);
+      expect(work, ['membership', 'pull']);
+      remote.household.connection(true);
+      await pumpQueue();
+      expect(work, ['membership', 'pull']);
+      expect(timers.pending, isEmpty);
+      first.complete();
+      await pumpQueue();
+      expect(work, ['membership', 'pull', 'membership', 'pull']);
+    },
+  );
+
+  test(
+    'fallback runs while foregrounded and stops on background or disposal',
+    () async {
+      expect(timers.durations, [fallback]);
+      await timers.fire(fallback);
+      expect(work, ['membership', 'pull']);
+      expect(timers.durations, [fallback]);
+      sync.setForeground(false);
+      expect(timers.pending, isEmpty);
+      await timers.fire();
+      expect(work, ['membership', 'pull']);
+      sync.setForeground(true);
+      expect(timers.durations, [fallback]);
+      sync.dispose();
+      expect(remote.account.closed, isTrue);
+      expect(timers.pending, isEmpty);
+      remote.account.signal();
+      await pumpQueue();
+      expect(work, ['membership', 'pull']);
+    },
+  );
+
+  test(
+    'changed household blocks old scope pulls even with queued signals',
+    () async {
+      await connectBoth();
+      remote.eligible = null;
+      remote.account.signal();
+      remote.household.signal();
+      await pumpQueue();
+      await timers.fire(quiet);
+      expect(remote.household.closed, isTrue);
+      expect(work, ['membership']);
+      expect(timers.durations, [fallback]);
+    },
+  );
+}
+
+class _Remote implements SyncSignalRemote {
+  bool? eligible = false;
+  final subscriptions = <_Subscription>[];
+
+  _Subscription get account => subscriptions.first;
+  _Subscription get household => subscriptions.last;
+
+  @override
+  Future<bool?> householdEligible(String householdId) async => eligible;
+
+  @override
+  void Function() subscribe({
+    required SyncSignalScope scope,
+    required String id,
+    required void Function(bool) onConnection,
+    required void Function() onSignal,
+  }) {
+    final subscription = _Subscription(id, onConnection, onSignal);
+    subscriptions.add(subscription);
+    return () => subscription.closed = true;
+  }
+}
+
+class _Subscription {
+  _Subscription(this.id, this.connection, this.signal);
+
+  final String id;
+  final void Function(bool) connection;
+  final void Function() signal;
+  bool closed = false;
+}

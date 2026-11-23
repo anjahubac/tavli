@@ -59,6 +59,7 @@ class SyncEngine {
     this._photoSync,
     this._legacyMover,
     this.onUnauthorized,
+    this.onForbidden,
     this.refreshSession,
     this.afterPull,
     TimerFactory? timer,
@@ -84,6 +85,7 @@ class SyncEngine {
 
   /// Sesija je odbijena i posle obnove: nazad na prijavu.
   final Future<void> Function()? onUnauthorized;
+  final Future<void> Function()? onForbidden;
 
   /// Posle svakog uspešnog preuzimanja: lokalne projekcije koje zavise od
   /// više tabela (npr. oznaka „skuvano“ iz zapisa kuvanja).
@@ -137,7 +139,10 @@ class SyncEngine {
   }
 
   /// Posle prijave ili pokretanja aplikacije: slanje pa preuzimanje.
-  Future<void> onStart() async {
+  Future<void> onStart() => _startup = _start();
+  Future<void>? _startup;
+
+  Future<void> _start() async {
     // Slanje prekinuto gašenjem aplikacije: te izmene opet čekaju.
     await (_db.update(_db.syncOutbox)..where(
           (t) =>
@@ -182,18 +187,20 @@ class SyncEngine {
   /// prošlo do kraja.
   int get pullDeferred => _pullDeferred;
 
-  var _membershipCheck = false;
+  Completer<void>? _membershipFinished;
+  bool get _membershipCheck => _membershipFinished != null;
 
   /// Waits for old-scope work and suspends sync during server reconciliation.
   Future<T> reconcileMembership<T>(Future<T> Function() action) async {
     if (_membershipCheck) throw StateError('Membership check in progress');
-    _membershipCheck = true;
+    final finished = _membershipFinished = Completer<void>();
     try {
       await _inFlight;
       await _pullFinished?.future;
       return await action();
     } finally {
-      _membershipCheck = false;
+      _membershipFinished = null;
+      finished.complete();
       kick();
     }
   }
@@ -213,6 +220,19 @@ class SyncEngine {
       status: status,
     );
   });
+
+  /// A Realtime check may arrive after an ongoing pull read the changed table.
+  Future<void> pullAfterCurrent() async {
+    await _startup;
+    while (!_stopped) {
+      final underway = _membershipFinished ?? _pullFinished;
+      if (underway == null) {
+        await pull();
+        return;
+      }
+      await underway.future;
+    }
+  }
 
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
   Future<void> pull() async {
@@ -312,12 +332,14 @@ class SyncEngine {
     _running = true;
     _retryTimer?.cancel();
     var refreshRatings = false;
+    var forbidden = false;
     try {
       do {
         _again = false;
         final ratingChanges = await _hasRatingChanges();
         if (await _waitingCount() > 0) _emit(const Sending());
         final result = await _uploader.run();
+        forbidden |= result.forbidden;
         if (_stopped) return;
         if (result.unauthorized) {
           await onUnauthorized?.call();
@@ -338,7 +360,17 @@ class SyncEngine {
       } while (_again && !_stopped);
     } finally {
       _running = false;
-      if (!_stopped) await refreshStatus();
+      if (!_stopped) {
+        await refreshStatus();
+        if (forbidden && onForbidden != null) {
+          // Membership reconciliation waits for this upload to finish.
+          unawaited(
+            Future<void>.microtask(() async {
+              if (!_stopped) await onForbidden!();
+            }),
+          );
+        }
+      }
     }
     // Pull waits for an active upload, so release the upload slot first.
     if (refreshRatings) await pull();

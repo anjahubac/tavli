@@ -9,10 +9,16 @@ import 'synced_writer.dart';
 
 /// Ishod jednog slanja.
 class UploadResult {
-  const UploadResult({this.sent = 0, this.rejected = 0, this.stoppedBy});
+  const UploadResult({
+    this.sent = 0,
+    this.rejected = 0,
+    this.stoppedBy,
+    this.forbidden = false,
+  });
 
   final int sent;
   final int rejected;
+  final bool forbidden;
 
   /// Privremena greška (nema mreže) ili odbijena sesija; null = sve poslato.
   final SyncError? stoppedBy;
@@ -61,6 +67,13 @@ class Uploader {
   Future<UploadResult> run() async {
     var sent = 0, rejected = 0;
     var refreshed = false;
+    var forbidden = false;
+    UploadResult result([SyncError? stoppedBy]) => UploadResult(
+      sent: sent,
+      rejected: rejected,
+      stoppedBy: stoppedBy,
+      forbidden: forbidden,
+    );
 
     Future<SyncError?> attempt(List<OutboxRow> batch) async {
       while (true) {
@@ -86,7 +99,7 @@ class Uploader {
       final error = await attempt(batch);
       if (error == null) continue;
       if (error is! PermanentSyncError) {
-        return UploadResult(sent: sent, rejected: rejected, stoppedBy: error);
+        return result(error);
       }
       // Jedan loš red ne sme da obori ostale iz grupe: šalju se pojedinačno.
       for (final entry in batch) {
@@ -94,10 +107,11 @@ class Uploader {
         if (single == null) continue;
         final e = await attempt([single]);
         if (e is PermanentSyncError) {
+          forbidden |= e.code == '42501';
           await _reject(single, e);
           rejected++;
         } else if (e != null) {
-          return UploadResult(sent: sent, rejected: rejected, stoppedBy: e);
+          return result(e);
         }
       }
     }
@@ -108,6 +122,7 @@ class Uploader {
         await _sendPhoto(entry);
         sent++;
       } on PermanentSyncError catch (e) {
+        forbidden |= e.code == '403' || e.code == '42501';
         await _reject(entry, e);
         rejected++;
       } on SyncError catch (e) {
@@ -115,7 +130,7 @@ class Uploader {
         if (e is TransientSyncError) break;
       }
     }
-    return UploadResult(sent: sent, rejected: rejected);
+    return result();
   }
 
   SimpleSelectStatement<$SyncOutboxTable, OutboxRow> _pending(

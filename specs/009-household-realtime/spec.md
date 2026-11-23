@@ -2,7 +2,7 @@
 
 **ID**: 009-household-realtime | **Feature key**: REALTIME
 **Created**: 2026-11-14 | **Baseline**: dev 207c94c
-**Status**: Draft implementation specification; decisions below gate dependent tasks.
+**Status**: implementation in review; release and device acceptance are pending.
 **Lead**: Dev 3 | **Proposed independent reviewer**: Dev 1
 
 ## Scope and source
@@ -26,6 +26,8 @@ not reassigns them. No additional feature is authorized merely by a technical se
 
 ## User scenarios and acceptance
 
+See the [Realtime acceptance fixtures](contracts/acceptance.md).
+
 - **US1 / SC-001**: Two local clients converge after one edits and the other reconnects, without duplicate rows.
 - **US2 / SC-002**: After sign-out or member removal, old-channel events cannot change current-account UI/cache.
 
@@ -48,7 +50,7 @@ that UI task becomes Ready. English is used for engineering documents only.
 
 Producer specs: [008](../008-household-members/spec.md)
 
-- **Q1** (Dev 3 with reviewer): Select channel/publication policy, debounce/backoff budget and reconnect freshness target after a local load experiment.
+- **Q1** (Dev 3 and Dev 1, confirmed by Matija on 2026-11-23): use Postgres Changes on scoped revision tables, a 250 ms quiet window with a one-second cap, SDK reconnection, and a five-second local freshness target. See the [experiment](research.md) and [signal contract](contracts/signals.md).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,
