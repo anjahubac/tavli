@@ -73,3 +73,7 @@ compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
 limits from open questions remain release gates. UI follows the design canvas and the
 UI standard; do not invent layouts or move components into the package incidentally.
+
+PDF text extraction uses the pinned `unpdf/pdfjs` serverless build to keep
+the Edge Function bundle within the Supabase CLI deployment limit without
+native canvas dependencies.

@@ -24,7 +24,7 @@ function hasText(pages: string[]): boolean {
 }
 
 export async function extractPdfPages(bytes: Uint8Array): Promise<string[]> {
-  const pdfjs = await import("npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs");
+  const pdfjs = await import("npm:unpdf@1.4.0/pdfjs");
   let doc;
   try {
     // pdfjs preuzima bafer, pa mu se daje kopija.
