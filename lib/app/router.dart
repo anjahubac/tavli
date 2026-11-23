@@ -10,6 +10,9 @@ import '../features/account/household_share_screen.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
+import '../features/cookbooks/cookbook_ask_screen.dart';
+import '../features/cookbooks/cookbooks_screen.dart';
+import '../features/fasting/fasting_questions.dart';
 import '../features/home/home_screen.dart';
 import '../features/pantry/pantry_photo_screen.dart';
 import '../features/pantry/pantry_screen.dart';
@@ -184,11 +187,15 @@ GoRouter createRouter({
                 ),
                 GoRoute(
                   path: 'new',
-                  builder: (context, state) => const PlanSetupScreen(),
+                  builder: (context, state) => PlanSetupScreen(
+                    fastingDraft: state.uri.queryParameters['posni'] == '1',
+                  ),
                   routes: [
                     GoRoute(
                       path: 'preview',
-                      builder: (context, state) => const PlanPreviewScreen(),
+                      builder: (context, state) => PlanPreviewScreen(
+                        fastingDraft: state.uri.queryParameters['posni'] == '1',
+                      ),
                     ),
                   ],
                 ),
@@ -211,6 +218,12 @@ GoRouter createRouter({
             GoRoute(
               path: homeLocation,
               builder: (context, state) => const HomeScreen(),
+              routes: [
+                GoRoute(
+                  path: 'fasting',
+                  builder: (context, state) => const FastingQuestions(),
+                ),
+              ],
             ),
           ],
         ),
@@ -219,7 +232,9 @@ GoRouter createRouter({
           routes: [
             GoRoute(
               path: '/recipes',
-              builder: (context, state) => const RecipesScreen(),
+              builder: (context, state) => RecipesScreen(
+                fastingOnly: state.uri.queryParameters['posni'] == '1',
+              ),
               routes: [
                 GoRoute(
                   path: 'new/name',
@@ -235,13 +250,24 @@ GoRouter createRouter({
                   ),
                 ),
                 GoRoute(
+                  path: 'cookbooks',
+                  builder: (context, state) => const CookbooksScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'ask',
+                      builder: (context, state) => const CookbookAskScreen(),
+                    ),
+                  ],
+                ),
+                GoRoute(
                   path: 'new/manual',
-                  builder: (context, state) => RecipeFormScreen(
-                    draft: switch (state.extra) {
-                      final VoiceDraft draft => draft,
-                      _ => null,
-                    },
-                  ),
+                  builder: (context, state) => switch (state.extra) {
+                    final RecipeDraft draft => RecipeFormScreen(draft: draft),
+                    final VoiceDraft draft => RecipeFormScreen(
+                      voiceDraft: draft,
+                    ),
+                    _ => const RecipeFormScreen(),
+                  },
                 ),
                 GoRoute(
                   path: 'new/voice',

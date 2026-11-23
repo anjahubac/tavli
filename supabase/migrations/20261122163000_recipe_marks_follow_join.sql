@@ -191,4 +191,3 @@ begin
   return result;
 end;
 $$;
-

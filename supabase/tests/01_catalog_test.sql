@@ -29,6 +29,7 @@ select is(
         order by 1),
   array[
     'account_sync_signals:select',
+    'cookbook_chunks:select', 'cookbooks:delete', 'cookbooks:select',
     'cooked_events:delete', 'cooked_events:insert', 'cooked_events:select', 'cooked_events:update',
     'deletions:select',
     'food_aliases:delete', 'food_aliases:insert', 'food_aliases:select', 'food_aliases:update',
@@ -86,7 +87,7 @@ select is(
     'public.prepare_new_household', 'public.preview_household_join',
     'public.regenerate_household_invite', 'public.remove_household_member',
     'public.rename_household',
-    'public.set_planning_preferences_sharing', 'public.take_household_removal'
+    'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing', 'public.take_household_removal'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );

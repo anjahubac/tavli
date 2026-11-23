@@ -15,16 +15,26 @@ import '../../domain/voice_draft.dart';
 import 'recipe_labels_sheet.dart';
 import 'recipe_providers.dart';
 
+/// Unapred popunjena polja novog recepta (npr. odgovor iz kuvarske knjige).
+/// Osoba ih pregleda i dopuni; sastojke unosi sama.
+class RecipeDraft {
+  const RecipeDraft({this.title = '', this.steps = const []});
+
+  final String title;
+  final List<String> steps;
+}
+
 /// Ručni unos novog recepta ([id] == null) ili izmena postojećeg.
 class RecipeFormScreen extends ConsumerStatefulWidget {
-  const RecipeFormScreen({super.key, this.id, this.draft});
+  const RecipeFormScreen({super.key, this.id, this.draft, this.voiceDraft});
 
   final String? id;
 
-  /// Nacrt iz „Recept glasom“: popunjava nov recept, a osoba ga pregleda i
-  /// čuva (spec 027, pravilo 3).
-  final VoiceDraft? draft;
+  /// Samo za novi recept: početne vrednosti polja.
+  final RecipeDraft? draft;
 
+  /// Nacrt iz „Recept glasom“, koji osoba pregleda pre čuvanja.
+  final VoiceDraft? voiceDraft;
   @override
   ConsumerState<RecipeFormScreen> createState() => _RecipeFormScreenState();
 }
@@ -51,6 +61,10 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       _loading = true;
       unawaited(_load(id));
     } else if (widget.draft case final draft?) {
+      _title.text = draft.title;
+      _steps.text = draft.steps.join('\n');
+      _dirty = true;
+    } else if (widget.voiceDraft case final draft?) {
       _title.text = draft.title ?? '';
       if (draft.servings case final n?) _servings.text = '$n';
       _steps.text = draft.steps.join('\n');

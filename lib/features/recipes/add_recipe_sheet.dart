@@ -62,6 +62,13 @@ Future<void> showAddRecipeSheet(BuildContext context) {
           onTap: () => open(sheetContext, '/recipes/new/name'),
         ),
         TavliListRow(
+          leading: const Icon(Icons.menu_book_outlined),
+          title: 'Iz kuvarske knjige',
+          subtitle: 'Pitaj knjige domaćinstva i sačuvaj odgovor',
+          showChevron: true,
+          onTap: () => open(sheetContext, '/recipes/cookbooks'),
+        ),
+        TavliListRow(
           leading: const Icon(Icons.mic_none),
           title: 'Glasom',
           subtitle: 'Izgovori recept, AI ga upisuje',
