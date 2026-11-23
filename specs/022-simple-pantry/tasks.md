@@ -1,21 +1,21 @@
 # Tasks: Simple pantry and reversible consumption
 
-Status: planned, not completed. Source roles/phases are preserved. All source
-tasks remain not_assessed until current code is checked. Lead: Dev 4;
-proposed reviewers: Dev 1 (choose a different human from the implementer).
-Paths and contracts are in plan.md; finalize exact filenames and remaining
-implementation/test/review estimates before Ready.
+Status: implemented in one slice (2026-11-23), awaiting independent review.
+Lead: Dev 4; proposed reviewer: Dev 1. Function list and evidence: spec.md.
 
-- [ ] T001 Resolve blocking questions in spec.md, agree typed contract/migration needs and acceptance fixtures. Owner Dev 4; reviewer Dev 1; depends on producer specs in plan.md; evidence: accepted decision/contract links.
-- [ ] T002 [US1] D4-014 / FR-001, phase 3: inspect existing evidence and add missing failing behavior/acceptance cases for **List and add pantry ingredients** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T003 [US1] D4-014 / FR-001, phase 3: **List and add pantry ingredients** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T002; evidence: spec scenarios, applicable checks and reviewed PR.
-- [ ] T004 [US1] D4-015 / FR-002, phase 3: inspect existing evidence and add missing failing behavior/acceptance cases for **Remove pantry ingredients with undo** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T005 [US1] D4-015 / FR-002, phase 3: **Remove pantry ingredients with undo** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T004; evidence: spec scenarios, applicable checks and reviewed PR.
-- [ ] T006 [US1] D4-016 / FR-003, phase 3: inspect existing evidence and add missing failing behavior/acceptance cases for **Receive checked purchases into the pantry** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T007 [US1] D4-016 / FR-003, phase 3: **Receive checked purchases into the pantry** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T006; evidence: spec scenarios, applicable checks and reviewed PR.
-- [ ] T008 [US1] D4-017 / FR-004, phase 3: inspect existing evidence and add missing failing behavior/acceptance cases for **Consume and edit pantry quantities with reversal** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
-- [ ] T009 [US1] D4-017 / FR-004, phase 3: **Consume and edit pantry quantities with reversal** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T008; evidence: spec scenarios, applicable checks and reviewed PR.
-- [ ] T010 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 4; reviewer Dev 1; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
+- [x] T001 Record decisions (presence = have, optional quantity, no expiry, manual count wins, receipt first, one PR) in spec.md. Owner Dev 4.
+- [x] T002 [US1] D4-014 / FR-001: tests for list, count, search, catalog search and add/merge (`test/features/pantry/pantry_screen_test.dart`, `test/data/pantry_repository_test.dart`, `test/data/food_catalog_reader_test.dart`).
+- [x] T003 [US1] D4-014 / FR-001: Ostava screen (phone list, wide table) and add sheet.
+- [x] T004 [US3] D4-015 / FR-002: tests for swipe/hover remove, "Vrati" and deferred outbox delete.
+- [x] T005 [US3] D4-015 / FR-002: remove with undo; `TavliTableRow.onRemove` in tavli_ui.
+- [x] T006 [US5] D4-016 / FR-003: tests for receiving into an existing food and for removing a received purchase (`test/data/pantry_repository_test.dart`); existing idempotency coverage in `test/data/shopping_repository_test.dart`.
+- [x] T007 [US5] D4-016 / FR-003: one row per food (`pantryEntriesFrom`); removal keeps a received purchase as quantity 0 instead of deleting it.
+- [x] T008 [US4] D4-017 / FR-004: tests for the quantity edit sheet, `setEntryQuantity` and `setQuantity` unit change; cooking consumption covered by `test/data/cooking_repository_test.dart`.
+- [x] T009 [US4] D4-017 / FR-004: quantity edit sheet on row tap.
+- [x] T011 [US6] D4-014 / FR-005: test for "šta imam" with a fake catalog matcher.
+- [x] T012 [US6] D4-014 / FR-005: `PantryRepository.whatIHave`, `pantryStockProvider`.
+- [ ] T013 Canvas boards for the edit sheet approved by Anja.
+- [ ] T010 Independent review, merged PR, Trello cards moved; record check results.
 
 ## Sequencing and effort
 

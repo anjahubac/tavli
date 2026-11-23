@@ -1,21 +1,23 @@
 # Implementation plan: Simple pantry and reversible consumption
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: implemented in one slice on dev 5d181e4 (2026-11-23); see spec.md for the function list.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 4 / Dev 1
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
-## Existing boundaries and proposed files
+## Files in this slice
 
-- `lib/data/pantry_repository.dart`
-- `lib/domain/`
-- `lib/features/pantry/ (new)`
-- `lib/features/shopping/`
-- `lib/sync/entities.dart`
-- `supabase/migrations/`
+- `lib/features/pantry/` (new): `pantry_screen.dart`, `add_pantry_item_sheet.dart`,
+  `pantry_amount_form.dart`, `pantry_providers.dart` (`pantryEntriesProvider`,
+  `pantryStockProvider`)
+- `lib/data/pantry_repository.dart` (`watchEntries` with grouping
+  `pantryEntriesFrom`, `add`, `remove`/`removeEntry`, `setEntryQuantity`,
+  `setQuantity` unit change, `whatIHave`), `lib/data/food_catalog_reader.dart`
+  (`search`)
+- `lib/app/router.dart` (`/pantry`)
+- `packages/tavli_ui`: `TavliTableRow.onRemove` (hover/focus trash),
+  `showTavliMessage` returns its controller
 
-Items marked new/proposed/external do not exist at baseline. Verify exact existing
-files and consumers before editing; new files remain in current feature/domain/
-data/AI/account/sync layers. Shared providers and schema versions are coordinated.
+No schema change, no new dependency, no AI task and no server change.
 
 ## Contract and data plan
 
