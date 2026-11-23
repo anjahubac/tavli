@@ -176,6 +176,28 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _imageDescriptionMeta = const VerificationMeta(
+    'imageDescription',
+  );
+  @override
+  late final GeneratedColumn<String> imageDescription = GeneratedColumn<String>(
+    'image_description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _imageSourceMeta = const VerificationMeta(
+    'imageSource',
+  );
+  @override
+  late final GeneratedColumn<String> imageSource = GeneratedColumn<String>(
+    'image_source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -194,6 +216,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
     weight,
     dishKind,
     labelsSource,
+    imageDescription,
+    imageSource,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -331,6 +355,24 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         ),
       );
     }
+    if (data.containsKey('image_description')) {
+      context.handle(
+        _imageDescriptionMeta,
+        imageDescription.isAcceptableOrUnknown(
+          data['image_description']!,
+          _imageDescriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('image_source')) {
+      context.handle(
+        _imageSourceMeta,
+        imageSource.isAcceptableOrUnknown(
+          data['image_source']!,
+          _imageSourceMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -404,6 +446,14 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         DriftSqlType.string,
         data['${effectivePrefix}labels_source'],
       ),
+      imageDescription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_description'],
+      ),
+      imageSource: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_source'],
+      ),
     );
   }
 
@@ -433,6 +483,11 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
   final String? weight;
   final String? dishKind;
   final String? labelsSource;
+
+  /// Opis gotovog jela za AI sliku (v11, engleski) i ko je postavio sliku
+  /// (`ai`/`user`); null = nepoznato.
+  final String? imageDescription;
+  final String? imageSource;
   const RecipeRow({
     required this.id,
     required this.title,
@@ -450,6 +505,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     this.weight,
     this.dishKind,
     this.labelsSource,
+    this.imageDescription,
+    this.imageSource,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -485,6 +542,12 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     }
     if (!nullToAbsent || labelsSource != null) {
       map['labels_source'] = Variable<String>(labelsSource);
+    }
+    if (!nullToAbsent || imageDescription != null) {
+      map['image_description'] = Variable<String>(imageDescription);
+    }
+    if (!nullToAbsent || imageSource != null) {
+      map['image_source'] = Variable<String>(imageSource);
     }
     return map;
   }
@@ -523,6 +586,12 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       labelsSource: labelsSource == null && nullToAbsent
           ? const Value.absent()
           : Value(labelsSource),
+      imageDescription: imageDescription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imageDescription),
+      imageSource: imageSource == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imageSource),
     );
   }
 
@@ -548,6 +617,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       weight: serializer.fromJson<String?>(json['weight']),
       dishKind: serializer.fromJson<String?>(json['dishKind']),
       labelsSource: serializer.fromJson<String?>(json['labelsSource']),
+      imageDescription: serializer.fromJson<String?>(json['imageDescription']),
+      imageSource: serializer.fromJson<String?>(json['imageSource']),
     );
   }
   @override
@@ -570,6 +641,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       'weight': serializer.toJson<String?>(weight),
       'dishKind': serializer.toJson<String?>(dishKind),
       'labelsSource': serializer.toJson<String?>(labelsSource),
+      'imageDescription': serializer.toJson<String?>(imageDescription),
+      'imageSource': serializer.toJson<String?>(imageSource),
     };
   }
 
@@ -590,6 +663,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     Value<String?> weight = const Value.absent(),
     Value<String?> dishKind = const Value.absent(),
     Value<String?> labelsSource = const Value.absent(),
+    Value<String?> imageDescription = const Value.absent(),
+    Value<String?> imageSource = const Value.absent(),
   }) => RecipeRow(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -609,6 +684,10 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     weight: weight.present ? weight.value : this.weight,
     dishKind: dishKind.present ? dishKind.value : this.dishKind,
     labelsSource: labelsSource.present ? labelsSource.value : this.labelsSource,
+    imageDescription: imageDescription.present
+        ? imageDescription.value
+        : this.imageDescription,
+    imageSource: imageSource.present ? imageSource.value : this.imageSource,
   );
   RecipeRow copyWithCompanion(RecipesCompanion data) {
     return RecipeRow(
@@ -640,6 +719,12 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       labelsSource: data.labelsSource.present
           ? data.labelsSource.value
           : this.labelsSource,
+      imageDescription: data.imageDescription.present
+          ? data.imageDescription.value
+          : this.imageDescription,
+      imageSource: data.imageSource.present
+          ? data.imageSource.value
+          : this.imageSource,
     );
   }
 
@@ -661,7 +746,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           ..write('mealTypesJson: $mealTypesJson, ')
           ..write('weight: $weight, ')
           ..write('dishKind: $dishKind, ')
-          ..write('labelsSource: $labelsSource')
+          ..write('labelsSource: $labelsSource, ')
+          ..write('imageDescription: $imageDescription, ')
+          ..write('imageSource: $imageSource')
           ..write(')'))
         .toString();
   }
@@ -684,6 +771,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     weight,
     dishKind,
     labelsSource,
+    imageDescription,
+    imageSource,
   );
   @override
   bool operator ==(Object other) =>
@@ -704,7 +793,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           other.mealTypesJson == this.mealTypesJson &&
           other.weight == this.weight &&
           other.dishKind == this.dishKind &&
-          other.labelsSource == this.labelsSource);
+          other.labelsSource == this.labelsSource &&
+          other.imageDescription == this.imageDescription &&
+          other.imageSource == this.imageSource);
 }
 
 class RecipesCompanion extends UpdateCompanion<RecipeRow> {
@@ -724,6 +815,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
   final Value<String?> weight;
   final Value<String?> dishKind;
   final Value<String?> labelsSource;
+  final Value<String?> imageDescription;
+  final Value<String?> imageSource;
   final Value<int> rowid;
   const RecipesCompanion({
     this.id = const Value.absent(),
@@ -742,6 +835,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.weight = const Value.absent(),
     this.dishKind = const Value.absent(),
     this.labelsSource = const Value.absent(),
+    this.imageDescription = const Value.absent(),
+    this.imageSource = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RecipesCompanion.insert({
@@ -761,6 +856,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.weight = const Value.absent(),
     this.dishKind = const Value.absent(),
     this.labelsSource = const Value.absent(),
+    this.imageDescription = const Value.absent(),
+    this.imageSource = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -787,6 +884,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Expression<String>? weight,
     Expression<String>? dishKind,
     Expression<String>? labelsSource,
+    Expression<String>? imageDescription,
+    Expression<String>? imageSource,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -806,6 +905,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       if (weight != null) 'weight': weight,
       if (dishKind != null) 'dish_kind': dishKind,
       if (labelsSource != null) 'labels_source': labelsSource,
+      if (imageDescription != null) 'image_description': imageDescription,
+      if (imageSource != null) 'image_source': imageSource,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -827,6 +928,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Value<String?>? weight,
     Value<String?>? dishKind,
     Value<String?>? labelsSource,
+    Value<String?>? imageDescription,
+    Value<String?>? imageSource,
     Value<int>? rowid,
   }) {
     return RecipesCompanion(
@@ -846,6 +949,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       weight: weight ?? this.weight,
       dishKind: dishKind ?? this.dishKind,
       labelsSource: labelsSource ?? this.labelsSource,
+      imageDescription: imageDescription ?? this.imageDescription,
+      imageSource: imageSource ?? this.imageSource,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -901,6 +1006,12 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     if (labelsSource.present) {
       map['labels_source'] = Variable<String>(labelsSource.value);
     }
+    if (imageDescription.present) {
+      map['image_description'] = Variable<String>(imageDescription.value);
+    }
+    if (imageSource.present) {
+      map['image_source'] = Variable<String>(imageSource.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -926,6 +1037,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
           ..write('weight: $weight, ')
           ..write('dishKind: $dishKind, ')
           ..write('labelsSource: $labelsSource, ')
+          ..write('imageDescription: $imageDescription, ')
+          ..write('imageSource: $imageSource, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10487,6 +10600,376 @@ class UserFavoritesCompanion extends UpdateCompanion<UserFavoriteRow> {
   }
 }
 
+class $RecipeImageJobsTable extends RecipeImageJobs
+    with TableInfo<$RecipeImageJobsTable, RecipeImageJobRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecipeImageJobsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recipeIdMeta = const VerificationMeta(
+    'recipeId',
+  );
+  @override
+  late final GeneratedColumn<String> recipeId = GeneratedColumn<String>(
+    'recipe_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _retryAtMeta = const VerificationMeta(
+    'retryAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> retryAt = GeneratedColumn<DateTime>(
+    'retry_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    accountId,
+    recipeId,
+    retryAt,
+    attempts,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recipe_image_jobs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecipeImageJobRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('recipe_id')) {
+      context.handle(
+        _recipeIdMeta,
+        recipeId.isAcceptableOrUnknown(data['recipe_id']!, _recipeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recipeIdMeta);
+    }
+    if (data.containsKey('retry_at')) {
+      context.handle(
+        _retryAtMeta,
+        retryAt.isAcceptableOrUnknown(data['retry_at']!, _retryAtMeta),
+      );
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {accountId, recipeId};
+  @override
+  RecipeImageJobRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecipeImageJobRow(
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      recipeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recipe_id'],
+      )!,
+      retryAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}retry_at'],
+      ),
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RecipeImageJobsTable createAlias(String alias) {
+    return $RecipeImageJobsTable(attachedDatabase, alias);
+  }
+}
+
+class RecipeImageJobRow extends DataClass
+    implements Insertable<RecipeImageJobRow> {
+  final String accountId;
+  final String recipeId;
+
+  /// Ne pre ovog vremena (limit, greška provajdera); null = odmah.
+  final DateTime? retryAt;
+  final int attempts;
+  final DateTime createdAt;
+  const RecipeImageJobRow({
+    required this.accountId,
+    required this.recipeId,
+    this.retryAt,
+    required this.attempts,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['account_id'] = Variable<String>(accountId);
+    map['recipe_id'] = Variable<String>(recipeId);
+    if (!nullToAbsent || retryAt != null) {
+      map['retry_at'] = Variable<DateTime>(retryAt);
+    }
+    map['attempts'] = Variable<int>(attempts);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  RecipeImageJobsCompanion toCompanion(bool nullToAbsent) {
+    return RecipeImageJobsCompanion(
+      accountId: Value(accountId),
+      recipeId: Value(recipeId),
+      retryAt: retryAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(retryAt),
+      attempts: Value(attempts),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory RecipeImageJobRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecipeImageJobRow(
+      accountId: serializer.fromJson<String>(json['accountId']),
+      recipeId: serializer.fromJson<String>(json['recipeId']),
+      retryAt: serializer.fromJson<DateTime?>(json['retryAt']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'accountId': serializer.toJson<String>(accountId),
+      'recipeId': serializer.toJson<String>(recipeId),
+      'retryAt': serializer.toJson<DateTime?>(retryAt),
+      'attempts': serializer.toJson<int>(attempts),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  RecipeImageJobRow copyWith({
+    String? accountId,
+    String? recipeId,
+    Value<DateTime?> retryAt = const Value.absent(),
+    int? attempts,
+    DateTime? createdAt,
+  }) => RecipeImageJobRow(
+    accountId: accountId ?? this.accountId,
+    recipeId: recipeId ?? this.recipeId,
+    retryAt: retryAt.present ? retryAt.value : this.retryAt,
+    attempts: attempts ?? this.attempts,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  RecipeImageJobRow copyWithCompanion(RecipeImageJobsCompanion data) {
+    return RecipeImageJobRow(
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      recipeId: data.recipeId.present ? data.recipeId.value : this.recipeId,
+      retryAt: data.retryAt.present ? data.retryAt.value : this.retryAt,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecipeImageJobRow(')
+          ..write('accountId: $accountId, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('retryAt: $retryAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(accountId, recipeId, retryAt, attempts, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecipeImageJobRow &&
+          other.accountId == this.accountId &&
+          other.recipeId == this.recipeId &&
+          other.retryAt == this.retryAt &&
+          other.attempts == this.attempts &&
+          other.createdAt == this.createdAt);
+}
+
+class RecipeImageJobsCompanion extends UpdateCompanion<RecipeImageJobRow> {
+  final Value<String> accountId;
+  final Value<String> recipeId;
+  final Value<DateTime?> retryAt;
+  final Value<int> attempts;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const RecipeImageJobsCompanion({
+    this.accountId = const Value.absent(),
+    this.recipeId = const Value.absent(),
+    this.retryAt = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RecipeImageJobsCompanion.insert({
+    required String accountId,
+    required String recipeId,
+    this.retryAt = const Value.absent(),
+    this.attempts = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : accountId = Value(accountId),
+       recipeId = Value(recipeId),
+       createdAt = Value(createdAt);
+  static Insertable<RecipeImageJobRow> custom({
+    Expression<String>? accountId,
+    Expression<String>? recipeId,
+    Expression<DateTime>? retryAt,
+    Expression<int>? attempts,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (accountId != null) 'account_id': accountId,
+      if (recipeId != null) 'recipe_id': recipeId,
+      if (retryAt != null) 'retry_at': retryAt,
+      if (attempts != null) 'attempts': attempts,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RecipeImageJobsCompanion copyWith({
+    Value<String>? accountId,
+    Value<String>? recipeId,
+    Value<DateTime?>? retryAt,
+    Value<int>? attempts,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return RecipeImageJobsCompanion(
+      accountId: accountId ?? this.accountId,
+      recipeId: recipeId ?? this.recipeId,
+      retryAt: retryAt ?? this.retryAt,
+      attempts: attempts ?? this.attempts,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (recipeId.present) {
+      map['recipe_id'] = Variable<String>(recipeId.value);
+    }
+    if (retryAt.present) {
+      map['retry_at'] = Variable<DateTime>(retryAt.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecipeImageJobsCompanion(')
+          ..write('accountId: $accountId, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('retryAt: $retryAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppSettingsTable extends AppSettings
     with TableInfo<$AppSettingsTable, AppSettingRow> {
   @override
@@ -12765,6 +13248,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UserAllergenSelectionsTable userAllergenSelections =
       $UserAllergenSelectionsTable(this);
   late final $UserFavoritesTable userFavorites = $UserFavoritesTable(this);
+  late final $RecipeImageJobsTable recipeImageJobs = $RecipeImageJobsTable(
+    this,
+  );
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $ModelStatusesTable modelStatuses = $ModelStatusesTable(this);
   late final $AccountsTable accounts = $AccountsTable(this);
@@ -12830,6 +13316,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     userProfiles,
     userAllergenSelections,
     userFavorites,
+    recipeImageJobs,
     appSettings,
     modelStatuses,
     accounts,
@@ -12864,6 +13351,8 @@ typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
   Value<String?> weight,
   Value<String?> dishKind,
   Value<String?> labelsSource,
+  Value<String?> imageDescription,
+  Value<String?> imageSource,
   Value<int> rowid,
 });
 typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
@@ -12883,6 +13372,8 @@ typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
   Value<String?> weight,
   Value<String?> dishKind,
   Value<String?> labelsSource,
+  Value<String?> imageDescription,
+  Value<String?> imageSource,
   Value<int> rowid,
 });
 
@@ -13034,6 +13525,16 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<String> get labelsSource => $composableBuilder(
     column: $table.labelsSource,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imageDescription => $composableBuilder(
+    column: $table.imageDescription,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imageSource => $composableBuilder(
+    column: $table.imageSource,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13201,6 +13702,16 @@ class $$RecipesTableOrderingComposer
     column: $table.labelsSource,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get imageDescription => $composableBuilder(
+    column: $table.imageDescription,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get imageSource => $composableBuilder(
+    column: $table.imageSource,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$RecipesTableAnnotationComposer
@@ -13269,6 +13780,16 @@ class $$RecipesTableAnnotationComposer
 
   GeneratedColumn<String> get labelsSource => $composableBuilder(
     column: $table.labelsSource,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get imageDescription => $composableBuilder(
+    column: $table.imageDescription,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get imageSource => $composableBuilder(
+    column: $table.imageSource,
     builder: (column) => column,
   );
 
@@ -13396,6 +13917,8 @@ class $$RecipesTableTableManager
                 Value<String?> weight = const Value.absent(),
                 Value<String?> dishKind = const Value.absent(),
                 Value<String?> labelsSource = const Value.absent(),
+                Value<String?> imageDescription = const Value.absent(),
+                Value<String?> imageSource = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecipesCompanion(
                 id: id,
@@ -13414,6 +13937,8 @@ class $$RecipesTableTableManager
                 weight: weight,
                 dishKind: dishKind,
                 labelsSource: labelsSource,
+                imageDescription: imageDescription,
+                imageSource: imageSource,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -13434,6 +13959,8 @@ class $$RecipesTableTableManager
                 Value<String?> weight = const Value.absent(),
                 Value<String?> dishKind = const Value.absent(),
                 Value<String?> labelsSource = const Value.absent(),
+                Value<String?> imageDescription = const Value.absent(),
+                Value<String?> imageSource = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecipesCompanion.insert(
                 id: id,
@@ -13452,6 +13979,8 @@ class $$RecipesTableTableManager
                 weight: weight,
                 dishKind: dishKind,
                 labelsSource: labelsSource,
+                imageDescription: imageDescription,
+                imageSource: imageSource,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -20677,6 +21206,221 @@ typedef $$UserFavoritesTableProcessedTableManager =
       UserFavoriteRow,
       PrefetchHooks Function()
     >;
+typedef $$RecipeImageJobsTableCreateCompanionBuilder =
+    RecipeImageJobsCompanion Function({
+      required String accountId,
+      required String recipeId,
+      Value<DateTime?> retryAt,
+      Value<int> attempts,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$RecipeImageJobsTableUpdateCompanionBuilder =
+    RecipeImageJobsCompanion Function({
+      Value<String> accountId,
+      Value<String> recipeId,
+      Value<DateTime?> retryAt,
+      Value<int> attempts,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$RecipeImageJobsTableFilterComposer
+    extends Composer<_$AppDatabase, $RecipeImageJobsTable> {
+  $$RecipeImageJobsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recipeId => $composableBuilder(
+    column: $table.recipeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get retryAt => $composableBuilder(
+    column: $table.retryAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RecipeImageJobsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecipeImageJobsTable> {
+  $$RecipeImageJobsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recipeId => $composableBuilder(
+    column: $table.recipeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get retryAt => $composableBuilder(
+    column: $table.retryAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecipeImageJobsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecipeImageJobsTable> {
+  $$RecipeImageJobsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get recipeId =>
+      $composableBuilder(column: $table.recipeId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get retryAt =>
+      $composableBuilder(column: $table.retryAt, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$RecipeImageJobsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecipeImageJobsTable,
+          RecipeImageJobRow,
+          $$RecipeImageJobsTableFilterComposer,
+          $$RecipeImageJobsTableOrderingComposer,
+          $$RecipeImageJobsTableAnnotationComposer,
+          $$RecipeImageJobsTableCreateCompanionBuilder,
+          $$RecipeImageJobsTableUpdateCompanionBuilder,
+          (
+            RecipeImageJobRow,
+            BaseReferences<
+              _$AppDatabase,
+              $RecipeImageJobsTable,
+              RecipeImageJobRow
+            >,
+          ),
+          RecipeImageJobRow,
+          PrefetchHooks Function()
+        > {
+  $$RecipeImageJobsTableTableManager(
+    _$AppDatabase db,
+    $RecipeImageJobsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecipeImageJobsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecipeImageJobsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecipeImageJobsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> accountId = const Value.absent(),
+                Value<String> recipeId = const Value.absent(),
+                Value<DateTime?> retryAt = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RecipeImageJobsCompanion(
+                accountId: accountId,
+                recipeId: recipeId,
+                retryAt: retryAt,
+                attempts: attempts,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String accountId,
+                required String recipeId,
+                Value<DateTime?> retryAt = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RecipeImageJobsCompanion.insert(
+                accountId: accountId,
+                recipeId: recipeId,
+                retryAt: retryAt,
+                attempts: attempts,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RecipeImageJobsTable, RecipeImageJobRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $RecipeImageJobsTable,
+                    RecipeImageJobRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RecipeImageJobsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecipeImageJobsTable,
+      RecipeImageJobRow,
+      $$RecipeImageJobsTableFilterComposer,
+      $$RecipeImageJobsTableOrderingComposer,
+      $$RecipeImageJobsTableAnnotationComposer,
+      $$RecipeImageJobsTableCreateCompanionBuilder,
+      $$RecipeImageJobsTableUpdateCompanionBuilder,
+      (
+        RecipeImageJobRow,
+        BaseReferences<_$AppDatabase, $RecipeImageJobsTable, RecipeImageJobRow>,
+      ),
+      RecipeImageJobRow,
+      PrefetchHooks Function()
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       required String key,
@@ -21916,6 +22660,8 @@ class $AppDatabaseManager {
       );
   $$UserFavoritesTableTableManager get userFavorites =>
       $$UserFavoritesTableTableManager(_db, _db.userFavorites);
+  $$RecipeImageJobsTableTableManager get recipeImageJobs =>
+      $$RecipeImageJobsTableTableManager(_db, _db.recipeImageJobs);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$ModelStatusesTableTableManager get modelStatuses =>

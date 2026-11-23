@@ -104,17 +104,40 @@ class RecipeAI {
             if (current.steps.isNotEmpty && refined.steps.isEmpty) {
               throw const FormatException('R10');
             }
+            // Opis slike i izvor slike ostaju; nov opis samo kad ga nije bilo.
+            final kept = refined.copyWith(
+              imageDescription: current.imageDescription,
+              imageSource: current.imageSource,
+            );
             // AI ne menja oznake koje je postavio korisnik, a bez novih
             // oznaka zadržava postojeće.
-            if (current.labels.isUserSet || refined.labels.isEmpty) {
-              return refined.copyWith(labels: current.labels);
+            if (current.labels.isUserSet || kept.labels.isEmpty) {
+              return kept.copyWith(labels: current.labels);
             }
-            return refined;
+            return kept;
           },
           cancel: cancel,
         )
         .then(_stampModel);
   }
+
+  /// Rezervni poziv (TRELLO-130): opis gotovog jela za AI sliku kad ga
+  /// recept nema (npr. recepti iz plana). Vraća očišćen opis.
+  Future<String> describeImage(Recipe recipe, {AICancellation? cancel}) =>
+      _router
+          .run(
+            AIRequest(
+              task: AITask.recipeImageDescription,
+              system: imageDescriptionSystemPrompt,
+              prompt: imageDescriptionPrompt(recipe),
+              temperature: 0.3,
+            ),
+            (json) =>
+                aiImageDescription(json['image_description']) ??
+                (throw const FormatException('I1')),
+            cancel: cancel,
+          )
+          .then((r) => r.value);
 
   Recipe _build(
     Map<String, dynamic> json,
@@ -143,6 +166,8 @@ class RecipeAI {
         createdAt: v.createdAt,
         answeredBy: r.model.label,
         labels: v.labels,
+        imageDescription: v.imageDescription,
+        imageSource: v.imageSource,
       ),
       r.model,
       r.attempts,

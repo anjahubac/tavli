@@ -50,8 +50,42 @@ validator; the gateway does not parse recipes.
 | `recipe_refine` | text | `RecipeAI.refine` |
 | `plan_outline` | text | `MealPlanAI` outline |
 | `recipe_summaries` | text | `MealPlanAI` summaries |
+| `recipe_image_description` | text | `RecipeAI.describeImage` (recipe without a description) |
+| `recipe_image` | image | `RecipeImageClient` (see Recipe images) |
 
 Any other value is `400 bad_request`. A new AI feature adds its task here first.
+
+### Recipe images (`recipe_image`)
+
+Task-specific body; any other field is `400 bad_request`, over 4096 characters
+is `413 too_large`:
+
+```json
+{"task": "recipe_image", "recipeId": "<id>", "description": "<English text>"}
+```
+
+The server trims the description to 600 characters, appends a fixed style and
+makes one FLUX schnell call. The app never sends a model, URL, key, style or
+household. The household comes from the caller's membership. The JPEG is
+checked and stored as `recipe-photos/{household_id}/ai_<uuid>.jpg`.
+
+`ai_image_reserve` applies every limit in one transaction, before the call:
+30 distinct recipes per user and UTC day, 3 provider calls per recipe and day,
+and a project-wide daily cap that counts every provider call, repeats
+included. Usage rows hold no description; deleting an account clears both the
+user and the recipe ID, and rows expire after 2 days.
+
+| Status | Body | App |
+| --- | --- | --- |
+| 200 | `{"file": "ai_<uuid>.jpg", "path": "<household>/<file>"}` | downloads and attaches the image |
+| 403 | `{"error": "forbidden"}` (no household) | pauses until resume |
+| 429 | `{"error": "quota_exceeded", "limit": "user" or "project", "retryAfterSeconds": n}` | defers the local queue |
+| 429 | `{"error": "rate_limited", "retryAfterSeconds": n}` | defers the local queue |
+| 502 / 504 | `{"error": "provider_error"}` / `{"error": "timeout"}` | retries, gives up after 3 |
+| 503 | `{"error": "disabled"}` | pauses until resume |
+
+The app attaches an AI image only to an AI recipe without an image. A database
+trigger also refuses an AI image over any image that is not itself from AI.
 
 ### Proposed extension for spec 035
 

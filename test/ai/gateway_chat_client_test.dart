@@ -106,7 +106,7 @@ void main() {
     expect(calls, ['GET', 'POST']);
   });
 
-  test('completion encodes the task ID for all five Tavli AI tasks', () async {
+  test('completion encodes the task ID for every Tavli AI task', () async {
     final bodies = <Map<String, Object?>>[];
     final client = GatewayChatClient(
       accountId: () => 'account',
@@ -138,6 +138,7 @@ void main() {
       'recipe_refine',
       'plan_outline',
       'recipe_summaries',
+      'recipe_image_description',
     ]);
     expect(bodies.first['images'], ['data:image/jpeg;base64,AQID']);
     expect(bodies.skip(1).every((body) => !body.containsKey('images')), isTrue);

@@ -11,6 +11,7 @@ import '../domain/shopping_source.dart';
 import '../sync/entities.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
+import 'recipe_image_jobs.dart';
 import 'recipe_photo_store.dart';
 import 'shopping_repository.dart';
 
@@ -64,11 +65,56 @@ class RecipeRepository {
   Future<Recipe?> get(String id) =>
       _one(id).getSingleOrNull().then(_fromRowOrNull);
 
+  /// Čuva nov recept. Slika koja stiže sa receptom je slika korisnika.
+  /// AI recept bez slike ulazi u lokalni red za AI sliku (TRELLO-130).
   Future<void> create(Recipe recipe) => _db.transaction(() async {
-    await _db.into(_db.recipes).insert(_toCompanion(recipe));
-    await _writer.upsert(_recipe, recipe.id);
-    if (recipe.imagePath case final p?) await _writer.photoUpload(p);
+    final saved = recipe.imagePath != null && recipe.imageSource == null
+        ? recipe.copyWith(imageSource: RecipeImageSource.user)
+        : recipe;
+    await _db.into(_db.recipes).insert(_toCompanion(saved));
+    await _writer.upsert(_recipe, saved.id);
+    if (saved.imagePath case final p?) await _writer.photoUpload(p);
+    if (saved.wantsAiImage) await queueAiImage(_db, _scope, saved.id, _clock());
   });
+
+  /// Upisuje AI sliku u recept, samo ako recept i dalje nema sliku i slika
+  /// nije korisnikova. Nije nova verzija recepta. Vraća false kad je slika
+  /// odbačena (recept obrisan, ima sliku ili ga je korisnik promenio).
+  Future<bool> attachAiImage(String id, String localPath) =>
+      _db.transaction(() async {
+        final current = await get(id);
+        if (current == null || !current.wantsAiImage) return false;
+        await (_db.update(_db.recipes)..where(
+              (t) => t.id.equals(id) & t.householdId.equals(_scope.householdId),
+            ))
+            .write(
+              RecipesCompanion(
+                imagePath: Value(localPath),
+                imageSource: Value(RecipeImageSource.ai.name),
+                updatedAt: Value(_clock()),
+              ),
+            );
+        await _writer.upsert(_recipe, id);
+        return true;
+      });
+
+  /// Čuva opis slike koji je napravio rezervni AI poziv, ako ga recept
+  /// još nema. Nije nova verzija recepta.
+  Future<void> setImageDescription(String id, String description) =>
+      _db.transaction(() async {
+        final current = await get(id);
+        if (current == null || current.imageDescription != null) return;
+        await (_db.update(_db.recipes)..where(
+              (t) => t.id.equals(id) & t.householdId.equals(_scope.householdId),
+            ))
+            .write(
+              RecipesCompanion(
+                imageDescription: Value(description),
+                updatedAt: Value(_clock()),
+              ),
+            );
+        await _writer.upsert(_recipe, id);
+      });
 
   /// Menja recept i čuva prethodno stanje kao verziju.
   ///
@@ -90,8 +136,21 @@ class RecipeRepository {
         !current.labels.isUserSet &&
         !next.labels.isEmpty;
     final labels = aiMayLabel ? next.labels : current.labels;
+    // Nova slika iz izmene je uvek korisnikova (AI sliku upisuje samo
+    // [attachAiImage]); inače izvor slike ostaje.
+    final newPhoto =
+        next.imagePath != null && next.imagePath != current.imagePath;
+    final imageSource = newPhoto ? RecipeImageSource.user : current.imageSource;
     await _addVersion(current, kind, instruction, changedBy);
-    await _replace(next.copyWith(labels: labels));
+    await _replace(
+      _withImageSource(
+        next.copyWith(
+          labels: labels,
+          imageDescription: current.imageDescription,
+        ),
+        imageSource,
+      ),
+    );
     if (next.imagePath case final p? when p != current.imagePath) {
       await _writer.photoUpload(p);
     }
@@ -151,7 +210,9 @@ class RecipeRepository {
     final last = versions.first;
     // Oznake nisu deo istorije: vraćanje verzije čuva trenutne.
     final current = await get(recipeId);
-    await _replace(last.recipe.copyWith(labels: current?.labels));
+    await _replace(
+      _keepAiImage(last.recipe, current).copyWith(labels: current?.labels),
+    );
     await (_db.delete(
       _db.recipeVersions,
     )..where((t) => t.id.equals(last.id))).go();
@@ -172,7 +233,7 @@ class RecipeRepository {
     if (version == null) throw StateError('Verzija $versionId je pokvarena');
     final current = await get(version.recipeId);
     await update(
-      version.recipe.copyWith(labels: current?.labels),
+      _keepAiImage(version.recipe, current).copyWith(labels: current?.labels),
       kind: ChangeKind.restore,
     );
   });
@@ -345,6 +406,40 @@ class RecipeRepository {
     }
   }
 
+  /// Verzija iz vremena pre AI slike ne briše AI sliku koja je stigla
+  /// kasnije (AI slika nije nova verzija recepta).
+  static Recipe _keepAiImage(Recipe version, Recipe? current) {
+    final described = version.copyWith(
+      imageDescription: current?.imageDescription,
+    );
+    if (version.imagePath != null ||
+        current == null ||
+        current.imageSource != RecipeImageSource.ai) {
+      return described;
+    }
+    return described.copyWith(
+      imagePath: current.imagePath,
+      imageSource: RecipeImageSource.ai,
+    );
+  }
+
+  /// [Recipe.copyWith] ne može da obriše izvor slike (null).
+  static Recipe _withImageSource(Recipe r, RecipeImageSource? source) => Recipe(
+    id: r.id,
+    title: r.title,
+    servings: r.servings,
+    prepMinutes: r.prepMinutes,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    source: r.source,
+    createdAt: r.createdAt,
+    imagePath: r.imagePath,
+    answeredBy: r.answeredBy,
+    labels: r.labels,
+    imageDescription: r.imageDescription,
+    imageSource: source,
+  );
+
   RecipesCompanion _toCompanion(Recipe r) => RecipesCompanion.insert(
     id: r.id,
     title: r.title,
@@ -362,6 +457,8 @@ class RecipeRepository {
     weight: Value(r.labels.weight),
     dishKind: Value(r.labels.dishKind),
     labelsSource: Value(r.labels.source),
+    imageDescription: Value(r.imageDescription),
+    imageSource: Value(r.imageSource?.name),
   );
 
   static String? _mealsJson(RecipeLabels l) =>
@@ -405,6 +502,8 @@ class RecipeRepository {
     answeredBy: row.answeredBy,
     createdAt: row.createdAt,
     labels: _labelsFromRow(row),
+    imageDescription: row.imageDescription,
+    imageSource: RecipeImageSource.tryParse(row.imageSource),
   );
 
   static RecipeVersion? _versionFromRow(RecipeVersionRow row) {

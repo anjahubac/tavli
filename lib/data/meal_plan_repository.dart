@@ -12,6 +12,7 @@ import '../domain/shopping_demand.dart' show maxServings, minServings;
 import '../domain/shopping_source.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
+import 'recipe_image_jobs.dart';
 import 'shopping_repository.dart';
 
 /// Nacrt nije potpun, a nepotpuno čuvanje nije izričito izabrano (ili
@@ -341,6 +342,8 @@ class MealPlanRepository {
           ),
         );
     await _writer.upsert(_recipe, id);
+    // AI recept iz plana dobija AI sliku u pozadini (TRELLO-130).
+    await queueAiImage(_db, _scope, id, now);
     return id;
   }
 

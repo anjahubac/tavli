@@ -67,6 +67,12 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     ref.listenManual(authControllerProvider, (_, _) => _authChanges.ping());
     // Drži engine za slanje živim dok je nalog prijavljen.
     ref.listenManual(syncEngineProvider, (_, _) {}, fireImmediately: true);
+    // AI slike za AI recepte rade u pozadini dok je nalog prijavljen.
+    ref.listenManual(
+      recipeImageQueueProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
     ref.listenManual(movedSavedProvider, (_, next) {
       if (next.value case final n? when n > 0) {
         // Posle sledećeg okvira: aplikacija možda još prelazi sa ekrana
@@ -125,6 +131,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
         .read(authControllerProvider.notifier)
         .restoreSession(sync: ref.read(syncEngineProvider));
     if (mounted) await ref.read(syncEngineProvider)?.onResume();
+    if (mounted) await ref.read(recipeImageQueueProvider)?.onResume();
   }
 
   @override

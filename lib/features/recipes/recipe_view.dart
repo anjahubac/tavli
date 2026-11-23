@@ -101,7 +101,22 @@ class RecipeView extends StatelessWidget {
           ),
         )
       else if (path != null)
-        RecipePhoto(path, height: _photoHeight)
+        recipe.imageSource == RecipeImageSource.ai
+            ? SizedBox(
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.passthrough,
+                  children: [
+                    RecipePhoto(path, height: _photoHeight),
+                    const PositionedDirectional(
+                      top: TavliSpacing.small,
+                      end: TavliSpacing.small,
+                      child: AiImageLabel(),
+                    ),
+                  ],
+                ),
+              )
+            : RecipePhoto(path, height: _photoHeight)
       else
         const TavliThumbnail.banner(),
       if (showTitle) Text(recipe.title, style: theme.textTheme.headlineSmall),
@@ -371,6 +386,38 @@ class _Fact extends StatelessWidget {
           child: Text(text, style: TextStyle(color: muted)),
         ),
       ],
+    );
+  }
+}
+
+/// Mala oznaka „AI slika“ preko slike koju je napravio AI (TRELLO-130).
+/// Platno je još nema; oblik prati oznake recepta (radijus čipa).
+class AiImageLabel extends StatelessWidget {
+  const AiImageLabel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Semantics(
+      label: 'Sliku je napravio AI',
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: c.surface.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(TavliRadius.chip),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: TavliSpacing.small,
+            vertical: TavliSpacing.small / 2,
+          ),
+          child: Text(
+            'AI slika',
+            style: Theme.of(context).textTheme.labelMedium
+                ?.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
     );
   }
 }
