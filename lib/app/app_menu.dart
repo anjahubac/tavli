@@ -141,7 +141,57 @@ Widget appMenuBar(
           onSelected: () => recipes(MenuCommand.searchRecipes),
         ),
       ]),
+      TavliMenuGroup('Pomoć', [
+        TavliMenuCommand(
+          'Prečice na tastaturi',
+          shortcut: cmd(LogicalKeyboardKey.slash),
+          onSelected: () => unlessPopup(() {
+            final navigator = router.routerDelegate.navigatorKey.currentContext;
+            if (navigator != null) unawaited(showShortcutsDialog(navigator));
+          }),
+        ),
+      ]),
     ],
     child: child,
+  );
+}
+
+/// Pregled prečica na tastaturi (⌘/ na macOS-u, Ctrl+/ na Windows-u).
+Future<void> showShortcutsDialog(BuildContext context) {
+  String key(String k, {bool command = false}) =>
+      tavliShortcutHint(context, k, command: command);
+  final rows = [
+    ('Novi recept', key('N', command: true)),
+    ('Pretraži recepte', key('F', command: true)),
+    ('Početna, Plan, Nabavka, Recepti, Ostava', key('1–5', command: true)),
+    ('Profil', key(',', command: true)),
+    ('Prethodna ili sledeća nedelja u planu', key('←/→', command: true)),
+    ('Kuvanje: prethodni ili sledeći korak', key('←/→')),
+    ('Kuvanje: izlaz, zatvaranje prozora', key('Esc')),
+  ];
+  return showTavliDialog<void>(
+    context,
+    title: 'Prečice na tastaturi',
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (label, shortcut) in rows)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: TavliSpacing.small),
+            child: Row(
+              children: [
+                Expanded(child: Text(label)),
+                const SizedBox(width: TavliSpacing.medium),
+                Text(
+                  shortcut,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+    actions: const [TavliDialogAction('Zatvori', null, isDefault: true)],
   );
 }
