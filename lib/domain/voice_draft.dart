@@ -42,8 +42,9 @@ final class AddIngredient extends VoiceAction {
   final Ingredient ingredient;
 }
 
-/// Polja koja nisu `null` zamenjuju postojeća; [clearQuantity] briše
-/// količinu („po ukusu“).
+/// Polja koja nisu `null` zamenjuju postojeća; [clearQuantity],
+/// [clearUnit] i [clearNote] brišu polje („po ukusu“ nema ni količinu ni
+/// jedinicu).
 final class UpdateIngredient extends VoiceAction {
   const UpdateIngredient(
     this.index, {
@@ -51,7 +52,9 @@ final class UpdateIngredient extends VoiceAction {
     this.quantity,
     this.clearQuantity = false,
     this.unit,
+    this.clearUnit = false,
     this.note,
+    this.clearNote = false,
   });
 
   final int index;
@@ -59,7 +62,9 @@ final class UpdateIngredient extends VoiceAction {
   final double? quantity;
   final bool clearQuantity;
   final String? unit;
+  final bool clearUnit;
   final String? note;
+  final bool clearNote;
 }
 
 final class RemoveIngredient extends VoiceAction {
@@ -125,9 +130,9 @@ VoiceDraft applyVoiceActions(VoiceDraft draft, List<VoiceAction> actions) {
         ingredients[a.index] = Ingredient(
           name: name,
           quantity: a.clearQuantity ? null : (a.quantity ?? old.quantity),
-          unit: a.unit ?? old.unit,
+          unit: a.clearUnit ? null : (a.unit ?? old.unit),
           category: old.category,
-          note: a.note ?? old.note,
+          note: a.clearNote ? null : (a.note ?? old.note),
           // Nov naziv znači drugu namirnicu: stara veza ne važi.
           link: name == old.name ? old.link : null,
         );

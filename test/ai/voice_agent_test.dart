@@ -108,6 +108,47 @@ void main() {
       expect(next.steps, ['Iseckaj crni luk.']);
     });
 
+    test('„2 kašičice soli → po ukusu“: null briše količinu i jedinicu', () {
+      final turn = parse({
+        'actions': [
+          {
+            'op': 'update_ingredient',
+            'index': 1,
+            'quantity': null,
+            'unit': null,
+          },
+        ],
+      });
+      final next = applyVoiceActions(draft, turn.actions);
+      expect(next.ingredients[1].name, 'so');
+      expect(next.ingredients[1].quantity, isNull);
+      expect(next.ingredients[1].unit, isNull);
+      expect(next.ingredients[0].unit, 'kg');
+    });
+
+    test('napomena: null je briše, izostavljena ostaje', () {
+      final noted = applyVoiceActions(draft, const [
+        UpdateIngredient(1, note: 'morska'),
+      ]);
+      final keep = parseVoiceTurn({
+        'actions': [
+          {'op': 'update_ingredient', 'index': 1, 'quantity': 2},
+        ],
+      }, draft: noted);
+      expect(
+        applyVoiceActions(noted, keep.actions).ingredients[1].note,
+        'morska',
+      );
+      final clear = parseVoiceTurn({
+        'actions': [
+          {'op': 'update_ingredient', 'index': 1, 'note': null},
+        ],
+      }, draft: noted);
+      final next = applyVoiceActions(noted, clear.actions);
+      expect(next.ingredients[1].note, isNull);
+      expect(next.ingredients[1].unit, 'kašičica');
+    });
+
     test('pitanje za pojašnjenje bez radnji', () {
       final turn = parse({'actions': <Object?>[], 'reply': 'Koliko pirinča?'});
       expect(turn.actions, isEmpty);

@@ -102,6 +102,8 @@ class VoiceRecipeFlow extends ChangeNotifier {
       _finish(turn, error: 'Snimanje nije uspelo. Možeš da ukucaš tekst.');
       return;
     }
+    // „Otkaži“ ili izlazak dok se snimanje zaustavljalo: snimak se ne šalje.
+    if (turn != _turn || _disposed) return;
     if (clip == null || clip.bytes.isEmpty) {
       _finish(turn, error: 'Nije ništa snimljeno. Pokušaj ponovo.');
       return;

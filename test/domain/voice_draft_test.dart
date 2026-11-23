@@ -48,6 +48,23 @@ void main() {
       expect(next.ingredients[1].unit, 'kašičica');
     });
 
+    test('„po ukusu“: brišu se količina i jedinica, pa napomena', () {
+      final withNote = applyVoiceActions(draft, const [
+        UpdateIngredient(1, note: 'morska'),
+      ]);
+      expect(withNote.ingredients[1].note, 'morska');
+      final next = applyVoiceActions(withNote, const [
+        UpdateIngredient(1, clearQuantity: true, clearUnit: true),
+      ]);
+      expect(next.ingredients[1].quantity, isNull);
+      expect(next.ingredients[1].unit, isNull);
+      expect(next.ingredients[1].note, 'morska');
+      final cleared = applyVoiceActions(next, const [
+        UpdateIngredient(1, clearNote: true),
+      ]);
+      expect(cleared.ingredients[1].note, isNull);
+    });
+
     test('koraci, naziv i porcije', () {
       final next = applyVoiceActions(draft, const [
         UpdateStep(0, 'Iseckaj crni luk.'),

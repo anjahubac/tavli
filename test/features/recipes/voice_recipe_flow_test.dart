@@ -23,6 +23,9 @@ class FakeRecorder implements VoiceRecorder {
   int cancels = 0;
   bool disposed = false;
 
+  /// Zadržava `stop()` dok test ne pusti (sporo zaustavljanje snimača).
+  Completer<void>? stopGate;
+
   @override
   Duration get maxDuration => limit;
 
@@ -34,6 +37,7 @@ class FakeRecorder implements VoiceRecorder {
 
   @override
   Future<RecordedClip?> stop() async {
+    await stopGate?.future;
     recording = false;
     return RecordedClip(Uint8List.fromList([1, 2, 3]), 'audio/mp4');
   }
@@ -231,6 +235,25 @@ void main() {
     expect(recorder.cancels, 1);
     expect(f.phase, VoicePhase.idle);
     expect(transcriber.calls, 0);
+  });
+
+  test('Otkaži dok se snimanje zaustavlja: snimak se ne šalje', () async {
+    final f = flow();
+    await f.startRecording();
+    recorder.stopGate = Completer<void>();
+    final sending = f.stopAndSend();
+    await Future<void>.delayed(Duration.zero);
+    expect(f.phase, VoicePhase.transcribing);
+
+    await f.cancelTurn();
+    recorder.stopGate!.complete();
+    await sending;
+
+    expect(transcriber.calls, 0);
+    expect(f.phase, VoicePhase.idle);
+    expect(f.transcript, isNull);
+    expect(f.error, isNull);
+    expect(f.draft.isEmpty, isTrue);
   });
 
   test('snimanje staje samo posle najdužeg trajanja', () async {
