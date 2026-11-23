@@ -750,7 +750,18 @@ class AppDatabase extends _$AppDatabase {
         r.read<String>('name'),
     };
     if (!existing.contains(foods.actualTableName)) await m.createTable(foods);
-    if (!existing.contains(foodAliases.actualTableName)) {
+    if (existing.contains(foodAliases.actualTableName)) {
+      // Keš kataloga: stara šema (bez alias_normalized) se odbacuje i pravi ponovo.
+      final columns = await customSelect(
+        'PRAGMA table_info("${foodAliases.actualTableName}")',
+      ).get();
+      if (!columns.any(
+        (r) => r.read<String>('name') == foodAliases.aliasNormalized.$name,
+      )) {
+        await customStatement('DROP TABLE "${foodAliases.actualTableName}"');
+        await m.createTable(foodAliases);
+      }
+    } else {
       await m.createTable(foodAliases);
     }
     if (!existing.contains(foodAliasesSharedActive.entityName)) {

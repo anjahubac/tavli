@@ -688,6 +688,34 @@ void main() {
     expect((await again.select(again.foodAliases).get()).single.id, 'a1');
   });
 
+  test('migracija 8 → 9 obnavlja food_aliases sa starom šemom bez alias_normalized', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v9-stale-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    // Baza iz drugog worktree-a: tabela postoji, ali sa starom šemom.
+    await first.customStatement('DROP TABLE food_aliases');
+    await first.customStatement(
+      'CREATE TABLE food_aliases (id TEXT NOT NULL PRIMARY KEY, '
+      'food_id TEXT NOT NULL, household_id TEXT, alias TEXT NOT NULL)',
+    );
+    await first.customStatement('PRAGMA user_version = 8');
+    await first.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            "AND name = 'food_aliases_shared_active'",
+          )
+          .get(),
+      hasLength(1),
+    );
+  });
+
   test('migration 10 → 11 adds recipe image columns and the local image '
       'queue; a repeated step does not fail', () async {
     final directory = await Directory.systemTemp.createTemp('tavli-v11-');
