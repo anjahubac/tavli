@@ -65,4 +65,94 @@ class FoodCatalogReader {
           ),
     ], foods: foods.values.toList());
   }
+
+  /// Namirnice kataloga čiji naziv ili alias sadrži [query] (bez obzira na
+  /// velika slova), po nazivu; povučene se preskaču. Prazan upit daje
+  /// prazan spisak. Katalog je lokalni keš, pa radi i bez mreže.
+  Future<List<FoodIdentity>> search(
+    FoodLookupScope scope,
+    String query, {
+    required CatalogStatus status,
+    int limit = 8,
+  }) async {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty || status == CatalogStatus.notOnServer) return const [];
+    final hid = scope.householdId;
+    final sharedOnly = status == CatalogStatus.accessDenied;
+    bool visible(String? household) =>
+        household == null || (!sharedOnly && household == hid);
+
+    final foods = [
+      for (final r in await _db.select(_db.foods).get())
+        if (r.withdrawnAt == null && visible(r.householdId)) r,
+    ];
+    final byId = {for (final f in foods) f.id: f};
+    final matched = <String>{
+      for (final f in foods)
+        if (f.name.toLowerCase().contains(q)) f.id,
+      for (final a in await _db.select(_db.foodAliases).get())
+        if (a.withdrawnAt == null &&
+            visible(a.householdId) &&
+            byId.containsKey(a.foodId) &&
+            a.alias.toLowerCase().contains(q))
+          a.foodId,
+    };
+    final found = [
+      for (final id in matched)
+        if (FoodBaseUnit.values.asNameMap()[byId[id]!.baseUnit]
+            case final unit?)
+          FoodIdentity(
+            id: id,
+            slug: byId[id]!.slug,
+            name: byId[id]!.name,
+            category: byId[id]!.category,
+            baseUnit: unit,
+          ),
+    ];
+    // Prvo one koje počinju upitom, pa po nazivu.
+    found.sort((a, b) {
+      final ap = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+      final bp = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+      if (ap != bp) return ap - bp;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return found.take(limit).toList();
+  }
+}
+
+/// Namirnica iz kataloga za izbor u ukusima (Volim, Ne volim).
+class CatalogFoodEntry {
+  const CatalogFoodEntry({
+    required this.id,
+    required this.name,
+    required this.category,
+  });
+
+  final String id;
+  final String name;
+  final String category;
+}
+
+/// Namirnice koje korisnik može da izabere u ukusima: deljene i namirnice
+/// njegovog domaćinstva iz lokalnog keša, bez povučenih, po nazivu.
+class CatalogFoodList {
+  CatalogFoodList(this._db);
+
+  final AppDatabase _db;
+
+  Stream<List<CatalogFoodEntry>> watchVisible(String householdId) =>
+      (_db.select(_db.foods)
+            ..where(
+              (t) =>
+                  t.withdrawnAt.isNull() &
+                  (t.householdId.isNull() | t.householdId.equals(householdId)),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+          .watch()
+          .map(
+            (rows) => List.unmodifiable([
+              for (final r in rows)
+                CatalogFoodEntry(id: r.id, name: r.name, category: r.category),
+            ]),
+          );
 }

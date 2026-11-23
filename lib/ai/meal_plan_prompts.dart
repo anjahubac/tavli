@@ -123,11 +123,14 @@ const snackHint =
 /// Vrednosti polja "meal", istim redom kao u danu.
 final _mealValues = MealType.values.map((t) => '"${t.name}"').join(' | ');
 
-/// Sažeci novih recepata (naziv i sastojci, bez koraka).
+/// Sastojci i koraci pripreme za nove recepte.
 String recipeSummariesPrompt(List<String> titles) =>
     '''
-Write a short recipe summary for each dish below, exactly once each, with the
-same title. No preparation steps.
+Write one recipe for each dish below, exactly once each, with the same title.
+Include all ingredients used and concise, actionable preparation steps in order.
+Include at least one step even for dishes that only need assembly or serving.
+Use cooking times, temperatures or signs of doneness where useful.
+Write each step as a separate string without numbering.
 Recipes: ${jsonEncode(titles)}
 Return:
 {"recipes": [{
@@ -140,5 +143,6 @@ Return:
     "unit": string | null,  // e.g. $aiUnitList
     "category": one of ${jsonEncode(ingredientCategories)},
     "note": string | null
-  }]
+  }],
+  "steps": [string] // required, at least one nonempty preparation step
 }]}''';

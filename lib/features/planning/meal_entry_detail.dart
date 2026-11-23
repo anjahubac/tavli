@@ -13,9 +13,9 @@ import 'plan_format.dart';
 import 'planning_providers.dart';
 
 /// Odobren recept obroka i izmene: porcije, zamena, zaključavanje,
-/// skuvano i uklanjanje. Sastojci su iz snimka plana (nabavka se ne menja
-/// sama), a koraci iz recepta u biblioteci kad on postoji; kad mu se
-/// sastojci promene, nudi „Osveži iz recepta“.
+/// skuvano i uklanjanje. Sastojci su iz snimka plana, a koraci iz
+/// biblioteke za neskuvan obrok. „Osveži iz recepta“ pokriva i starije
+/// snimke sa neusaglašenim sastojcima.
 ///
 /// Naslov (naziv jela) i povratak daje okvir ekrana.
 class MealEntryDetail extends ConsumerWidget {

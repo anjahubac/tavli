@@ -3,15 +3,18 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../domain/meal_plan.dart';
 import '../../domain/plan_calendar.dart';
 import '../../domain/recipe_format.dart';
+import '../../domain/shopping_demand.dart' show maxServings, minServings;
 import '../recipes/recipe_providers.dart';
-import '../recipes/recipe_view.dart';
 import 'plan_format.dart';
 import 'plan_generation.dart';
 import 'plan_preview_screen.dart';
+import 'plan_step_page.dart';
 
 /// Prvi korak: period, obroci i porcije na jednom ekranu; ostava i želje
 /// su dodatne opcije koje nisu obavezne.
@@ -62,6 +65,20 @@ class _PlanSetupScreenState extends ConsumerState<PlanSetupScreen> {
     final slots = range == null ? 0 : range.dayCount * setup.mealTypes.length;
     final canStart = range != null && setup.mealTypes.isNotEmpty;
 
+    final week = setup.period == PlanPeriod.week;
+    final wide = MediaQuery.sizeOf(context).width >= wideLayoutWidth;
+    final summary = canStart
+        ? '${mealsCount(slots)} · ${servingsLabel(setup.servings)} po obroku'
+        : null;
+    final startButton = TavliButton.primary(
+      label: state.draft == null ? 'Predloži plan' : 'Nazad na predlog',
+      glyph: TavliIcons.sparkle,
+      onPressed: canStart ? _start : null,
+    );
+    final muted = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
     return PopScope(
       canPop: state.draft == null,
       onPopInvokedWithResult: (didPop, _) async {
@@ -72,79 +89,61 @@ class _PlanSetupScreenState extends ConsumerState<PlanSetupScreen> {
           router.go('/plan');
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Novi plan')),
-        body: ReadableScroll(
-          children: [
-            Text('Period', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            SegmentedButton<PlanPeriod>(
-              segments: const [
-                ButtonSegment(value: PlanPeriod.week, label: Text('Nedelja')),
-                ButtonSegment(value: PlanPeriod.month, label: Text('Mesec')),
-              ],
-              selected: {setup.period},
-              onSelectionChanged: (s) =>
-                  _update(setup.copyWith(period: s.single, anchor: today)),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                IconButton(
-                  tooltip: setup.period == PlanPeriod.week
-                      ? 'Prethodna nedelja'
-                      : 'Prethodni mesec',
-                  onPressed: setup.shifted(-1).range(today) == null
-                      ? null
-                      : () => _update(setup.shifted(-1)),
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                Expanded(
-                  child: Text(
-                    range == null ? 'Period je prošao' : rangeLabel(range),
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ),
-                IconButton(
-                  tooltip: setup.period == PlanPeriod.week
-                      ? 'Sledeća nedelja'
-                      : 'Sledeći mesec',
-                  onPressed: () => _update(setup.shifted(1)),
-                  icon: const Icon(Icons.chevron_right),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text('Obroci', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final t in MealType.values)
-                  FilterChip(
-                    label: Text(t.label),
-                    selected: setup.mealTypes.contains(t),
-                    onSelected: (on) => _update(
-                      setup.copyWith(
-                        mealTypes: on
-                            ? {...setup.mealTypes, t}
-                            : ({...setup.mealTypes}..remove(t)),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            if (setup.mealTypes.isEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Izaberi bar jedan obrok.',
-                style: TextStyle(color: theme.colorScheme.error),
+      child: PlanStepPage(
+        title: 'Novi plan',
+        onBack: () => unawaited(_back()),
+        bottom: wide
+            ? null
+            : TavliActionBar(actions: [startButton], note: summary),
+        children: [
+          _Section(
+            title: 'Period',
+            children: [
+              TavliChoice<PlanPeriod>.segmented(
+                options: const [
+                  TavliOption(PlanPeriod.week, 'Nedelja'),
+                  TavliOption(PlanPeriod.month, 'Mesec'),
+                ],
+                selected: setup.period,
+                onChanged: (p) =>
+                    _update(setup.copyWith(period: p, anchor: today)),
+              ),
+              TavliPeriodSwitcher(
+                label: range == null ? 'Period je prošao' : rangeLabel(range),
+                previousLabel: week ? 'Prethodna nedelja' : 'Prethodni mesec',
+                nextLabel: week ? 'Sledeća nedelja' : 'Sledeći mesec',
+                onPrevious: setup.shifted(-1).range(today) == null
+                    ? null
+                    : () => _update(setup.shifted(-1)),
+                onNext: () => _update(setup.shifted(1)),
               ),
             ],
-            const SizedBox(height: 16),
-            Row(
+          ),
+          _Section(
+            title: 'Obroci',
+            children: [
+              TavliMultiChoice<MealType>(
+                options: [
+                  for (final t in MealType.values) TavliOption(t, t.label),
+                ],
+                selected: setup.mealTypes,
+                onChanged: (types) => _update(setup.copyWith(mealTypes: types)),
+              ),
+              if (setup.mealTypes.isEmpty)
+                Text(
+                  'Izaberi bar jedan obrok.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+            ],
+          ),
+          TavliCard(
+            padding: const EdgeInsetsDirectional.only(
+              start: TavliSpacing.medium,
+              end: TavliSpacing.small,
+            ),
+            child: Row(
               children: [
                 Expanded(
                   child: Text(
@@ -152,77 +151,86 @@ class _PlanSetupScreenState extends ConsumerState<PlanSetupScreen> {
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Manje porcija',
-                  onPressed: setup.servings > 1
+                TavliIconButton(
+                  glyph: TavliIcons.remove,
+                  semanticLabel: 'Manje porcija',
+                  onPressed: setup.servings > minServings
                       ? () => _update(
                           setup.copyWith(servings: setup.servings - 1),
                         )
                       : null,
-                  icon: const Icon(Icons.remove),
                 ),
                 Text('${setup.servings}', style: theme.textTheme.titleMedium),
-                IconButton(
-                  tooltip: 'Više porcija',
-                  onPressed: setup.servings < 20
+                TavliIconButton(
+                  glyph: TavliIcons.add,
+                  semanticLabel: 'Više porcija',
+                  onPressed: setup.servings < maxServings
                       ? () => _update(
                           setup.copyWith(servings: setup.servings + 1),
                         )
                       : null,
-                  icon: const Icon(Icons.add),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              title: const Text('Više opcija'),
-              subtitle: const Text('Ostava i posebni zahtevi, nije obavezno'),
+          ),
+          TavliCard(
+            padding: EdgeInsets.zero,
+            child: TavliExpandable(
+              title: 'Više opcija',
+              subtitle: 'Ostava i posebni zahtevi, nije obavezno',
               initiallyExpanded: setup.wishes.isNotEmpty || !setup.usePantry,
               children: [
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Koristi ostavu'),
-                  subtitle: const Text('Samo potvrđene namirnice'),
+                TavliSwitchRow(
+                  title: 'Koristi ostavu',
+                  subtitle: 'Samo potvrđene namirnice',
                   value: setup.usePantry,
                   onChanged: (v) => _update(setup.copyWith(usePantry: v)),
                 ),
-                const SizedBox(height: 8),
-                TextField(
+                TavliTextField(
                   controller: _wishes,
-                  minLines: 1,
-                  maxLines: 3,
+                  label: 'Posebni zahtevi',
+                  hint: 'npr. bez svinjetine, više povrća, posno petkom',
+                  maxLines: TavliTextField.noteLines,
                   onChanged: (v) => _update(setup.copyWith(wishes: v)),
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Posebni zahtevi',
-                    hintText: 'npr. bez svinjetine, više povrća, posno petkom',
-                  ),
                 ),
-                const SizedBox(height: 8),
               ],
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: canStart ? _start : null,
-              icon: const Icon(Icons.auto_awesome),
-              label: Text(
-                state.draft == null ? 'Predloži plan' : 'Nazad na predlog',
-              ),
+          ),
+          if (wide)
+            // Računar: sažetak levo, „Predloži plan“ desno (platno).
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              spacing: TavliSpacing.large,
+              children: [
+                if (summary != null)
+                  Flexible(child: Text(summary, style: muted)),
+                startButton,
+              ],
             ),
-            if (canStart) ...[
-              const SizedBox(height: 8),
-              Text(
-                '${mealsCount(slots)} · ${servingsLabel(setup.servings)} po obroku',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ],
-        ),
+        ],
       ),
     );
   }
+
+  /// Povratak sa trake: isto kao sistemski povratak (pita pre odbacivanja
+  /// otvorenog predloga).
+  Future<void> _back() async {
+    final router = GoRouter.of(context);
+    if (!await Navigator.maybePop(context)) router.go('/plan');
+  }
+}
+
+/// Naslov dela forme i izbori ispod njega.
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: TavliSpacing.small,
+    children: [TavliSectionHeader(title), ...children],
+  );
 }

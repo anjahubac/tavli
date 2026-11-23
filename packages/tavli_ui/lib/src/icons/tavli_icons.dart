@@ -77,6 +77,48 @@ abstract final class TavliIcons {
     'M13 7l4 4',
   ]);
   static const close = TavliIconData('close', ['M6 6l12 12M18 6L6 18']);
+  static const remove = TavliIconData('remove', ['M5 12h14']);
+  static const filter = TavliIconData('filter', [
+    'M4 7h9M17 7h3M4 17h3M11 17h9',
+    'circle 15 7 2',
+    'circle 9 17 2',
+  ]);
+  static const checklist = TavliIconData('checklist', [
+    'M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17',
+    'M11 6h9M11 12h9M11 18h9',
+  ]);
+  static const timer = TavliIconData('timer', [
+    'circle 12 13 7',
+    'M12 9v4l2.5 2.5M10 3h4',
+  ]);
+  static const servings = TavliIconData('servings', [
+    'circle 9 9 3',
+    'M3.5 19a5.5 5.5 0 0 1 11 0',
+    'circle 17 10 2.5',
+    'M15.5 15.2a4.5 4.5 0 0 1 5.5 3.8',
+  ]);
+  static const joinHousehold = TavliIconData('joinHousehold', [
+    'circle 9 8 3.5',
+    'M3 19a6 6 0 0 1 12 0',
+    'M18 8v6M15 11h6',
+  ]);
+  static const more = TavliIconData('more', [
+    'circle 12 5.5 1',
+    'circle 12 12 1',
+    'circle 12 18.5 1',
+  ]);
+  static const swap = TavliIconData('swap', [
+    'M5 8h14M15 4l4 4-4 4',
+    'M19 16H5M9 12l-4 4 4 4',
+  ]);
+  static const sparkle = TavliIconData('sparkle', [
+    'M11 4l1.8 5.2L18 11l-5.2 1.8L11 18l-1.8-5.2L4 11l5.2-1.8z',
+    'M18 3v4M16 5h4',
+  ]);
+  static const replay = TavliIconData('replay', [
+    'M5 12a7 7 0 1 0 2-4.9',
+    'M5 4v4h4',
+  ]);
   static const today = TavliIconData('today', [
     'rect 4 5 16 15 3',
     'M4 10h16',
@@ -86,6 +128,7 @@ abstract final class TavliIcons {
   // Strelice.
   static const back = TavliIconData('back', ['M15 5l-7 7 7 7']);
   static const chevronRight = TavliIconData('chevronRight', ['M9 5l7 7-7 7']);
+  static const chevronDown = TavliIconData('chevronDown', ['M5 9l7 7 7-7']);
   static const arrowForward = TavliIconData('arrowForward', [
     'M5 12h14M13 6l6 6-6 6',
   ]);
@@ -139,6 +182,79 @@ abstract final class TavliIcons {
     'M10 9.5a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2M12 14.5v.01',
   ]);
 
+  // Ukusi i alergeni.
+  static const like = TavliIconData('like', [
+    'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+  ]);
+  static const dislike = TavliIconData('dislike', [
+    'circle 12 12 8',
+    'M6.5 6.5l11 11',
+  ]);
+  static const lock = TavliIconData('lock', [
+    'rect 5 11 14 10 2',
+    'M8 11V8a4 4 0 0 1 8 0v3',
+  ]);
+  static const dish = TavliIconData('dish', [
+    'M5 10h14v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z',
+    'M3 10h18M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2',
+  ]);
+  static const allergenGluten = TavliIconData('allergenGluten', [
+    'M12 21V9M12 9c-2.2-.8-3.2-2.8-3-5 2.2.4 3.2 2.4 3 5zM12 9c2.2-.8 3.2-2.8'
+        ' 3-5-2.2.4-3.2 2.4-3 5zM12 14c-2.2-.8-3.4-2.6-3.4-4.6 2.2.3 3.4 2.3'
+        ' 3.4 4.6zM12 14c2.2-.8 3.4-2.6 3.4-4.6-2.2.3-3.4 2.3-3.4 4.6zM12 19'
+        'c-2.2-.8-3.4-2.6-3.4-4.6 2.2.3 3.4 2.3 3.4 4.6zM12 19c2.2-.8 3.4-2.6'
+        ' 3.4-4.6-2.2.3-3.4 2.3-3.4 4.6z',
+  ]);
+  static const allergenMilk = TavliIconData('allergenMilk', [
+    'M8 3h8v3l2 3v11a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V9l2-3zM6 10h12',
+  ]);
+  static const allergenEggs = TavliIconData('allergenEggs', [
+    'M12 3c3.6 0 6.5 5.6 6.5 10a6.5 6.5 0 0 1-13 0C5.5 8.6 8.4 3 12 3z',
+  ]);
+  static const allergenNuts = TavliIconData('allergenNuts', [
+    'M4.5 10a7.5 3.5 0 0 1 15 0zM6 10c0 5.5 2.8 9.5 6 10.5 3.2-1 6-5 6-10.5'
+        'M12 6.5V3.5',
+  ]);
+  static const allergenPeanuts = TavliIconData('allergenPeanuts', [
+    'M9.5 3.5a4 4 0 0 1 4 4c0 1.1.5 1.7 1.6 2.2a4.6 4.6 0 1 1-6.3 5.8'
+        'c-.3-1-.8-1.5-1.9-1.8A4 4 0 0 1 9.5 3.5z',
+  ]);
+  static const allergenFish = TavliIconData('allergenFish', [
+    'M3 12c3-5 9-6.5 13-3l5-3v12l-5-3c-4 3.5-10 2-13-3zM8.5 11v.5',
+  ]);
+  static const allergenCrustaceans = TavliIconData('allergenCrustaceans', [
+    'M5 7c4.5-3 13-2 14 5 .5 4-2.5 7-6.5 7H9.5M9.5 19l-2.5 2M9.5 19L7 17.5'
+        'M9 11.5c2 0 4 1 5 3M5 7L2.5 4.5M5 7L3 9.5',
+  ]);
+  static const allergenMolluscs = TavliIconData('allergenMolluscs', [
+    'M3 19h15a3 3 0 0 0 3-3V9M3 19a7.5 7.5 0 1 1 12-6 3.5 3.5 0 1 1-7 1.5',
+  ]);
+  static const allergenSoy = TavliIconData('allergenSoy', [
+    'M5 19C4 12 9 5 19 5c0 9-6.5 15-14 14zM8 16l8-8',
+  ]);
+  static const allergenSesame = TavliIconData('allergenSesame', [
+    'M8 4.5c1.6 1 1.6 4 0 5.2-1.6-1.2-1.6-4.2 0-5.2zM16 6.5c1.6 1 1.6 4 0'
+        ' 5.2-1.6-1.2-1.6-4.2 0-5.2zM11 13.5c1.6 1 1.6 4 0 5.2-1.6-1.2-1.6-4.2'
+        ' 0-5.2z',
+  ]);
+  static const allergenCelery = TavliIconData('allergenCelery', [
+    'M9 21V11M12 21V10M15 21V11M9 11c-2-2-2-5 0-6.5 1.2 2 1.2 4.5 0 6.5z'
+        'M15 11c2-2 2-5 0-6.5-1.2 2-1.2 4.5 0 6.5zM12 10c-1.6-2.2-1.6-5 0-7'
+        ' 1.6 2 1.6 4.8 0 7z',
+  ]);
+  static const allergenMustard = TavliIconData('allergenMustard', [
+    'M8.5 3h7v3h-7zM7 6h10l1 3v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9zM6 12.5h12',
+  ]);
+  static const allergenSulphites = TavliIconData('allergenSulphites', [
+    'M7.5 3h9l-.6 6.5a3.9 3.9 0 0 1-7.8 0zM12 13.5V20M8.5 20.5h7M8 7.5h8',
+  ]);
+  static const allergenLupin = TavliIconData('allergenLupin', [
+    'M12 21V8.5M12 3.5a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 1 1 0-3.6z'
+        'M8.5 9.5c.5 1.5 2 2 3.5 1.5M15.5 9.5c-.5 1.5-2 2-3.5 1.5'
+        'M8.5 13.5c.5 1.5 2 2 3.5 1.5M15.5 13.5c-.5 1.5-2 2-3.5 1.5'
+        'M8.5 17.5c.5 1.5 2 2 3.5 1.5M15.5 17.5c-.5 1.5-2 2-3.5 1.5',
+  ]);
+
   /// Svi, za galeriju i testove.
   static const all = [
     plan,
@@ -153,9 +269,20 @@ abstract final class TavliIcons {
     delete,
     edit,
     close,
+    remove,
+    filter,
+    checklist,
+    timer,
+    servings,
+    joinHousehold,
+    more,
+    swap,
+    sparkle,
+    replay,
     today,
     back,
     chevronRight,
+    chevronDown,
     arrowForward,
     arrowBack,
     key,
@@ -168,6 +295,24 @@ abstract final class TavliIcons {
     darkMode,
     systemMode,
     question,
+    like,
+    dislike,
+    lock,
+    dish,
+    allergenGluten,
+    allergenMilk,
+    allergenEggs,
+    allergenNuts,
+    allergenPeanuts,
+    allergenFish,
+    allergenCrustaceans,
+    allergenMolluscs,
+    allergenSoy,
+    allergenSesame,
+    allergenCelery,
+    allergenMustard,
+    allergenSulphites,
+    allergenLupin,
   ];
 }
 

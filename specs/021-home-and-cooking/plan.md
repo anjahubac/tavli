@@ -119,3 +119,39 @@ compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
 limits from open questions remain release gates. UI follows the design canvas and the
 UI standard; do not invent layouts or move components into the package incidentally.
+
+## Add to plan design — 2026-11-22
+
+Owner: Dev 4. Design approved by Anja on 2026-11-22 in the
+[interactive draft](https://claude.ai/artifact/TEDBb8qsWdduLYfHAmy4yN); the
+recipe screen is not on the design canvas yet, so the draft follows the
+canvas style (Plan week strip, list groups, button heights). Refines FR-011,
+FR-105 and FR-109. Trello [#86](https://trello.com/c/PCRHieJG).
+
+- **Files**: `lib/features/recipes/add_to_plan_sheet.dart` (new: sheet/dialog,
+  replace confirmation, message), `lib/features/recipes/recipe_detail_screen.dart`
+  (third button), `lib/data/meal_plan_repository.dart` (`addRecipe`,
+  `mealsIn`, `freeWeekAround`, `SlotTakenException`). Tests:
+  `test/data/add_recipe_to_plan_test.dart`,
+  `test/features/recipes/add_to_plan_test.dart`.
+- **Target plan**: the newest plan containing the day, the same rule Home
+  uses. Without one, a new plan covers the free, non-past days of that
+  Monday–Sunday week, so plans never overlap. A missing meal type is added
+  to the plan's meal types so Plan shows the row.
+- **Replacement**: an occupied slot is replaced only with explicit
+  confirmation; the repository re-checks inside the transaction and throws
+  `SlotTakenException` if another device filled the slot meanwhile, and the
+  UI asks again. Cooked, locked and past meals are never changed. Replacement
+  keeps the entry id and takes the chosen servings.
+- **Servings**: default is the recipe's servings, adjustable 1–20 (decision
+  2026-11-22).
+- **Recipe buttons**: one row when all three labels fit on one line; else
+  “Kuvaj” and “Dodaj u plan” (without its icon) in a row with “Proveri
+  sastojke” below; else one button per row. Labels never wrap, so heights
+  stay equal.
+- **Follow-up**: a third choice “Dodaj uz to” when a meal can hold more than
+  one dish (decision 2026-11-22, not in this slice).
+- **Data/security**: no schema change, no new dependency, no server change.
+  Writes go through the existing outbox in one transaction with the shopping
+  reconciliation; household scope as in `MealPlanRepository`. Privacy,
+  abuse, credentials, files and deployment: N/A.

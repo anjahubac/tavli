@@ -153,4 +153,75 @@ void main() {
       },
     );
   });
+
+  group('search', () {
+    Future<void> named(
+      String id,
+      String name, {
+      String? household,
+      DateTime? withdrawn,
+      String unit = 'gram',
+    }) => db
+        .into(db.foods)
+        .insert(
+          FoodsCompanion.insert(
+            id: id,
+            householdId: Value(household),
+            slug: id,
+            name: name,
+            category: 'mlečni proizvodi i jaja',
+            baseUnit: unit,
+            withdrawnAt: Value(withdrawn),
+            createdAt: t,
+            updatedAt: t,
+          ),
+        );
+
+    Future<List<String>> names(String q, {CatalogStatus? status}) async => [
+      for (final f in await FoodCatalogReader(
+        db,
+      ).search(home, q, status: status ?? CatalogStatus.available))
+        f.name,
+    ];
+
+    test(
+      'po delu naziva i aliasu, počeci prvi, bez povučenih i tuđih',
+      () async {
+        await named('a', 'Pavlaka', unit: 'milliliter');
+        await named('b', 'Paprika');
+        await named('c', 'Crna paprika');
+        await named('d', 'Pasulj', withdrawn: t);
+        await named('e', 'Pamuk', household: 'drugi');
+        await named('f', 'Kisela pavlaka za kuvanje', household: 'h1');
+        await named('g', 'Jogurt');
+        await alias('al', 'g', 'kiselo mleko');
+
+        expect(await names('pa'), [
+          'Paprika',
+          'Pavlaka',
+          'Crna paprika',
+          'Kisela pavlaka za kuvanje',
+        ]);
+        expect(await names('KISELO'), ['Jogurt']);
+        expect(await names('  '), isEmpty);
+      },
+    );
+
+    test(
+      'bez pristupa domaćinstvu samo deljeni redovi; stariji server prazno',
+      () async {
+        await named('a', 'Pavlaka');
+        await named('f', 'Pavlaka kućna', household: 'h1');
+        expect(await names('pavl', status: CatalogStatus.accessDenied), [
+          'Pavlaka',
+        ]);
+        expect(await names('pavl', status: CatalogStatus.notOnServer), isEmpty);
+      },
+    );
+
+    test('nepoznata osnovna jedinica se preskače', () async {
+      await named('a', 'Pavlaka', unit: 'bushel');
+      expect(await names('pavl'), isEmpty);
+    });
+  });
 }

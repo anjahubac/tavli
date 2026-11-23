@@ -272,9 +272,7 @@ void main() {
     expect(
       find.ancestor(
         of: find.text('Ovsena kaša sa jabukom'),
-        matching: find.byWidgetPredicate(
-          (w) => w is TavliCard && w.variant == TavliCardVariant.cooked,
-        ),
+        matching: find.byWidgetPredicate((w) => w is TavliMealCard && w.cooked),
       ),
       findsOneWidget,
     );

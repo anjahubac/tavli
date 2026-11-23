@@ -180,7 +180,7 @@ class PlanDraft {
   /// Plan koji nacrt menja (zamena ili ponovno generisanje), null za nov.
   final PlanBase? base;
 
-  /// Novi recepti po [draftRecipeKey] (sažetak, bez koraka).
+  /// Novi recepti po [draftRecipeKey], sa sastojcima i koracima.
   final Map<String, RecipeSnapshot> newRecipes;
 
   /// Snimci recepata iz biblioteke po id-ju, u trenutku predloga.
@@ -191,7 +191,7 @@ class PlanDraft {
       if (!proposals.containsKey(s)) s,
   ];
 
-  /// Novi recepti koji su predloženi, a još nemaju sastojke.
+  /// Predloženi novi recepti čiji detalji još nisu spremni.
   List<String> get missingRecipeKeys {
     final keys = <String>{};
     for (final p in proposals.values) {
@@ -232,6 +232,9 @@ class PlanDraft {
 }
 
 /// Sačuvan plan, kako ga je osoba odobrila.
+/// Porcije po obroku za nov plan dok osoba ne izabere drugačije.
+const defaultPlanServings = 2;
+
 class MealPlan {
   const MealPlan({
     required this.id,
@@ -254,6 +257,14 @@ class MealPlan {
       for (final t in MealType.values)
         if (mealTypes.contains(t)) MealSlot(d, t),
   ];
+
+  /// Koliko dana pre kraja plana Početna kaže „Plan se završava za dva
+  /// dana.“
+  static const endingNoticeDays = 2;
+
+  /// Plan se završava tačno [endingNoticeDays] dana posle [date].
+  bool endsSoonAfter(CivilDate date) =>
+      range.end == date.addDays(endingNoticeDays);
 }
 
 /// Obrok u sačuvanom planu, sa receptom odobrenim u trenutku planiranja.

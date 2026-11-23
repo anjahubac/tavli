@@ -1,8 +1,8 @@
 {
   "contract": "recipe-summary.v1",
   "expect": "accept",
-  "rule": "S1-S3",
-  "why": "One summary per requested title (case-insensitive key); steps are ignored.",
+  "rule": "S1-S4",
+  "why": "One recipe per requested title (case-insensitive key), with preparation steps.",
   "request": {
     "titles": [
       "Pasulj"
@@ -31,13 +31,15 @@
           }
         ],
         "steps": [
-          "Ignorisano."
+          "Potopi pasulj preko noći.",
+          "Isperi ga i kuvaj sa lukom dok ne omekša."
         ]
       }
     ]
   },
   "expected": {
     "Pasulj.baseServings": 4,
-    "Pasulj.ingredients[1].unitCanonical": "glavica"
+    "Pasulj.ingredients[1].unitCanonical": "glavica",
+    "Pasulj.steps.length": 2
   }
 }

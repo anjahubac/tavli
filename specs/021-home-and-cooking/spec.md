@@ -47,6 +47,21 @@ cooking mode and the end-to-end mark/undo journey remain open.
 - **FR-105**: Cooking has readable step navigation, ingredients and existing wake-lock choice; add-to-plan picks date/slot and confirms replacement.
 - **FR-106**: Phone camera/gallery and desktop file picker retain cancellation/error paths; source recipe image remains distinct from dish photo.
 - **FR-107**: Give “Kuvaj” priority for the next uncooked meal and reach saved steps in at most two actions from Home. For planned meals, “Skuvano” and “Poništi” use the shared operation from Home, Plan and cooking mode. Offer immediate undo and keep it available in the meal detail after the message expires. Keep recipes without saved steps usable for ingredients and shopping.
+- **FR-109** (FR-011, design approved 2026-11-22): The recipe screen offers
+  “Dodaj u plan” beside “Kuvaj” and “Proveri sastojke”, all the same height.
+  It opens a bottom sheet on phones and a dialog on wide windows with the
+  week of today, a day strip, the five meal types of the selected day with
+  what each already holds, servings (default: the recipe's servings, 1–20),
+  “Odustani” and “Dodaj u plan”. Today and the first free meal (lunch,
+  dinner, breakfast, then snacks) are preselected. Past days, earlier weeks,
+  and cooked or locked meals cannot be chosen. Choosing an occupied meal asks
+  “Zadrži” or “Zameni” before anything is written. The meal goes into the
+  newest plan that contains the day. Without one, a plan is created for the
+  free days of that Monday–Sunday week from today onward, without
+  overlapping another plan. A meal type the plan lacks is added to it. The
+  write, the outbox entries and the shopping reconciliation happen in one
+  local transaction, offline included. A message confirms the meal and the
+  refreshed shopping list, with “Prikaži” opening that day in Plan.
 - **FR-108**: Distinguish no plan from a planned day with all meals cooked and from a read failure. Show “Napravi plan” in the no-plan state. Show the all-cooked message when applicable and preserve the one-notice priority in FR-102. Allow retry on failure and show cached meals offline.
 
 ## User scenarios and acceptance
@@ -58,6 +73,15 @@ cooking mode and the end-to-end mark/undo journey remain open.
 - **US5 / SC-005**: On Home, open saved steps via “Kuvaj”, finish the meal, and select “Skuvano”. Observe cooked status in Home and Plan, the changed demand for that meal and any applicable pantry consumption. After the immediate undo message expires, reopen the meal detail and select “Poništi”. Repeat offline, then reconnect and verify the same final state, with no duplicate consumption or reversal. Preserve unrelated meals, manual shopping entries and later pantry counts. A failed local mark or undo leaves the prior state visible and provides a retry.
 - **US6 / SC-006**: On a narrow screen at 2× text, select a date in a six-week month through the accessible day list. The correct meals appear and the last meal and fixed actions remain reachable.
 - **US7 / SC-007**: With an all-cooked day, show the completion message and retain undo. With both an applicable allergen warning and a shopping notice, show the allergen warning in the single notice slot. With a failed read, show retry instead of the no-plan state.
+
+- **US8 / SC-008**: From a recipe, add it to today's first free meal and see
+  the confirmation and the recipe's ingredients in shopping. Choose an
+  occupied lunch: “Zadrži” returns to the choice with nothing changed,
+  “Zameni” keeps the meal's identity and replaces its recipe, servings and
+  demand. A cooked or locked meal, a past day and servings outside 1–20 are
+  refused without a write. With no plan for the day, the new plan covers only
+  free, non-past days of that week. Phone, wide, 2× text: the three recipe
+  buttons keep one height and single-line labels.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
@@ -73,6 +97,13 @@ Home is a projection of approved plan data, not another store. Shared cooked/und
 “Početna”, “Napravi plan”, “Kuvaj”, “Skuvano”, “Poništi”, “Dodaj u plan”,
 “Prethodni”, “Sledeći”, “Izaberi dan”, “Svi današnji obroci su skuvani.”,
 “Pokušaj ponovo”.
+Add to plan (FR-109): “Dodaj u plan”, “Odustani”, “Porcije”, “Manje porcija”,
+“Više porcija”, “Slobodno”, “Zameniće: {jelo}”, “{jelo} · skuvano”,
+“{jelo} · zaključano”, “Danas”, “Prethodna nedelja”, “Sledeća nedelja”,
+“{Obrok} je već u planu”, “{Dan, datum}, za {obrok} je „{jelo}“. Da ga zamenim
+receptom „{recept}“?”, “Zadrži”, “Zameni”, “Dodato u plan: {dan}, {obrok}.
+Nabavka je osvežena.”, “Prikaži”, “Taj obrok se više ne može menjati.”,
+“Recept nije dodat u plan. Pokušaj ponovo.”, “Plan nije učitan.”.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
@@ -128,6 +159,40 @@ Additional UI copy: “Kuvanje”, “Recept”, “Sastojci”, “Gotovo”, �
 “U ovom koraku”, “Ekran ostaje upaljen dok kuvaš.”, “Koraci pripreme nisu
 uneti.”, “Dodaj korake”, “Štikliraj ono što je već spremno. Važi samo dok
 kuvaš.”
+
+## Cooking mode timer — 2026-11-23
+
+Owner: Dev 4. Decided by Anja on 2026-11-23; the design is a proposal and is
+not on the design canvas yet. Extends the cooking mode design above.
+
+- **Time from the step text**: a step that mentions a time (“kuvaj 8 minuta”,
+  “1 sat i 30 minuta”, “10-15 min”, “30 sekundi”, “1/2 sata”, “pola sata”)
+  shows a timer block under
+  the step text with “Pokreni tajmer · 8:00”. A range uses the larger value.
+  Steps without a time show no block. The user does not set the time by hand.
+- **One timer**: only one timer runs at a time. Starting a timer in another
+  step replaces the running one (the block says so).
+- **Running**: the egg-in-pot animation with the circle behind it and a ring
+  that shrinks with the remaining time, the remaining time, and “Pauziraj” /
+  “Nastavi”, “+1 min” and “Otkaži”. Reduced motion shows the still picture.
+- **Other steps**: while the timer runs in another step, a strip above the
+  step shows “Tajmer · 4:58 · korak N”; tapping it returns to that step.
+- **Finished**: the sound plays three times; on phones (Android, iOS) each is
+  paired with a short vibration, on desktop only the sound. Android uses the
+  system click and iOS uses the system tick, subject to device sound settings.
+  The strip or card shows “Vreme je isteklo” and stays on every step until the
+  user taps “Zatvori”. “Otkaži” removes a timer right away.
+- **Scope**: the timer lives while the cooking screen is open; leaving the
+  screen ends it. Notifications while the app is in the background are not
+  part of this slice (they need a local notifications dependency and
+  permissions; planned as a follow-up).
+
+Additional UI copy: “Tajmer za ovaj korak”, “Korak pominje vreme.”,
+“Pokretanje zamenjuje tajmer iz drugog koraka.”, “Pokreni tajmer · M:SS”,
+“Preostalo”, “Pauzirano”, “Pauziraj”, “Nastavi”, “+1 min”, “Otkaži”,
+“Zatvori”, “Vreme je isteklo”, “Tajmer · M:SS · korak N”. The animation
+gallery describes the timer as “U režimu kuvanja, dok tajmer za korak odbrojava
+vreme.”
 
 ## Narrow navigation slice — 2026-11-20
 

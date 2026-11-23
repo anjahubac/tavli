@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../app/animations/empty_tabs.dart';
 import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
 import '../../domain/meal_plan.dart';
@@ -35,7 +35,7 @@ class HomeScreen extends ConsumerWidget {
           AsyncValue(:final value?, hasError: false) => _HomeContent(
             day: value,
           ),
-          AsyncValue(hasError: true) => _ScrollableCenter(
+          AsyncValue(hasError: true) => TavliPage.centered(
             child: TavliEmptyState(
               glyph: TavliIcons.info,
               title: 'Današnji obroci trenutno ne mogu da se prikažu.',
@@ -99,7 +99,7 @@ class _HomeContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notice = ref.watch(homeNoticeProvider);
     if (day.today.isEmpty && notice == null) {
-      return _ScrollableCenter(child: _HomeEmptyState(hasPlans: day.hasPlans));
+      return TavliPage.centered(child: _HomeEmptyState(hasPlans: day.hasPlans));
     }
 
     final wide = MediaQuery.sizeOf(context).width >= wideLayoutWidth;
@@ -113,56 +113,46 @@ class _HomeContent extends ConsumerWidget {
         final side = constraints.maxWidth >= TavliWidth.listDetail;
         final today = day.today.isEmpty
             ? _HomeEmptyState(hasPlans: day.hasPlans)
-            : _TodayMeals(day: day, columns: side ? 2 : 1);
+            : _TodayMeals(
+                day: day,
+                columns: side ? TavliColumns.meals : 1,
+                wide: wide,
+              );
         final noticeCard = notice == null
             ? null
             : _HomeNoticeCard(notice: notice, date: day.date);
-        return SingleChildScrollView(
-          padding: wide
-              ? const EdgeInsets.fromLTRB(28, 24, 28, 24)
-              : const EdgeInsets.fromLTRB(
-                  TavliSpacing.large,
-                  TavliSpacing.small,
-                  TavliSpacing.large,
-                  TavliSpacing.large,
-                ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: wide ? 16 : TavliSpacing.medium,
-            children: [
-              header,
-              if (side)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: TavliSpacing.large,
-                  children: [
-                    Expanded(child: today),
-                    if (noticeCard != null || day.tomorrow.isNotEmpty)
-                      SizedBox(
-                        // Najviše trećina sadržaja, kao detalj pored liste.
-                        width: math.min(
-                          TavliWidth.detail,
-                          constraints.maxWidth / 3,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: TavliSpacing.medium,
-                          children: [
-                            ?noticeCard,
-                            if (day.tomorrow.isNotEmpty)
-                              _TomorrowCard(meals: day.tomorrow),
-                          ],
-                        ),
+        return TavliPage(
+          wide: wide,
+          children: [
+            header,
+            if (side)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: TavliSpacing.large,
+                children: [
+                  Expanded(child: today),
+                  if (noticeCard != null || day.tomorrow.isNotEmpty)
+                    SizedBox(
+                      // Najviše trećina sadržaja, kao detalj pored liste.
+                      width: TavliWidth.side(constraints.maxWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: TavliSpacing.cardsWide,
+                        children: [
+                          ?noticeCard,
+                          if (day.tomorrow.isNotEmpty)
+                            _Tomorrow(meals: day.tomorrow, card: true),
+                        ],
                       ),
-                  ],
-                )
-              else ...[
-                today,
-                ?noticeCard,
-                if (day.tomorrow.isNotEmpty) _TomorrowLine(meals: day.tomorrow),
-              ],
+                    ),
+                ],
+              )
+            else ...[
+              today,
+              ?noticeCard,
+              if (day.tomorrow.isNotEmpty) _Tomorrow(meals: day.tomorrow),
             ],
-          ),
+          ],
         );
       },
     );
@@ -176,7 +166,7 @@ class _HomeEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TavliEmptyState(
-    glyph: TavliIcons.plan,
+    art: const EmptyTable(),
     title: hasPlans ? 'Za danas nema obroka u planu' : 'Još nema plana obroka',
     message: hasPlans
         ? 'Pogledaj plan ili napravi nov za ove dane.'
@@ -227,10 +217,15 @@ class _HomeNoticeCard extends ConsumerWidget {
 /// Današnji obroci redom: pre sledećeg (skuvani), sledeći istaknut, pa
 /// ostali. Na širokom ekranu obroci pre i posle sledećeg idu u dve kolone.
 class _TodayMeals extends ConsumerWidget {
-  const _TodayMeals({required this.day, required this.columns});
+  const _TodayMeals({
+    required this.day,
+    required this.columns,
+    required this.wide,
+  });
 
   final HomeDay day;
   final int columns;
+  final bool wide;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -239,31 +234,53 @@ class _TodayMeals extends ConsumerWidget {
     final before = day.today.sublist(0, at);
     final after = next == null ? <PlannedMeal>[] : day.today.sublist(at + 1);
 
+    // Kao na platnu: 10 između kartica na telefonu, 12 na računaru.
+    final gap = wide ? TavliSpacing.cardsWide : TavliSpacing.cards;
     Widget grid(List<PlannedMeal> meals) => TavliCardGrid(
       itemCount: meals.length,
       columns: columns,
-      spacing: 10,
+      spacing: gap,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemBuilder: (context, i) => _MealCard(
-        meal: meals[i],
-        onTap: () => _openPlannedMeal(context, meals[i]),
-      ),
+      itemBuilder: (context, i) {
+        final meal = meals[i];
+        return TavliMealCard(
+          label: meal.slot.type.label,
+          title: _title(meal),
+          detail: meal.isCooked ? null : _details(meal),
+          cooked: meal.isCooked,
+          onTap: () => _openPlannedMeal(context, meal),
+        );
+      },
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 10,
+      spacing: gap,
       children: [
         if (before.isNotEmpty) grid(before),
         if (next != null)
-          _NextMealCard(
-            meal: next,
-            onCook: () => _openPlannedMeal(context, next),
-            onCooked: () => unawaited(_markMealCooked(context, ref, next)),
+          TavliNextMealCard(
+            overline: 'Sledeće · ${next.slot.type.label}',
+            title: _title(next),
+            detail: _details(next),
+            wide: wide,
+            actions: [
+              TavliButton.primary(
+                label: 'Kuvaj',
+                glyph: TavliIcons.cook,
+                onPressed: () => _openPlannedMeal(context, next),
+              ),
+              TavliButton.secondary(
+                label: 'Skuvano',
+                glyph: TavliIcons.check,
+                onPressed: () => unawaited(_markMealCooked(context, ref, next)),
+              ),
+            ],
           ),
         if (after.isNotEmpty) grid(after),
-        if (day.allCooked) const _AllCooked(),
+        if (day.allCooked)
+          const TavliStatusText('Svi današnji obroci su skuvani.'),
       ],
     );
   }
@@ -277,234 +294,21 @@ String _details(PlannedMeal meal) => [
   servingsLabel(meal.servings),
 ].join(' · ');
 
-/// Obrok koji nije sledeći: skuvan (zasenčen, kvačica i „skuvano“ u
-/// tekstu) ili kasnije u danu.
-class _MealCard extends StatelessWidget {
-  const _MealCard({required this.meal, required this.onTap});
-
-  final PlannedMeal meal;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
-    final cooked = meal.isCooked;
-    return TavliCard(
-      variant: cooked ? TavliCardVariant.cooked : TavliCardVariant.plain,
-      onTap: onTap,
-      // Desno mesta za kvačicu skuvanog obroka.
-      padding: EdgeInsetsDirectional.fromSTEB(16, 14, cooked ? 34 : 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 2,
-        children: [
-          Text(
-            cooked ? '${meal.slot.type.label} · skuvano' : meal.slot.type.label,
-            style: t.labelMedium?.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              height: 1.3,
-              color: muted,
-            ),
-          ),
-          Text(
-            _title(meal),
-            style: t.titleMedium?.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              height: 1.3,
-              color: cooked ? muted : null,
-            ),
-          ),
-          if (!cooked)
-            Text(
-              _details(meal),
-              style: t.bodySmall?.copyWith(fontSize: 13, color: muted),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Sledeći neskuvan obrok: istaknuta kartica sa „Kuvaj“ i „Skuvano“.
-class _NextMealCard extends StatelessWidget {
-  const _NextMealCard({
-    required this.meal,
-    required this.onCook,
-    required this.onCooked,
-  });
-
-  final PlannedMeal meal;
-  final VoidCallback onCook;
-  final VoidCallback onCooked;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final titleSize = _isWide(context) ? 24.0 : 20.0;
-    final overline = 'Sledeće · ${meal.slot.type.label}';
-    return TavliCard(
-      variant: TavliCardVariant.highlighted,
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            overline.toUpperCase(),
-            semanticsLabel: overline,
-            style: t.labelMedium?.copyWith(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.72,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Semantics(
-            header: true,
-            child: Text(
-              _title(meal),
-              style: t.titleLarge?.copyWith(
-                fontSize: titleSize,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.02 * titleSize,
-                height: 1.25,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(_details(meal), style: t.bodyMedium?.copyWith(fontSize: 14)),
-          const SizedBox(height: 14),
-          // U redu kada staju (iste visine), inače jedno ispod drugog.
-          OverflowBar(
-            spacing: 10,
-            overflowSpacing: 10,
-            children: [
-              TavliButton.primary(
-                label: 'Kuvaj',
-                glyph: TavliIcons.cook,
-                onPressed: onCook,
-              ),
-              TavliButton.secondary(
-                label: 'Skuvano',
-                glyph: TavliIcons.check,
-                onPressed: onCooked,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-bool _isWide(BuildContext context) =>
-    MediaQuery.sizeOf(context).width >= wideLayoutWidth;
-
-class _AllCooked extends StatelessWidget {
-  const _AllCooked();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: TavliSpacing.small),
-      child: Text(
-        'Svi današnji obroci su skuvani.',
-        style: t.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-/// Telefon: „Sutra“ i nazivi jela u jednom redu.
-class _TomorrowLine extends StatelessWidget {
-  const _TomorrowLine({required this.meals});
+/// „Sutra“: na telefonu nazivi jela u jednom redu, na širokom ekranu
+/// kartica desno sa obrokom po redu.
+class _Tomorrow extends StatelessWidget {
+  const _Tomorrow({required this.meals, this.card = false});
 
   final List<PlannedMeal> meals;
+  final bool card;
 
   @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const TavliSectionHeader('Sutra'),
-        Text(
-          meals.map(_title).join(' · '),
-          style: t.bodyLarge?.copyWith(fontSize: 15, height: 1.4),
-        ),
-      ],
-    );
-  }
-}
-
-/// Širok ekran: kartica „Sutra“ desno, obrok po red.
-class _TomorrowCard extends StatelessWidget {
-  const _TomorrowCard({required this.meals});
-
-  final List<PlannedMeal> meals;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
-    return TavliCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
-            child: TavliSectionHeader('Sutra'),
-          ),
-          for (final (i, meal) in meals.indexed) ...[
-            if (i > 0) const TavliDivider(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    meal.slot.type.label,
-                    style: t.labelMedium?.copyWith(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: muted,
-                    ),
-                  ),
-                  Text(
-                    _title(meal),
-                    style: t.bodyLarge?.copyWith(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Prazno stanje ili greška: u sredini, a pomera se kada ne staje.
-class _ScrollableCenter extends StatelessWidget {
-  const _ScrollableCenter({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => SingleChildScrollView(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: constraints.maxHeight),
-        child: Center(child: child),
-      ),
-    ),
+  Widget build(BuildContext context) => TavliUpcomingMeals(
+    title: 'Sutra',
+    card: card,
+    meals: [
+      for (final meal in meals)
+        TavliUpcomingMeal(label: meal.slot.type.label, title: _title(meal)),
+    ],
   );
 }

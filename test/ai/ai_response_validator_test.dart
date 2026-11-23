@@ -113,6 +113,7 @@ void checkExpected(Map<String, dynamic> f, Object result) {
                 title: s.title,
                 servings: s.baseServings,
                 ingredients: s.ingredients,
+                steps: s.steps,
                 source: RecipeSource.ai,
                 createdAt: DateTime(2026),
               ),

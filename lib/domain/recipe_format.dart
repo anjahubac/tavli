@@ -41,19 +41,27 @@ String normalizeForSearch(String s) => s
     .replaceAll('đ', 'dj')
     .trim();
 
-/// "1 porcija", "2 porcije", "5 porcija" (11–14 su "porcija").
-String servingsLabel(int n) {
+/// Broj sa imenicom u pravom obliku: [one] za 1, 21, 31… (ali ne 11),
+/// [few] za 2–4, 22–24… (ali ne 12–14), [many] za ostale.
+/// `countLabel(3, 'stavka', 'stavke', 'stavki')` je "3 stavke".
+String countLabel(int n, String one, String few, String many) {
   final lastTwo = n % 100;
   final last = n % 10;
-  if (last == 1 && lastTwo != 11) return '$n porcija';
+  if (last == 1 && lastTwo != 11) return '$n $one';
   if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
-    return '$n porcije';
+    return '$n $few';
   }
-  return '$n porcija';
+  return '$n $many';
 }
+
+/// "1 porcija", "2 porcije", "5 porcija" (11–14 su "porcija").
+String servingsLabel(int n) => countLabel(n, 'porcija', 'porcije', 'porcija');
 
 /// "07.03.2026. 09:05"
 String formatDateTime(DateTime t) =>
     '${_two(t.day)}.${_two(t.month)}.${t.year}. ${_two(t.hour)}:${_two(t.minute)}';
+
+/// "09:05"
+String formatTime(DateTime t) => '${_two(t.hour)}:${_two(t.minute)}';
 
 String _two(int n) => n.toString().padLeft(2, '0');

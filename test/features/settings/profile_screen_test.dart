@@ -53,6 +53,8 @@ void main() {
 
   testTavli('Izgled i AI ključevi: povratak vodi na Profil', (tester) async {
     await pumpTavli(tester, location: '/profile');
+    await tester.ensureVisible(find.text('AI ključevi'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('AI ključevi'));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TavliBackAppBar, 'AI ključevi'), findsOneWidget);

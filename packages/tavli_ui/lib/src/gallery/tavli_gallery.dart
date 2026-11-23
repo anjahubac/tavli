@@ -270,6 +270,7 @@ class _Colors extends StatelessWidget {
       ('Uspeh', status.success.background, status.success.foreground),
       ('Upozorenje', status.warning.background, status.warning.foreground),
       ('Info', status.info.background, status.info.foreground),
+      ('Ne volim', status.dislike.background, status.dislike.foreground),
     ];
     return Wrap(
       spacing: TavliSpacing.small,

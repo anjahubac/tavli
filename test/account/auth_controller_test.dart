@@ -212,6 +212,41 @@ void main() {
     expect(c.read(accountScopeProvider)?.householdId, 'new-home');
   });
 
+  test('odbijanje tokom provere članstva pokreće još jednu proveru', () async {
+    final session = backend.auth.sessionFor('ana@mail.com');
+    secrets.values[SessionStore.key] = session.json;
+    backend.server.profiles[session.userId]!['display_name'] = 'Ana';
+    await cacheAccount(session, name: 'Ana');
+    await ctrl().start();
+    await pumpEventQueue();
+    final engine = c.read(syncEngineProvider)!;
+
+    var fetches = 0;
+    final fetchStarted = Completer<void>();
+    final finishFetch = Completer<void>();
+    backend.accounts.beforeFetch = () {
+      fetches++;
+      if (fetches > 1) return Future.value();
+      fetchStarted.complete();
+      return finishFetch.future;
+    };
+    final running = ctrl().restoreSession(sync: engine);
+    await fetchStarted.future;
+
+    // The running check may have read membership before the removal.
+    await ctrl().recheckMembership(engine);
+    expect(fetches, 1);
+    finishFetch.complete();
+    await running;
+    expect(fetches, 2);
+
+    // Nothing pending: a later denial checks once.
+    await ctrl().recheckMembership(engine);
+    expect(fetches, 3);
+    engine.stop();
+    await pumpEventQueue();
+  });
+
   test('keširan nalog bez imena: korak sa imenom', () async {
     final s = backend.auth.sessionFor('ana@mail.com');
     secrets.values[SessionStore.key] = s.json;

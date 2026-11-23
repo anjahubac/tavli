@@ -117,7 +117,7 @@ class AccountSection extends ConsumerWidget {
           children: [
             TavliListRow(
               title: 'Izmeni ime',
-              leading: const Icon(Icons.edit_outlined),
+              leading: const TavliIcon(TavliIcons.edit),
               onTap: () async {
                 final next = await showEditNameDialog(context, name);
                 if (next == null) return;
@@ -126,12 +126,12 @@ class AccountSection extends ConsumerWidget {
             ),
             TavliListRow(
               title: 'Pridruži se domaćinstvu',
-              leading: const Icon(Icons.group_add_outlined),
+              leading: const TavliIcon(TavliIcons.joinHousehold),
               onTap: () => showHouseholdJoinDialog(context),
             ),
             TavliListRow(
               title: 'Odjavi se',
-              leading: const Icon(Icons.logout_rounded),
+              leading: const TavliIcon(TavliIcons.signOut),
               onTap: () => _signOut(context, ref),
             ),
           ],
@@ -158,7 +158,7 @@ class DeleteAccountSection extends ConsumerWidget {
             TavliListRow(
               title: 'Obriši nalog',
               subtitle: 'Trajno briše nalog i sve podatke',
-              leading: const Icon(Icons.delete_forever_outlined),
+              leading: const TavliIcon(TavliIcons.delete),
               destructive: true,
               onTap: () => _deleteAccount(context, ref),
             ),

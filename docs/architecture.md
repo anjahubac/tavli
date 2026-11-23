@@ -37,8 +37,8 @@ package layout or generic event bus is required by the team standards.
 | `test/`, `scripts/` | Mirrored tests, fake backend/AI, format/analyze and affected tests | Synthetic data, local services only |
 | `specs/`, `.specify/`, `.claude/skills/` | Acceptance, contracts, workflow templates and installed Spec Kit commands | Versioned product/engineering decisions |
 
-Pantry tables and `lib/data/pantry_repository.dart` exist. A completed pantry
-feature folder, food catalog, preferences UI, household invitation flow, Home
+Pantry tables, `lib/data/pantry_repository.dart` and the Ostava screens in
+`lib/features/pantry/` exist (spec 022). Preferences UI, household invitation flow, Home
 screen, tracker, cookbooks and voice agent do not exist at this baseline.
 Create their feature files only when the relevant feature is specified.
 

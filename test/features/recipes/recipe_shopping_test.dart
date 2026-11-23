@@ -71,7 +71,7 @@ void main() {
       recipes: [sampleRecipe('r1', 'Užina').copyWith(steps: [])],
     );
     await openReview(tester);
-    await tester.tap(find.text('biber'));
+    await tester.tap(find.text('biber').last);
     await tester.pump();
     await tapButton(tester, 'Dodaj u nabavku (1)');
     expect(await shopping(app.db), ['kupus 500.0 g']);
@@ -94,7 +94,7 @@ void main() {
     await tester.pump();
     expect(inSheet('2 porcije'), findsOneWidget);
     expect(inSheet('0,25 kg kupus'), findsOneWidget);
-    await tester.tap(find.text('biber'));
+    await tester.tap(find.text('biber').last);
     await tester.pump();
     await tapButton(tester, 'Dodaj u nabavku (1)');
 
@@ -107,7 +107,7 @@ void main() {
     await openReview(tester);
     expect(inSheet('2 porcije'), findsOneWidget);
     expect(tester.widget<Checkbox>(checkboxOf('biber')).value, isTrue);
-    await tester.tap(find.text('biber'));
+    await tester.tap(find.text('biber').last);
     await tester.pump();
     await tapButton(tester, 'Ažuriraj nabavku');
     expect(
@@ -133,7 +133,7 @@ void main() {
       recipes: [sampleRecipe('r1', 'Sarma')],
     );
     await openReview(tester);
-    await tester.tap(find.text('biber'));
+    await tester.tap(find.text('biber').last);
     await tester.pump();
     await tapButton(tester, 'Dodaj u nabavku (1)');
     await openReview(tester);
