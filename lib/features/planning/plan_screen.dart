@@ -99,7 +99,18 @@ class _PlanView extends ConsumerWidget {
   final MealPlan plan;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => LayoutBuilder(
+    // Raspored za računar tek kad sadržaj (bez bočne navigacije) ima mesta
+    // za nedeljnu mrežu; u užem prozoru Plan je kao na telefonu, umesto da
+    // se zaglavlje i dugmad slažu jedno ispod drugog.
+    builder: (context, constraints) => _build(
+      context,
+      ref,
+      wide: isWidePlan(context) && constraints.maxWidth >= TavliWidth.weekGrid,
+    ),
+  );
+
+  Widget _build(BuildContext context, WidgetRef ref, {required bool wide}) {
     final view = ref.watch(planViewProvider);
     final controller = ref.read(planViewProvider.notifier);
     final today = CivilDate.today(ref.watch(clockProvider));
@@ -107,7 +118,6 @@ class _PlanView extends ConsumerWidget {
     final meals = ref.watch(plannedMealsProvider(plan.id)).value ?? const [];
     final bySlot = {for (final m in meals) m.slot: m};
     final month = view.mode == PlanViewMode.month;
-    final wide = isWidePlan(context);
 
     void open(PlannedMeal meal) =>
         unawaited(context.push('/plan/${plan.id}/entries/${meal.id}'));

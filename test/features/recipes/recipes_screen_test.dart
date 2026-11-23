@@ -127,10 +127,11 @@ void main() {
     final povrce = tester.getTopLeft(find.text('VOĆE I POVRĆE')).dy;
     final zacini = tester.getTopLeft(find.text('ZAČINI I SOSOVI')).dy;
     expect(povrce, lessThan(zacini));
-    expect(find.text('• 0,5 kg kupus'), findsOneWidget);
+    expect(find.text('kupus'), findsOneWidget);
+    expect(find.text('0,5 kg'), findsOneWidget);
     expect(find.text('Napravio: Gemini Pro'), findsOneWidget);
     expect(find.text('Priprema'), findsOneWidget);
-    expect(find.text('1.'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
     expect(find.text('Umotati.'), findsOneWidget);
   });
 
@@ -152,7 +153,7 @@ void main() {
 
     expect(find.text('Priprema'), findsNothing);
     expect(find.text('Koraci pripreme nisu uneti.'), findsNothing);
-    expect(find.text('• paradajz'), findsOneWidget);
+    expect(find.text('paradajz'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
     expect(find.text('1 porcija'), findsOneWidget);
   });
@@ -352,7 +353,11 @@ void main() {
     ];
 
     Future<void> openFilters(WidgetTester tester) async {
-      await tester.tap(find.byIcon(Icons.tune));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is TavliIconButton && w.semanticLabel.startsWith('Filteri'),
+        ),
+      );
       await tester.pumpAndSettle();
     }
 

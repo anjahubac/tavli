@@ -328,7 +328,12 @@ void main() {
           ),
         ),
       );
-      expect(find.byIcon(Icons.search), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is TavliIcon && w.icon == TavliIcons.search,
+        ),
+        findsOneWidget,
+      );
       expect(tester.getSize(find.byType(TextField)).height, 48);
       expect(find.bySemanticsLabel('Obriši pretragu'), findsNothing);
 

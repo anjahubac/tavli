@@ -303,11 +303,19 @@ void main() {
 
         await tester.tap(railProfile);
         await tester.pumpAndSettle();
-        // Širok ekran: naslov i povratak su na vrhu sadržaja.
+        // Širok ekran (platno): Profil ostaje u okviru sa bočnim menijem,
+        // istaknut dole, sa naslovom bez povratka.
         expect(find.widgetWithText(TavliPageHeader, 'Profil'), findsOneWidget);
         expect(find.text('Odjavi se'), findsOneWidget);
+        expect(find.byType(TavliNavigation), findsOneWidget);
+        expect(find.text('Nazad'), findsNothing);
 
-        await tester.tap(find.text('Nazad'));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(TavliNavigation),
+            matching: find.text('Ostava'),
+          ),
+        );
         await tester.pumpAndSettle();
         expect(currentTab(tester), 'Ostava');
       },

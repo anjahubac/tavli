@@ -117,22 +117,28 @@ GoRouter createRouter({
         entryId: state.pathParameters['entryId']!,
       ),
     ),
-    // Profil i podešavanja su iznad tabova; otvaraju se preko avatara.
-    GoRoute(
-      path: '/profile',
-      builder: (context, state) => const ProfileScreen(),
+    // Profil i podešavanja su iznad tabova; otvaraju se preko avatara. Na
+    // širokom ekranu ostaju u okviru sa bočnom navigacijom, kao na platnu.
+    ShellRoute(
+      builder: (context, state, child) => ProfileShell(child: child),
       routes: [
         GoRoute(
-          path: 'ai-keys',
-          builder: (context, state) => const AiKeysScreen(),
-        ),
-        GoRoute(
-          path: 'appearance',
-          builder: (context, state) => const AppearanceScreen(),
-        ),
-        GoRoute(
-          path: 'animations',
-          builder: (context, state) => const AnimationsGalleryScreen(),
+          path: '/profile',
+          builder: (context, state) => const ProfileScreen(),
+          routes: [
+            GoRoute(
+              path: 'ai-keys',
+              builder: (context, state) => const AiKeysScreen(),
+            ),
+            GoRoute(
+              path: 'appearance',
+              builder: (context, state) => const AppearanceScreen(),
+            ),
+            GoRoute(
+              path: 'animations',
+              builder: (context, state) => const AnimationsGalleryScreen(),
+            ),
+          ],
         ),
       ],
     ),

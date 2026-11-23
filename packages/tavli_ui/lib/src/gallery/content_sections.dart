@@ -2,15 +2,18 @@ import 'package:material_ui/material_ui.dart';
 
 import '../content/tavli_card.dart';
 import '../content/tavli_data_table.dart';
+import '../content/tavli_expandable.dart';
 import '../content/tavli_list.dart';
 import '../content/tavli_media.dart';
 import '../content/tavli_notice.dart';
 import '../content/tavli_plan.dart';
 import '../content/tavli_states.dart';
 import '../content/tavli_tag.dart';
+import '../content/tavli_today.dart';
 import '../controls/tavli_button.dart';
 import '../controls/tavli_icon_button.dart';
 import '../controls/tavli_rows.dart';
+import '../icons/tavli_icons.dart';
 import '../tokens.dart';
 import 'gallery_section.dart';
 
@@ -25,6 +28,7 @@ class TavliContentGallerySections extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         GallerySection(title: 'Kartice', child: _Cards()),
+        GallerySection(title: 'Početna: danas i sutra', child: _Today()),
         GallerySection(title: 'Mreža kartica', child: _Grid()),
         GallerySection(title: 'Liste', child: _Lists()),
         GallerySection(title: 'Tabela za računar', child: _Table()),
@@ -52,6 +56,7 @@ class TavliContentGallerySections extends StatelessWidget {
             ],
           ),
         ),
+        GallerySection(title: 'Proširivi blok', child: _Expandables()),
         GallerySection(title: 'Naslov odeljka', child: _Headers()),
         GallerySection(title: 'Sličica, avatar i oznaka', child: _Media()),
         GallerySection(title: 'Prazan ekran i učitavanje', child: _States()),
@@ -401,8 +406,8 @@ class _Media extends StatelessWidget {
             spacing: TavliSpacing.small,
             children: [
               TavliThumbnail.row(),
-              TavliThumbnail.row(tintIndex: 1, icon: Icons.bakery_dining),
-              TavliThumbnail.row(tintIndex: 2, icon: Icons.soup_kitchen),
+              TavliThumbnail.row(tintIndex: 1),
+              TavliThumbnail.row(tintIndex: 2),
             ],
           ),
         ),
@@ -640,4 +645,86 @@ class _PlanState extends State<_Plan> {
       ],
     );
   }
+}
+
+class _Today extends StatelessWidget {
+  const _Today();
+
+  static const _tomorrow = [
+    TavliUpcomingMeal(label: 'Doručak', title: 'Kajgana'),
+    TavliUpcomingMeal(label: 'Ručak', title: 'Punjene paprike'),
+    TavliUpcomingMeal(label: 'Večera', title: 'Čorba od povrća'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: TavliSpacing.medium,
+    children: [
+      TavliNextMealCard(
+        overline: 'Sledeće · Večera',
+        title: 'Musaka od krompira',
+        detail: '75 min · 4 porcije',
+        actions: [
+          TavliButton.primary(
+            label: 'Kuvaj',
+            glyph: TavliIcons.cook,
+            onPressed: () {},
+          ),
+          TavliButton.secondary(
+            label: 'Skuvano',
+            glyph: TavliIcons.check,
+            onPressed: () {},
+          ),
+        ],
+      ),
+      const TavliStatusText('Svi današnji obroci su skuvani.'),
+      const GalleryLabeled(
+        'Sutra · telefon',
+        TavliUpcomingMeals(title: 'Sutra', meals: _tomorrow),
+      ),
+      const GalleryLabeled(
+        'Sutra · računar',
+        TavliUpcomingMeals(title: 'Sutra', meals: _tomorrow, card: true),
+      ),
+    ],
+  );
+}
+
+class _Expandables extends StatelessWidget {
+  const _Expandables();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: TavliSpacing.medium,
+    children: [
+      TavliExpandable(
+        title: 'Ručak',
+        subtitle: 'Pasulj prebranac\nIz mojih recepata',
+        trailing: TavliIconButton(
+          glyph: TavliIcons.swap,
+          semanticLabel: 'Zameni jelo',
+          onPressed: () {},
+        ),
+        initiallyExpanded: true,
+        children: const [
+          Text('Sastojci za 4 porcije · 90 min'),
+          Text('• Pasulj 500 g'),
+          Text('• Crni luk 2 kom'),
+        ],
+      ),
+      const TavliExpandable(
+        title: 'Više opcija',
+        subtitle: 'Ostava i posebni zahtevi, nije obavezno',
+        inset: false,
+        children: [Text('Sadržaj')],
+      ),
+      const TavliProgressBar(
+        value: 3 / 7,
+        message: 'Pripremam plan… Pripremljeno 3 od 7 obroka.',
+        semanticLabel: 'Napredak predloga',
+      ),
+    ],
+  );
 }
