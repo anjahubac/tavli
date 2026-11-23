@@ -3,7 +3,10 @@ import 'package:drift/drift.dart';
 import '../account/auth_controller.dart';
 import '../data/database.dart';
 import '../data/recipe_photo_store.dart';
+import '../domain/ingredient_links.dart';
+import '../domain/recipe.dart';
 import 'entities.dart';
+import 'recipe_link_rollout.dart';
 import 'sync_remote.dart';
 import 'synced_writer.dart';
 
@@ -43,6 +46,7 @@ class Uploader {
     required this._scope,
     required this._refreshSession,
     this._beforeFavoriteUpload,
+    this._recipeLinkRollout = recipeLinkRollout,
     DateTime Function()? clock,
     this.batchSize = 100,
   }) : _clock = clock ?? DateTime.now;
@@ -56,6 +60,7 @@ class Uploader {
   /// Obnavlja sesiju posle 401; false kad je obnova odbijena.
   final Future<bool> Function() _refreshSession;
   final Future<void> Function()? _beforeFavoriteUpload;
+  final RecipeLinkRollout _recipeLinkRollout;
   final DateTime Function() _clock;
   final int batchSize;
 
@@ -266,6 +271,39 @@ class Uploader {
         gone.add(e); // zapis je u međuvremenu obrisan: brisanje sledi
       } else {
         final payload = entity.toRemote(row);
+        if (entity is RecipeEntity && _recipeLinkRollout.enabled) {
+          final server = await _fetchRecipeForLinkMerge(e.recordId);
+          if (server != null) {
+            final rawIngredients = server['ingredients'];
+            if (rawIngredients is! List) {
+              throw const TransientSyncError('recipe_read');
+            }
+            try {
+              final rawLocal = payload['ingredients'];
+              if (rawLocal is! List<Object?>) {
+                throw const FormatException('ingredients');
+              }
+              final rawLocalIngredients = rawLocal;
+              final localIngredients = [
+                for (final item in rawLocalIngredients)
+                  Ingredient.fromJson(_ingredientJson(item)),
+              ];
+              final serverIngredients = [
+                for (final item in rawIngredients)
+                  Ingredient.fromJson(_ingredientJson(item)),
+              ];
+              payload['ingredients'] = _mergeRecipeIngredientJson(
+                rawLocalIngredients,
+                localIngredients,
+                serverIngredients,
+              );
+            } on FormatException {
+              // Never send a recipe when its server ingredient state cannot be
+              // safely inspected for links to preserve.
+              throw const TransientSyncError('recipe_read');
+            }
+          }
+        }
         // Nedeljna lista se samo kreira. Ponovljeno slanje ne menja
         // postojeću listu istog ID-ja ni njen updated_at.
         if (row is ShoppingListRow &&
@@ -298,6 +336,61 @@ class Uploader {
         if (!gone.contains(e)) e,
     ]);
     return rows.length + weekLists.length;
+  }
+
+  Future<Map<String, Object?>?> _fetchRecipeForLinkMerge(String id) async {
+    try {
+      return await _remote.fetchRecipe(id, _scope.householdId);
+    } on UnauthorizedSyncError {
+      rethrow;
+    } on SyncError {
+      // A failed read is never permission to upload without link protection.
+      throw const TransientSyncError('recipe_read');
+    } on Exception catch (_) {
+      throw const TransientSyncError('recipe_read');
+    }
+  }
+
+  List<Map<String, Object?>> _mergeRecipeIngredientJson(
+    List<Object?> rawLocal,
+    List<Ingredient> local,
+    List<Ingredient> server,
+  ) {
+    final merged = mergeIngredientLinks(local: local, server: server);
+    return [
+      for (var i = 0; i < merged.length; i++)
+        _withPersistedLinkFields(
+          Map<String, Object?>.from(_ingredientJson(rawLocal[i])),
+          merged[i],
+        ),
+    ];
+  }
+
+  Map<String, dynamic> _ingredientJson(Object? value) {
+    if (value is! Map<Object?, Object?>) {
+      throw const FormatException('ingredient');
+    }
+    final json = <String, dynamic>{};
+    for (final entry in value.entries) {
+      final key = entry.key;
+      if (key is! String) throw const FormatException('ingredient');
+      json[key] = entry.value;
+    }
+    return json;
+  }
+
+  Map<String, Object?> _withPersistedLinkFields(
+    Map<String, Object?> json,
+    Ingredient ingredient,
+  ) {
+    json
+      ..remove('foodId')
+      ..remove('matchedKey')
+      ..remove('linkSource')
+      ..remove('unlinkedKey');
+    if (ingredient.link case final link?) json.addAll(link.toJson());
+    if (ingredient.unlinkedKey case final key?) json['unlinkedKey'] = key;
+    return json;
   }
 
   Future<void> _sendPhoto(OutboxRow e) async {

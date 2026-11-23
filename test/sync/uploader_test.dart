@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/sync/recipe_link_rollout.dart';
 import 'package:tavli/sync/sync_remote.dart';
 import 'package:tavli/sync/synced_writer.dart';
 import 'package:tavli/sync/uploader.dart';
@@ -109,6 +110,90 @@ void main() {
     expect(server('recipes'), hasLength(151));
     expect(server('recipes')['r0']!['household_id'], scope.householdId);
     expect(await outbox(), isEmpty);
+  });
+
+  test(
+    'guarded recipe upload reads server and carries confirmed link',
+    () async {
+      await addRecipe('r');
+      await uploader.run();
+      final serverRecipe = server('recipes')['r']!;
+      serverRecipe['ingredients'] = [
+        {
+          'name': 'jaja',
+          'quantity': 2,
+          'unit': 'kom',
+          'category': 'ostalo',
+          'note': null,
+          'foodId': 'food-jaja',
+          'matchedKey': 'jaja',
+          'linkSource': 'confirmed',
+        },
+      ];
+      await (db.update(db.recipes)..where((t) => t.id.equals('r'))).write(
+        const RecipesCompanion(
+          ingredientsJson: Value(
+            '[{"name":"Jaja","quantity":3,"unit":"kom","category":"ostalo","note":null}]',
+          ),
+        ),
+      );
+      await writer.upsert('recipe', 'r');
+      backend.server.calls.clear();
+      uploader = Uploader(
+        db: db,
+        remote: backend.sync,
+        photos: backend.photos,
+        photoStore: photoStore,
+        scope: scope,
+        refreshSession: () async => true,
+        recipeLinkRollout: const RecipeLinkRollout(
+          allDevicesAtCompatibleBuild: true,
+          oldOutboxesDrained: true,
+        ),
+        clock: () => now,
+      );
+
+      final result = await uploader.run();
+
+      expect(result.sent, 1);
+      expect(backend.server.calls, ['fetch:recipe', 'upsert:recipes:1']);
+      final rawIngredients =
+          server('recipes')['r']!['ingredients'] as List<Object?>;
+      final sentIngredient = Map<String, Object?>.from(
+        rawIngredients.single as Map<Object?, Object?>,
+      );
+      expect(sentIngredient['quantity'], 3);
+      expect(sentIngredient['name'], 'Jaja');
+      expect(sentIngredient['foodId'], 'food-jaja');
+      expect(sentIngredient['linkSource'], 'confirmed');
+    },
+  );
+
+  test('guarded recipe upload stays queued when server read fails', () async {
+    await addRecipe('r');
+    await uploader.run();
+    await writer.upsert('recipe', 'r');
+    backend.server.calls.clear();
+    backend.sync.recipeReadFailure = const TransientSyncError('offline');
+    uploader = Uploader(
+      db: db,
+      remote: backend.sync,
+      photos: backend.photos,
+      photoStore: photoStore,
+      scope: scope,
+      refreshSession: () async => true,
+      recipeLinkRollout: const RecipeLinkRollout(
+        allDevicesAtCompatibleBuild: true,
+        oldOutboxesDrained: true,
+      ),
+      clock: () => now,
+    );
+
+    final result = await uploader.run();
+
+    expect(result.offline, isTrue);
+    expect(backend.server.calls, ['fetch:recipe']);
+    expect((await outbox()).single.state, OutboxState.pending);
   });
 
   test('brisanja idu kao id=in(…); posle upsert-a istog zapisa', () async {
