@@ -78,3 +78,15 @@ Deno.test("bez dostupnog ključa nema provider poziva", async () => {
   );
   assertEquals(called, false);
 });
+
+Deno.test("prati AI_PROVIDER_ORDER i preskače servis bez ključa", async () => {
+  const env = (name: string) => ({
+    AI_PROVIDER_ORDER: "openai,groq,gemini",
+    GEMINI_API_KEY: "GEMINI",
+    GROQ_API_KEY: "GROQ",
+  }[name]);
+  const { f, calls } = fakeFetch(() => completion('{"answer":"x","used":[1]}'));
+  await createGenerator({ env, fetch: f })("s", "p");
+  assertEquals(calls.length, 1);
+  assert(calls[0].url.includes("api.groq.com"));
+});
