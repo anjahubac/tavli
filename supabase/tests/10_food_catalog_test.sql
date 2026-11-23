@@ -6,8 +6,8 @@
 begin;
 select * from no_plan();
 
--- The migration seed is covered by test 11; this suite owns an isolated
--- catalog fixture so its duplicate and permission cases stay deterministic.
+-- Keep the catalog fixture isolated so duplicate and permission cases stay
+-- deterministic if a reviewed shared seed is added in a later migration.
 delete from public.food_aliases where household_id is null;
 delete from public.foods where household_id is null;
 

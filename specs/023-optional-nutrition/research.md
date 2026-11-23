@@ -1,10 +1,10 @@
 # Nutrition reference and portion-calculation research
 
-**Status:** USDA source mapping is integrated into the shared catalog seed for
-Trello #24 after Uroš confirmed the manual catalog review was complete on
-2026-11-23. This covers reference values only; it does not ship a diary,
-recipe-calculation or nutrition-display feature. Dev 1 evidence for D1-011,
-D1-015 and D1-016 / FR-001–003 in [spec 023](spec.md).
+**Status:** USDA values are extracted as a research artifact. The candidate
+identities, units and source mappings have not been approved for seeding. This
+research does not ship a diary, recipe-calculation or nutrition-display feature.
+Dev 1 evidence for D1-011, D1-015 and D1-016 / FR-001–003 in
+[spec 023](spec.md).
 
 ## Reference-source observations
 
@@ -45,16 +45,12 @@ alter the worksheet's identity or source review state and is not an application
 seed. It does not include Ciqual values.
 
 The extractor test uses a synthetic two-food archive to prove ID-based joining,
-unknown preservation and source attribution. Its local result passes. Coverage
-is measured against the 334 reviewed worksheet identities. They and 326
-unambiguous legacy aliases are seeded by
-[`20261123090000_initial_food_catalog_seed.sql`](../../supabase/migrations/20261123090000_initial_food_catalog_seed.sql).
-The companion pgTAP test asserts 334 shared foods, 308 fully attributed USDA
-records and 26 foods with unknown nutrition. Two historical flour aliases are
-omitted because the worksheet maps them to distinct foods. The worksheet's
-archival status column still says `pending`; the seed follows Uroš's explicit
-confirmation that the catalog review is complete. No allergen data is inferred
-or added by this seed.
+unknown preservation and source attribution. Coverage is measured against 334
+worksheet proposals; 308 have a proposed USDA record and 26 do not. The worksheet
+still marks all rows `pending`, so the seed generator rejects it until each
+imported row has a recorded review decision and required reviewer fields. No
+shared catalog rows or aliases are seeded by this change. No allergen data is
+inferred from nutrition values.
 
 ## Earlier prototype evidence
 

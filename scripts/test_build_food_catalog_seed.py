@@ -13,17 +13,12 @@ NUTRITION = (
 
 
 class BuildFoodCatalogSeedTests(unittest.TestCase):
-    def test_seed_has_reviewed_catalog_and_only_complete_attributed_values(self):
+    def test_pending_review_rows_cannot_be_seeded(self):
         with tempfile.TemporaryDirectory() as temp:
-            first = Path(temp) / "first.sql"
-            second = Path(temp) / "second.sql"
-            self.assertEqual(generate(WORKSHEET, NUTRITION, first), (334, 308, 326))
-            self.assertEqual(generate(WORKSHEET, NUTRITION, second), (334, 308, 326))
-            self.assertEqual(first.read_bytes(), second.read_bytes())
-            sql = first.read_text(encoding="utf-8")
-            self.assertIn("on conflict do nothing;", sql)
-            self.assertIn("SR Legacy 2018-04", sql)
-            self.assertIn("manual review confirmed by Uros Milutinovic", sql)
+            output = Path(temp) / "seed.sql"
+            with self.assertRaisesRegex(ValueError, "not approved for seeding"):
+                generate(WORKSHEET, NUTRITION, output)
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

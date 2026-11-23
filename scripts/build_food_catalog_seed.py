@@ -12,8 +12,7 @@ from pathlib import Path
 
 NAMESPACE = uuid.UUID("6405924b-b579-4ad4-9ab9-1309ccf5b531")
 REVIEW_SOURCE = (
-    "Team-reviewed initial catalog; manual review confirmed by Uros Milutinovic "
-    "on 2026-11-23"
+    "Team-reviewed initial catalog; see row-level worksheet review."
 )
 CONFLICTING_ALIASES = {"brašno t-400", "brašno t-500"}
 
@@ -39,6 +38,30 @@ def load_rows(worksheet: Path, nutrition_csv: Path) -> list[dict[str, str]]:
     output = []
     for food in foods:
         name = food["candidate_name"].strip()
+        if food["identity_status"] != "reviewed":
+            raise ValueError(
+                f"Food is not approved for seeding: {name!r} "
+                f"(identity_status={food['identity_status']!r})"
+            )
+        required_review_evidence = [
+            "identity_source",
+            "identity_reviewer",
+            "base_unit_basis",
+            "base_unit_reviewer",
+            "usda_basis",
+        ]
+        if food["usda_fdc_id"].strip():
+            required_review_evidence.append("usda_reviewer")
+        missing_review_evidence = [
+            field
+            for field in required_review_evidence
+            if not food[field].strip()
+        ]
+        if missing_review_evidence:
+            raise ValueError(
+                f"Food is missing review evidence: {name!r} "
+                f"({', '.join(missing_review_evidence)})"
+            )
         slug = slugify(name)
         if not slug:
             raise ValueError(f"Food has empty slug: {name!r}")
