@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Recept glasom (spec 027): snimanje samo na dugme „Govori“. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="tavli"
         android:name="${applicationName}"

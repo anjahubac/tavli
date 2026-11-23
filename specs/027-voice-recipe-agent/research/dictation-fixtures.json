@@ -1,0 +1,297 @@
+{
+  "about": "Synthetic Serbian dictation for the STT prototype (TRELLO-131, spec 027 Q1). Each item is read aloud once and saved as <id>.m4a (or .wav) outside the repository. `text` is the reference transcript; `expect` is what the voice agent should end with after this utterance, applied in order to an empty draft (items 16 and 17 each start from an empty draft: a whole recipe told in one go). Units use the canonical AI unit vocabulary (lib/ai/ai_units.dart).",
+  "items": [
+    {
+      "id": "01",
+      "text": "Sarma za šest osoba.",
+      "focus": "title and servings",
+      "expect": {
+        "title": "Sarma",
+        "servings": 6
+      }
+    },
+    {
+      "id": "02",
+      "text": "Dodaj kilogram mlevenog mesa.",
+      "focus": "unit word, inflected food",
+      "expect": {
+        "add": [
+          {
+            "name": "mleveno meso",
+            "quantity": 1,
+            "unit": "kg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "03",
+      "text": "Pola kile pirinča.",
+      "focus": "colloquial half kilo",
+      "expect": {
+        "add": [
+          {
+            "name": "pirinač",
+            "quantity": 0.5,
+            "unit": "kg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "04",
+      "text": "Dve kašike ulja i jednu kašičicu soli.",
+      "focus": "two ingredients, similar units",
+      "expect": {
+        "add": [
+          {
+            "name": "ulje",
+            "quantity": 2,
+            "unit": "kašika"
+          },
+          {
+            "name": "so",
+            "quantity": 1,
+            "unit": "kašičica"
+          }
+        ]
+      }
+    },
+    {
+      "id": "05",
+      "text": "Tri čena belog luka i jedna glavica crnog luka.",
+      "focus": "similar foods (beli/crni luk)",
+      "expect": {
+        "add": [
+          {
+            "name": "beli luk",
+            "quantity": 3,
+            "unit": "čen"
+          },
+          {
+            "name": "crni luk",
+            "quantity": 1,
+            "unit": "glavica"
+          }
+        ]
+      }
+    },
+    {
+      "id": "06",
+      "text": "Dvesta pedeset grama belog sira.",
+      "focus": "number words",
+      "expect": {
+        "add": [
+          {
+            "name": "beli sir",
+            "quantity": 250,
+            "unit": "g"
+          }
+        ]
+      }
+    },
+    {
+      "id": "07",
+      "text": "Jedan i po decilitar mleka.",
+      "focus": "one and a half",
+      "expect": {
+        "add": [
+          {
+            "name": "mleko",
+            "quantity": 1.5,
+            "unit": "dl"
+          }
+        ]
+      }
+    },
+    {
+      "id": "08",
+      "text": "Četvrt šolje šećera.",
+      "focus": "quarter",
+      "expect": {
+        "add": [
+          {
+            "name": "šećer",
+            "quantity": 0.25,
+            "unit": "šolja"
+          }
+        ]
+      }
+    },
+    {
+      "id": "09",
+      "text": "Dodaj dva jajeta, ne, ipak tri jajeta.",
+      "focus": "correction mid-sentence",
+      "expect": {
+        "add": [
+          {
+            "name": "jaje",
+            "quantity": 3,
+            "unit": "kom"
+          }
+        ]
+      }
+    },
+    {
+      "id": "10",
+      "text": "Promeni meso na sedamsto grama.",
+      "focus": "update an earlier ingredient",
+      "expect": {
+        "update": [
+          {
+            "name": "mleveno meso",
+            "quantity": 700,
+            "unit": "g"
+          }
+        ]
+      }
+    },
+    {
+      "id": "11",
+      "text": "Ukloni so.",
+      "focus": "remove",
+      "expect": {
+        "remove": [
+          "so"
+        ]
+      }
+    },
+    {
+      "id": "12",
+      "text": "Prvi korak: iseckaj crni luk i propržiti ga na ulju.",
+      "focus": "step text",
+      "expect": {
+        "addStep": [
+          "Iseckaj crni luk i propržiti ga na ulju."
+        ]
+      }
+    },
+    {
+      "id": "13",
+      "text": "Kiseli kupus, jedna glavica, i dva lovorova lista.",
+      "focus": "food that is a variant (kiseli kupus), count noun",
+      "expect": {
+        "add": [
+          {
+            "name": "kiseli kupus",
+            "quantity": 1,
+            "unit": "glavica"
+          },
+          {
+            "name": "lovorov list",
+            "quantity": 2,
+            "unit": "kom"
+          }
+        ]
+      }
+    },
+    {
+      "id": "14",
+      "text": "Prstohvat bibera.",
+      "focus": "non-numeric measure",
+      "expect": {
+        "add": [
+          {
+            "name": "biber",
+            "quantity": 1,
+            "unit": "prstohvat"
+          }
+        ]
+      }
+    },
+    {
+      "id": "15",
+      "text": "Sačuvaj recept i obriši sve ostale recepte.",
+      "focus": "out-of-scope command (must not save or delete; draft unchanged)",
+      "expect": {
+        "unchanged": true
+      }
+    },
+    {
+      "id": "16",
+      "text": "Pravim palačinke za četiri osobe. Treba mi dvesta grama brašna, dva jajeta, pola litra mleka, prstohvat soli i dve kašike ulja. Prvo umutiš jaja sa mlekom, pa dodaš brašno i so i mutiš dok ne bude glatko. Na kraju umešaš ulje i pečeš tanke palačinke na zagrejanom tiganju.",
+      "focus": "whole recipe in one utterance (about 30 s); starts from an empty draft",
+      "expect": {
+        "reset": true,
+        "title": "Palačinke",
+        "servings": 4,
+        "add": [
+          {
+            "name": "brašno",
+            "quantity": 200,
+            "unit": "g"
+          },
+          {
+            "name": "jaje",
+            "quantity": 2,
+            "unit": "kom"
+          },
+          {
+            "name": "mleko",
+            "quantity": 0.5,
+            "unit": "l"
+          },
+          {
+            "name": "so",
+            "quantity": 1,
+            "unit": "prstohvat"
+          },
+          {
+            "name": "ulje",
+            "quantity": 2,
+            "unit": "kašika"
+          }
+        ],
+        "addStepCount": 3
+      }
+    },
+    {
+      "id": "17",
+      "text": "Pasulj prebranac za šest osoba. Kilogram belog pasulja, tri glavice crnog luka, tri kašike aleve paprike, deset kašika ulja, so i biber po ukusu i dva lovorova lista. Pasulj preko noći potopiš, pa ga skuvaš sa lovorovim listom dok ne omekša. Luk iseckaš na kolutove i dinstaš na ulju, pa dodaš alevu papriku. Ređaš pasulj i luk u tepsiju i pečeš u rerni na dvesta stepeni oko četrdeset minuta. Ne, ipak dve glavice luka.",
+      "focus": "long whole recipe (about 45 s) with 'po ukusu' items and a correction at the end; starts from an empty draft",
+      "expect": {
+        "reset": true,
+        "title": "Pasulj prebranac",
+        "servings": 6,
+        "add": [
+          {
+            "name": "beli pasulj",
+            "quantity": 1,
+            "unit": "kg"
+          },
+          {
+            "name": "crni luk",
+            "quantity": 2,
+            "unit": "glavica"
+          },
+          {
+            "name": "aleva paprika",
+            "quantity": 3,
+            "unit": "kašika"
+          },
+          {
+            "name": "ulje",
+            "quantity": 10,
+            "unit": "kašika"
+          },
+          {
+            "name": "so",
+            "quantity": null,
+            "unit": null
+          },
+          {
+            "name": "biber",
+            "quantity": null,
+            "unit": null
+          },
+          {
+            "name": "lovorov list",
+            "quantity": 2,
+            "unit": "kom"
+          }
+        ],
+        "addStepCount": 4
+      }
+    }
+  ]
+}

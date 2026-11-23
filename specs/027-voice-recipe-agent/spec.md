@@ -70,6 +70,11 @@ Producer specs: [014](../014-ai-response-contracts/spec.md), [015](../015-ai-ser
   Confirm the Groq model against Serbian dictation, device recording format,
   size and duration caps, quotas, deadlines and provider retention controls.
   Finalize the typed request and response contracts and acceptance fixtures.
+  **Proposed 2026-11-22 (Dev 2):** `whisper-large-v3` with a measure-only
+  context prompt, 120 s / 3 MB AAC, text quota, 30 s deadline; measured on 17
+  synthetic recordings in [research](research.md); typed contracts in the
+  [voice agent contract](contracts/voice-agent-contract.md). Device recording
+  checks on Android, iOS and macOS are still open.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

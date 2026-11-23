@@ -140,6 +140,7 @@ void main() {
       'plan_outline',
       'recipe_summaries',
       'pantry_from_photo',
+      'voice_draft_actions',
     ]);
     final withImages = {
       for (final body in bodies)
