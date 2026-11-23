@@ -69,6 +69,13 @@ Future<void> showAddRecipeSheet(BuildContext context) {
           onTap: () => open(sheetContext, '/recipes/cookbooks'),
         ),
         TavliListRow(
+          leading: const Icon(Icons.mic_none),
+          title: 'Glasom',
+          subtitle: 'Izgovori recept, AI ga upisuje',
+          showChevron: true,
+          onTap: () => open(sheetContext, '/recipes/new/voice'),
+        ),
+        TavliListRow(
           leading: const Icon(Icons.edit_note),
           title: 'Ručno',
           subtitle: 'Upiši recept sam',

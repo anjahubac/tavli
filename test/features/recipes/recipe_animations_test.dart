@@ -50,7 +50,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.bySemanticsLabel('Skeniranje fotografije'), findsOneWidget);
-    expect(find.text('Tražim sastojke…'), findsOneWidget);
+    expect(find.text('Tražim sastojke…'), findsNothing);
     // Slika već ima animaciju, pa nema i lonca.
     expect(find.bySemanticsLabel('Lonac koji krčka'), findsNothing);
 

@@ -63,7 +63,7 @@ if validation also moves server-side.
 
 | ID | Rule |
 | --- | --- |
-| F1 | A rejected response gets exactly one repair request to the **same model and key**: the original system prompt, prompt and images, plus the model's previous answer and a description of the failed rule. The request keeps the `system`/`prompt`/`images` shape, so it also works through the planned gateway as the same task. |
+| F1 | A rejected response gets exactly one repair request to the **same model and route**, with the same personal credential for direct calls or the same task ID for the [015 gateway](../../015-ai-server-gateway/contracts/ai-gateway-contract.md). The request includes the original system prompt, prompt and images, plus the model's previous answer and a description of the failed rule. |
 | F2 | The description comes from `lib/ai/repair_prompt.dart`: a rule ID becomes a sentence (`R6` → "every quantity must be a number from 0.001 to 100000 …"); other parser messages pass as they are, with a short detail such as a missing slot. It contains only app text and the model's own answer, never user data from other requests. |
 | F3 | The previous answer is echoed only when it is at most 12 000 characters **and** the whole repair request (`system` + `prompt`) stays within the gateway's 40 000-character limit (`maxRequestChars`); otherwise only the description is sent, because a cut JSON would mislead the model. |
 | F4 | If the repaired answer is rejected too, the router stops instead of trying the rest of the chain. That model and key are skipped for 10 minutes (in memory only), so the retry asks the next model. The user sees “AI nije vratio ispravan odgovor ni posle ispravke. Pokušaj ponovo.” when another model can answer now, or “… Pokušaj ponovo posle HH:MM.” when every other model is paused. In the recipe chat, “Pokušaj ponovo” resends the instruction that failed, not the current text field. |
@@ -140,13 +140,15 @@ produces a plan; such a dish is simply not checked by the weight rules.
 
 ### `recipe-summary.v1`
 
-Summaries for new dishes from the outline (title and ingredients, no steps).
+Recipe details for new dishes from the outline. The 2026-11-22 planning
+amendment requires preparation steps in these batches.
 
 ```jsonc
 {"recipes": [
   {"title": "Pasulj", "servings": 4, "prepMinutes": 120,
    "ingredients": [{"name": "pasulj", "quantity": 500, "unit": "g",
-                    "category": "suvi proizvodi", "note": null}]}
+                    "category": "suvi proizvodi", "note": null}],
+   "steps": ["Potopi pasulj preko noći.", "Isperi ga i kuvaj dok ne omekša."]}
 ]}
 ```
 
@@ -154,7 +156,8 @@ Summaries for new dishes from the outline (title and ingredients, no steps).
 | --- | --- | --- |
 | S1 | `recipes` is a list; each `title` matches a requested title (same `draftRecipeKey`) exactly once; no extra, missing or repeated recipe | reject |
 | S2 | `servings` is an integer 1–20 (`minServings`/`maxServings`) | reject |
-| S3 | `prepMinutes` follows R3; `ingredients` follow R4–R9; `steps` is ignored | as referenced |
+| S3 | `prepMinutes` follows R3; `ingredients` follow R4–R9 | as referenced |
+| S4 | `steps` follows R10 and must contain at least one nonblank step | reject |
 
 ### Unit vocabulary
 

@@ -59,6 +59,7 @@ Map<String, dynamic> summary(String title, {int servings = 4}) => {
   'title': title,
   'servings': servings,
   'prepMinutes': 30,
+  'steps': [' Iseckaj luk. ', 'Prodinstaj ga dok ne omekša.'],
   'ingredients': [
     {
       'name': 'crni luk',
@@ -303,7 +304,7 @@ void main() {
   });
 
   group('strogo čitanje recepata', () {
-    test('svaki traženi recept tačno jednom, sa porcijama i sastojcima', () {
+    test('svaki traženi recept sa porcijama, sastojcima i koracima', () {
       final r = parseSummaries(
         {
           'recipes': [summary('Sarma'), summary('pasulj prebranac')],
@@ -312,8 +313,33 @@ void main() {
       );
       expect(r.keys, {'sarma', 'pasulj prebranac'});
       expect(r['sarma']!.baseServings, 4);
-      expect(r['sarma']!.steps, isEmpty);
+      expect(r['sarma']!.steps, [
+        'Iseckaj luk.',
+        'Prodinstaj ga dok ne omekša.',
+      ]);
       expect(r['sarma']!.ingredients.single.name, 'crni luk');
+    });
+
+    test('recept mora imati bar jedan upotrebljiv korak', () {
+      for (final steps in [
+        null,
+        <String>[],
+        [' ', null],
+        'Skuvaj.',
+        [42],
+      ]) {
+        expect(
+          () => parseSummaries(
+            {
+              'recipes': [
+                {...summary('Sarma'), 'steps': steps},
+              ],
+            },
+            titles: ['Sarma'],
+          ),
+          throwsFormatException,
+        );
+      }
     });
 
     test('nedostaje, višak ili duplikat recepta', () {
@@ -398,6 +424,11 @@ void main() {
       expect(client.requests.where(isOutline).length, 1);
       final batches = client.requests.where((r) => !isOutline(r)).toList();
       expect(batches.map((r) => titlesIn(r).length), [3, 3, 1]);
+      expect(batches.first.prompt, contains('"steps"'));
+      expect(
+        draft.newRecipes.values.map((r) => r.steps),
+        everyElement(isNotEmpty),
+      );
       for (final r in client.requests) {
         expect(r.kind, TaskKind.text);
       }
@@ -419,6 +450,10 @@ void main() {
       expect(slotsIn(outlines.last).length, 2);
       expect(draft.proposals.length, 60);
       expect(draft.isComplete, isTrue);
+      expect(
+        draft.newRecipes.values.map((r) => r.steps),
+        everyElement(isNotEmpty),
+      );
       for (final r in client.requests.where((r) => !isOutline(r))) {
         expect(titlesIn(r).length, lessThanOrEqualTo(3));
       }
@@ -484,6 +519,41 @@ void main() {
       final snap = draft.snapshotFor(fourDays.slots.first)!;
       expect(snap.title, 'Pasulj');
       expect(snap.steps, ['Skuvaj.']);
+    });
+
+    test('automatski izbor ne nudi sačuvane sažetke bez koraka', () async {
+      await ai.propose(
+        weekRequest(),
+        library: [libraryRecipe('old', 'Pasulj').copyWith(steps: const [])],
+      );
+
+      expect(client.requests.first.prompt, contains('Library: []'));
+    });
+
+    test('router traži ispravku ako recept stigne bez koraka', () async {
+      var invalidBatch = true;
+      client.handler = (r) {
+        if (isOutline(r) || !invalidBatch) return goodAnswer(r);
+        invalidBatch = false;
+        return jsonEncode({
+          'recipes': [
+            for (final title in titlesIn(r)) summary(title)..remove('steps'),
+          ],
+        });
+      };
+
+      final draft = await ai.propose(weekRequest());
+
+      expect(client.requests.where((r) => !isOutline(r)), hasLength(4));
+      expect(
+        client.requests[2].prompt,
+        contains('at least one nonblank preparation step'),
+      );
+      expect(draft.isComplete, isTrue);
+      expect(
+        draft.newRecipes.values.map((r) => r.steps),
+        everyElement(isNotEmpty),
+      );
     });
 
     test('želje i zaliha idu u upit samo kad su izabrane', () async {

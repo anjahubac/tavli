@@ -127,10 +127,11 @@ void main() {
     final povrce = tester.getTopLeft(find.text('VOĆE I POVRĆE')).dy;
     final zacini = tester.getTopLeft(find.text('ZAČINI I SOSOVI')).dy;
     expect(povrce, lessThan(zacini));
-    expect(find.text('• 0,5 kg kupus'), findsOneWidget);
+    expect(find.text('kupus'), findsOneWidget);
+    expect(find.text('0,5 kg'), findsOneWidget);
     expect(find.text('Napravio: Gemini Pro'), findsOneWidget);
     expect(find.text('Priprema'), findsOneWidget);
-    expect(find.text('1.'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
     expect(find.text('Umotati.'), findsOneWidget);
   });
 
@@ -150,11 +151,38 @@ void main() {
       ],
     );
 
-    expect(find.text('Priprema'), findsOneWidget);
-    expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
-    expect(find.text('• paradajz'), findsOneWidget);
+    expect(find.text('Priprema'), findsNothing);
+    expect(find.text('Koraci pripreme nisu uneti.'), findsNothing);
+    expect(find.text('paradajz'), findsOneWidget);
     expect(find.text('Ručno unet'), findsOneWidget);
     expect(find.text('1 porcija'), findsOneWidget);
+  });
+
+  testTavli('duga jedinica se prelama pored sastojka na 320 px i 2×', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    const name = 'belo brašno';
+    const unit = 'velikih i vrhom punih šolja za čaj';
+    await pumpTavli(
+      tester,
+      size: const Size(320, 800),
+      location: '/recipes/a',
+      recipes: [
+        sampleRecipe('a', 'Hleb').copyWith(
+          ingredients: const [Ingredient(name: name, quantity: 2, unit: unit)],
+        ),
+      ],
+    );
+
+    final nameBounds = tester.getRect(find.text(name));
+    final quantityBounds = tester.getRect(find.text('2 $unit'));
+    expect(nameBounds.width, greaterThan(quantityBounds.width));
+    expect(quantityBounds.left, greaterThan(nameBounds.right));
+    expect(quantityBounds.right, lessThan(320));
+    expect(quantityBounds.height, greaterThan(nameBounds.height));
+    expect(tester.takeException(), isNull);
   });
 
   testTavli('oznake: neoznačen recept, izmena i čuvanje', (tester) async {
@@ -255,8 +283,8 @@ void main() {
       );
 
       expect(find.text('Sastojci'), findsOneWidget);
-      expect(find.text('Priprema'), findsOneWidget);
-      expect(find.text('Koraci pripreme nisu uneti.'), findsOneWidget);
+      expect(find.text('Priprema'), findsNothing);
+      expect(find.text('Koraci pripreme nisu uneti.'), findsNothing);
     });
   }
 
@@ -352,7 +380,11 @@ void main() {
     ];
 
     Future<void> openFilters(WidgetTester tester) async {
-      await tester.tap(find.byIcon(Icons.tune));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is TavliIconButton && w.semanticLabel.startsWith('Filteri'),
+        ),
+      );
       await tester.pumpAndSettle();
     }
 

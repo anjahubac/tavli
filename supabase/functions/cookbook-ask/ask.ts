@@ -22,7 +22,10 @@ export interface Hit {
 
 export type Reservation =
   | { id: string }
-  | { limit: "daily" | "minute" | "concurrent" | "global"; retryAfterSeconds: number };
+  | {
+    limit: "daily" | "minute" | "concurrent" | "global";
+    retryAfterSeconds: number;
+  };
 
 export interface AskDeps {
   reserve: (userId: string) => Promise<Reservation>;
@@ -46,11 +49,21 @@ export interface Source {
 }
 
 export type AskResult =
-  | { ok: true; status: "answered" | "unknown"; content: string; sources: Source[] }
+  | {
+    ok: true;
+    status: "answered" | "unknown";
+    content: string;
+    sources: Source[];
+  }
   | { ok: false; error: "bad_request" | "provider_error" }
   | { ok: false; error: "quota_exceeded"; retryAfterSeconds: number };
 
-const UNKNOWN: AskResult = { ok: true, status: "unknown", content: "ne znam", sources: [] };
+const UNKNOWN: AskResult = {
+  ok: true,
+  status: "unknown",
+  content: "ne znam",
+  sources: [],
+};
 
 export const SYSTEM_PROMPT =
   "Ti si asistent za kuvarske knjige jednog domaćinstva. Odgovaraj samo na osnovu " +
@@ -63,13 +76,17 @@ export const SYSTEM_PROMPT =
 function buildPrompt(question: string, hits: Hit[]): string {
   const passages = hits.map((h, i) =>
     // Granice se ne smeju pojaviti u samom tekstu knjige.
-    `<<<ODLOMAK ${i + 1}>>>\n${h.content.replaceAll("<<<", "‹‹‹").replaceAll(">>>", "›››")}\n<<<KRAJ>>>`
+    `<<<ODLOMAK ${i + 1}>>>\n${
+      h.content.replaceAll("<<<", "‹‹‹").replaceAll(">>>", "›››")
+    }\n<<<KRAJ>>>`
   );
   return `${passages.join("\n\n")}\n\nPITANJE: ${question}`;
 }
 
 const words = (s: string) =>
-  s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(Boolean);
+  s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(
+    Boolean,
+  );
 
 /** Da li odgovor doslovno prepisuje više od MAX_QUOTE_WORDS reči iz jednog odlomka. */
 function exceedsQuoteLimit(answer: string, passages: string[]): boolean {
@@ -108,15 +125,21 @@ export async function ask(
   if (question === "" || question.length > MAX_QUESTION_CHARS) {
     return { ok: false, error: "bad_request" };
   }
-  if (req.bookId !== undefined && req.bookId !== null &&
-      (typeof req.bookId !== "string" || !UUID.test(req.bookId))) {
+  if (
+    req.bookId !== undefined && req.bookId !== null &&
+    (typeof req.bookId !== "string" || !UUID.test(req.bookId))
+  ) {
     return { ok: false, error: "bad_request" };
   }
   const bookId = typeof req.bookId === "string" ? req.bookId : undefined;
 
   const reservation = await deps.reserve(userId);
   if (!("id" in reservation)) {
-    return { ok: false, error: "quota_exceeded", retryAfterSeconds: reservation.retryAfterSeconds };
+    return {
+      ok: false,
+      error: "quota_exceeded",
+      retryAfterSeconds: reservation.retryAfterSeconds,
+    };
   }
   try {
     let hits: Hit[];
@@ -139,9 +162,15 @@ export async function ask(
     const parsed = parseModel(raw);
     if (!parsed) return UNKNOWN;
     const used = [...new Set(parsed.used)];
-    if (used.length === 0 || used.some((n) => n < 1 || n > hits.length)) return UNKNOWN;
+    if (used.length === 0 || used.some((n) => n < 1 || n > hits.length)) {
+      return UNKNOWN;
+    }
     const usedHits = used.map((n) => hits[n - 1]);
-    if (exceedsQuoteLimit(parsed.answer, usedHits.map((h) => h.content))) return UNKNOWN;
+    // `used` is model-controlled. Check every passage sent in the prompt so a
+    // model cannot quote a long excerpt and cite a different hit.
+    if (exceedsQuoteLimit(parsed.answer, hits.map((h) => h.content))) {
+      return UNKNOWN;
+    }
 
     const seen = new Set<string>();
     const sources: Source[] = [];

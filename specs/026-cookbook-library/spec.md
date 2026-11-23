@@ -52,7 +52,7 @@ that UI task becomes Ready. English is used for engineering documents only.
 
 Producer specs: [015](../015-ai-server-gateway/spec.md), [018](../018-ingredient-catalog/spec.md)
 
-- **Q1** (Dev 2 with reviewer): Initial text PDF/EPUB versus scanned OCR, source rights, embeddings/quotas, retry/resume policy and provider retention must be accepted.
+- **Q1** (Dev 2 with reviewer): The team accepted text PDF/EPUB, no OCR in this slice, Gemini embeddings with a pinned 768-dimension model, shared per-user/global text quotas for each embedding batch, resumable processing, and the provider transfers recorded in the implementation plan. Source rights for uploaded books remain a separate release gate.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

@@ -120,4 +120,34 @@ void main() {
       throwsA(isA<CookbookServerError>()),
     );
   });
+
+  test(
+    'brisanje knjige može da se ponovi kad prvo brisanje storage-a padne',
+    () async {
+      var rowExists = true;
+      var objectExists = true;
+      var failFirstRemoval = true;
+      Future<void> remove() async {
+        if (failFirstRemoval) {
+          failFirstRemoval = false;
+          throw StateError('storage unavailable');
+        }
+        objectExists = false;
+      }
+
+      Future<void> delete() => deleteCookbookStorageFirst(
+        findStoragePath: () async => rowExists ? 'household/book.pdf' : null,
+        removeStorage: (_) => remove(),
+        deleteRow: () async => rowExists = false,
+      );
+
+      await expectLater(delete(), throwsStateError);
+      expect(rowExists, isTrue);
+      expect(objectExists, isTrue);
+
+      await delete();
+      expect(rowExists, isFalse);
+      expect(objectExists, isFalse);
+    },
+  );
 }

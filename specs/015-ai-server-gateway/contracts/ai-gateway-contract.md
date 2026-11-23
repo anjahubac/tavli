@@ -1,22 +1,19 @@
 # Contract: Edge Function `ai-gateway`
 
-**Status**: proposal for review (TRELLO-36, spec 015 FR-002, Q1). Nothing here
-is implemented yet. Revised 2026-11-19 after Dev 4 review: atomic quota
-reservation with minute, concurrency and shared limits; quota and platform
-`401` handling in `AIRouter`; per-model deadlines shared by gateway and client.
-Second revision: quota pauses scoped to account and request kind, shared count
-kept after account deletion, client timeout before the gateway answers, and
-how the chain reaches `openai/default`.
+**Status**: Base contract approved in [PR #47](https://github.com/anjahubac/tavli/pull/47);
+quota reservation merged in [PR #124](https://github.com/anjahubac/tavli/pull/124).
+The local implementation adds authenticated model discovery, OpenAI opt-in and
+the Flutter transport. Persistence of client-side quota pauses and release
+verification remain open.
 **Author**: Dev 2 | **Reviewer**: Dev 4 (TRELLO-36: request and error format)
 **Date**: 2026-11-17 | **Builds on**: [spike-photo-timing.md](../spike-photo-timing.md)
 (decision A), [AI response contract](../../014-ai-response-contracts/contracts/ai-response-contract.md)
 
 ## Purpose
 
-Built-in AI keys are compiled into the app today (`BuiltInKeys` from
-`--dart-define-from-file`), so anyone with the app can extract them and spend
-the shared quota or, with a paid key, the team's money. After this change the
-built-in keys exist only as Supabase Edge Function secrets. A signed-in app
+Previously distributed builds may contain compiled AI keys from
+`--dart-define-from-file`. The gateway build reads shared keys only in Supabase
+Edge Functions. A signed-in app
 sends built-in AI requests to `ai-gateway`, which checks the caller and the
 limits, makes one provider call and returns the model's text.
 
@@ -53,6 +50,8 @@ validator; the gateway does not parse recipes.
 | `recipe_refine` | text | `RecipeAI.refine` |
 | `plan_outline` | text | `MealPlanAI` outline |
 | `recipe_summaries` | text | `MealPlanAI` summaries |
+| `pantry_from_photo` | vision | `PantryAI.fromPhoto` (spec 022) |
+| `voice_draft_actions` | text | `VoiceAgent.interpret` (spec 027) |
 
 Any other value is `400 bad_request`. A new AI feature adds its task here first.
 
@@ -91,22 +90,24 @@ provider keys stay on the device and this task uses gateway credentials.
 
 ### Models
 
-The gateway has a fixed allowlist of `<provider>/<model>` ids matching
-`ChainConfig.defaults`, each with the same per-model timeout as its
-`ModelSpec.timeout` (30 s by default, 60 s for Gemini Pro; see Deadlines), plus `openai/default` once that key exists (D3). The
-gateway resolves `openai/default` to the model named in the `OPENAI_MODEL`
-secret, so the model changes without an app release. A
-provider is available only when its secret is set; otherwise its models return
-`503 model_unavailable` and the router skips them. This is how `tavli-dev` can
-run on free keys while production uses a paid key, with the same code.
+The gateway has an ordered allowlist of `<provider>/<model>` IDs for each kind.
+It preserves the existing provider order with Groq
+[`qwen/qwen3.6-27b`](https://console.groq.com/docs/model/qwen/qwen3.6-27b)
+in place of the
+[retired Maverick model](https://console.groq.com/docs/deprecations)
+in the vision chain. Attempt deadlines are 30 s by default and 60 s for
+Gemini Pro and `openai/default`. Provider credentials determine which
+entries are available in each environment.
 
 Provider base URLs live in the gateway; the request never contains a URL, a key
 or a provider endpoint (spec 015 SC-001).
 
 ## Behaviour
 
-1. `POST` only; otherwise `405`.
-2. Resolve the caller with `auth.getUser(token)`; no user → `401`.
+1. Accept `GET` and `POST`; otherwise return `405`.
+2. Resolve the caller through the Supabase Auth user endpoint with the
+   session token; no signed-in, non-anonymous user → `401`.
+   An authenticated `GET` returns the model chains below.
 3. Validate the body: known `task`, allowlisted `model`, model kind matches the
    task kind, size limits below → else `400` or `413`. No provider call.
 4. Reserve quota atomically (see Reservation) → `429 quota_exceeded` or
@@ -126,7 +127,7 @@ or a provider endpoint (spec 015 SC-001).
 | 200 | `{"content": "<model text>", "model": "<provider>/<model>"}` | — | result after 014 validation |
 | 400 | `{"error": "bad_request"}` | `BadRequestError`, next model | existing message |
 | 401 | any body (see Gateway errors in `AIRouter`) | `GatewayAuthError`: refresh session once and retry; then skip the gateway | “Sesija je istekla. Prijavi se ponovo.” (006 copy) |
-| 413 | `{"error": "too_large"}` | `BadRequestError`, stop | existing message |
+| 413 | `{"error": "too_large"}` | Gateway-specific request rejection stops this run before another attempt | existing safe bad-request message |
 | 429 | `{"error": "quota_exceeded", "limit": "daily", "kind": "vision" or "text", "retryAfterSeconds": n}` | `GatewayQuotaError`: pause the gateway for this account and kind until `n`; user keys continue | “Limit je trenutno potrošen. Pokušaj malo kasnije.” |
 | 429 | `{"error": "quota_exceeded", "limit": "minute" or "global", "retryAfterSeconds": n}` | `GatewayQuotaError`: pause the gateway for this account, both kinds, until `n`; user keys continue | same as above |
 | 429 | `{"error": "busy", "retryAfterSeconds": n}` | `GatewayQuotaError` (too many calls at once): same as `minute` | same as above |
@@ -168,32 +169,33 @@ only the gateway path throws:
   `{"error": "unauthorized"}` ([auth headers](https://supabase.com/docs/guides/functions/auth-headers)),
   so the client decides on the status alone. It refreshes the session once and
   repeats the same call; a second `401` skips the gateway for the rest of this
-  run without marking a key invalid. User keys continue. If every model fails,
-  the user sees the session message.
+  run without marking a key invalid. The one refresh/replay allowance covers
+  discovery and completion together. A changed account cancels the old run
+  instead of replaying with a different token. User keys remain eligible if
+  the original account is still active. If every model fails, the user sees
+  the session message.
 
 Existing per-model handling (`provider_rate_limited`, `model_unavailable`,
 timeouts) is unchanged.
 
 ### Model chain and `openai/default`
 
-The client slice adds `openai/default` to `ChainConfig.defaults` as the
-**last** model of both chains (vision and text, `supportsVision: true`,
-timeout 60 s). It has only a built-in (gateway) credential: the app has no
-OpenAI client and no user key field for it (D3). Putting it last keeps the
-existing rule that a user's own key goes first: for each model the router
-tries the user key before the built-in one, so a user key on an earlier model
-is always used before the paid model.
+Authenticated `GET /functions/v1/ai-gateway` returns
+`{"text": ["<provider>/<model>"], "vision": ["<provider>/<model>"]}`. Each
+array contains the ordered built-in models with configured credentials. The
+endpoint makes no provider call and consumes no AI quota. Clients can read
+the chains when starting an AI run; the server still checks each requested
+model and its credentials on POST. No provider keys or private configuration
+are returned.
 
-- **OpenAI-only deployment** (production with only `OPENAI_API_KEY`): the free
-  built-in models answer `503 model_unavailable`. That check is in step 3,
-  before the reservation, so it costs no quota and no provider call. The
-  router already remembers `ModelNotFoundError` per model and credential for
-  the rest of the app session, so only the first request after start walks
-  the chain; later requests go straight to `openai/default`.
-- **`tavli-dev` with free keys only**: `openai/default` answers `503` once and
-  is skipped; the free models work as today.
-- A newly set or removed provider secret is picked up on the next app start,
-  because availability is remembered per session.
+OpenAI is disabled by default. When `AI_OPENAI_ENABLED=1`, `OPENAI_API_KEY`
+and `OPENAI_MODEL` are all configured, `openai/default` is first in both
+built-in chains. It is reserved for gateway credentials. Try eligible user
+keys directly in the user's model order before walking the server-ordered
+shared chain. The Flutter slice handles both chains and falls back among the
+remaining eligible models. Requests for an allowlisted
+model with missing credentials return `503 model_unavailable` before quota
+reservation.
 
 ### Deadlines
 
@@ -204,8 +206,8 @@ photo) before it gives up and moves on. In the normal case the gateway
 answers first, so the router does not start a fallback while the gateway's
 attempt is still running; the client-first case is covered below. With the
 current models the longest wait is 60 + 15 = 75 s,
-under the 150 s Edge Function limit measured in the spike. Changing a model's
-timeout changes `ChainConfig` and the gateway allowlist in the same PR.
+under the 150 s Edge Function limit measured in the spike. Clients must match
+these deadlines for the gateway model IDs.
 
 If the client still times out first (a slow network or a stalled upload), it
 treats the call as `TransientError(isTimeout: true)` and moves to the next
@@ -220,10 +222,10 @@ why the per-user in-flight limit is 2 and not 1.
 
 | Limit | Value | Why |
 | --- | --- | --- |
-| Body size | ≤ 1.5 MB | client downscales photos to ≤ 383 KB JPEG (spike) |
-| Images | ≤ 1, `image/jpeg` or `image/png` data URL, vision tasks only | photo import sends one |
+| Body size | ≤ 1,500,000 bytes | client downscales photos to ≤ 383 KB JPEG (spike) |
+| Images | ≤ 1, `image/jpeg` or `image/png` data URL, vision tasks only, up to 16 MP | photo import sends one |
 | `system` + `prompt` | ≤ 40 000 characters | refine sends the whole recipe; outline sends ≤ 60 library titles |
-| Output | `max_tokens` ≤ 4096 | largest answer is 3 recipe summaries |
+| Output | Provider completion limit ≤ 4096 tokens | largest answer is 3 recipe summaries |
 | Per user per UTC day | 30 vision + 150 text provider calls | a monthly plan is about 12 text calls, ×2 with retries |
 | Per user per minute | 20 calls | stops loops and scripts |
 | Per user at once | 2 calls in flight | a plan runs its calls one after another; more means a loop or script |
@@ -287,8 +289,9 @@ print them.
 | `GEMINI_API_KEY` | Gemini models | yes (free key, testing) | optional |
 | `GROQ_API_KEY` | Groq models | if available (free) | optional |
 | `OPENROUTER_API_KEY` | OpenRouter models | if available (free) | optional |
-| `OPENAI_API_KEY` | OpenAI models (D3) | optional | yes, once bought |
-| `OPENAI_MODEL` | model behind `openai/default` (D3) | with the OpenAI key | yes |
+| `OPENAI_API_KEY` | OpenAI models (D3) | optional | optional, when enabling OpenAI |
+| `OPENAI_MODEL` | model behind `openai/default` (D3) | with the OpenAI key | with the OpenAI key |
+| `AI_OPENAI_ENABLED` | opts in to OpenAI when set to `1` | unset initially | unset initially |
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` come from the platform, as for
 `delete-account`. Rotation: replace the secret in the dashboard; no deploy or
@@ -308,12 +311,11 @@ deleted after 2 days.
 - A built-in credential no longer carries a key; the chat client sends the
   request to `ai-gateway` instead of the provider. User keys keep the direct
   path for tasks that support them. User model order, per-model cooldowns and
-  the 014 validator are unchanged. `ChainConfig.defaults` changes in one way: `openai/default` is
-  added as the last model of both default chains (vision and text).
+  the 014 validator are unchanged. The router reads the built-in model
+  order from authenticated GET and supports the advertised model IDs.
 - `GatewayQuotaError` and `GatewayAuthError` with the router handling in
   Gateway errors in `AIRouter`, the per-account, per-kind pause store, the
-  gateway deadline from Deadlines, and `openai/default` in both default
-  chains (see Model chain and `openai/default`).
+  gateway deadline from Deadlines, and support for `openai/default`.
 - Cutover (FR-104): built-in keys are removed from `BuiltInKeys`,
   `secrets.example.json` and the build; a check proves the built app contains
   no provider key.
@@ -329,10 +331,14 @@ deleted after 2 days.
    key, `401` with a platform body, refresh then success, deadline).
 5. Cutover: remove built-in keys from the app, docs and release checklist.
 
-Local limits: this machine has no Docker or Deno, so slices 2–3 need a
-teammate's local stack (`supabase test db`, `supabase functions serve`) or a CI
-job for function tests; hosted runs happen only through
+Run the fake gateway suite with `deno test supabase/functions/ai-gateway`.
+The local Supabase integration verifies real session handling and quota RPCs
+with synthetic users and fake AI. Hosted deployments use
 `deploy-supabase.yml`.
+
+The later recipe-artwork feature needs its own queue, quota and storage
+ownership agreement. This gateway accepts recipe photos as input and
+returns text.
 
 ## Decisions
 

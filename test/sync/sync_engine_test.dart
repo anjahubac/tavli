@@ -176,6 +176,161 @@ void main() {
     expect(backend.server.table('recipes'), isEmpty);
   });
 
+  group('odbijanje zbog prava', () {
+    late SyncEngine guarded;
+    late Completer<void> checkDone;
+    var checks = 0;
+
+    setUp(() {
+      checks = 0;
+      checkDone = Completer<void>();
+      guarded = SyncEngine(
+        db: db,
+        scope: scope,
+        uploader: Uploader(
+          db: db,
+          remote: backend.sync,
+          photos: backend.photos,
+          photoStore: FakePhotoStore(),
+          scope: scope,
+          refreshSession: () async => refreshOk,
+        ),
+        timer: timers.call,
+        onUnauthorized: () async => unauthorized++,
+        onForbidden: () {
+          checks++;
+          return checkDone.future;
+        },
+      );
+    });
+    tearDown(() {
+      if (!checkDone.isCompleted) checkDone.complete();
+      guarded.stop();
+    });
+
+    /// The user was removed: RLS denies writes into the old household.
+    void removeFromHousehold() {
+      backend.server.enforceMembership = true;
+      backend.server.households[scope.userId] = 'new-home';
+    }
+
+    test('odbijanje tokom provere zakazuje jednu dodatnu proveru', () async {
+      await addRecipe('a');
+      await addRecipe('b');
+      removeFromHousehold();
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 1);
+      expect(unauthorized, 0);
+
+      // A second denial while the check runs does not start another one.
+      await addRecipe('c');
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 1);
+
+      // Multiple denials in the gap before membership reconciliation starts
+      // must coalesce into one follow-up check, not disappear.
+      await addRecipe('c2');
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 1);
+
+      checkDone.complete();
+      await pumpQueue();
+      expect(checks, 2);
+      checkDone = Completer<void>();
+      await addRecipe('d');
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 3);
+    });
+
+    test(
+      'privremena, offline, 401 i druge trajne greške ne pokreću proveru',
+      () async {
+        await addRecipe('a');
+        backend.server.failures.add(const TransientSyncError('503'));
+        await guarded.push();
+        backend.server.offline = true;
+        await guarded.push();
+        backend.server.offline = false;
+        refreshOk = false;
+        backend.server.failures.addAll(const [
+          UnauthorizedSyncError(),
+          UnauthorizedSyncError(),
+        ]);
+        await guarded.push();
+        refreshOk = true;
+        await addRecipe('los');
+        backend.server.rejectIds.add('los');
+        await guarded.push();
+        await pumpQueue();
+        expect(checks, 0);
+        expect(unauthorized, 1);
+      },
+    );
+
+    test('posle stop-a se provera ne pokreće', () async {
+      await addRecipe('a');
+      removeFromHousehold();
+      await guarded.push();
+      // Sign-out lands between the denial and the scheduled check.
+      guarded.stop();
+      await pumpQueue();
+      expect(checks, 0);
+    });
+
+    test(
+      'greška u proveri ne izlazi van engine-a i ne blokira sledeću',
+      () async {
+        var failing = 0;
+        final throwing = SyncEngine(
+          db: db,
+          scope: scope,
+          uploader: Uploader(
+            db: db,
+            remote: backend.sync,
+            photos: backend.photos,
+            photoStore: FakePhotoStore(),
+            scope: scope,
+            refreshSession: () async => true,
+          ),
+          timer: timers.call,
+          onForbidden: () async {
+            failing++;
+            throw StateError('nalog');
+          },
+        );
+        addTearDown(throwing.stop);
+        await addRecipe('a');
+        removeFromHousehold();
+        await throwing.push();
+        await pumpQueue();
+        await addRecipe('b');
+        await throwing.push();
+        await pumpQueue();
+        expect(failing, 2);
+      },
+    );
+
+    test('odbijanje čeka završetak tekuće provere članstva', () async {
+      await addRecipe('a');
+      removeFromHousehold();
+      final push = guarded.push();
+      final finish = Completer<void>();
+      final check = guarded.reconcileMembership(() => finish.future);
+      await push;
+      await pumpQueue();
+      expect(checks, 0);
+
+      finish.complete();
+      await check;
+      await pumpQueue();
+      expect(checks, 1);
+    });
+  });
+
   group('preuzimanje', () {
     late SyncEngine full;
     late List<SyncPhase?> phases;

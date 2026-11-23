@@ -18,21 +18,25 @@
 - Source book and page are kept on every chunk.
 - SQL is additive with RLS, explicit grants and a local two-account pgTAP test. UI copy in Serbian Latin.
 
-## My calls on open question Q1 (spec 026 Q1; recorded here, to be confirmed by the team)
+## Decisions on open question Q1 (spec 026; approved by Dev 3 on 2026-11-22)
 
 | Point | Call |
 | --- | --- |
 | Formats | Text PDF and EPUB. Scanned books and OCR are out of this slice. |
 | Limits | 15 MB per file, 500 pages, 20 books per household. |
-| Embeddings | Gemini embeddings called from the Edge Function with a server secret; 768 dimensions; model from `EMBEDDING_MODEL`. |
+| Embeddings | Gemini embeddings called from the Edge Function with a server secret; 768 dimensions; one pinned model from `EMBEDDING_MODEL`, stored per book; a model change clears and re-embeds its chunks. |
 | Quoting | An answer quotes at most 25 words per source and always names book and page. |
 | Retry | Processing resumes from `cookbooks.next_page`; chunk inserts are idempotent on `(cookbook_id, page, chunk_index)`. |
 | Deletion | Deleting a book removes its chunks (cascade) and its stored file. |
-| Provider retention | Unreviewed. Only the text of the book pages reaches the embedding provider; this is the open point for the team. |
+| Provider retention | Approved: book text may go to Gemini for embedding. Questions and retrieved passages may go to the configured text gateway chain (Gemini, Groq, OpenRouter and OpenAI), under each provider's retention terms. |
+| Server-side book list and deletion | Approved exception to the local cache/outbox convention: books and files are uploaded once and live on the server; the app reads and deletes them online. Delete storage first so a failure leaves the database path available for retry. |
+| Model routing | `AIRouter` is client-side Dart and cannot run in an Edge Function. The server gateway chain is the equivalent for answer generation; embeddings stay on one pinned Gemini model because vectors from different models cannot be mixed. |
 
 ## Review Focus
 
 - A question with no relevant passage: answer `unknown`, no invented source.
+- A change to `EMBEDDING_MODEL` removes stale vectors and marks the book for re-embedding on its next processing request.
+- Every document embedding batch reserves the shared server-side text quota before the provider call.
 - A book that contains instructions aimed at the model ("ignore previous rules"): treated as data, never changes the answer format or leaks other households' data.
 - A scanned PDF (no text layer): fails with `no_text` instead of an empty ready book.
 - Two uploads of the same file, or a retried processing run: no duplicate chunks.

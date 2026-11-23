@@ -5,7 +5,10 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-import { createEmbedder } from "../cookbook-process/embed.ts";
+import {
+  createEmbedder,
+  DEFAULT_EMBEDDING_MODEL,
+} from "../cookbook-process/embed.ts";
 import { ask, type AskDeps, type Hit } from "./ask.ts";
 import { createGenerator } from "./generate.ts";
 
@@ -22,11 +25,19 @@ const intEnv = (name: string, fallback: number) => {
   return Number.isInteger(v) && v > 0 ? v : fallback;
 };
 
-const admin = createClient(env("SUPABASE_URL")!, env("SUPABASE_SERVICE_ROLE_KEY")!, {
-  auth: { persistSession: false, autoRefreshToken: false },
+const admin = createClient(
+  env("SUPABASE_URL")!,
+  env("SUPABASE_SERVICE_ROLE_KEY")!,
+  {
+    auth: { persistSession: false, autoRefreshToken: false },
+  },
+);
+const embeddingModel = env("EMBEDDING_MODEL") || DEFAULT_EMBEDDING_MODEL;
+const embed = createEmbedder({
+  apiKey: env("GEMINI_API_KEY") ?? "",
+  model: embeddingModel,
 });
-const embed = createEmbedder({ apiKey: env("GEMINI_API_KEY") ?? "", model: env("EMBEDDING_MODEL") || undefined });
-const generate = createGenerator({ apiKey: env("GEMINI_API_KEY") ?? "", model: env("ASK_MODEL") || undefined });
+const generate = createGenerator({ env });
 
 const deps: AskDeps = {
   reserve: async (userId) => {
@@ -39,10 +50,17 @@ const deps: AskDeps = {
       p_global_limit: intEnv("AI_GLOBAL_DAILY_LIMIT", 2000),
     });
     if (error) throw error;
-    const r = data as { id?: string; limit?: "daily" | "minute" | "concurrent" | "global"; retry_after_seconds?: number };
+    const r = data as {
+      id?: string;
+      limit?: "daily" | "minute" | "concurrent" | "global";
+      retry_after_seconds?: number;
+    };
     if (typeof r?.id === "string") return { id: r.id };
     if (r?.limit) {
-      return { limit: r.limit, retryAfterSeconds: Math.max(0, Math.ceil(r.retry_after_seconds ?? 60)) };
+      return {
+        limit: r.limit,
+        retryAfterSeconds: Math.max(0, Math.ceil(r.retry_after_seconds ?? 60)),
+      };
     }
     throw new Error("ai_reserve: unexpected result");
   },
@@ -56,11 +74,17 @@ const deps: AskDeps = {
       p_user_id: userId,
       p_embedding: `[${embedding.join(",")}]`,
       p_limit: limit,
+      p_embedding_model: embeddingModel,
       p_book_id: bookId ?? null,
     });
     if (error) throw error;
     return ((data ?? []) as {
-      chunk_id: string; cookbook_id: string; title: string; page: number; content: string; score: number;
+      chunk_id: string;
+      cookbook_id: string;
+      title: string;
+      page: number;
+      content: string;
+      score: number;
     }[]).map((r): Hit => ({
       chunkId: r.chunk_id,
       cookbookId: r.cookbook_id,
@@ -76,7 +100,10 @@ const deps: AskDeps = {
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const token = (req.headers.get("Authorization") ?? "").replace(
+    /^Bearer\s+/i,
+    "",
+  ).trim();
   if (!token) return json(401, { error: "unauthorized" });
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   if (userError || !userData?.user) return json(401, { error: "unauthorized" });
@@ -89,9 +116,18 @@ Deno.serve(async (req: Request) => {
   }
   try {
     const r = await ask(deps, userData.user.id, body);
-    if (r.ok) return json(200, { status: r.status, content: r.content, sources: r.sources });
+    if (r.ok) {
+      return json(200, {
+        status: r.status,
+        content: r.content,
+        sources: r.sources,
+      });
+    }
     if (r.error === "quota_exceeded") {
-      return json(429, { error: "quota_exceeded", retryAfterSeconds: r.retryAfterSeconds });
+      return json(429, {
+        error: "quota_exceeded",
+        retryAfterSeconds: r.retryAfterSeconds,
+      });
     }
     return json(r.error === "bad_request" ? 400 : 502, { error: r.error });
   } catch {

@@ -26,7 +26,7 @@ from the card text is out of scope for this slice.
 | `snackNotLight` | a snack has weight `medium` or `hearty` |
 | `snackCooked` | a snack has dish kind `cooked` or `soup` |
 | `secondHearty` | a day has two `hearty` meals; the one that is not lunch breaks it |
-| `repeated` | the same recipe appears twice within 3 consecutive days; the later slot breaks it |
+| `repeated` | the same recipe appears twice within 3 consecutive days, or within 7 days for a household favorite (TRELLO-44, `favorites` argument); the later slot breaks it |
 
 The same recipe means the same library id, or the same `draftRecipeKey` for
 a new dish. An unknown label (`null`) never breaks a rule.

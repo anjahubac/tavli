@@ -6,15 +6,24 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-import { createEmbedder } from "./embed.ts";
-import { ExtractError, extractEpubPages, extractPdfPages } from "./extract.ts";
+import {
+  createEmbedder,
+  DEFAULT_EMBEDDING_MODEL,
+  EmbedQuotaError,
+} from "./embed.ts";
+import { extractEpubPages, ExtractError, extractPdfPages } from "./extract.ts";
 import {
   type Book,
   type ChunkRow,
-  type ProcessDeps,
   processBook,
+  type ProcessDeps,
 } from "./process.ts";
-import { LimitReachedError, registerBook, type RegisterDeps } from "./register.ts";
+import {
+  DuplicateBookError,
+  LimitReachedError,
+  registerBook,
+  type RegisterDeps,
+} from "./register.ts";
 
 const BUCKET = "cookbooks";
 
@@ -31,9 +40,39 @@ const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
 
+const embeddingModel = Deno.env.get("EMBEDDING_MODEL") ||
+  DEFAULT_EMBEDDING_MODEL;
 const embedder = createEmbedder({
   apiKey: Deno.env.get("GEMINI_API_KEY") ?? "",
-  model: Deno.env.get("EMBEDDING_MODEL") || undefined,
+  model: embeddingModel,
+  reserveBatch: async (userId) => {
+    if (!userId) throw new Error("embedding reservation requires a user");
+    const { data, error } = await admin.rpc("ai_reserve", {
+      p_user_id: userId,
+      p_kind: "text",
+      p_daily_limit: Number(Deno.env.get("AI_DAILY_TEXT_LIMIT")) || 150,
+      p_minute_limit: Number(Deno.env.get("AI_PER_MINUTE_LIMIT")) || 20,
+      p_concurrent_limit: Number(Deno.env.get("AI_CONCURRENT_LIMIT")) || 2,
+      p_global_limit: Number(Deno.env.get("AI_GLOBAL_DAILY_LIMIT")) || 2000,
+    });
+    if (error) throw new Error("embedding quota reservation failed");
+    const reservation = data as {
+      id?: string;
+      retry_after_seconds?: number;
+      limit?: string;
+    };
+    if (typeof reservation?.id === "string") {
+      return async () => {
+        await admin.rpc("ai_release", { p_id: reservation.id });
+      };
+    }
+    if (reservation?.limit) {
+      throw new EmbedQuotaError(
+        Math.max(0, Math.ceil(reservation.retry_after_seconds ?? 60)),
+      );
+    }
+    throw new Error("embedding quota reservation failed");
+  },
 });
 
 type Row = {
@@ -45,6 +84,7 @@ type Row = {
   next_page: number;
   pages: number | null;
   error_code: string | null;
+  embedding_model: string;
 };
 
 const toBook = (r: Row): Book => ({
@@ -52,6 +92,7 @@ const toBook = (r: Row): Book => ({
   householdId: r.household_id,
   storagePath: r.storage_path,
   filename: r.filename,
+  embeddingModel: r.embedding_model,
   status: r.status,
   nextPage: r.next_page,
   pages: r.pages,
@@ -80,6 +121,15 @@ const registerDeps: RegisterDeps = {
     if (error) throw error;
     return (data ?? []).some((o) => o.name === name);
   },
+  readObject: async (path) => {
+    const { data, error } = await admin.storage.from(BUCKET).download(path);
+    if (error || !data) throw error ?? new Error("download failed");
+    return new Uint8Array(await data.arrayBuffer());
+  },
+  deleteObject: async (path) => {
+    const { error } = await admin.storage.from(BUCKET).remove([path]);
+    if (error) throw error;
+  },
   countBooks: async (householdId) => {
     const { count, error } = await admin
       .from("cookbooks")
@@ -98,6 +148,17 @@ const registerDeps: RegisterDeps = {
     if (error) throw error;
     return data ? { id: data.id, status: data.status } : null;
   },
+  findByHash: async (householdId, hash) => {
+    const { data, error } = await admin
+      .from("cookbooks")
+      .select("id")
+      .eq("household_id", householdId)
+      .eq("content_sha256", hash)
+      .limit(1);
+    if (error) throw error;
+    return (data?.length ?? 0) > 0;
+  },
+  embeddingModel,
   createBook: async (b) => {
     const { data, error } = await admin
       .from("cookbooks")
@@ -106,6 +167,8 @@ const registerDeps: RegisterDeps = {
         title: b.title,
         filename: b.filename as string,
         storage_path: b.path,
+        content_sha256: b.contentSha256,
+        embedding_model: b.embeddingModel,
         created_by: b.userId,
       })
       .select("id,status")
@@ -114,10 +177,13 @@ const registerDeps: RegisterDeps = {
     if (error?.code === "23514" && error.message.includes("cookbook_limit")) {
       throw new LimitReachedError();
     }
-    // 23505: dva istovremena zahteva za istu putanju; važi onaj koji je prvi upisan.
+    // 23505: druga registracija iste putanje ili sadržaja.
     if (error?.code === "23505") {
       const existing = await registerDeps.findByPath(b.householdId, b.path);
       if (existing) return existing;
+      if (await registerDeps.findByHash(b.householdId, b.contentSha256)) {
+        throw new DuplicateBookError();
+      }
     }
     if (error) throw error;
     return { id: data.id, status: data.status };
@@ -125,8 +191,11 @@ const registerDeps: RegisterDeps = {
 };
 
 const processDeps: ProcessDeps = {
-  claim: async (id) => {
-    const { data, error } = await admin.rpc("claim_cookbook", { p_id: id });
+  claim: async (id, model) => {
+    const { data, error } = await admin.rpc("claim_cookbook", {
+      p_id: id,
+      p_embedding_model: model,
+    });
     if (error) throw error;
     return data === true;
   },
@@ -135,7 +204,10 @@ const processDeps: ProcessDeps = {
     if (error) throw error;
   },
   getBook: async (id) => {
-    const { data, error } = await admin.from("cookbooks").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await admin.from("cookbooks").select("*").eq(
+      "id",
+      id,
+    ).maybeSingle();
     if (error) throw error;
     return data ? toBook(data as Row) : null;
   },
@@ -149,7 +221,8 @@ const processDeps: ProcessDeps = {
     if (/\.epub$/i.test(filename)) return extractEpubPages(bytes);
     return Promise.reject(new ExtractError("corrupt"));
   },
-  embed: (texts) => embedder(texts, "document"),
+  embed: (texts, userId) => embedder(texts, "document", userId),
+  embeddingModel,
   insertChunks: async (rows: ChunkRow[]) => {
     const { error } = await admin.from("cookbook_chunks").upsert(
       rows.map((r) => ({
@@ -165,7 +238,9 @@ const processDeps: ProcessDeps = {
     if (error) throw error;
   },
   updateBook: async (id, patch) => {
-    const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const row: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
     if (patch.status !== undefined) row.status = patch.status;
     if (patch.nextPage !== undefined) row.next_page = patch.nextPage;
     if (patch.pages !== undefined) row.pages = patch.pages;
@@ -178,7 +253,10 @@ const processDeps: ProcessDeps = {
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
-  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const token = (req.headers.get("Authorization") ?? "").replace(
+    /^Bearer\s+/i,
+    "",
+  ).trim();
   if (!token) return json(401, { error: "unauthorized" });
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   if (userError || !userData?.user) return json(401, { error: "unauthorized" });
@@ -203,15 +281,22 @@ Deno.serve(async (req: Request) => {
     } else {
       const r = await registerBook(registerDeps, userId, {
         storagePath: body.storagePath,
+        filename: body.filename,
         title: body.title,
       });
       if (!r.ok) {
-        const status = { bad_request: 400, forbidden: 403, not_found: 404, limit_reached: 409 }[r.error];
+        const status = {
+          bad_request: 400,
+          forbidden: 403,
+          not_found: 404,
+          limit_reached: 409,
+          duplicate: 409,
+        }[r.error];
         return json(status, { error: r.error });
       }
       bookId = r.id;
     }
-    const result = await processBook(processDeps, bookId);
+    const result = await processBook(processDeps, bookId, { userId });
     const book = await processDeps.getBook(bookId);
     return json(200, {
       id: bookId,
@@ -220,7 +305,16 @@ Deno.serve(async (req: Request) => {
       pages: book?.pages ?? null,
       errorCode: book?.errorCode ?? null,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof DuplicateBookError) {
+      return json(409, { error: "duplicate" });
+    }
+    if (error instanceof EmbedQuotaError) {
+      return json(429, {
+        error: "quota_exceeded",
+        retryAfterSeconds: error.retryAfterSeconds,
+      });
+    }
     return json(500, { error: "internal" });
   }
 });

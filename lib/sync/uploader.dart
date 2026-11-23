@@ -9,10 +9,18 @@ import 'synced_writer.dart';
 
 /// Ishod jednog slanja.
 class UploadResult {
-  const UploadResult({this.sent = 0, this.rejected = 0, this.stoppedBy});
+  const UploadResult({
+    this.sent = 0,
+    this.rejected = 0,
+    this.forbidden = false,
+    this.stoppedBy,
+  });
 
   final int sent;
   final int rejected;
+
+  /// At least one rejection was an access denial ([PermanentSyncError.forbidden]).
+  final bool forbidden;
 
   /// Privremena greška (nema mreže) ili odbijena sesija; null = sve poslato.
   final SyncError? stoppedBy;
@@ -34,6 +42,7 @@ class Uploader {
     required this._photoStore,
     required this._scope,
     required this._refreshSession,
+    this._beforeFavoriteUpload,
     DateTime Function()? clock,
     this.batchSize = 100,
   }) : _clock = clock ?? DateTime.now;
@@ -46,6 +55,7 @@ class Uploader {
 
   /// Obnavlja sesiju posle 401; false kad je obnova odbijena.
   final Future<bool> Function() _refreshSession;
+  final Future<void> Function()? _beforeFavoriteUpload;
   final DateTime Function() _clock;
   final int batchSize;
 
@@ -58,6 +68,7 @@ class Uploader {
 
   Future<UploadResult> run() async {
     var sent = 0, rejected = 0;
+    var forbidden = false;
     var refreshed = false;
 
     Future<SyncError?> attempt(List<OutboxRow> batch) async {
@@ -84,7 +95,12 @@ class Uploader {
       final error = await attempt(batch);
       if (error == null) continue;
       if (error is! PermanentSyncError) {
-        return UploadResult(sent: sent, rejected: rejected, stoppedBy: error);
+        return UploadResult(
+          sent: sent,
+          rejected: rejected,
+          forbidden: forbidden,
+          stoppedBy: error,
+        );
       }
       // Jedan loš red ne sme da obori ostale iz grupe: šalju se pojedinačno.
       for (final entry in batch) {
@@ -94,8 +110,14 @@ class Uploader {
         if (e is PermanentSyncError) {
           await _reject(single, e);
           rejected++;
+          forbidden |= e.forbidden;
         } else if (e != null) {
-          return UploadResult(sent: sent, rejected: rejected, stoppedBy: e);
+          return UploadResult(
+            sent: sent,
+            rejected: rejected,
+            forbidden: forbidden,
+            stoppedBy: e,
+          );
         }
       }
     }
@@ -108,12 +130,13 @@ class Uploader {
       } on PermanentSyncError catch (e) {
         await _reject(entry, e);
         rejected++;
+        forbidden |= e.forbidden;
       } on SyncError catch (e) {
         await _postpone(entry, e);
         if (e is TransientSyncError) break;
       }
     }
-    return UploadResult(sent: sent, rejected: rejected);
+    return UploadResult(sent: sent, rejected: rejected, forbidden: forbidden);
   }
 
   SimpleSelectStatement<$SyncOutboxTable, OutboxRow> _pending(
@@ -226,6 +249,7 @@ class Uploader {
       ); // nepoznat entitet (stariji build): nema šta da se pošalje
       return 0;
     }
+    if (entity is FavoriteEntity) await _beforeFavoriteUpload?.call();
     if (first.op == OutboxOp.delete) {
       await _remote.delete(entity.remoteTable, [
         for (final e in batch) e.recordId,

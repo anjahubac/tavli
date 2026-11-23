@@ -12,25 +12,38 @@ export class EmbedError extends Error {
   }
 }
 
+export class EmbedQuotaError extends Error {
+  constructor(public retryAfterSeconds: number) {
+    super("embedding quota exhausted");
+    this.name = "EmbedQuotaError";
+  }
+}
+
 export type EmbedKind = "document" | "query";
 
 export interface EmbedderOptions {
   apiKey: string;
   model?: string;
   fetch?: typeof fetch;
+  reserveBatch?: (userId?: string) => Promise<() => Promise<void>>;
 }
 
-const DEFAULT_MODEL = "gemini-embedding-001";
+export const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 const BATCH = 100;
 
 export function createEmbedder(options: EmbedderOptions) {
-  const model = options.model || DEFAULT_MODEL;
+  const model = options.model || DEFAULT_EMBEDDING_MODEL;
   const doFetch = options.fetch ?? fetch;
-  return async (texts: string[], kind: EmbedKind): Promise<number[][]> => {
+  return async (
+    texts: string[],
+    kind: EmbedKind,
+    userId?: string,
+  ): Promise<number[][]> => {
     if (!options.apiKey) throw new EmbedError(null, "embedding key missing");
     const out: number[][] = [];
     for (let i = 0; i < texts.length; i += BATCH) {
       const slice = texts.slice(i, i + BATCH);
+      const release = await options.reserveBatch?.(userId);
       let res: Response;
       try {
         res = await doFetch(
@@ -45,7 +58,9 @@ export function createEmbedder(options: EmbedderOptions) {
               requests: slice.map((text) => ({
                 model: `models/${model}`,
                 content: { parts: [{ text }] },
-                taskType: kind === "query" ? "RETRIEVAL_QUERY" : "RETRIEVAL_DOCUMENT",
+                taskType: kind === "query"
+                  ? "RETRIEVAL_QUERY"
+                  : "RETRIEVAL_DOCUMENT",
                 outputDimensionality: EMBEDDING_DIMENSIONS,
               })),
             }),
@@ -54,8 +69,12 @@ export function createEmbedder(options: EmbedderOptions) {
         );
       } catch {
         throw new EmbedError(null, "embedding request failed");
+      } finally {
+        if (release) await release().catch(() => {});
       }
-      if (!res.ok) throw new EmbedError(res.status, `embedding status ${res.status}`);
+      if (!res.ok) {
+        throw new EmbedError(res.status, `embedding status ${res.status}`);
+      }
       let data: { embeddings?: { values?: number[] }[] };
       try {
         data = await res.json();
@@ -63,7 +82,9 @@ export function createEmbedder(options: EmbedderOptions) {
         throw new EmbedError(res.status, "embedding response invalid");
       }
       const got = data.embeddings ?? [];
-      if (got.length !== slice.length || got.some((e) => !Array.isArray(e.values))) {
+      if (
+        got.length !== slice.length || got.some((e) => !Array.isArray(e.values))
+      ) {
         throw new EmbedError(res.status, "embedding response shape");
       }
       for (const e of got) out.push(e.values as number[]);

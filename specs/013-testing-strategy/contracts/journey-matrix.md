@@ -21,7 +21,7 @@ M=manual UX/native. A small D journey complements detailed U/R/W fixtures.
 | J13 | Photo/key/session/wake-lock/plugin lifecycle works; denied permission returns actionable UI | D/M: existing fake tests are only lower-tier evidence | Dev 4 / Dev 3 | Android/iOS/macOS; Windows after 028 |
 | J14 | Catalog/units mapping preserves original text; unknown values stay unknown; nutrition uses sources/coverage | U/R/W additions | Dev 1 / Dev 2+3 | Specs 017/018/020/023 |
 | J15 | Invite/remove/transfer reconnect, private diary/favorites boundaries, realtime resubscription | U/R/W/L additions | Dev 3 / Dev 1 | Specs 008/009/023 |
-| J16 | Gateway limits/auth; RAG isolation/deletion; voice only drafts; import exact grams/locked meals; cycle stays local | 012 matrix + feature-specific tests | Dev 2/3/4 / consumer | Specs 015/026/027/029/030 |
+| J16 | Gateway limits/auth; a key-free dev build routes recipe name, photo intake and plan through the gateway; RAG isolation/deletion; voice only drafts; import exact grams/locked meals; cycle stays local | 012 matrix + [015 unit/local/device evidence](../../015-ai-server-gateway/plan.md#verification-rollout-and-risks) + feature-specific tests | Dev 2/3/4 / consumer | Specs 015/026/027/029/030 |
 
 For J07 example: demand 300 g, stock 100 g, buy 200 g, transfer: coverage remains
 300 g; increasing demand to 400 g creates only 100 g new need. Test duplicate

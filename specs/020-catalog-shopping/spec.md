@@ -45,6 +45,21 @@ remain planned.
 - **US3 / SC-003**: Switching recipe/plan mode twice preserves selection and displays the correct list after navigation/restart.
 - **US4 / SC-004**: Starting with a standalone recipe and no plan, add missing ingredients and open the resulting recipe list. Switch modes and return without losing that list. In either mode, where source details are available, open them by keyboard without marking the item bought. With a saved plan, reach weekly shopping in at most two actions.
 
+For [Trello #26](https://trello.com/c/Cs2TrwS4), the
+[manual-item fixture](fixtures/manual_catalog_shopping_test.dart.txt) supplies
+three shopping rows. The 200 g recipe row and 100 g manual catalog selection
+share a food ID and yield one 300 g total. The 50 g manual entry with the same
+display name and no food ID stays separate. The fixture exercises totals after
+item entry. The eventual input flow must also save explicit free text without
+assigning a food ID, even when the text matches a catalog name.
+
+The fixture passed on prototype `f74d08e` with 41 existing repository tests.
+To rerun it there, copy it to `test/data/manual_catalog_shopping_fixture_test.dart`
+and run `flutter test test/data/manual_catalog_shopping_fixture_test.dart`.
+Team `dev` currently groups these rows by text and has no shopping-row
+`foodId` field. The prototype's manual write also resolves matching names
+automatically, so this run verifies aggregation from stored rows only.
+
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
 security denials require allowed-case controls as well. Acceptance is unverified
@@ -53,6 +68,23 @@ until execution evidence is linked.
 ## Data and privacy
 
 Preserve existing shopping sources/contributions/allocations, integer micros and receipt provenance. Catalog migration is additive with legacy unmapped fallback; refactor by responsibility without changing semantics.
+
+## Catalog aggregation acceptance
+
+For [Trello #25](https://trello.com/c/jnyaK6JC), the
+[shopping screen fixture](fixtures/shopping_ingredient_aggregation_test.dart.txt)
+uses three recipes with a shared onion food ID and mixed names and units.
+Both “Po planu” and “Po receptu” show one 500 g row
+(`200 g + 100 g + 0.2 kg`) and a separate 75 g row with the same name
+and no food ID.
+
+The fixture and 53 existing shopping tests passed on prototype `f74d08e`.
+To rerun there, copy the fixture to
+`test/features/shopping/shopping_ingredient_aggregation_fixture_test.dart`
+and run
+`flutter test test/features/shopping/shopping_ingredient_aggregation_fixture_test.dart`.
+Team `dev` still groups by text. The fixture uses synthetic links and can
+become a regular regression test when catalog-based grouping lands there.
 
 ## Exact UI copy carried forward
 

@@ -156,9 +156,31 @@ class KeepScreenOnButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final on = ref.watch(keepScreenOnProvider).value ?? false;
+    return KeepScreenOnToggle(
+      on: on,
+      onPressed: () async {
+        await ref.read(keepScreenOnProvider.notifier).set(!on);
+      },
+    );
+  }
+}
+
+/// Izgled i animacija dugmeta „Ne gasi ekran“ (i u galeriji animacija).
+class KeepScreenOnToggle extends StatelessWidget {
+  const KeepScreenOnToggle({
+    super.key,
+    required this.on,
+    required this.onPressed,
+  });
+
+  final bool on;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return IconButton(
-      tooltip: tooltipFor(on: on),
+      tooltip: KeepScreenOnButton.tooltipFor(on: on),
       isSelected: on,
       style: IconButton.styleFrom(
         backgroundColor: on ? scheme.primaryContainer : Colors.transparent,
@@ -178,11 +200,12 @@ class KeepScreenOnButton extends ConsumerWidget {
           turns: Tween<double>(begin: -0.25, end: 0).animate(animation),
           child: ScaleTransition(scale: animation, child: child),
         ),
-        child: Icon(on ? onIcon : offIcon, key: ValueKey(on)),
+        child: Icon(
+          on ? KeepScreenOnButton.onIcon : KeepScreenOnButton.offIcon,
+          key: ValueKey(on),
+        ),
       ),
-      onPressed: () async {
-        await ref.read(keepScreenOnProvider.notifier).set(!on);
-      },
+      onPressed: onPressed,
     );
   }
 }

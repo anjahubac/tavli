@@ -27,7 +27,8 @@ void main() {
     expect(prompt, contains('Servings: 3'));
     expect(prompt, contains('bez luka'));
     expect(find.text('Sarma'), findsOneWidget);
-    expect(find.text('• 0,5 kg crni luk'), findsOneWidget);
+    expect(find.text('crni luk'), findsOneWidget);
+    expect(find.text('0,5 kg'), findsOneWidget);
     expect(find.text('Napravio: Gemini Pro'), findsOneWidget);
     expect(await app.titles(), isEmpty);
 

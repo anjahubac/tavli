@@ -1,0 +1,79 @@
+import { gateway } from "./gateway.ts";
+import { record } from "./input.ts";
+
+const env = (name: string) => Deno.env.get(name);
+const url = env("SUPABASE_URL");
+const roleKey = env("SUPABASE_SERVICE_ROLE_KEY");
+if (!url || !roleKey) throw new Error("missing_supabase_configuration");
+
+const send: typeof fetch = (...args) => fetch(...args);
+
+function platform(path: string, token: string, args?: Record<string, unknown>) {
+  return send(url + path, {
+    method: args ? "POST" : "GET",
+    headers: {
+      apikey: roleKey!,
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
+    },
+    body: args ? JSON.stringify(args) : undefined,
+    redirect: "error",
+    signal: AbortSignal.timeout(5000),
+  });
+}
+
+async function rpc(name: string, args: Record<string, unknown>) {
+  const result = await platform("/rest/v1/rpc/" + name, roleKey!, args);
+  if (!result.ok) {
+    await result.body?.cancel().catch(() => {});
+    throw new Error("ai_quota_rpc_failed");
+  }
+  return result;
+}
+
+Deno.serve(gateway({
+  env,
+  send,
+  async authenticate(token) {
+    const result = await platform("/auth/v1/user", token);
+    if (result.status === 401 || result.status === 403) {
+      await result.body?.cancel().catch(() => {});
+      return null;
+    }
+    if (!result.ok) {
+      await result.body?.cancel().catch(() => {});
+      throw new Error("ai_auth_lookup_failed");
+    }
+    const user = record(await result.json());
+    return typeof user?.id === "string" && user.is_anonymous !== true
+      ? user.id
+      : null;
+  },
+  async reserve(uid, kind, limits) {
+    const result = await rpc("ai_reserve", {
+      p_user_id: uid,
+      p_kind: kind,
+      p_daily_limit: limits.daily,
+      p_minute_limit: limits.minute,
+      p_concurrent_limit: limits.concurrent,
+      p_global_limit: limits.global,
+    });
+    const value = record(await result.json());
+    if (typeof value?.id === "string") return { id: value.id };
+    const limit = value?.limit;
+    const seconds = value?.retry_after_seconds;
+    if (
+      (limit === "daily" || limit === "global" || limit === "minute" ||
+        limit === "concurrent") &&
+      typeof seconds === "number" && Number.isSafeInteger(seconds) &&
+      seconds >= 0
+    ) {
+      return { limit, retryAfterSeconds: seconds };
+    }
+    throw new Error("invalid_ai_quota_response");
+  },
+  async release(id) {
+    const result = await rpc("ai_release", { p_id: id });
+    await result.body?.cancel();
+  },
+}));

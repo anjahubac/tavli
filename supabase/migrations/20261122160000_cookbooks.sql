@@ -9,8 +9,11 @@ create table public.cookbooks (
   household_id uuid not null references public.households (id) on delete cascade,
   title text not null check (char_length(title) between 1 and 200),
   filename text not null check (char_length(filename) between 1 and 255),
-  -- Putanja u bucketu cookbooks: {household_id}/{ime}; prvi deo čuva RLS skladišta.
+  -- Putanja u bucketu cookbooks: {household_id}/{uuid}.pdf|epub.
   storage_path text not null check (char_length(storage_path) between 1 and 400),
+  content_sha256 text not null check (content_sha256 ~ '^[0-9a-f]{64}$'),
+  embedding_model text not null default 'gemini-embedding-001'
+    check (char_length(embedding_model) between 1 and 128),
   status text not null default 'uploaded'
     check (status in ('uploaded', 'processing', 'ready', 'failed')),
   pages int check (pages is null or pages >= 1),
@@ -23,6 +26,7 @@ create table public.cookbooks (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (household_id, storage_path),
+  unique (household_id, content_sha256),
   -- Cilj složenog stranog ključa chunkova: chunk mora u domaćinstvo svoje knjige.
   unique (id, household_id)
 );
@@ -86,20 +90,47 @@ create trigger limit_cookbooks before insert on public.cookbooks
 -- bi dvaput platila embedding. Preuzimanje starije od p_stale_seconds (srušen
 -- poziv) se može preuzeti ponovo; 300 s je iznad budžeta poziva (100 s) i
 -- najduže stranice posle njega. Gotova i neuspela knjiga se ne preuzima.
-create or replace function public.claim_cookbook(p_id uuid, p_stale_seconds int default 300)
+create or replace function public.claim_cookbook(
+  p_id uuid,
+  p_embedding_model text,
+  p_stale_seconds int default 300
+)
 returns boolean
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_model text;
+  v_status text;
+  v_claimed_at timestamptz;
 begin
+  if p_embedding_model is null or char_length(p_embedding_model) not between 1 and 128 then
+    raise exception 'claim_cookbook: invalid embedding model' using errcode = '22023';
+  end if;
+  select embedding_model, status, claimed_at
+    into v_model, v_status, v_claimed_at
+    from public.cookbooks where id = p_id for update;
+  if not found or (v_claimed_at is not null
+       and v_claimed_at >= clock_timestamp() - make_interval(secs => p_stale_seconds)) then
+    return false;
+  end if;
+  if v_status not in ('uploaded', 'processing') and v_model = p_embedding_model then
+    return false;
+  end if;
+  if v_model is distinct from p_embedding_model then
+    delete from public.cookbook_chunks where cookbook_id = p_id;
+  end if;
   update public.cookbooks
-  set claimed_at = clock_timestamp(), status = 'processing', updated_at = now()
-  where id = p_id
-    and status in ('uploaded', 'processing')
-    and (claimed_at is null
-         or claimed_at < clock_timestamp() - make_interval(secs => p_stale_seconds));
-  return found;
+  set claimed_at = clock_timestamp(),
+      status = 'processing',
+      embedding_model = p_embedding_model,
+      next_page = case when v_model is distinct from p_embedding_model then 1 else next_page end,
+      pages = case when v_model is distinct from p_embedding_model then null else pages end,
+      error_code = case when v_model is distinct from p_embedding_model then null else error_code end,
+      updated_at = now()
+  where id = p_id;
+  return true;
 end;
 $$;
 
@@ -112,9 +143,9 @@ as $$
   update public.cookbooks set claimed_at = null where id = p_id;
 $$;
 
-revoke execute on function public.claim_cookbook(uuid, int) from public, anon, authenticated;
+revoke execute on function public.claim_cookbook(uuid, text, int) from public, anon, authenticated;
 revoke execute on function public.release_cookbook(uuid) from public, anon, authenticated;
-grant execute on function public.claim_cookbook(uuid, int) to service_role;
+grant execute on function public.claim_cookbook(uuid, text, int) to service_role;
 grant execute on function public.release_cookbook(uuid) to service_role;
 
 -- Najbliži chunkovi iz knjiga domaćinstava u kojima je korisnik član. Poziva ga
@@ -123,6 +154,7 @@ create or replace function public.cookbook_search(
   p_user_id uuid,
   p_embedding extensions.vector(768),
   p_limit int,
+  p_embedding_model text,
   p_book_id uuid default null
 )
 returns table (
@@ -140,7 +172,8 @@ set search_path = ''
 as $$
 begin
   if p_user_id is null or p_embedding is null
-     or p_limit is null or p_limit < 1 or p_limit > 50 then
+     or p_limit is null or p_limit < 1 or p_limit > 50
+     or p_embedding_model is null or char_length(p_embedding_model) not between 1 and 128 then
     raise exception 'cookbook_search: neispravan ulaz' using errcode = '22023';
   end if;
   return query
@@ -152,14 +185,15 @@ begin
           select m.household_id from public.household_members m
           where m.user_id = p_user_id)
     and (p_book_id is null or ch.cookbook_id = p_book_id)
+    and b.embedding_model = p_embedding_model
   order by ch.embedding operator(extensions.<=>) p_embedding
   limit p_limit;
 end;
 $$;
 
-revoke execute on function public.cookbook_search(uuid, extensions.vector, int, uuid)
+revoke execute on function public.cookbook_search(uuid, extensions.vector, int, text, uuid)
   from public, anon, authenticated;
-grant execute on function public.cookbook_search(uuid, extensions.vector, int, uuid)
+grant execute on function public.cookbook_search(uuid, extensions.vector, int, text, uuid)
   to service_role;
 
 -- Privatno skladište: {household_id}/{ime}; samo PDF i EPUB, najviše 15 MB.

@@ -22,6 +22,7 @@ const _ruleHints = {
       '"steps" must be a list of up to 40 strings of up to 1000 characters; '
       'when the recipe had steps, keep them instead of returning none.',
   'S2': 'every recipe "servings" must be an integer from 1 to 20.',
+  'S4': 'every recipe must include at least one nonblank preparation step.',
 };
 
 /// Najduži deo poruke parsera (npr. mesto u planu) koji ide u opis.
@@ -70,6 +71,7 @@ Keep everything that was already correct.''';
       previous.length <= maxRepairEchoLength &&
       original.system.length + withEcho.length <= maxRequestChars;
   return AIRequest(
+    task: original.task,
     system: original.system,
     prompt: fits ? withEcho : prompt(''),
     images: original.images,

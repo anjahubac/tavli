@@ -1,14 +1,16 @@
 # Implementation plan: Voice-assisted recipe drafts
 
 **Status**: scoped proposal; runtime implementation not started by this revision.
-**Spec**: [requirements](spec.md) | **Lead/review**: Dev 4 / Dev 2 and Dev 3
+**Spec**: [requirements](spec.md) | **Product lead / implementer / proposed reviewer**: Dev 4 / Dev 2 (Ceviz) / Dev 3
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
 ## Existing boundaries and proposed files
 
-- `lib/features/recipes/`
-- `lib/ai/ (voice facade through AIRouter)`
-- `lib/domain/ (allowlisted draft commands)`
+- `lib/features/recipes/` for recording, transcript review, draft preview and text questions
+- `lib/ai/` for the voice transport and text facade through `AIRouter`
+- `lib/domain/` for allowlisted draft edits
+- `supabase/functions/voice-transcribe/` for the proposed audio endpoint
+- `supabase/functions/ai-gateway/` for the recipe draft text task from 015
 - `android/`
 - `ios/`
 - `macos/`
@@ -19,7 +21,24 @@ data/AI/account/sync layers. Shared providers and schema versions are coordinate
 
 ## Contract and data plan
 
-Transient audio/transcript with explicit retention; speech actions update a draft only. Microphone permission and recording lifecycle are platform-managed; no hidden recording.
+1. Flutter records a bounded clip and sends it with the signed-in session to
+   `POST /functions/v1/voice-transcribe`. The Edge Function checks the session,
+   format, limits and quota, then makes a bounded Groq transcription call using
+   the server-side `GROQ_API_KEY`. It returns a transcript to Flutter.
+2. After Flutter receives the transcript, `AIRouter` submits it together with
+   the current draft in a separate text POST to `ai-gateway`. The text model
+   follows the environment's text chain. The audio call and its provider are
+   independent of the draft model order. `AIRouter` owns text fallback.
+3. Flutter validates the proposed edits and applies them to the active draft.
+   It renders optional clarification questions as text. A spoken reply repeats
+   both requests. A typed reply goes directly to the text request. If text
+   processing fails, the current transcript can be retried in memory. The
+   existing editor owns confirmation and saving.
+
+Audio and transcripts are transient user content. Record provider retention,
+processing location and rollout controls in research before enabling the
+feature. No audio or raw transcripts enter storage, logs or the sync outbox.
+The confirmed recipe uses the existing account-scoped persistence path.
 
 Producer dependencies: [014](../014-ai-response-contracts/spec.md), [015](../015-ai-server-gateway/spec.md), [018](../018-ingredient-catalog/spec.md)
 
@@ -34,14 +53,16 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 
 ## Delivery slices
 
-1. Resolve only blocking decisions; map each source requirement to existing code,
-   identify work already present and record remaining effort. Never redo completed
-   behavior simply because a source ticket is unassessed.
+1. Prototype Groq transcription on synthetic Serbian dictation. Measure latency
+   and accuracy for ingredients, quantities, units and spoken corrections.
+   Verify recording, permissions and cleanup on Android, iOS and macOS, then
+   use the findings to resolve Q1 and record remaining effort.
 2. Merge the agreed contract/fixtures first; no consumer branch stacks on an
    unmerged producer. Independent research/tests may proceed in developers' existing
    checkouts, with one active writer per checkout; no automatic extra worktrees.
-3. Implement one source task vertically through affected layers with test-first
-   logic/parsing and ownership review. Keep phase boundaries in tasks.md.
+3. Implement recording and Groq transcription, then the separate text POST and
+   draft reducer. Cover failure, typed input, clarification and retry without
+   retranscription; keep phase boundaries in tasks.md.
 4. Integrate consumers after producer merge, preserving offline/replay and previous
    UI/quantity behavior. Run relevant 012/013 gates and update real evidence.
 
@@ -63,6 +84,13 @@ If no schema change is needed, explicitly record that decision in the slice PR.
 These are design obligations, not executed pass results. Any violation blocks Ready
 until resolved under governance. No dependency is added by this documentation;
 implementer records each proposed package/service with a reason before adoption.
+
+**Dependency (2026-11-22, Dev 2)**: `record` ^7.2.0 — microphone capture to a
+temporary AAC/WAV file on Android, iOS, macOS and Windows behind
+`VoiceRecorder`; Flutter has no built-in recorder, and the plugin is the
+maintained cross-platform option. Coordinator for `pubspec.yaml`: Dev 4.
+Platform changes: `RECORD_AUDIO` (Android), `NSMicrophoneUsageDescription`
+(iOS, macOS) and the macOS `device.audio-input` entitlement.
 
 ## Verification, rollout and risks
 

@@ -11,6 +11,7 @@ String? cookbookCodeText(String? code) => switch (code) {
   'too_large' || 'too_many_pages' => _tooBig,
   'corrupt' => 'Fajl je oštećen ili nije ispravna knjiga.',
   'unsupported_type' => 'Podržani su samo PDF i EPUB.',
+  'duplicate' => 'Ova knjiga je već dodata u domaćinstvo.',
   'embed_invalid' ||
   'extract_failed' ||
   'failed' => 'Obrada knjige nije uspela. Pokušaj ponovo kasnije.',

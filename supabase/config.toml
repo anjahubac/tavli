@@ -400,6 +400,10 @@ inspector_port = 8093
 # The Deno major version to use.
 deno_version = 2
 
+[functions.ai-gateway]
+enabled = true
+verify_jwt = true
+
 [functions.delete-account]
 enabled = true
 verify_jwt = true
@@ -409,6 +413,10 @@ enabled = true
 verify_jwt = true
 
 [functions.cookbook-ask]
+enabled = true
+verify_jwt = true
+# Govor u tekst za glasovni nacrt recepta (spec 027). GROQ_API_KEY je tajna.
+[functions.voice-transcribe]
 enabled = true
 verify_jwt = true
 
@@ -450,6 +458,10 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.planning-inputs]
+enabled = true
+verify_jwt = true
 
 [functions.household-photo-cleanup]
 enabled = true

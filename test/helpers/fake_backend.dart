@@ -36,6 +36,13 @@ class FakeServer {
   /// Slanje slika baca grešku.
   bool photoUploadFails = false;
 
+  /// Like RLS: a write into a household the caller is not a member of is
+  /// denied with 42501. Off by default so tests can seed any household.
+  bool enforceMembership = false;
+
+  /// Like a Storage policy: photo uploads are denied with 403.
+  bool photoUploadForbidden = false;
+
   /// Broj poziva po vrsti, za proveru grupisanja.
   final calls = <String>[];
 
@@ -49,6 +56,7 @@ class FakeServer {
 
   /// Posle toliko uspešnih preuzimanja sledeće pukne (prekinuto preuzimanje).
   int? fetchesBeforeFailure;
+  void Function(String table)? beforeFetch;
 
   Map<String, Map<String, Object?>> table(String name) =>
       tables.putIfAbsent(name, () => {});
@@ -60,6 +68,11 @@ class FakeServer {
     final uid = 'user-${++_n}';
     final hid = 'home-$_n';
     households[uid] = hid;
+    table('households')[hid] = {
+      'id': hid,
+      'name': 'Moje domaćinstvo',
+      'updated_at': _now(),
+    };
     profiles[uid] = {
       'id': uid,
       'email': email,
@@ -88,7 +101,20 @@ class FakeServer {
     'supply_allocations': 'supply_allocation',
     'ratings': 'rating',
     'taste_profiles': 'taste_profile',
+    'user_allergen_selections': 'allergen_selection',
+    'user_favorites': 'favorite',
+    'foods': 'food',
+    'food_aliases': 'food_alias',
   };
+
+  /// Katalog namirnica: deljeni redovi (bez domaćinstva) vide svi.
+  static const _catalogTables = {'foods', 'food_aliases'};
+
+  /// Preuzimanje ovih tabela baca PGRST205 (stariji server bez tabele).
+  final missingTables = <String>{};
+
+  /// Preuzimanje ovih tabela baca 42501 (odbijen pristup).
+  final deniedTables = <String>{};
 
   /// Roditelji po stranim ključevima: dete obrisanog roditelja se preskače.
   static const _parentsOf = {
@@ -230,6 +256,8 @@ class FakeServer {
         cascade('supply_allocations', 'purchased_shopping_item_id');
       case 'pantry_items':
         cascade('supply_allocations', 'pantry_item_id');
+      case 'foods':
+        cascade('food_aliases', 'food_id');
       case 'shopping_sources':
         cascade('shopping_contributions', 'source_id');
       case 'shopping_contributions':
@@ -253,16 +281,28 @@ class FakeServer {
     required String idColumn,
   }) {
     _check();
+    beforeFetch?.call(name);
     if (fetchesBeforeFailure case final n?) {
       fetchesBeforeFailure = n == 0 ? null : n - 1;
       if (n == 0) throw const TransientSyncError('interrupted');
+    }
+    if (missingTables.contains(name)) {
+      throw const PermanentSyncError('PGRST205');
+    }
+    if (deniedTables.contains(name)) {
+      throw const PermanentSyncError('42501');
     }
     calls.add('fetch:$name');
     final source = name == 'profiles' ? profiles.values : table(name).values;
     final sorted =
         [
           for (final r in source)
-            if (_visible(r, userId)) Map<String, Object?>.of(r),
+            if (name == 'households'
+                ? households[userId] == r['id']
+                : _visible(r, userId) ||
+                      (_catalogTables.contains(name) &&
+                          r['household_id'] == null))
+              Map<String, Object?>.of(r),
         ]..sort((a, b) {
           final t = (a[timeColumn]! as String).compareTo(
             b[timeColumn]! as String,
@@ -456,6 +496,9 @@ class FakeAccountApi implements AccountApi {
   Future<void> Function()? beforeFetch;
   String? joinTargetHousehold;
   String? joinFailureStatus;
+
+  /// Household names by ID; others are "Moje domaćinstvo".
+  final householdNames = <String, String>{};
   int joinCalls = 0;
 
   @override
@@ -469,7 +512,8 @@ class FakeAccountApi implements AccountApi {
       email: p['email']! as String,
       displayName: p['display_name'] as String?,
       householdId: server.households[uid]!,
-      householdName: 'Moje domaćinstvo',
+      householdName:
+          householdNames[server.households[uid]] ?? 'Moje domaćinstvo',
       role: 'owner',
     );
   }
@@ -537,6 +581,7 @@ class FakeSyncRemote implements SyncRemote {
 
   final FakeServer server;
   final FakeAuth auth;
+  Future<void> Function()? beforeUpsert;
 
   String get _uid => auth.current?.userId ?? '';
 
@@ -556,7 +601,16 @@ class FakeSyncRemote implements SyncRemote {
     String onConflict = 'id',
     bool ignoreDuplicates = false,
   }) async {
+    await beforeUpsert?.call();
     _checkSession();
+    if (server.enforceMembership &&
+        rows.any(
+          (r) =>
+              r['household_id'] != null &&
+              r['household_id'] != server.households[_uid],
+        )) {
+      throw const PermanentSyncError(pgInsufficientPrivilege);
+    }
     server.upsert(table, [
       for (final r in rows)
         if (!ignoreDuplicates ||
@@ -651,6 +705,7 @@ class FakePhotoRemote implements PhotoRemote {
   Future<void> upload(String objectKey, Uint8List jpeg) async {
     server._check();
     if (server.photoUploadFails) throw const TransientSyncError('503');
+    if (server.photoUploadForbidden) throw const PermanentSyncError('403');
     server.calls.add('photo:upload');
     server.photos[objectKey] = jpeg;
   }

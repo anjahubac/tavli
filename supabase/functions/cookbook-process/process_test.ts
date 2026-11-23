@@ -3,14 +3,15 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 import { ExtractError } from "./extract.ts";
+import { EmbedQuotaError } from "./embed.ts";
 import {
   type Book,
   type ChunkRow,
   EMBEDDING_DIMENSIONS,
   MAX_CHUNKS_PER_PAGE,
   MAX_FILE_BYTES,
-  type ProcessDeps,
   processBook,
+  type ProcessDeps,
 } from "./process.ts";
 
 const HH = "11111111-1111-4111-8111-111111111111";
@@ -35,6 +36,7 @@ function fixture(opts: {
     householdId: HH,
     storagePath: `${HH}/knjiga.pdf`,
     filename: opts.filename ?? "knjiga.pdf",
+    embeddingModel: "gemini-embedding-001",
     status: "uploaded",
     nextPage: 1,
     pages: null,
@@ -46,15 +48,31 @@ function fixture(opts: {
   const claims = { claim: 0, unclaim: 0, allow: opts.claim ?? true };
   const deps: ProcessDeps = {
     getBook: async () => book,
-    claim: async () => { claims.claim++; return claims.allow; },
-    unclaim: async () => { claims.unclaim++; },
+    claim: async (_id, model) => {
+      claims.claim++;
+      if (model !== "gemini-embedding-001") throw new Error("wrong model");
+      if (book.embeddingModel !== model) {
+        rows.length = 0;
+        Object.assign(book, {
+          embeddingModel: model,
+          nextPage: 1,
+          pages: null,
+          status: "processing",
+        });
+      }
+      return claims.allow;
+    },
+    unclaim: async () => {
+      claims.unclaim++;
+    },
     download: async () => {
       downloads++;
       return new Uint8Array(opts.bytes ?? 100);
     },
     extract: async () => {
       if (opts.extractError) throw opts.extractError;
-      return opts.pages ?? ["Prva strana o sarmi.", "Druga strana o pasulju.", "Treca strana."];
+      return opts.pages ??
+        ["Prva strana o sarmi.", "Druga strana o pasulju.", "Treca strana."];
     },
     embed: async (texts) => {
       embedCalls++;
@@ -62,6 +80,7 @@ function fixture(opts: {
       const dims = opts.embedDims ?? EMBEDDING_DIMENSIONS;
       return texts.map(() => new Array(dims).fill(0.01));
     },
+    embeddingModel: "gemini-embedding-001",
     insertChunks: async (r) => {
       for (const row of r) {
         // idempotentno: isti (knjiga, stranica, indeks) se ne upisuje dvaput
@@ -78,7 +97,14 @@ function fixture(opts: {
     },
     now: () => (t += opts.clockStep ?? 0),
   };
-  return { deps, book, rows, patches, claims, calls: () => ({ embedCalls, downloads }) };
+  return {
+    deps,
+    book,
+    rows,
+    patches,
+    claims,
+    calls: () => ({ embedCalls, downloads }),
+  };
 }
 
 Deno.test("cela knjiga: ready, chunkovi nose stranicu i indeks, jedan embed po stranici", async () => {
@@ -87,8 +113,31 @@ Deno.test("cela knjiga: ready, chunkovi nose stranicu i indeks, jedan embed po s
   assertEquals(r, { status: "ready", nextPage: 4 });
   assertEquals(f.book.status, "ready");
   assertEquals(f.book.pages, 3);
-  assertEquals(f.rows.map((x) => [x.page, x.chunkIndex]), [[1, 0], [2, 0], [3, 0]]);
-  assert(f.rows.every((x) => x.householdId === HH && x.embedding.length === EMBEDDING_DIMENSIONS));
+  assertEquals(f.rows.map((x) => [x.page, x.chunkIndex]), [[1, 0], [2, 0], [
+    3,
+    0,
+  ]]);
+  assert(
+    f.rows.every((x) =>
+      x.householdId === HH && x.embedding.length === EMBEDDING_DIMENSIONS
+    ),
+  );
+  assertEquals(f.calls().embedCalls, 3);
+});
+
+Deno.test("promenjen embedding model briše stare chunkove i obrađuje knjigu ponovo", async () => {
+  const f = fixture({
+    book: {
+      status: "ready",
+      embeddingModel: "old-model",
+      nextPage: 4,
+      pages: 3,
+    },
+  });
+  const r = await processBook(f.deps, "b1");
+  assertEquals(r, { status: "ready", nextPage: 4 });
+  assertEquals(f.book.embeddingModel, "gemini-embedding-001");
+  assertEquals(f.book.pages, 3);
   assertEquals(f.calls().embedCalls, 3);
 });
 
@@ -111,7 +160,10 @@ Deno.test("prekid usred obrade: partial, upisano ostaje, nastavak ne duplira", a
 
 Deno.test("knjiga bez teksta: failed no_text, nijedan chunk", async () => {
   const f = fixture({ extractError: new ExtractError("no_text") });
-  assertEquals(await processBook(f.deps, "b1"), { status: "failed", nextPage: 1 });
+  assertEquals(await processBook(f.deps, "b1"), {
+    status: "failed",
+    nextPage: 1,
+  });
   assertEquals(f.book.status, "failed");
   assertEquals(f.book.errorCode, "no_text");
   assertEquals(f.rows.length, 0);
@@ -133,6 +185,24 @@ Deno.test("fajl veći od granice se odbija pre izvlačenja teksta", async () => 
   assertEquals(f.book.status, "failed");
   assertEquals(f.book.errorCode, "too_large");
   assertEquals(f.calls().embedCalls, 0);
+});
+
+Deno.test("potrošena kvota prekida pre provider poziva i ostavlja stranu za nastavak", async () => {
+  const f = fixture({ embedFailAtCall: 1 });
+  f.deps.embed = async () => {
+    throw new EmbedQuotaError(60);
+  };
+  let threw = false;
+  try {
+    await processBook(f.deps, "b1", { userId: "user-1" });
+  } catch (error) {
+    threw = error instanceof EmbedQuotaError;
+  }
+  assertEquals(threw, true);
+  assertEquals(f.book.nextPage, 1);
+  assertEquals(f.book.errorCode, "quota_exceeded");
+  assertEquals(f.claims.unclaim, 1);
+  assertEquals(f.rows.length, 0);
 });
 
 Deno.test("nepodržana vrsta fajla: failed unsupported_type, bez preuzimanja", async () => {
@@ -162,7 +232,10 @@ Deno.test("vremenski budžet: posle isteka vraća partial, sledeći poziv nastav
 
 Deno.test("već gotova ili nepostojeća knjiga: nema preuzimanja ni troška", async () => {
   const done = fixture({ book: { status: "ready", nextPage: 4, pages: 3 } });
-  assertEquals(await processBook(done.deps, "b1"), { status: "ready", nextPage: 4 });
+  assertEquals(await processBook(done.deps, "b1"), {
+    status: "ready",
+    nextPage: 4,
+  });
   assertEquals(done.calls().downloads, 0);
 
   const f = fixture();
@@ -212,9 +285,15 @@ Deno.test("preuzimanje se oslobađa posle uspeha, prekida i greške", async () =
 
 Deno.test("izuzetak usred obrade ne ostavlja knjigu zaključanom", async () => {
   const f = fixture();
-  f.deps.insertChunks = async () => { throw new Error("db down"); };
+  f.deps.insertChunks = async () => {
+    throw new Error("db down");
+  };
   let threw = false;
-  try { await processBook(f.deps, "b1"); } catch { threw = true; }
+  try {
+    await processBook(f.deps, "b1");
+  } catch {
+    threw = true;
+  }
   assertEquals(threw, true);
   assertEquals(f.claims.unclaim, 1);
 });

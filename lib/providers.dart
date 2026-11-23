@@ -14,12 +14,21 @@ import 'account/supabase_config.dart';
 import 'ai/ai_router.dart';
 import 'ai/chain_config.dart';
 import 'ai/chat_client.dart';
+import 'ai/gateway_chat_client.dart';
 import 'ai/key_store.dart';
 import 'ai/meal_plan_ai.dart';
+import 'ai/pantry_ai.dart';
 import 'ai/recipe_ai.dart';
+import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
+import 'data/favorite_repository.dart';
+import 'data/food_catalog_reader.dart';
+import 'data/planning_sharing_repository.dart';
+import 'data/planning_tastes_remote.dart';
 import 'data/shopping_repository.dart';
+import 'data/taste_profile_repository.dart';
+import 'domain/planning_tastes.dart';
 import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
@@ -147,7 +156,14 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
   final photos = ref.watch(photoRemoteProvider);
   if (scope == null || remote == null || photos == null) return null;
   final db = ref.watch(databaseProvider);
-  final engine = SyncEngine(
+  // Reconciliation only touches the cache and never queues an upload.
+  final favorites = FavoriteRepository(
+    db,
+    scope: scope,
+    writer: SyncedWriter(db, accountId: scope.userId),
+  );
+  late final SyncEngine engine;
+  engine = SyncEngine(
     db: db,
     scope: scope,
     uploader: Uploader(
@@ -157,6 +173,7 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
       photoStore: ref.watch(recipePhotoStoreProvider),
       scope: scope,
       refreshSession: () => _refreshSession(ref),
+      beforeFavoriteUpload: favorites.dropStaleFavorites,
     ),
     downloader: Downloader(db: db, remote: remote, scope: scope),
     photoSync: PhotoSync(
@@ -169,10 +186,15 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    // A removed member's writes are denied by RLS: re-check membership, which
+    // quarantines old-household writes and switches the scope.
+    onForbidden: () =>
+        ref.read(authControllerProvider.notifier).recheckMembership(engine),
     // Ceo red obroka može da stigne zastareo; oznaka „skuvano“ se ponovo
     // izvodi iz zapisa kuvanja.
     afterPull: () async {
       await ref.read(cookingRepositoryProvider).reconcileCookedFlags();
+      await favorites.dropStaleFavorites();
     },
   );
   ref.onDispose(engine.stop);
@@ -199,12 +221,9 @@ final syncPhaseProvider = StreamProvider<SyncPhase?>((ref) {
 
 final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
 
-/// Ugrađeni ključevi iz `--dart-define-from-file=secrets.json`.
-final builtInKeysProvider = Provider<BuiltInKeys>(
-  (ref) => BuiltInKeys.fromEnvironment(),
-);
+/// Stari izvor postoji za testne zamene. App učitava deljene modele sa servera.
+final builtInKeysProvider = Provider<BuiltInKeys>((ref) => const BuiltInKeys());
 
-/// Sopstveni ključ pa ugrađeni. Kasnije ga menja Cloudflare proxy.
 final keySourceProvider = Provider<KeySource>(
   (ref) => LayeredKeySource(
     ref.watch(keyStoreProvider),
@@ -228,12 +247,20 @@ final chatClientProvider = Provider<OpenAICompatibleClient>(
   (ref) => OpenAICompatibleClient(),
 );
 
+final gatewayChatClientProvider = Provider<GatewayChatClient?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? null
+      : GatewayChatClient.supabase(client, refresh: () => _refreshSession(ref));
+});
+
 final aiRouterProvider = Provider<AIRouter>(
   (ref) => AIRouter(
     config: () => ref.read(chainConfigProvider),
     client: ref.watch(chatClientProvider),
     keys: ref.watch(keySourceProvider),
     status: DriftModelStatusStore(ref.watch(databaseProvider)),
+    gateway: ref.watch(gatewayChatClientProvider),
   ),
 );
 
@@ -241,8 +268,32 @@ final recipeAIProvider = Provider<RecipeAI>(
   (ref) => RecipeAI(ref.watch(aiRouterProvider)),
 );
 
+/// Ukusi članova za plan (TRELLO-41); bez Supabase klijenta nema ukusa.
+final planningTastesProvider = Provider<PlanningTastesSource?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  final db = ref.watch(databaseProvider);
+  return RemotePlanningTastes.supabase(
+    client,
+    householdId: () => ref.read(accountScopeProvider)?.householdId,
+    foodNames: (household) async => {
+      for (final food in await CatalogFoodList(
+        db,
+      ).watchVisible(household).first)
+        food.id: food.name,
+    },
+  );
+});
+
 final mealPlanAIProvider = Provider<MealPlanAI>(
-  (ref) => MealPlanAI(ref.watch(aiRouterProvider)),
+  (ref) => MealPlanAI(
+    ref.watch(aiRouterProvider),
+    tastes: ref.watch(planningTastesProvider),
+  ),
+);
+
+final pantryAIProvider = Provider<PantryAI>(
+  (ref) => PantryAI(ref.watch(aiRouterProvider)),
 );
 
 /// Lista prijavljenog domaćinstva; demo koristi zasebnu bazu u memoriji.
@@ -254,3 +305,38 @@ final shoppingRepositoryProvider = Provider<ShoppingRepository>(
     clock: ref.watch(clockProvider),
   ),
 );
+
+final favoriteRepositoryProvider = Provider<FavoriteRepository>(
+  (ref) => FavoriteRepository(
+    ref.watch(databaseProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    writer: ref.watch(syncedWriterProvider),
+  ),
+);
+
+final allergenRepositoryProvider = Provider<AllergenRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return AllergenRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
+
+final tasteProfileRepositoryProvider = Provider<TasteProfileRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return TasteProfileRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
+
+final planningSharingRepositoryProvider = Provider<PlanningSharingRepository?>((
+  ref,
+) {
+  final scope = ref.watch(accountScopeProvider);
+  final client = ref.watch(supabaseClientProvider);
+  if (scope == null || client == null) return null;
+  return SupabasePlanningSharingRepository(client, userId: scope.userId);
+});

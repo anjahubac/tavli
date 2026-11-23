@@ -43,11 +43,12 @@ The ticket IDs and original assignment are retained for traceability.
 - **FR-105**: Preserve existing email-code/name/confirmation flow and close confirmed defects with regression tests; use canonical reviewed allergen/avoidance vocabulary.
 - **FR-106**: Planning takes an explicit nonempty set of participating member IDs, defaulting in the UI to all current household members. Only those members' inputs contribute; unknown, foreign or removed IDs fail the whole request.
 - **FR-107**: Members select canonical allergen groups, distinct from catalog foods and taste dislikes. Catalog foods carry reviewed group mappings; unresolved ingredients have unknown allergen status, never an implicit safe status.
-- **FR-108**: Members may like or dislike catalog foods, the existing `DishKind` values and reviewed cuisine codes, and add an optional short planning note. These are soft preferences. No dietary-mode setting or custom style category is included.
+- **FR-108**: Members may like or dislike catalog foods, the existing `DishKind` values and reviewed cuisine codes, and, in a later slice, add an optional short planning note with separate consent. These are soft preferences. No dietary-mode setting or custom style category is included.
 - **FR-109**: A favorite is a personal user/recipe pair. Only selected participants' favorites for accessible household recipes contribute to planning; delete the pair when the recipe is deleted or the user loses access on leaving the household.
-- **FR-110**: The planner receives a purpose-limited aggregate of selected members' restrictions, preferences and favorite counts, not their personal rows, profiles or diary.
-- **FR-111**: Each member explicitly opts in, per field (`allergens`, `preferences`, `planningNote`), to sharing with household planning; defaults are off, only the owner can change them, and withdrawal takes effect on the next request and invalidates caches. The server omits unshared fields; a member's own data is always returned to that member. See the contract's Disclosure and consent section.
-- **FR-112**: A single-participant request returns only that person's consented fields, with no name or ID. AI output is untrusted: a leak guard rejects responses that echo names, emails, notes or attributed allergies, and prompts use pseudonymous labels and are never logged.
+- **FR-110**: The planning consumer receives only the authorized aggregate of selected participants' tastes and favorite counts. Separately consented notes are added in a later slice. The server plan endpoint reads selected participants' allergen restrictions separately. Personal rows, profiles and diary entries are outside the aggregate.
+- **FR-111**: Each member explicitly opts in to sharing structured preferences and favorites with household planning. A separate `planningNote` flag is enabled with the later note slice. Defaults are off, only the owner can change them, and withdrawal takes effect on server acknowledgement. The first release re-reads consent for personalized planning and keeps no aggregate cache. The server omits unshared fields; the caller's own tastes, notes and favorites are returned regardless of flags when the caller is the only participant. See the contract's Disclosure and consent section.
+- **FR-112**: A request for a single other participant returns only that person's consented fields, with no name or ID. AI output is untrusted: a leak guard rejects responses that echo names, emails, notes or attributed allergies, and prompts use pseudonymous labels and are never logged.
+- **FR-113**: For planning, the server plan endpoint uses the selected allergen codes present at request time to pre-filter candidates and check results. An empty selection contributes no codes and does not block planning. A profile reminder is deferred. Planning never sends member allergen selections to an AI provider, returns them to a client or logs them. The owner-only settings path handles the member's own selections; planning needs no allergen-sharing flag. Type, import-boundary, outbound-guard and canary regression tests keep it that way. See the contract's Allergen protection section.
 
 ## User scenarios and acceptance
 
@@ -56,10 +57,11 @@ The ticket IDs and original assignment are retained for traceability.
 - **US1 / SC-005**: An offline or stale client cannot apply a household switch using an outdated source or replay source writes into the destination. After a lost response it can reconcile with the server and retry safely.
 - **US2 / SC-002**: A removed member reconnects with queued writes: server denies old-household access; another member retains shared data.
 - **US3 / SC-003**: Two co-members can share recipes but cannot read each other's diary or personal settings outside the agreed planning aggregate.
-- **US4 / SC-004**: With two members selected, either member's allergen excludes a mapped candidate even when AI suggests it. An unresolved ingredient is marked unknown. Selecting one member omits the other's inputs.
+- **US4 / SC-004**: With two members selected, either member's allergen excludes a mapped candidate even when AI suggests it. With seven reviewed ingredients and one unresolved ingredient, automatic recommendations omit the recipe. Opening it for manual cooking shows “Mogući alergeni: nepoznata namirnica”. Selecting one member omits the other's inputs.
 - **US5 / SC-005**: One member likes a food and another dislikes it; the conflict affects ranking without becoming a safety ban. A deleted recipe or departing member stops contributing favorites.
 - **US6 / SC-006**: Co-members cannot read one another's raw personal settings; a foreign or removed participant ID yields no partial aggregate.
-- **US7 / SC-007**: A field a member has not shared never appears in another member's plan inputs, prompt or UI, for one or several participants; withdrawing consent removes it. An AI response that echoes a name, note or attributed allergy is rejected and never shown or stored.
+- **US7 / SC-007**: A preference or note a member has not shared never appears in another member's plan inputs, prompt or UI, for one or several participants; withdrawing consent removes it. An AI response that echoes a name, note or attributed allergy is rejected and never shown or stored.
+- **US8 / SC-008**: With a member's allergen selected, no planning AI request, log, cached plan input or client plan response contains it (canary test across planner flows), and an allergenic recipe, a recipe with unresolved ingredients or a recipe outside the eligible pool cannot enter the initial personalized draft. If Dev 2 adds invented drafts later, apply the same server checks before any use.
 
 Include empty/error/offline/cancel/retry, repeated action and ownership transitions
 where applicable. Use deterministic fixtures and observable state assertions;
@@ -87,7 +89,7 @@ until execution evidence is linked.
 
 ## Exact UI copy carried forward
 
-“Domaćinstvo”, “Pozovi člana”, “Pridruži se”, “Ukusi i sklonosti”, “Omiljeni”, “Alergeni”, “Volim”, “Ne volim”, “Opis”.
+“Domaćinstvo”, “Pozovi člana”, “Pridruži se”, “Ukusi i sklonosti”, “Omiljeni”, “Alergeni”, “Volim”, “Ne volim”, “Opis”, “Mogući alergeni: nepoznata namirnica”.
 
 Switch confirmation: “Da li ste sigurni da želite da napustite domaćinstvo?”
 Actions: “Da, ponesi moje recepte”, “Da, bez recepata”, “Ne, ostani ovde”.
@@ -112,6 +114,68 @@ meantime. A terminal rejection retains its diagnostic code locally and does
 not block the switch. The explicit skip applies only to old-household edits,
 and takes effect only after the server confirms the membership change.
 
+### Tastes and allergens screen (variant A)
+
+The screen follows the canvas “Predlog: Ukusi i alergeni”, variant A
+(iOS and macOS artboards `Profil`, `Ukusi A`, `Dodaj omiljeni recept`,
+`Dodaj namirnicu`). Route `/profile/tastes`, opened from Profil › Ishrana.
+The free-text “O meni” note, the AI suggestion “Predloži iz mojih recepata”
+and the “Deli opis” consent are deferred to the later note slice.
+
+- Profil: section “Ishrana”, row “Ukusi i alergeni”, summary such as
+  “2 alergena · 6 sviđanja · 3 omiljena recepta” (zero parts omitted;
+  “Ništa nije izabrano” when nothing is chosen). “Sviđanja” counts liked dish
+  kinds, cuisines and foods.
+- Intro: “Tavli ovo koristi da predloži jela koja ti prijaju.”
+- “Alergeni”, summary “Izabrano: {n}” or “Nijedan”, help “Jela sa ovim
+  sastojcima ne ulaze u plan.” Labels: Gluten, Mleko,
+  Jaja, Orašasti plodovi, Kikiriki, Riba, Rakovi, Mekušci, Soja, Susam, Celer,
+  Slačica, Sulfiti, Lupina.
+- “Vrste jela” with help “Dodirni jednom za Volim, još jednom za Ne volim.”;
+  “Kuhinje” (Srpska, Italijanska, Japanska, Francuska, Meksička). Wide layout:
+  “Vrste jela i kuhinje” with “Klik: Volim · još jednom: Ne volim”.
+- “Omiljeni recepti” with “Dodaj”; wide empty state “Još nema omiljenih recepata.”
+  Picker: “Omiljeni recepti”, “Izabrano: {n}”, “Pretraži recepte”, “Moji recepti”,
+  “Gotovo”, “Nema recepta sa tim imenom.”; wide dialog “Klikni recept da ga dodaš
+  ili ukloniš.”, “Samo omiljeni”, “Zatvori”. No recipes: “Još nema recepata” /
+  “Dodaj recept u Receptima, pa ga označi kao omiljeni.” A recipe that left the
+  household: “Recept više nije dostupan.” Heart button labels: “Dodaj u
+  omiljene: {naziv}” and “Ukloni iz omiljenih: {naziv}”.
+- “Namirnice” with help “Ono što ne voliš ne zabranjuje jelo, samo ga ređe
+  predlažemo.”, groups “Volim” and “Ne volim”, chip action “Ukloni {naziv}”.
+  Each group ends with a “Dodaj” pill that opens the picker (phone sheet,
+  wide dialog) preset to that group: “Dodaj namirnicu”, “Pretraži namirnice”, “Već je u Volim”,
+  “Već je u Ne volim”, “Ukloni”, “Nema te namirnice u katalogu.”; empty
+  catalog “Katalog namirnica još nije preuzet” / “Namirnice stižu sa servera
+  kad je aplikacija na mreži.” Wide layout: “Volim” and “Ne volim” labels
+  on the left with the pills beside them (product owner review replaced the
+  canvas search field and its keyboard shortcuts).
+- “Plan domaćinstva”: switch “Deli ukuse i omiljene”, subtitle “Pomaže u
+  preporuci recepata pomoću AI-a.”, lock note “Alergene plan uvek poštuje, i kad je
+  deljenje isključeno.” Product owner review shortened the intro, allergen,
+  sharing and lock copy from the canvas text. On a wide screen the page is
+  centered and the two columns have a wider gap than the canvas.
+- Consent confirmation before enabling (not on the canvas; required by the
+  [contract](contracts/member-planning-inputs.md#disclosure-and-consent), which
+  asks the consent text to name the AI provider; needs Dev 4 review):
+  title “Deli ukuse i omiljene?”, message “Tvoji ukusi i omiljeni recepti
+  pomažu kad Tavli pravi plan za celo domaćinstvo. Za taj plan šalju se AI
+  servisu (Gemini, Groq ili OpenRouter), bez tvog imena. Ostali članovi ne
+  vide tvoje izbore. Deljenje možeš da isključiš kad god želiš.”, actions
+  “Otkaži” / “Deli”. Turning sharing off needs no confirmation.
+- Consent errors: “Nema veze sa internetom. Deljenje nije promenjeno.”,
+  “Deljenje je promenjeno na drugom uređaju. Proveri i pokušaj ponovo.”,
+  “Deljenje nije promenjeno. Pokušaj ponovo.”; unreadable consent: notice
+  “Deljenje se menja samo uz internet. Trenutno ne možemo da proverimo
+  podešavanje.” with “Pokušaj ponovo”.
+
+Deviations from the canvas, kept for the accessibility and icon rules of the
+[UI standard](../../docs/development/ui-standard.md): hearts are outline
+icons (no filled icons); chips keep the 44 px look inside a 48 px touch area,
+and the removable food chip is 44 instead of 40 px tall; desktop chips keep
+the phone size instead of the denser 34 px canvas size; the profile row uses
+the plain list-row icon instead of a tinted square.
+
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 For ratings, the agreed phrases are “Da li ti se svidelo?” and “Oceni”. The
@@ -120,14 +184,16 @@ part of this contract.
 
 ## Dependencies and open decisions
 
-Producer specs: Existing baseline; no new producer feature required for the first slice.
+The private dish-kind slice uses the existing taste-profile storage and sync.
+Later slices follow the catalog, membership and [015 gateway](../015-ai-server-gateway/spec.md)
+dependencies in the [implementation plan](plan.md).
 
 - **Q1, resolved for direct join by Matija (Dev 3), 2026-11-20**: Copy
   caller-created and unknown-creator recipes when requested, promote the
   longest-serving remaining member, and permanently delete an empty source
   after warning and acknowledgement. Dev 1 reviews the technical contract,
   standalone leave/removal behavior and offline compatibility separately.
-- **Q2**: Matija decided on 2026-11-20 that selected participants contribute favorites and all household members are selected by default. Allergens are separate groups linked to users and catalog foods; dislikes remain soft. Dev 1 and Dev 2 still review the canonical vocabulary, food mappings, privacy boundary and consumer response before implementation. See [member planning inputs contract](contracts/member-planning-inputs.md).
+- **Q2**: Matija decided on 2026-11-20 that selected participants contribute favorites and all household members are selected by default. Allergens are separate groups linked to users and catalog foods; dislikes remain soft. Matija decided on 2026-11-21 that planner allergen data remains server-only. Matija confirmed using the existing catalog checker codes and keeping catalog mapping review with Dev 1. Food mappings, structured taste limits, consent implementation and server integration still require coordination. See [member planning inputs contract](contracts/member-planning-inputs.md).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
 
 import '../domain/cookbook.dart';
+import '../domain/ids.dart';
 
 /// Zašto rad sa knjigama nije uspeo. Poruke za prikaz su u ekranu.
 sealed class CookbookFailure implements Exception {
@@ -67,6 +68,18 @@ abstract interface class CookbookRepository {
   Future<void> delete(String id);
 
   Future<CookbookAnswer> ask(String question, {String? bookId});
+}
+
+/// Storage must succeed before deleting the durable row that holds its path.
+/// If removal fails, the row stays available for a later retry.
+Future<void> deleteCookbookStorageFirst({
+  required Future<String?> Function() findStoragePath,
+  required Future<void> Function(String path) removeStorage,
+  required Future<void> Function() deleteRow,
+}) async {
+  final path = await findStoragePath();
+  if (path != null) await removeStorage(path);
+  await deleteRow();
 }
 
 /// Jedan poziv obrade na serveru: telo je `{storagePath, title}` za novu knjigu
@@ -164,7 +177,12 @@ class SupabaseCookbookRepository implements CookbookRepository {
     void Function(Cookbook book)? onProgress,
   }) => _guard(() async {
     final safe = _safeName(filename);
-    final path = '$_householdId/$safe';
+    final lower = safe.toLowerCase();
+    if (!lower.endsWith('.pdf') && !lower.endsWith('.epub')) {
+      throw const CookbookRejected('unsupported_type');
+    }
+    final extension = lower.endsWith('.epub') ? 'epub' : 'pdf';
+    final path = '$_householdId/${newId()}.$extension';
     await _client.storage
         .from('cookbooks')
         .uploadBinary(
@@ -174,7 +192,6 @@ class SupabaseCookbookRepository implements CookbookRepository {
             contentType: safe.toLowerCase().endsWith('.epub')
                 ? 'application/epub+zip'
                 : 'application/pdf',
-            upsert: true,
           ),
         );
     final title = safe.replaceFirst(
@@ -183,7 +200,7 @@ class SupabaseCookbookRepository implements CookbookRepository {
     );
     return driveProcessing(
       step: _process,
-      first: {'storagePath': path, 'title': title},
+      first: {'storagePath': path, 'filename': safe, 'title': title},
       title: title,
       filename: safe,
       pause: stepDelay,
@@ -214,19 +231,24 @@ class SupabaseCookbookRepository implements CookbookRepository {
   }
 
   @override
-  Future<void> delete(String id) => _guard(() async {
-    final rows = await _client.rest
-        .from('cookbooks')
-        .select('storage_path')
-        .eq('id', id)
-        .limit(1);
-    await _client.rest.from('cookbooks').delete().eq('id', id);
-    if (rows.isNotEmpty) {
-      await _client.storage.from('cookbooks').remove([
-        rows.first['storage_path'] as String,
-      ]);
-    }
-  });
+  Future<void> delete(String id) => _guard(
+    () => deleteCookbookStorageFirst(
+      findStoragePath: () async {
+        final rows = await _client.rest
+            .from('cookbooks')
+            .select('storage_path')
+            .eq('id', id)
+            .limit(1);
+        return rows.isEmpty ? null : rows.first['storage_path'] as String;
+      },
+      removeStorage: (path) async {
+        await _client.storage.from('cookbooks').remove([path]);
+      },
+      deleteRow: () async {
+        await _client.rest.from('cookbooks').delete().eq('id', id);
+      },
+    ),
+  );
 
   @override
   Future<CookbookAnswer> ask(String question, {String? bookId}) => _guard(
@@ -281,7 +303,10 @@ class SupabaseCookbookRepository implements CookbookRepository {
         throw CookbookQuotaExceeded(Duration(seconds: secs is int ? secs : 60));
       }
       if (error == 'limit_reached') throw const CookbookLimitReached();
-      if (e.status == 400 || e.status == 404 || e.status == 403) {
+      if (e.status == 400 ||
+          e.status == 404 ||
+          e.status == 403 ||
+          e.status == 409) {
         throw CookbookRejected(error is String ? error : 'rejected');
       }
       throw const CookbookServerError();

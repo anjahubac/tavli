@@ -20,9 +20,14 @@ class SettingsPage extends StatelessWidget {
     required this.children,
     required this.fallbackLocation,
     this.backLabel,
+    this.backWhenWide = true,
+    this.centered = false,
   });
 
   final String title;
+
+  /// Na širokom ekranu sadržaj stoji na sredini umesto uz levu ivicu.
+  final bool centered;
 
   /// Odeljci ekrana, odozgo nadole.
   final List<Widget> children;
@@ -32,6 +37,10 @@ class SettingsPage extends StatelessWidget {
 
   /// Naziv prethodnog ekrana (iOS traka i povratak na širokom ekranu).
   final String? backLabel;
+
+  /// Povratak iznad naslova na širokom ekranu. Profil ga nema: na
+  /// računaru je u bočnoj navigaciji, kao tab (platno).
+  final bool backWhenWide;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +61,9 @@ class SettingsPage extends StatelessWidget {
                 padding: const EdgeInsets.all(TavliSpacing.large),
                 children: [
                   Align(
-                    alignment: AlignmentDirectional.topStart,
+                    alignment: centered && wide
+                        ? AlignmentDirectional.topCenter
+                        : AlignmentDirectional.topStart,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(
                         maxWidth: TavliWidth.page,
@@ -62,11 +73,13 @@ class SettingsPage extends StatelessWidget {
                         spacing: TavliSpacing.large,
                         children: [
                           if (wide)
-                            TavliPageHeader(
-                              title: title,
-                              backLabel: label,
-                              onBack: back,
-                            ),
+                            backWhenWide
+                                ? TavliPageHeader(
+                                    title: title,
+                                    backLabel: label,
+                                    onBack: back,
+                                  )
+                                : TavliPageHeader(title: title),
                           ...children,
                         ],
                       ),
@@ -103,10 +116,18 @@ class SettingsSection extends StatelessWidget {
 
 /// Dve kolone na širokom ekranu, jedna ispod druge na telefonu.
 class SettingsColumns extends StatelessWidget {
-  const SettingsColumns({super.key, required this.start, required this.end});
+  const SettingsColumns({
+    super.key,
+    required this.start,
+    required this.end,
+    this.gap = TavliSpacing.large,
+  });
 
   final List<Widget> start;
   final List<Widget> end;
+
+  /// Razmak između kolona na širokom ekranu.
+  final double gap;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +139,7 @@ class SettingsColumns extends StatelessWidget {
     if (!isWideSettings(context)) return column([...start, ...end]);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: TavliSpacing.large,
+      spacing: gap,
       children: [
         Expanded(child: column(start)),
         Expanded(child: column(end)),

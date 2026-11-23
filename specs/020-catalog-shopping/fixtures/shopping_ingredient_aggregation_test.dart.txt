@@ -1,0 +1,143 @@
+import 'dart:ui' show Size;
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/account/auth_controller.dart';
+import 'package:tavli/data/database.dart';
+import 'package:tavli/data/meal_plan_repository.dart';
+import 'package:tavli/data/shopping_repository.dart';
+import 'package:tavli/domain/meal_plan.dart';
+import 'package:tavli/domain/plan_calendar.dart';
+import 'package:tavli/domain/recipe.dart';
+import 'package:tavli/domain/shopping_source.dart';
+import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli/features/shopping/shopping_list_view.dart';
+import 'package:tavli/sync/synced_writer.dart';
+
+import '../../helpers/test_app.dart';
+
+const _onionId = 'fixture-onion';
+const _onion = 'crni luk';
+const _category = 'voće i povrće';
+const _recipes = [
+  RecipeSnapshot(
+    title: 'Čorba',
+    baseServings: 2,
+    ingredients: [
+      Ingredient(name: _onion, quantity: 200, unit: 'g', foodId: _onionId),
+    ],
+  ),
+  RecipeSnapshot(
+    title: 'Gulaš',
+    baseServings: 2,
+    ingredients: [
+      Ingredient(name: 'luk', quantity: 100, unit: 'g', foodId: _onionId),
+    ],
+  ),
+  RecipeSnapshot(
+    title: 'Paprikaš',
+    baseServings: 2,
+    ingredients: [
+      Ingredient(name: _onion, quantity: 0.2, unit: 'kg', foodId: _onionId),
+      Ingredient(name: _onion, quantity: 75, unit: 'g', category: _category),
+    ],
+  ),
+];
+
+Future<void> _seedShopping(AppDatabase db) async {
+  await db
+      .into(db.foods)
+      .insert(
+        FoodsCompanion.insert(
+          id: _onionId,
+          name: _onion,
+          category: _category,
+          baseUnit: 'g',
+        ),
+      );
+
+  final account = await db.select(db.accounts).getSingle();
+  final scope = AccountScope(
+    userId: account.userId,
+    householdId: account.householdId,
+  );
+  final writer = SyncedWriter(db, accountId: scope.userId);
+  final shopping = ShoppingRepository(db, scope: scope, writer: writer);
+  final plans = MealPlanRepository(
+    db,
+    scope: scope,
+    writer: writer,
+    shopping: shopping,
+  );
+  final request = PlanRequest(
+    range: DateRange(CivilDate(2026, 11, 2), CivilDate(2026, 11, 4)),
+    mealTypes: const {MealType.lunch},
+    servings: 2,
+  );
+  final slots = request.slots.toList();
+  await plans.approve(
+    PlanDraft(
+      request: request,
+      proposals: {
+        for (final (index, recipe) in _recipes.indexed)
+          slots[index]: SlotProposal(
+            title: recipe.title,
+            draftRecipeKey: recipe.title,
+          ),
+      },
+      newRecipes: {for (final recipe in _recipes) recipe.title: recipe},
+    ),
+  );
+
+  for (final recipe in _recipes) {
+    await shopping.addRecipePreparation(
+      snapshot: recipe,
+      servings: 2,
+      originKey: 'fixture:${recipe.title}',
+    );
+  }
+}
+
+void main() {
+  testTavli('isti zbir po namirnici u režimima Po planu i Po receptu', (
+    tester,
+  ) async {
+    await pumpTavli(
+      tester,
+      location: '/shopping',
+      size: const Size(430, 1000),
+      setup: _seedShopping,
+      overrides: [clockProvider.overrideWithValue(() => DateTime(2026, 11, 3))],
+    );
+
+    for (final mode in ['Po planu', 'Po receptu']) {
+      await tester.tap(find.text(mode));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Recepti u nabavci'),
+        mode == 'Po receptu' ? findsOneWidget : findsNothing,
+      );
+
+      final tiles = find.byType(ShoppingItemTile);
+      expect(tiles, findsNWidgets(2), reason: mode);
+      expect(
+        tester
+            .widgetList<ShoppingItemTile>(tiles)
+            .map(
+              (tile) => (
+                tile.item.name,
+                tile.item.foodId,
+                tile.item.quantity,
+                tile.item.unit,
+              ),
+            ),
+        unorderedEquals([
+          (_onion, _onionId, 500.0, 'g'),
+          (_onion, null, 75.0, 'g'),
+        ]),
+        reason: mode,
+      );
+      expect(find.text('500 g'), findsOneWidget, reason: mode);
+      expect(find.text('75 g'), findsOneWidget, reason: mode);
+    }
+  });
+}

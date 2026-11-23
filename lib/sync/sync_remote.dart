@@ -30,6 +30,10 @@ class UnauthorizedSyncError extends SyncError {
 /// ponovo, ali ne blokira ostale izmene.
 class PermanentSyncError extends SyncError {
   const PermanentSyncError(super.code);
+
+  /// RLS (Postgres 42501) or Storage policy (HTTP 403) denial: the account
+  /// may have lost access, e.g. after removal from the household.
+  bool get forbidden => code == pgInsufficientPrivilege || code == '403';
 }
 
 /// Tabele na serveru (PostgREST). Baca [SyncError].
@@ -74,6 +78,9 @@ abstract interface class PhotoRemote {
 /// prosleđuje kao [SyncError.code], a uploader ga čuva u
 /// `sync_outbox.last_error` odbijenog upisa.
 const pgForeignKeyViolation = '23503';
+
+/// Postgres SQLSTATE for a row-level security denial.
+const pgInsufficientPrivilege = '42501';
 
 /// Kod Postgres/PostgREST/HTTP greške → vrsta greške (research R7).
 SyncError classifySyncError(String code) {

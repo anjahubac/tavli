@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
-/// Fotografija recepta: dok AI čita, preko nje prelazi linija skeniranja;
+/// Fotografija recepta: dok AI čita, preko nje prelaze uglovi „tražila“ i
+/// linija skeniranja (bez natpisa ispod slike);
 /// prepoznati sastojci zatim iskaču jedan po jedan kao čipovi.
 class PhotoScan extends StatelessWidget {
   const PhotoScan({
@@ -49,25 +52,10 @@ class PhotoScan extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        if (scanning)
-          Wrap(
-            alignment: WrapAlignment.center,
-            children: [
-              MotionBuilder(
-                duration: const Duration(milliseconds: 1200),
-                builder: (context, t, still) => Opacity(
-                  opacity: still ? 1 : 0.55 + 0.45 * (1 - (2 * t - 1).abs()),
-                  child: const Chip(
-                    avatar: Icon(Icons.search, size: 18),
-                    label: Text('Tražim sastojke…'),
-                  ),
-                ),
-              ),
-            ],
-          )
-        else if (ingredients.isNotEmpty)
+        if (!scanning && ingredients.isNotEmpty) ...[
+          const SizedBox(height: 12),
           _PoppingChips(ingredients),
+        ],
       ],
     );
   }
@@ -145,6 +133,41 @@ class ScanLinePainter extends CustomPainter {
         ..color = color
         ..strokeWidth = 3,
     );
+    _corners(canvas, size);
+  }
+
+  /// Uglovi „tražila“ u boji teme, blago pulsiraju.
+  void _corners(Canvas canvas, Size size) {
+    const inset = 14.0;
+    const len = 24.0;
+    const r = 8.0;
+    final pulse = 0.75 + 0.25 * math.sin(t * 2 * math.pi);
+    final paint = Paint()
+      ..color = color.withValues(alpha: pulse)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final w = size.width - inset;
+    final h = size.height - inset;
+    final path = Path()
+      ..moveTo(inset, inset + len)
+      ..lineTo(inset, inset + r)
+      ..quadraticBezierTo(inset, inset, inset + r, inset)
+      ..lineTo(inset + len, inset)
+      ..moveTo(w - len, inset)
+      ..lineTo(w - r, inset)
+      ..quadraticBezierTo(w, inset, w, inset + r)
+      ..lineTo(w, inset + len)
+      ..moveTo(w, h - len)
+      ..lineTo(w, h - r)
+      ..quadraticBezierTo(w, h, w - r, h)
+      ..lineTo(w - len, h)
+      ..moveTo(inset + len, h)
+      ..lineTo(inset + r, h)
+      ..quadraticBezierTo(inset, h, inset, h - r)
+      ..lineTo(inset, h - len);
+    canvas.drawPath(path, paint);
   }
 
   @override

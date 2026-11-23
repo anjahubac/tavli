@@ -31,6 +31,19 @@ implementation/test/review estimates before Ready.
 - [ ] T023 [US1] D3-018 / FR-011, phase 4: **Rate recipes** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 3; reviewer independent domain consumer; depends T022; evidence: spec scenarios, applicable checks and reviewed PR.
 - [ ] T024 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 3; reviewer Dev 1 and Dev 2; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
 
+## Logic-first subtasks
+
+The [implementation plan](plan.md#logic-first-implementation) maps dependencies,
+proposed reviewers and acceptance evidence. These checkpoints refine existing
+source tasks and do not change their historic numbering or phases.
+
+- **T006–T007** implement private dish-kind storage and transactional sync using the existing taste-profile JSON. Verify legacy fields, canonical wires and account isolation.
+- **T006–T007** add reviewed food/cuisine fields and owner-only consent with withdrawal tests. Keep settings screens as a follow-up after repository acceptance. Add the optional note and separate consent after structured preferences and favorites.
+- **T020–T021** implement private favorite storage and lifecycle, with server access checks and outbox replay tests. Add recipe controls after the repository is verified.
+- **FR-106/110–112** implement the authorized resolver and consent fixtures with Dev 2. Add aggregate caching only after a verified invalidation design.
+- **T016–T019** implement personal allergen selection and food metadata with Dev 1. Verify unknown mapping separately from a reviewed empty mapping.
+- **T024** hand off the typed fixture and server-only allergen boundary to Dev 2, then link 015/019 verification evidence. Add UI acceptance evidence separately.
+
 ## Sequencing and effort
 
 Do not treat this file's order as permission to run every task concurrently.
@@ -44,3 +57,34 @@ Each Ready task records: exact files, named reviewer, producer PR, remaining day
 (implementation + tests + review/integration), confidence and risk. Estimates are
 not invented from ticket counts. Done requires accepted behavior, actual evidence
 and merged PR; checkbox completion alone is not a release or an external approval.
+
+### Logic evidence on the implementation branch
+
+- **T006–T007**: local repository coverage for normalized dish, food and cuisine
+  preferences, a mock transport for owner consent and pgTAP for selection,
+  revision conflicts, withdrawal and advisory aggregation.
+- **T016–T017**: owner selection storage and sync coverage plus pgTAP for
+  canonical codes, direct-access denials and the private selected-member union.
+- **T018–T019**: recipe metadata logic covers reviewed absence, an unknown
+  ingredient and a linked ingredient with unreviewed metadata. The catalog
+  producer and warning UI remain dependencies.
+- **T020–T021**: repository coverage for owner isolation, repeat toggles and stale queue cleanup,
+  two-client replay coverage,
+  plus pgTAP for leaving a household, stale replay, saving again after rejoin and recipe/account
+  deletion. UI and integrated planner acceptance are tracked by the same task.
+
+### UI evidence on the implementation branch
+
+- **T006 / T016 / T020 (UI)**: `lib/features/settings/tastes/` connects the
+  verified repositories to Profil › Ishrana › Ukusi i alergeni (canvas variant
+  A): allergens, dish kinds, cuisines, catalog foods, favorite recipes and the
+  online, revision-checked consent with confirmation. Reusable chips and tiles
+  live in `packages/tavli_ui` with gallery entries and goldens. Widget tests
+  cover saving, the three-state cycle, food and favorite pickers, consent
+  confirmation, offline and stale-revision consent, missing backend, phone and
+  wide layouts and 2× text. The note, its consent and the AI suggestion remain
+  open for the later note slice; real-device VoiceOver/TalkBack and macOS runs
+  are not yet recorded.
+
+The parent task checkboxes remain open until their acceptance scenarios pass
+and the implementation is reviewed.

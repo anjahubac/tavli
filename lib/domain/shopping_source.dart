@@ -14,8 +14,8 @@ enum ShoppingSourceKind {
   recipePreparation,
 }
 
-/// Recept kakav je odobren za obrok ili pripremu. Izmena recepta u
-/// biblioteci ga ne menja; sažetak može biti bez koraka.
+/// Sačuvan recept za obrok ili pripremu. Vezan neskuvan obrok se
+/// osvežava pri izmeni recepta u biblioteci; stari sažeci mogu biti bez koraka.
 class RecipeSnapshot {
   const RecipeSnapshot({
     required this.title,

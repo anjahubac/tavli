@@ -49,9 +49,10 @@ snacks through a list-based meal contract, not more hard-coded slot fields.
 Defaults remain editable: current week, lunch, two servings unless a saved
 selection supplies them. Never pretend household member count is known.
 
-Prompt context uses authorized household restrictions, explicit wishes and the
-approved preference aggregation contract. Existing saved recipes should be
-selected locally where suitable; AI fills gaps. Recipe suitability, intensity
+Prompt context uses explicit wishes and the approved consent-filtered
+preference aggregate. For household-aware planning, the server applies member
+allergen restrictions to saved candidates and checks the result before returning
+it. AI fills gaps through the server planning boundary. Recipe suitability, intensity
 and dish kind use closed sets, user-editable annotations and post-generation
 validation. Household rules default to substantial lunch, lighter dinner,
 maximum one substantial meal/day and varied dish kinds. Locked meals remain
@@ -98,17 +99,20 @@ preserving the same action on compact views.
 ## Pantry
 
 Presence means available; do not display a redundant “imam” badge. Quantity is
-optional. Search/add from the catalog, group by category and display plain names
-when quantity is unknown. There is no expiry entry, expiry warning or “use first”
-feature in this target. Legacy expiry columns are not dropped by documentation:
-a later migration must preserve data and older-client compatibility explicitly.
+optional. The list is flat, sorted by name, with search; add from the catalog or
+as a new name, and display plain names when quantity is unknown. There is no
+expiry entry, expiry warning or “use first” feature in this target. Legacy
+expiry columns are not dropped by documentation: a later migration must
+preserve data and older-client compatibility explicitly.
 
-Swipe to remove on phone. Provide “Ukloni” in a reachable row menu on compact
-layouts and a keyboard-accessible remove action on desktop. Offer “Poništi”.
-Tap a numeric entry to edit quantity with minus/plus and direct input. Cooking
-consumes known quantities once, never below zero; undo restores them once.
-Unknown quantities persist until the person removes the item. Repeated events,
-partial failures and offline replay must not duplicate consumption or receipts.
+Swipe left to reveal “Ukloni” on phone; on desktop a trash action appears on
+hover or keyboard focus. Removal offers “Vrati”. Tap an entry to edit quantity
+with minus/plus and direct input. The same food and unit show as one row with
+the summed quantity, also after “Prebaci u ostavu”. “Slikaj namirnice” suggests
+foods from a photo of one item or an open fridge; the person reviews them
+before they are added, and the photo is not kept. Cooking consumes known quantities once, never below zero; undo restores
+them once. Unknown quantities persist until the person removes the item.
+Repeated events, partial failures and offline replay must not duplicate consumption or receipts.
 
 ## Recipes and cooking
 
@@ -146,11 +150,12 @@ Review offline queues and account scope before switching household.
 
 Household shares recipes, plans, shopping and pantry. Taste preferences,
 favorites, ratings, diary/targets and cycle data are personal. Planning receives
-only the authorized minimum aggregate. Planning defaults to all current members
+only the authorized aggregate of tastes, notes and favorites. Member allergen
+selections stay on the server for planning. Planning defaults to all current members
 but passes explicit participant IDs; only selected members' favorites contribute.
 The [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
-remains pending producer/consumer review. Do not solve
-this by granting broad access to personal rows. Allergy codes are structured;
+records the initial merged design and the pending implementation review.
+Access to personal rows remains owner-only. Allergy codes are structured;
 separate the fixed allergen vocabulary from lactose avoidance and other dietary
 preferences, with the final vocabulary/provenance reviewed before implementation.
 

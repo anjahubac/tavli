@@ -10,7 +10,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-flutter_version=$(sed -n "s/^ *flutter-version: '\(.*\)'/\1/p" .github/workflows/check.yml)
+flutter_version=$(sed -n "s/^ *flutter-version: '\(.*\)'/\1/p" .github/workflows/check.yml | head -n 1)
 image=ubuntu:24.04
 # Isti paket SDK-a koji CI (subosito/flutter-action) skida; čuva se u
 # Docker volumenu, pa se skida samo prvi put.

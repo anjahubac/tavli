@@ -4,7 +4,7 @@
 // pa ponovljen ili prekinut poziv ne pravi duplikate. Ne loguje sadržaj knjige.
 
 import { chunkPage } from "./chunk.ts";
-import { EMBEDDING_DIMENSIONS } from "./embed.ts";
+import { EMBEDDING_DIMENSIONS, EmbedQuotaError } from "./embed.ts";
 import { ExtractError } from "./extract.ts";
 
 export { EMBEDDING_DIMENSIONS };
@@ -19,6 +19,7 @@ export interface Book {
   householdId: string;
   storagePath: string;
   filename: string;
+  embeddingModel: string;
   status: "uploaded" | "processing" | "ready" | "failed";
   nextPage: number;
   pages: number | null;
@@ -37,12 +38,13 @@ export interface ChunkRow {
 export interface ProcessDeps {
   getBook: (id: string) => Promise<Book | null>;
   /** Atomski preuzima obradu; false kad je već radi drugi poziv. */
-  claim: (id: string) => Promise<boolean>;
+  claim: (id: string, embeddingModel: string) => Promise<boolean>;
   unclaim: (id: string) => Promise<void>;
   download: (storagePath: string) => Promise<Uint8Array>;
   /** Tekst po stranici; baca ExtractError za no_text, corrupt, too_many_pages. */
   extract: (filename: string, bytes: Uint8Array) => Promise<string[]>;
-  embed: (texts: string[]) => Promise<number[][]>;
+  embed: (texts: string[], userId?: string) => Promise<number[][]>;
+  embeddingModel: string;
   /** Upis koji preskače već postojeće (knjiga, stranica, indeks). */
   insertChunks: (rows: ChunkRow[]) => Promise<void>;
   updateBook: (id: string, patch: Partial<Book>) => Promise<void>;
@@ -57,23 +59,34 @@ export interface ProcessResult {
 export async function processBook(
   deps: ProcessDeps,
   bookId: string,
-  options: { budgetMs?: number } = {},
+  options: { budgetMs?: number; userId?: string } = {},
 ): Promise<ProcessResult> {
   const budgetMs = options.budgetMs ?? DEFAULT_BUDGET_MS;
-  const book = await deps.getBook(bookId);
-  if (!book) return { status: "failed", nextPage: 1 };
-  if (book.status === "ready") return { status: "ready", nextPage: book.nextPage };
-  if (book.status === "failed") return { status: "failed", nextPage: book.nextPage };
+  const initial = await deps.getBook(bookId);
+  if (!initial) return { status: "failed", nextPage: 1 };
+  if (
+    initial.status === "ready" && initial.embeddingModel === deps.embeddingModel
+  ) {
+    return { status: "ready", nextPage: initial.nextPage };
+  }
+  if (
+    initial.status === "failed" &&
+    initial.embeddingModel === deps.embeddingModel
+  ) {
+    return { status: "failed", nextPage: initial.nextPage };
+  }
 
-  const fail = async (code: string): Promise<ProcessResult> => {
-    await deps.updateBook(book.id, { status: "failed", errorCode: code });
-    return { status: "failed", nextPage: book.nextPage };
-  };
-
-  if (!/\.(pdf|epub)$/i.test(book.filename)) return fail("unsupported_type");
-
-  if (!(await deps.claim(book.id))) return { status: "busy", nextPage: book.nextPage };
+  if (!(await deps.claim(initial.id, deps.embeddingModel))) {
+    return { status: "busy", nextPage: initial.nextPage };
+  }
   try {
+    const book = await deps.getBook(bookId);
+    if (!book) return { status: "failed", nextPage: 1 };
+    const fail = async (code: string): Promise<ProcessResult> => {
+      await deps.updateBook(book.id, { status: "failed", errorCode: code });
+      return { status: "failed", nextPage: book.nextPage };
+    };
+    if (!/\.(pdf|epub)$/i.test(book.filename)) return fail("unsupported_type");
     const started = deps.now();
     await deps.updateBook(book.id, { status: "processing" });
 
@@ -99,9 +112,19 @@ export async function processBook(
       if (chunks.length > 0) {
         let vectors: number[][];
         try {
-          vectors = await deps.embed(chunks);
-        } catch {
-          await deps.updateBook(book.id, { status: "processing", errorCode: "embed_failed" });
+          vectors = await deps.embed(chunks, options.userId);
+        } catch (error) {
+          if (error instanceof EmbedQuotaError) {
+            await deps.updateBook(book.id, {
+              status: "processing",
+              errorCode: "quota_exceeded",
+            });
+            throw error;
+          }
+          await deps.updateBook(book.id, {
+            status: "processing",
+            errorCode: "embed_failed",
+          });
           return { status: "partial", nextPage: n };
         }
         if (
@@ -129,6 +152,6 @@ export async function processBook(
     });
     return { status: "ready", nextPage: pages.length + 1 };
   } finally {
-    await deps.unclaim(book.id).catch(() => {});
+    await deps.unclaim(initial.id).catch(() => {});
   }
 }

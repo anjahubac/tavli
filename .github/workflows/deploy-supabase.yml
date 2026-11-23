@@ -50,12 +50,15 @@ jobs:
       - name: Pending migrations
         run: supabase db push --include-all --dry-run
       - run: supabase db push --include-all --yes
+      - run: supabase functions deploy ai-gateway --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy delete-account --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy cookbook-process --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy cookbook-ask --project-ref "$SUPABASE_PROJECT_REF"
+      - run: supabase functions deploy voice-transcribe --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy household-invite --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy household-join --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy household-photo-cleanup --project-ref "$SUPABASE_PROJECT_REF"
+      - run: supabase functions deploy planning-inputs --project-ref "$SUPABASE_PROJECT_REF"
       # Public bucket with the images used by the Auth emails (config.toml).
       - name: Email images
         run: supabase seed buckets --linked
