@@ -446,6 +446,7 @@ class _Media extends StatelessWidget {
             children: [
               TavliAvatar(initials: 'AH', semanticLabel: 'Anja'),
               TavliAvatar(initials: 'M', size: 30),
+              TavliAvatar.icon(TavliIcons.home, size: TavliAvatar.medium),
               TavliTag.cooked(),
             ],
           ),

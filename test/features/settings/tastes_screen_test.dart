@@ -129,6 +129,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('1 alergen'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Ukusi i alergeni'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ukusi i alergeni'));
     await tester.pumpAndSettle();
     expect(

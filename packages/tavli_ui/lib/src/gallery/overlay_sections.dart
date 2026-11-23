@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../content/tavli_media.dart';
 import '../controls/tavli_button.dart';
 import '../controls/tavli_text_field.dart';
+import '../icons/tavli_icons.dart';
 import '../overlays/tavli_action_menu.dart';
 import '../overlays/tavli_dialog.dart';
 import '../overlays/tavli_message.dart';
@@ -54,6 +56,27 @@ class TavliOverlayGallerySections extends StatelessWidget {
                     TavliDialogAction('Otkaži', false),
                     TavliDialogAction('Ukloni', true, isDestructive: true),
                   ],
+                ),
+              ),
+              gap,
+              const GalleryLabeled(
+                'Zaglavlje sa ikonicom, radnje u sadržaju',
+                TavliDialog<void>(
+                  title: 'Trajno brisanje domaćinstva',
+                  header: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: TavliSpacing.medium,
+                    children: [
+                      TavliAvatar.icon(
+                        TavliIcons.warning,
+                        size: TavliAvatar.prominent,
+                        destructive: true,
+                      ),
+                      Text('Trajno brisanje domaćinstva'),
+                    ],
+                  ),
+                  message: 'Poslednji ste član ovog domaćinstva.',
+                  actions: [],
                 ),
               ),
               gap,

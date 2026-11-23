@@ -86,5 +86,14 @@ and merged PR; checkbox completion alone is not a release or an external approva
   open for the later note slice; real-device VoiceOver/TalkBack and macOS runs
   are not yet recorded.
 
+- **T010–T015 (UI slice, branch `008-household-onboarding-ui`)**: Profile
+  variant A, the first sign-in step (variant C), sharing with QR, scanning,
+  the join flow with link continuation, rename and member removal. Evidence:
+  widget tests for setup, links, profile, share and join flows, controller and
+  router tests, a drift v11 migration test and pgTAP
+  `15_household_setup_test.sql`. Device delivery of links and the camera
+  scanner still need device checks. See the
+  [UI slice plan](plan.md#household-ui-and-first-sign-in-slice-t010t015).
+
 The parent task checkboxes remain open until their acceptance scenarios pass
 and the implementation is reviewed.

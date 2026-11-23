@@ -99,7 +99,8 @@ class TavliThumbnail extends StatelessWidget {
   }
 }
 
-/// Avatar: krug sa inicijalima ili slikom. Podrazumevano 40, na iOS-u 36.
+/// Avatar: krug sa inicijalima, slikom ili ikonicom. Podrazumevano 40, na
+/// iOS-u 36.
 class TavliAvatar extends StatelessWidget {
   const TavliAvatar({
     super.key,
@@ -107,7 +108,19 @@ class TavliAvatar extends StatelessWidget {
     this.image,
     this.size,
     this.semanticLabel,
-  });
+  }) : glyph = null,
+       destructive = false;
+
+  /// Ikonica u mekom krugu umesto inicijala (domaćinstvo u profilu,
+  /// upozorenje u dijalogu). [destructive] boji krug bojom greške.
+  const TavliAvatar.icon(
+    TavliIconData this.glyph, {
+    super.key,
+    this.size,
+    this.semanticLabel,
+    this.destructive = false,
+  }) : initials = '',
+       image = null;
 
   /// Jedno ili dva slova; prikazuju se i dok se slika učitava.
   final String initials;
@@ -118,6 +131,15 @@ class TavliAvatar extends StatelessWidget {
 
   /// Prečnik velikog avatara u zaglavlju profila.
   static const double large = 56;
+
+  /// Ikonica domaćinstva u kartici profila (kanvas: 44).
+  static const double medium = 44;
+
+  /// Ikonica u zaglavlju dijaloga (kanvas: 48).
+  static const double prominent = 48;
+
+  final TavliIconData? glyph;
+  final bool destructive;
 
   /// Ime osobe za čitač ekrana; bez njega avatar je ukras.
   final String? semanticLabel;
@@ -134,11 +156,15 @@ class TavliAvatar extends StatelessWidget {
       _ => 12.0,
     };
     final image = this.image;
+    final glyph = this.glyph;
+    final (fill, ink) = destructive
+        ? (c.errorContainer, c.error)
+        : (c.primaryContainer, c.onPrimaryContainer);
     Widget circle = SizedBox.square(
       dimension: size,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: c.primaryContainer,
+          color: fill,
           shape: BoxShape.circle,
           image: image == null
               ? null
@@ -146,6 +172,11 @@ class TavliAvatar extends StatelessWidget {
         ),
         child: image != null
             ? null
+            : glyph != null
+            // Kanvas: 22 u krugu od 44, 24 u krugu od 48.
+            ? Center(
+                child: TavliIcon(glyph, size: size / 2, color: ink),
+              )
             : Center(
                 child: MediaQuery.withNoTextScaling(
                   child: Text(

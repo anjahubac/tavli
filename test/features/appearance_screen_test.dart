@@ -25,6 +25,8 @@ void main() {
     tester,
   ) async {
     final app = await pumpTavli(tester, location: '/profile');
+    await tester.ensureVisible(find.text('Izgled'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Izgled'));
     await tester.pumpAndSettle();
 

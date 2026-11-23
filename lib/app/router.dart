@@ -5,6 +5,8 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
 import '../domain/voice_draft.dart';
+import '../features/account/household_setup_screen.dart';
+import '../features/account/household_share_screen.dart';
 import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
@@ -41,10 +43,13 @@ const componentsPath = '/components';
 const signUpPath = '/sign-up';
 const signInPath = '/sign-in';
 
+/// Korak "Tvoje domaćinstvo" posle imena.
+const householdSetupPath = '/sign-in/household';
+
 /// Kuda vodi stanje prijave: bez naloga samo "Prijava" ili "Registracija",
 /// posle poslatog koda "Upiši kod" (na "Prijava"), posle poslatog mejla za
 /// potvrdu "Proveri mejl" (na "Registracija"), bez imena samo korak sa
-/// imenom (FR-001). Tražena adresa se pamti u `from`; Početna
+/// imenom (FR-001), pa korak "Tvoje domaćinstvo". Tražena adresa se pamti u `from`; Početna
 /// ([homeLocation]) je podrazumevana pa se ne pamti.
 /// Uz [debugTools] galerija komponenti se otvara i bez prijave.
 String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
@@ -64,6 +69,8 @@ String? authRedirect(AuthState auth, Uri uri, {bool debugTools = kDebugMode}) {
     CodeSent() => path == signInPath ? null : withFrom(signInPath),
     ConfirmSent() => path == signUpPath ? null : withFrom(signUpPath),
     NeedsName() => path == '/sign-in/name' ? null : withFrom('/sign-in/name'),
+    NeedsHousehold() =>
+      path == householdSetupPath ? null : withFrom(householdSetupPath),
     SignedIn() => _isAuthPath(path) ? (from ?? homeLocation) : null,
   };
 }
@@ -102,6 +109,10 @@ GoRouter createRouter({
       builder: (context, state) => const SignInScreen(),
       routes: [
         GoRoute(path: 'name', builder: (context, state) => const NameScreen()),
+        GoRoute(
+          path: 'household',
+          builder: (context, state) => const HouseholdSetupScreen(),
+        ),
       ],
     ),
     GoRoute(
@@ -133,6 +144,10 @@ GoRouter createRouter({
             GoRoute(
               path: 'ai-keys',
               builder: (context, state) => const AiKeysScreen(),
+            ),
+            GoRoute(
+              path: 'household-share',
+              builder: (context, state) => const HouseholdShareScreen(),
             ),
             GoRoute(
               path: 'appearance',

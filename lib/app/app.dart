@@ -8,7 +8,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
+import '../account/household_invite_code.dart';
 import '../domain/theme_choice.dart';
+import '../features/account/household_join_dialog.dart';
+import '../features/account/household_providers.dart';
+import '../features/account/household_removed_dialog.dart';
 import '../features/account/sync_banner.dart';
 import '../providers.dart';
 import '../sync/realtime_sync.dart';
@@ -74,7 +78,19 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       });
       unawaited(_readMacosFullScreen());
     }
-    ref.listenManual(authControllerProvider, (_, _) => _authChanges.ping());
+    ref.listenManual(authControllerProvider, (_, _) {
+      _authChanges.ping();
+      _openPendingInvite();
+      _showRemovalNotice();
+    });
+    ref.listenManual(
+      householdRemovalNoticeProvider,
+      (_, _) => _showRemovalNotice(),
+    );
+    ref.listenManual(
+      pendingHouseholdInviteProvider,
+      (_, _) => _openPendingInvite(),
+    );
     // Drži engine za slanje živim dok je nalog prijavljen.
     ref.listenManual(syncEngineProvider, (_, _) {}, fireImmediately: true);
     // AI slike za AI recepte rade u pozadini dok je nalog prijavljen.
@@ -119,8 +135,42 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     if (!mounted) return;
     _links = ref.read(appLinksProvider).listen((uri) {
       unawaited(_bringToFront());
-      unawaited(auth.openLink(uri));
+      // Pozivnica čeka prijavu i ime; korak „Tvoje domaćinstvo“ ili
+      // prijavljena aplikacija je otvara sa već upisanim kodom.
+      if (HouseholdInviteCode.fromAppLink(uri) case final code?) {
+        ref.read(pendingHouseholdInviteProvider.notifier).set(code);
+      } else {
+        unawaited(auth.openLink(uri));
+      }
     }, onError: (_) {});
+  }
+
+  /// Prijavljen nalog otvara pozivnicu iz linka (pregled i potvrda).
+  void _openPendingInvite() {
+    if (ref.read(authControllerProvider) is! SignedIn) return;
+    if (ref.read(pendingHouseholdInviteProvider) == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _router.routerDelegate.navigatorKey.currentContext;
+      if (!mounted || context == null) return;
+      if (ref.read(authControllerProvider) is! SignedIn) return;
+      final code = ref.read(pendingHouseholdInviteProvider.notifier).take();
+      if (code != null) unawaited(showHouseholdJoinDialog(context, code: code));
+    });
+  }
+
+  /// Obaveštenje da je osoba uklonjena iz domaćinstva, kad je router spreman.
+  void _showRemovalNotice() {
+    if (ref.read(authControllerProvider) is! SignedIn) return;
+    if (ref.read(householdRemovalNoticeProvider) == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _router.routerDelegate.navigatorKey.currentContext;
+      if (!mounted || context == null) return;
+      if (ref.read(authControllerProvider) is! SignedIn) return;
+      final notice = ref.read(householdRemovalNoticeProvider.notifier).take();
+      if (notice != null) {
+        unawaited(showHouseholdRemovedDialog(context, notice));
+      }
+    });
   }
 
   /// macOS ne izbacuje aplikaciju ispred pregledača kad primi link iz mejla
