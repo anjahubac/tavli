@@ -447,6 +447,11 @@ class Accounts extends Table {
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastPullAt => dateTime().nullable()();
   TextColumn get catalogStatus => text().nullable()();
+
+  /// Da li je nalog prošao korak "Tvoje domaćinstvo" (v11). Postojeći
+  /// nalozi su ga već prošli, pa je podrazumevano true.
+  BoolColumn get householdReady =>
+      boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -545,7 +550,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -567,6 +572,11 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8) await transaction(_migrateToRecipeRatings);
       if (from < 9) await transaction(() => _migrateToFoodCatalog(m));
       if (from < 10) await transaction(() => _migrateToMemberPlanning(m));
+      if (from < 11) {
+        await transaction(
+          () => _addMissingColumn(m, accounts, accounts.householdReady),
+        );
+      }
     },
   );
 

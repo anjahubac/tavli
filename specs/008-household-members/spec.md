@@ -35,9 +35,9 @@ The ticket IDs and original assignment are retained for traceability.
 
 ## Behavioral requirements
 
-- **FR-101**: The current owner can share one reusable invite credential per household as a link, QR payload or a manually entered code. New credentials have twelve random characters from an alphabet of 32 symbols. Display three groups of four. Manual entry accepts lowercase, spaces and hyphens. The in-app QR scanner reads the same code. The configured Supabase project hosts the HTTPS redirect. App links, QR and manual entry converge on the same authenticated preview and explicit confirmation. The preview reveals the destination name and whether the caller is the last member of their source household. The invite has no scheduled expiry, owner-facing deactivation, recipient binding, active invites list, join request or owner approval. It is unavailable once the destination household is deleted.
+- **FR-101**: Any current member, owner or not, can share the same reusable invite credential of their household (decision 2026-11-23) as a link, QR payload or a manually entered code. New credentials have twelve random characters from an alphabet of 32 symbols. Display three groups of four. Manual entry accepts lowercase, spaces and hyphens. The in-app QR scanner reads the same code. The configured Supabase project hosts the HTTPS redirect. App links, QR and manual entry converge on the same authenticated preview and explicit confirmation. The preview reveals the destination name and whether the caller is the last member of their source household. The owner can replace the invite with a new one (decision 2026-11-23); the old link, QR and code stop working at once and memberships stay. The invite has no scheduled expiry, recipient binding, active invites list, join request or owner approval. It is unavailable once the destination household is deleted.
 - **FR-102**: Show the destination household name before changing membership. The existing membership, including the personal household provisioned for a new account, is the source. If source and destination differ, ask whether to leave and offer “Da, ponesi moje recepte”, “Da, bez recepata” and “Ne, ostani ovde”. Either affirmative choice joins as a member and leaves the source in one server transition. The first copies recipes created by the departing user and legacy recipes with no known creator, including eligible content from a solo household before deletion. Each copy is independent. When members remain, the originals stay in the source. The second option copies zero recipes. Plans, shopping and pantry do not transfer. Cancel leaves both households untouched. Opening the link of the current household causes no transition.
-- **FR-103**: A departing owner automatically hands ownership to the longest-serving remaining member, ordered by the earliest membership join time and then by ascending user UUID to break ties. Before the last member leaves, show an explicit permanent-deletion warning and require acknowledgement as part of the switch. After confirmation and any selected recipe copies, delete the empty household and its remaining shared data, including recipes, plans, shopping, pantry and source photo objects. Its link stops working. Personal account data retains its existing access and lifecycle. The owner can remove a member through the member-management slice. Removal ends access under the old membership; under the current bearer-link rule, a removed user who still has the link can join again.
+- **FR-103**: A departing owner automatically hands ownership to the longest-serving remaining member, ordered by the earliest membership join time and then by ascending user UUID to break ties. Before the last member leaves, show an explicit permanent-deletion warning and require acknowledgement as part of the switch. After confirmation and any selected recipe copies, delete the empty household and its remaining shared data, including recipes, plans, shopping, pantry and source photo objects. Its link stops working. Personal account data retains its existing access and lifecycle. The owner can remove a member through the member-management slice. Removal ends access under the old membership; under the bearer-link rule, a removed user who still has the link can join again until the owner replaces the invite. When a device later sees that the account moved to a new personal household with the owner role, it shows a one-time removal notice naming the old and new household (decision 2026-11-23).
 - **FR-103a**: Account deletion uses the same ownership succession rule and household locks as a switch. Shared data and the existing invite stay with remaining members. Deleting the last member retires the household and queues its photos for cleanup before deleting the login. A retry resumes any pending photo cleanup.
 - **FR-104**: Each person chooses tastes, structured allergens, favorites and recipe ratings. Same-household membership does not grant broad access to private records.
 - **FR-105**: Preserve existing email-code/name/confirmation flow and close confirmed defects with regression tests; use canonical reviewed allergen/avoidance vocabulary.
@@ -95,9 +95,63 @@ Switch confirmation: “Da li ste sigurni da želite da napustite domaćinstvo?�
 Actions: “Da, ponesi moje recepte”, “Da, bez recepata”, “Ne, ostani ovde”.
 Last-member warning: “Poslednji ste član ovog domaćinstva. Ako odete, domaćinstvo i podaci koji ostanu u njemu biće trajno obrisani.” Show the destination name and explain which recipes will be copied before confirmation.
 
-The code entry in “Profil” uses “Pridruži se domaćinstvu”, “Kod pozivnice”
-and “Proveri pozivnicu”. The destination is “Prelaziš u domaćinstvo „{name}“.”
-and the recipe choice explains “Možeš da poneseš recepte koje si dodao i one bez autora.”
+The canvas copy supersedes the earlier code-entry wording (“Proveri pozivnicu”,
+“Prelaziš u domaćinstvo …”) as of 2026-11-22. Profile shows “Domaćinstvo”,
+“{n} član/člana/članova”, “Vlasnik · ti”, “Član”, “Izmeni domaćinstvo”, “Podeli
+domaćinstvo” with “QR kod, kod ili link”, and “Pridruži se novom domaćinstvu”.
+That row first opens a choice dialog titled “Pridruži se novom domaćinstvu”
+with “Kreiraj novo domaćinstvo”, “Pridruži se postojećem domaćinstvu” and
+“Odustani” (decision 2026-11-23, no canvas frame yet). Joining continues to the
+join sheet below. Creating opens “Novo domaćinstvo” with only “Naziv
+domaćinstva” (placeholder “Moje domaćinstvo”), “Odustani” and “Nastavi”
+(offline: “Nema interneta. Za novo domaćinstvo je potrebna veza.”); the server
+(`prepare_new_household`) creates an empty named household with an invite code,
+and the rest is the same confirmation flow as joining, with “Novo domaćinstvo”
+instead of “Pozvan si u” above the name. The creator becomes its owner.
+The join sheet uses “Pridruži se domaćinstvu”, “Skeniraj QR kod sa telefona
+člana ili unesi kod pozivnice.” (desktop: “Unesi kod pozivnice. Ako otvoriš
+link iz poruke, kod je već upisan.”), “Skeniraj QR kod”, “ili”, “Kod
+pozivnice”, “Odustani” and “Nastavi”. The confirmation shows “Pozvan si u”
+above the destination name. The recipe choice explains “Možeš da poneseš
+recepte koje si ti napravio i stare recepte bez poznatog autora.” When members
+remain, it adds “Plan, nabavka i ostava ostaju u domaćinstvu „{name}“.” The
+last-member step is titled “Trajno brisanje domaćinstva”, uses the warning above,
+“Razumem da je brisanje trajno”, “Odustani” and a red “Pridruži se”.
+
+The first sign-in step after the name is “Tvoje domaćinstvo”: “U domaćinstvu
+deliš plan, nabavku, ostavu i recepte. Daj mu naziv ili se pridruži
+domaćinstvu u koje si pozvan.”, “Naziv domaćinstva” (placeholder “Moje
+domaćinstvo”), “Nastavi”, “ili”, “Pridruži se postojećem domaćinstvu”. Joining
+from this step confirms with “U domaćinstvu delite plan, nabavku, ostavu i
+recepte.”, “Pridruži se” and “Odustani”. Errors: “Nema interneta. Za ovaj korak
+je potrebna veza.”, “Čuvanje nije uspelo. Pokušaj ponovo.”, “Naziv može imati
+najviše 40 znakova.”
+
+Sharing uses “Podeli domaćinstvo”, “Skeniraj QR u aplikaciji Tavli ili unesi kod
+u „Pridruži se domaćinstvu“.” (desktop: “Skeniraj QR telefonom u aplikaciji
+Tavli. Na računaru otvori link ili unesi kod.”), “Kod pozivnice”, “Pošalji
+pozivnicu”, “Kopiraj link”, “Kopiraj kod”, “Kod je kopiran.”, “Link je
+kopiran.”, owner-only “Napravi novu pozivnicu”, “Napraviti novu pozivnicu?”,
+“Stari kod, QR i link prestaju da rade. Članovi ostaju u domaćinstvu.”,
+“Napravi novu”, “Nova pozivnica je spremna.”, “Nema interneta. Nova pozivnica
+se pravi uz vezu.”, “Nova pozivnica nije napravljena. Pokušaj ponovo.”, “Pozivnicu može da iskoristi svako ko dobije kod, zato je šalji samo
+ljudima s kojima deliš domaćinstvo.”, “Pozivnica nije dostupna”, “Nema
+interneta. Pozivnica se prikazuje uz vezu.” The share text is “Pridruži mi se u
+domaćinstvu „{name}“ u aplikaciji Tavli: {link}” followed by “Kod pozivnice:
+{code}”. The scanner uses “Skeniraj QR kod”, “Postavi QR kod u okvir”, “Kod se
+čita sam, ne moraš ništa da pritiskaš.”, “Svetlo”, “Unesi kod”, “Zatvori” and
+“Kamera nije dostupna. Dozvoli pristup kameri u podešavanjima telefona ili
+unesi kod.”
+
+Member management uses “Izmeni domaćinstvo”, “Naziv domaćinstva”, “Članovi”,
+“Ukloni člana {name}”, “Ukloni člana?”, “Da li ste sigurni da želite da uklonite
+člana {name} iz domaćinstva? Više neće videti zajednički plan, nabavku ni
+ostavu.”, “Ukloni”, “Sačuvaj”, “Članovi trenutno nisu dostupni.”, “Člana
+trenutno nije moguće ukloniti.”, “Nema interneta. Za uklanjanje je potrebna
+veza.” and “Nema interneta. Naziv se menja uz vezu.” The removed member's
+notice is “Više nisi u domaćinstvu „{old}“”, “Vlasnik te je uklonio iz
+domaćinstva. Sada si u svom domaćinstvu „{new}“. Plan, nabavka, ostava i
+recepti starog domaćinstva ostaju tamo.” with “U redu”.
 Recovery uses “Prijavi se ponovo.”, “Članstvo se promenilo. Proveri pozivnicu ponovo.”,
 “Prenos fotografija još nije uspeo. Pokušaj ponovo.”, or
 “Prelazak nije uspeo. Pokušaj ponovo.” with “Pokušaj ponovo”. An offline

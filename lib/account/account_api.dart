@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
 
+import '../domain/account.dart';
 import 'auth_gateway.dart';
 import 'household_invite_code.dart';
 
@@ -16,6 +17,7 @@ class RemoteAccount {
     required this.householdName,
     required this.role,
     this.displayName,
+    this.householdSetupDone = true,
   });
 
   final String userId;
@@ -24,7 +26,13 @@ class RemoteAccount {
   final String householdId;
   final String householdName;
   final String role;
+
+  /// Korak "Tvoje domaćinstvo" je završen (naziv ili pridruživanje).
+  final bool householdSetupDone;
 }
+
+/// Ishod promene naziva domaćinstva.
+enum RenameHouseholdResult { renamed, invalidName, notAllowed }
 
 /// Zašto brisanje naloga nije uspelo; na uređaju se tada ništa ne briše.
 sealed class DeleteFailure implements Exception {
@@ -71,11 +79,21 @@ abstract interface class AccountApi {
   /// Svoj profil, članstvo i domaćinstvo. Baca `AuthFailure`.
   Future<RemoteAccount> fetch();
 
-  /// Pregled, ažuriranje ili kreiranje trajnog linka domaćinstva.
+  /// Pregled, ažuriranje ili kreiranje trajnog linka domaćinstva (svaki
+  /// član).
   Future<String> householdInviteToken();
+
+  /// Vlasnik zamenjuje pozivnicu novom; stari kod, QR i link prestaju da
+  /// rade. Vraća novi kod. Baca `AuthFailure`.
+  Future<String> regenerateHouseholdInvite();
 
   /// Pregled linka bez pristupa podacima odredišnog domaćinstva.
   Future<HouseholdPreview> previewHouseholdJoin(String token);
+
+  /// „Kreiraj novo domaćinstvo“: server pravi prazno domaćinstvo sa
+  /// nazivom i vraća njegov kod; prelazak ide istim tokom kao
+  /// pridruživanje. Baca `AuthFailure`.
+  Future<String> prepareNewHousehold(String name);
 
   /// Potvrda prelaska. Replays use the same operation ID.
   Future<HouseholdJoinResult> confirmHouseholdJoin({
@@ -85,6 +103,14 @@ abstract interface class AccountApi {
     required bool acknowledgeSourceDeletion,
     required String operationId,
   });
+
+  /// Vlasnik menja naziv domaćinstva; isti poziv završava korak "Tvoje
+  /// domaćinstvo". Baca `AuthFailure`.
+  Future<RenameHouseholdResult> renameHousehold(String name);
+
+  /// Članovi sopstvenog domaćinstva (ime i uloga), redom pridruživanja.
+  /// Baca `AuthFailure`.
+  Future<List<HouseholdMember>> householdMembers();
 
   /// Vlasnik uklanja člana; server mu pravi novo lično domaćinstvo.
   /// Vraća `removed`, `not_allowed` ili `invalid_request`.
@@ -117,7 +143,7 @@ class SupabaseAccountApi implements AccountApi {
         () async => (
           await _client.rest
               .from('profiles')
-              .select('id, email, display_name')
+              .select('id, email, display_name, household_setup_done')
               .eq('id', uid)
               .limit(1),
           await _client.rest
@@ -138,6 +164,7 @@ class SupabaseAccountApi implements AccountApi {
           householdId: m['household_id'] as String,
           householdName: household?['name'] as String? ?? 'Moje domaćinstvo',
           role: m['role'] as String? ?? 'owner',
+          householdSetupDone: p['household_setup_done'] as bool? ?? true,
         );
       }
       if (attempt == _attempts) throw const Unavailable();
@@ -146,9 +173,15 @@ class SupabaseAccountApi implements AccountApi {
   }
 
   @override
-  Future<String> householdInviteToken() async {
+  Future<String> householdInviteToken() => _inviteRpc('household_invite_token');
+
+  @override
+  Future<String> regenerateHouseholdInvite() =>
+      _inviteRpc('regenerate_household_invite');
+
+  Future<String> _inviteRpc(String function) async {
     try {
-      final result = await _client.rpc<Object?>('household_invite_token');
+      final result = await _client.rpc<Object?>(function);
       if (result is! String || result.isEmpty) throw const Unavailable();
       return result;
     } on PostgrestException catch (e) {
@@ -237,6 +270,52 @@ class SupabaseAccountApi implements AccountApi {
   }
 
   @override
+  Future<RenameHouseholdResult> renameHousehold(String name) async {
+    final result = await _joinRpc(
+      () => _client.rpc('rename_household', params: {'name': name}),
+    );
+    return switch (result['status']) {
+      'renamed' => RenameHouseholdResult.renamed,
+      'invalid_name' => RenameHouseholdResult.invalidName,
+      'not_allowed' => RenameHouseholdResult.notAllowed,
+      _ => throw const Unavailable(),
+    };
+  }
+
+  @override
+  Future<List<HouseholdMember>> householdMembers() async {
+    final rows = await _guard(
+      () => _client.rpc<List<dynamic>>('household_members_overview'),
+    );
+    return [
+      for (final row in rows)
+        if (row case {
+          'user_id': final String userId,
+          'role': final String role,
+        })
+          HouseholdMember(
+            userId: userId,
+            role: role,
+            displayName: row['display_name'] as String?,
+          )
+        else
+          throw const Unavailable(),
+    ];
+  }
+
+  @override
+  Future<String> prepareNewHousehold(String name) async {
+    final result = await _joinRpc(
+      () => _client.rpc('prepare_new_household', params: {'name': name}),
+    );
+    return switch (result) {
+      {'status': 'ready', 'token': final String token} when token.isNotEmpty =>
+        token,
+      _ => throw const Unavailable(),
+    };
+  }
+
+  @override
   Future<String> removeHouseholdMember(String memberId) async {
     final result = await _joinRpc(
       () => _client.rpc(
@@ -304,7 +383,14 @@ class UnconfiguredAccountApi implements AccountApi {
   Future<String> householdInviteToken() async => throw const Unavailable();
 
   @override
+  Future<String> regenerateHouseholdInvite() async => throw const Unavailable();
+
+  @override
   Future<HouseholdPreview> previewHouseholdJoin(String token) async =>
+      throw const Unavailable();
+
+  @override
+  Future<String> prepareNewHousehold(String name) async =>
       throw const Unavailable();
 
   @override
@@ -315,6 +401,14 @@ class UnconfiguredAccountApi implements AccountApi {
     required bool acknowledgeSourceDeletion,
     required String operationId,
   }) async => throw const Unavailable();
+
+  @override
+  Future<RenameHouseholdResult> renameHousehold(String name) async =>
+      throw const Unavailable();
+
+  @override
+  Future<List<HouseholdMember>> householdMembers() async =>
+      throw const Unavailable();
 
   @override
   Future<String> removeHouseholdMember(String memberId) async =>

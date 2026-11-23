@@ -12,6 +12,7 @@ import '../content/tavli_tag.dart';
 import '../controls/tavli_button.dart';
 import '../controls/tavli_icon_button.dart';
 import '../controls/tavli_rows.dart';
+import '../icons/tavli_icons.dart';
 import '../tokens.dart';
 import 'gallery_section.dart';
 
@@ -441,6 +442,7 @@ class _Media extends StatelessWidget {
             children: [
               TavliAvatar(initials: 'AH', semanticLabel: 'Anja'),
               TavliAvatar(initials: 'M', size: 30),
+              TavliAvatar.icon(TavliIcons.home, size: TavliAvatar.medium),
               TavliTag.cooked(),
             ],
           ),

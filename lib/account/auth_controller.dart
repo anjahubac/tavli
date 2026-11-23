@@ -88,6 +88,15 @@ class NeedsName extends AuthState {
   final bool membershipVerified;
 }
 
+/// Ima ime, ali još nije izabrao domaćinstvo: daje naziv ličnom
+/// domaćinstvu ili se pridružuje drugom (obavezan korak posle imena).
+class NeedsHousehold extends AuthState {
+  const NeedsHousehold(this.account, {this.membershipVerified = true});
+
+  final Account account;
+  final bool membershipVerified;
+}
+
 class SignedIn extends AuthState {
   const SignedIn(this.account, {this.membershipVerified = true});
 
@@ -148,7 +157,9 @@ class AuthController extends Notifier<AuthState> {
     try {
       final session = await gateway.restore(json);
       await store.write(session.json);
-      _set(_signedIn(await service.loadOrFetch(session, allowOffline: false)));
+      final fresh = await service.loadOrFetch(session, allowOffline: false);
+      if (account != null) _noticeIfRemoved(account, fresh);
+      _set(_signedIn(fresh));
     } on SecretStorageException {
       await _lockSession(gateway);
     } on AuthFailure catch (f) {
@@ -240,8 +251,8 @@ class AuthController extends Notifier<AuthState> {
       if (!ref.mounted) return;
       await store.write(session.json);
       if (!ref.mounted || _checkingMembership) return;
-      if (state is NeedsName) {
-        await _refetchName(session);
+      if (state is NeedsName || state is NeedsHousehold) {
+        await _refetchOnboarding(session);
         return;
       }
       final initial = state;
@@ -258,6 +269,7 @@ class AuthController extends Notifier<AuthState> {
             sync?.stop();
             _pendingRecheck = null;
           }
+          _noticeIfRemoved(initial.account, account);
           _membershipRetry?.cancel();
           if (!initial.membershipVerified ||
               account.householdId != initial.account.householdId ||
@@ -292,7 +304,8 @@ class AuthController extends Notifier<AuthState> {
     if (!ref.mounted) return;
     if (state
         case SignedIn(membershipVerified: false) ||
-            NeedsName(membershipVerified: false)) {
+            NeedsName(membershipVerified: false) ||
+            NeedsHousehold(membershipVerified: false)) {
       _retryMembership();
     }
   }
@@ -309,20 +322,22 @@ class AuthController extends Notifier<AuthState> {
     bool proceedWithoutPendingWrites = false,
   }) async {
     final initial = state;
-    if (initial is! SignedIn ||
-        !initial.membershipVerified ||
-        _checkingMembership ||
-        _restoringSession) {
+    final initialAccount = switch (initial) {
+      SignedIn(membershipVerified: true, :final account) ||
+      NeedsHousehold(membershipVerified: true, :final account) => account,
+      _ => null,
+    };
+    if (initialAccount == null || _checkingMembership || _restoringSession) {
       return const HouseholdJoinResult(status: 'unavailable');
     }
-    if (initial.account.householdId != expectedSourceHouseholdId) {
+    if (initialAccount.householdId != expectedSourceHouseholdId) {
       return const HouseholdJoinResult(status: 'stale_source');
     }
     final service = _service;
     _checkingMembership = true;
     try {
       if (!proceedWithoutPendingWrites &&
-          await service.hasPendingHouseholdWrites(initial.account.userId)) {
+          await service.hasPendingHouseholdWrites(initialAccount.userId)) {
         sync?.kick();
         return const HouseholdJoinResult(status: 'pending_sync');
       }
@@ -331,7 +346,7 @@ class AuthController extends Notifier<AuthState> {
           return const HouseholdJoinResult(status: 'unavailable');
         }
         final result = await service.confirmHouseholdJoin(
-          account: initial.account,
+          account: initialAccount,
           token: token,
           recipeChoice: recipeChoice,
           acknowledgeSourceDeletion: acknowledgeSourceDeletion,
@@ -341,9 +356,9 @@ class AuthController extends Notifier<AuthState> {
         if (result.account != null &&
             ref.mounted &&
             identical(state, initial)) {
-          final account = await service.cached(initial.account.userId);
+          final account = await service.cached(initialAccount.userId);
           if (account != null && ref.mounted && identical(state, initial)) {
-            if (account.householdId != initial.account.householdId) {
+            if (account.householdId != initialAccount.householdId) {
               sync?.stop();
               _membershipRetry?.cancel();
             }
@@ -359,6 +374,29 @@ class AuthController extends Notifier<AuthState> {
     } finally {
       _checkingMembership = false;
     }
+  }
+
+  /// Naziv domaćinstva: korak "Tvoje domaćinstvo" ili "Izmeni domaćinstvo"
+  /// (samo vlasnik). Baca [ArgumentError] za neispravan naziv i
+  /// [AuthFailure]; stanje tada ostaje.
+  Future<RenameHouseholdResult> renameHousehold(String name) async {
+    final initial = state;
+    final (account, verified) = switch (initial) {
+      SignedIn(:final account, :final membershipVerified) ||
+      NeedsHousehold(
+        :final account,
+        :final membershipVerified,
+      ) => (account, membershipVerified),
+      _ => (null, false),
+    };
+    if (account == null) return RenameHouseholdResult.notAllowed;
+    final (result, updated) = await _service.renameHousehold(account, name);
+    if (result == RenameHouseholdResult.renamed &&
+        ref.mounted &&
+        identical(state, initial)) {
+      _set(_signedIn(updated, membershipVerified: verified));
+    }
+    return result;
   }
 
   /// "Prijava": šalje kod postojećem nalogu (i ponovo, posle 30 s). Baca
@@ -421,7 +459,7 @@ class AuthController extends Notifier<AuthState> {
   /// ponovo". Ako je neko već prijavljen, link se zanemaruje.
   Future<void> openLink(Uri link) async {
     if (!isAuthCallback(link)) return;
-    if (state is SignedIn || state is NeedsName) return;
+    if (_hasAccount) return;
     try {
       await _signInWith(await _gateway.exchangeLink(link));
     } on AuthFailure catch (f) {
@@ -455,12 +493,14 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  /// Ime je možda u međuvremenu sačuvano na drugom uređaju.
-  Future<void> _refetchName(AuthSession session) async {
+  /// Ime ili domaćinstvo je možda u međuvremenu sačuvano na drugom uređaju.
+  Future<void> _refetchOnboarding(AuthSession session) async {
     try {
       final account = await _service.loadOrFetch(session, allowOffline: false);
       _membershipRetry?.cancel();
-      if (ref.mounted && state is NeedsName) _set(_signedIn(account));
+      if (ref.mounted && (state is NeedsName || state is NeedsHousehold)) {
+        _set(_signedIn(account));
+      }
     } on Offline {
       _retryIfUnverified();
     } on Unavailable {
@@ -482,7 +522,7 @@ class AuthController extends Notifier<AuthState> {
       _ => false,
     };
     _set(
-      SignedIn(
+      _signedIn(
         await _service.saveName(account, name),
         membershipVerified: verified,
       ),
@@ -493,6 +533,27 @@ class AuthController extends Notifier<AuthState> {
   void changeEmail() => state = const SignedOut();
 
   /// Posle čekanja kontroler je možda već uklonjen (test, odjava).
+  /// Domaćinstvo se promenilo van ovog uređaja. Sopstveni prelazak na
+  /// drugom uređaju daje ulogu člana; uklanjanje (`remove_household_member`)
+  /// pravi novo lično domaćinstvo sa ulogom vlasnika. Ako je osoba na
+  /// drugom uređaju prešla pa postala naslednik vlasnika, obaveštenje bi
+  /// bilo pogrešno; to je redak slučaj bez posebnog signala sa servera.
+  void _noticeIfRemoved(Account before, Account after) {
+    if (before.userId != after.userId ||
+        before.householdId == after.householdId ||
+        !after.isOwner) {
+      return;
+    }
+    ref
+        .read(householdRemovalNoticeProvider.notifier)
+        .set(
+          HouseholdRemovalNotice(
+            previousHouseholdName: before.householdName,
+            currentHouseholdName: after.householdName,
+          ),
+        );
+  }
+
   void _set(AuthState s) {
     if (!ref.mounted) return;
     if (s is SignedOut) {
@@ -502,11 +563,14 @@ class AuthController extends Notifier<AuthState> {
     state = s;
   }
 
-  AuthState _signedIn(Account a, {bool membershipVerified = true}) => a.hasName
-      ? SignedIn(a, membershipVerified: membershipVerified)
-      : NeedsName(a, membershipVerified: membershipVerified);
+  AuthState _signedIn(Account a, {bool membershipVerified = true}) => !a.hasName
+      ? NeedsName(a, membershipVerified: membershipVerified)
+      : !a.householdReady
+      ? NeedsHousehold(a, membershipVerified: membershipVerified)
+      : SignedIn(a, membershipVerified: membershipVerified);
 
-  bool get _hasAccount => state is SignedIn || state is NeedsName;
+  bool get _hasAccount =>
+      state is SignedIn || state is NeedsName || state is NeedsHousehold;
 
   Future<void> _onSessionChanged(AuthSession? session) async {
     if (session == null || !_hasAccount) return;
@@ -538,7 +602,9 @@ class AuthController extends Notifier<AuthState> {
   /// jednom obnavlja.
   Future<void> deleteAccount() async {
     final account = switch (state) {
-      SignedIn(:final account) || NeedsName(:final account) => account,
+      SignedIn(:final account) ||
+      NeedsName(:final account) ||
+      NeedsHousehold(:final account) => account,
       _ => null,
     };
     if (account == null) return;
@@ -565,7 +631,9 @@ class AuthController extends Notifier<AuthState> {
   /// njegov keš na ovom.
   Future<void> sessionExpired({bool accountGone = false}) async {
     final userId = switch (state) {
-      SignedIn(:final account) || NeedsName(:final account) => account.userId,
+      SignedIn(:final account) ||
+      NeedsName(:final account) ||
+      NeedsHousehold(:final account) => account.userId,
       _ => null,
     };
     final store = _store, gateway = _gateway, service = _service;
@@ -579,6 +647,38 @@ class AuthController extends Notifier<AuthState> {
 final authControllerProvider = NotifierProvider<AuthController, AuthState>(
   AuthController.new,
 );
+
+/// Osoba je uklonjena iz domaćinstva i prebačena u novo lično domaćinstvo.
+class HouseholdRemovalNotice {
+  const HouseholdRemovalNotice({
+    required this.previousHouseholdName,
+    required this.currentHouseholdName,
+  });
+
+  final String previousHouseholdName;
+  final String currentHouseholdName;
+}
+
+/// Obaveštenje o uklanjanju koje čeka da ga aplikacija prikaže. Samo u
+/// memoriji: prikazuje se jednom, kada uređaj primeti promenu.
+final householdRemovalNoticeProvider =
+    NotifierProvider<HouseholdRemovalNotices, HouseholdRemovalNotice?>(
+      HouseholdRemovalNotices.new,
+    );
+
+class HouseholdRemovalNotices extends Notifier<HouseholdRemovalNotice?> {
+  @override
+  HouseholdRemovalNotice? build() => null;
+
+  void set(HouseholdRemovalNotice notice) => state = notice;
+
+  /// Vraća obaveštenje i briše ga, da se dijalog ne otvori dvaput.
+  HouseholdRemovalNotice? take() {
+    final notice = state;
+    state = null;
+    return notice;
+  }
+}
 
 /// Nalog čiji se podaci prikazuju; null dok niko nije prijavljen.
 final accountScopeProvider = Provider<AccountScope?>(

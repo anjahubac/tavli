@@ -6,67 +6,77 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../app/router.dart';
 import 'profile_account_section.dart';
+import 'profile_household_section.dart';
 import 'settings_page.dart';
 import 'tastes/taste_labels.dart';
 import 'tastes/tastes_providers.dart';
 
-/// Profil i podešavanja, kao na platnu: nalog, ishrana, podešavanja i
-/// brisanje naloga; na širokom ekranu nalog i ishrana levo, ostalo desno.
+/// Profil i podešavanja, kao na platnu: nalog, domaćinstvo, ishrana,
+/// podešavanja i brisanje naloga; na širokom ekranu nalog, ishrana i
+/// brisanje levo, domaćinstvo i podešavanja desno.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final settings = SettingsSection(
+      title: 'Podešavanja',
+      children: [
+        TavliListGroup(
+          children: [
+            TavliListRow(
+              title: 'Izgled',
+              subtitle: 'Boje, tema i svetli ili tamni režim',
+              leading: const Icon(Icons.palette_outlined),
+              showChevron: true,
+              onTap: () => context.go('/profile/appearance'),
+            ),
+            TavliListRow(
+              title: 'AI ključevi',
+              subtitle: 'Gemini, Groq, OpenRouter',
+              leading: const Icon(Icons.key_outlined),
+              showChevron: true,
+              onTap: () => context.go('/profile/ai-keys'),
+            ),
+            if (kDebugMode)
+              TavliListRow(
+                title: 'Animacije',
+                subtitle: 'Pregled animacija (samo za razvoj)',
+                leading: const Icon(Icons.animation),
+                showChevron: true,
+                onTap: () => context.go('/profile/animations'),
+              ),
+            if (kDebugMode)
+              TavliListRow(
+                title: 'Komponente',
+                subtitle: 'Galerija UI biblioteke (samo za razvoj)',
+                leading: const Icon(Icons.widgets_outlined),
+                showChevron: true,
+                onTap: () => context.push(componentsPath),
+              ),
+          ],
+        ),
+      ],
+    );
+    const account = AccountSection();
+    const household = HouseholdSection();
+    const diet = _DietSection();
+    const delete = DeleteAccountSection();
     return SettingsPage(
       title: 'Profil',
       // Otvoren direktnom adresom nema kuda nazad, pa vodi na početni tab.
       fallbackLocation: homeLocation,
       children: [
-        SettingsColumns(
-          start: const [AccountSection(), _DietSection()],
-          end: [
-            SettingsSection(
-              title: 'Podešavanja',
-              children: [
-                TavliListGroup(
-                  children: [
-                    TavliListRow(
-                      title: 'Izgled',
-                      subtitle: 'Boje, tema i svetli ili tamni režim',
-                      leading: const Icon(Icons.palette_outlined),
-                      showChevron: true,
-                      onTap: () => context.go('/profile/appearance'),
-                    ),
-                    TavliListRow(
-                      title: 'AI ključevi',
-                      subtitle: 'Gemini, Groq, OpenRouter',
-                      leading: const Icon(Icons.key_outlined),
-                      showChevron: true,
-                      onTap: () => context.go('/profile/ai-keys'),
-                    ),
-                    if (kDebugMode)
-                      TavliListRow(
-                        title: 'Animacije',
-                        subtitle: 'Pregled animacija (samo za razvoj)',
-                        leading: const Icon(Icons.animation),
-                        showChevron: true,
-                        onTap: () => context.go('/profile/animations'),
-                      ),
-                    if (kDebugMode)
-                      TavliListRow(
-                        title: 'Komponente',
-                        subtitle: 'Galerija UI biblioteke (samo za razvoj)',
-                        leading: const Icon(Icons.widgets_outlined),
-                        showChevron: true,
-                        onTap: () => context.push(componentsPath),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-            const DeleteAccountSection(),
-          ],
-        ),
+        if (isWideSettings(context))
+          SettingsColumns(
+            start: const [account, diet, delete],
+            end: [household, settings],
+          )
+        else
+          SettingsColumns(
+            start: [account, household, diet, settings, delete],
+            end: const [],
+          ),
       ],
     );
   }

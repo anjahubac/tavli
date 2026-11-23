@@ -455,4 +455,107 @@ void main() {
       expect(state(), isA<NeedsName>());
     });
   });
+
+  group('korak „Tvoje domaćinstvo“', () {
+    setUp(() => backend.server.newAccountNeedsHousehold = true);
+
+    test(
+      'nov nalog: posle imena traži domaćinstvo, naziv otvara aplikaciju',
+      () async {
+        backend.server.userFor('novi@mail.com');
+        await ctrl().start();
+        await ctrl().sendCode('novi@mail.com');
+        await ctrl().verify(FakeServer.code);
+        expect(state(), isA<NeedsName>());
+
+        await ctrl().saveName('Ana');
+        expect(state(), isA<NeedsHousehold>());
+
+        expect(
+          await ctrl().renameHousehold('  Domaćinstvo Horvat '),
+          RenameHouseholdResult.renamed,
+        );
+        final st = state() as SignedIn;
+        expect(st.account.householdName, 'Domaćinstvo Horvat');
+        expect(st.account.householdReady, isTrue);
+        final row = await db.select(db.accounts).getSingle();
+        expect(row.householdName, 'Domaćinstvo Horvat');
+        expect(row.householdReady, isTrue);
+      },
+    );
+
+    test('bez mreže naziv baca grešku i korak ostaje', () async {
+      backend.server.userFor('novi@mail.com');
+      await ctrl().start();
+      await ctrl().sendCode('novi@mail.com');
+      await ctrl().verify(FakeServer.code);
+      await ctrl().saveName('Ana');
+      backend.server.offline = true;
+
+      await expectLater(
+        ctrl().renameHousehold('Kuća'),
+        throwsA(isA<Offline>()),
+      );
+      expect(state(), isA<NeedsHousehold>());
+      expect(
+        (await db.select(db.accounts).getSingle()).householdReady,
+        isFalse,
+      );
+    });
+
+    test('pridruživanje iz koraka završava korak bez promene naziva', () async {
+      backend.server.userFor('novi@mail.com');
+      backend.accounts.joinTargetHousehold = 'destination';
+      await ctrl().start();
+      await ctrl().sendCode('novi@mail.com');
+      await ctrl().verify(FakeServer.code);
+      await ctrl().saveName('Ana');
+      final source = (state() as NeedsHousehold).account.householdId;
+
+      final result = await ctrl().confirmHouseholdJoin(
+        token: '0123456789AB',
+        expectedSourceHouseholdId: source,
+        recipeChoice: JoinRecipeChoice.leaveRecipes,
+        acknowledgeSourceDeletion: true,
+        operationId: 'op-1',
+        sync: null,
+      );
+
+      expect(result.status, 'joined');
+      final st = state() as SignedIn;
+      expect(st.account.householdId, 'destination');
+      expect(st.account.role, 'member');
+      expect(st.account.householdReady, isTrue);
+    });
+
+    test(
+      'drugi uređaj je završio korak: osvežavanje otvara aplikaciju',
+      () async {
+        final s = backend.auth.sessionFor('ana@mail.com');
+        secrets.values[SessionStore.key] = s.json;
+        await cacheAccount(s, name: 'Ana');
+        backend.server.profiles[s.userId]!['household_setup_done'] = false;
+        await ctrl().start();
+        expect(state(), isA<NeedsHousehold>());
+
+        backend.server.profiles[s.userId]!['household_setup_done'] = true;
+        await ctrl().restoreSession();
+        expect(state(), isA<SignedIn>());
+      },
+    );
+
+    test('član ne menja naziv domaćinstva', () async {
+      final s = backend.auth.sessionFor('ana@mail.com');
+      secrets.values[SessionStore.key] = s.json;
+      await cacheAccount(s, name: 'Ana');
+      backend.server.roles[s.userId] = 'member';
+      await ctrl().start();
+
+      expect(
+        await ctrl().renameHousehold('Preuzeto'),
+        RenameHouseholdResult.notAllowed,
+      );
+      expect((state() as SignedIn).account.householdName, 'Moje domaćinstvo');
+    });
+  });
 }

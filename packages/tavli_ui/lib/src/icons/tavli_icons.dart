@@ -86,6 +86,8 @@ abstract final class TavliIcons {
   // Strelice.
   static const back = TavliIconData('back', ['M15 5l-7 7 7 7']);
   static const chevronRight = TavliIconData('chevronRight', ['M9 5l7 7-7 7']);
+  static const chevronDown = TavliIconData('chevronDown', ['M6 9l6 6 6-6']);
+  static const chevronUp = TavliIconData('chevronUp', ['M6 15l6-6 6 6']);
   static const arrowForward = TavliIconData('arrowForward', [
     'M5 12h14M13 6l6 6-6 6',
   ]);
@@ -133,6 +135,44 @@ abstract final class TavliIcons {
     'circle 12 12 8',
     'M12 4v16',
   ]);
+  // Domaćinstvo i pozivnica.
+  static const share = TavliIconData('share', [
+    'circle 18 5 2.5',
+    'circle 6 12 2.5',
+    'circle 18 19 2.5',
+    'M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4',
+  ]);
+  static const join = TavliIconData('join', [
+    'M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4',
+    'M14 16l4-4-4-4M18 12H8',
+  ]);
+  static const removeMember = TavliIconData('removeMember', [
+    'circle 12 12 9',
+    'M8 12h8',
+  ]);
+  static const scan = TavliIconData('scan', [
+    'M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2'
+        'M8 20H6a2 2 0 0 1-2-2v-2',
+    'M7 12h10',
+  ]);
+  static const send = TavliIconData('send', [
+    'M21 3L10 14',
+    'M21 3l-7 18-4-7-7-4z',
+  ]);
+  static const copy = TavliIconData('copy', [
+    'rect 9 9 11 11 2',
+    'M5 15V6a2 2 0 0 1 2-2h9',
+  ]);
+  static const link = TavliIconData('link', [
+    'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1',
+    'M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  ]);
+  static const flash = TavliIconData('flash', ['M13 3L5 14h6l-1 7 8-11h-6z']);
+  static const warning = TavliIconData('warning', [
+    'M12 4l9 16H3z',
+    'M12 10v4M12 17v.5',
+  ]);
+
   static const question = TavliIconData('question', [
     'M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4 3v-3H5a2 2 0 0 1-2-2V7'
         'a2 2 0 0 1 2-2z',
@@ -229,6 +269,8 @@ abstract final class TavliIcons {
     today,
     back,
     chevronRight,
+    chevronDown,
+    chevronUp,
     arrowForward,
     arrowBack,
     key,
@@ -259,6 +301,15 @@ abstract final class TavliIcons {
     allergenMustard,
     allergenSulphites,
     allergenLupin,
+    share,
+    join,
+    removeMember,
+    scan,
+    send,
+    copy,
+    link,
+    flash,
+    warning,
   ];
 }
 

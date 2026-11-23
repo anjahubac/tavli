@@ -352,6 +352,24 @@ void main() {
       ),
       '/sign-in/name?from=%2Fplan',
     );
+    expect(
+      authRedirect(const NeedsHousehold(_account), Uri.parse('/plan')),
+      '/sign-in/household?from=%2Fplan',
+    );
+    expect(
+      authRedirect(
+        const NeedsHousehold(_account),
+        Uri.parse('/sign-in/household'),
+      ),
+      isNull,
+    );
+    expect(
+      authRedirect(
+        const SignedIn(_account),
+        Uri.parse('/sign-in/household?from=%2Fplan'),
+      ),
+      '/plan',
+    );
   });
 }
 

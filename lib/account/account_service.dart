@@ -66,6 +66,7 @@ class AccountService {
             householdId: remote.householdId,
             householdName: remote.householdName,
             role: remote.role,
+            householdReady: Value(remote.householdSetupDone),
             createdAt: _clock(),
           ),
         );
@@ -107,6 +108,34 @@ class AccountService {
           .watch()
           .map((rows) => rows.isNotEmpty)
           .distinct();
+
+  /// Vlasnik daje naziv domaćinstvu (korak "Tvoje domaćinstvo" ili "Izmeni
+  /// domaćinstvo"). Posle uspeha keš ima novi naziv i završen korak. Baca
+  /// [ArgumentError] za neispravan naziv i `AuthFailure`.
+  Future<(RenameHouseholdResult, Account)> renameHousehold(
+    Account account,
+    String name,
+  ) async {
+    final n = normalizeHouseholdName(name);
+    if (n == null) throw ArgumentError.value(name, 'name');
+    final result = await _api.renameHousehold(n);
+    if (result != RenameHouseholdResult.renamed) return (result, account);
+    await (_db.update(_db.accounts)..where(
+          (t) =>
+              t.userId.equals(account.userId) &
+              t.householdId.equals(account.householdId),
+        ))
+        .write(
+          AccountsCompanion(
+            householdName: Value(n),
+            householdReady: const Value(true),
+          ),
+        );
+    return (result, account.copyWith(householdName: n, householdReady: true));
+  }
+
+  /// Članovi domaćinstva sa servera (bez keša; potrebna je veza).
+  Future<List<HouseholdMember>> householdMembers() => _api.householdMembers();
 
   /// Vlasnik uklanja člana. Server proverava ulogu i uklonjenom pravi novo
   /// lično domaćinstvo; vlasnikovo članstvo se ne menja.
@@ -182,6 +211,7 @@ class AccountService {
             householdId: Value(remote.householdId),
             householdName: Value(remote.householdName),
             role: Value(remote.role),
+            householdReady: Value(remote.householdSetupDone),
             initialDownloadDone: switched
                 ? const Value(false)
                 : const Value.absent(),
@@ -193,6 +223,7 @@ class AccountService {
           householdId: remote.householdId,
           householdName: remote.householdName,
           role: remote.role,
+          householdReady: remote.householdSetupDone,
         );
       });
 
@@ -339,5 +370,6 @@ class AccountService {
     householdId: r.householdId,
     householdName: r.householdName,
     role: r.role,
+    householdReady: r.householdReady,
   );
 }

@@ -10,26 +10,37 @@ void main() {
   ) async {
     await pumpTavli(tester, location: '/profile');
     expect(find.widgetWithText(TavliBackAppBar, 'Profil'), findsOneWidget);
-    for (final title in ['NALOG', 'PODEŠAVANJA']) {
+    for (final title in ['NALOG', 'DOMAĆINSTVO', 'PODEŠAVANJA']) {
       expect(find.text(title), findsOneWidget);
     }
     expect(
-      tester.getTopLeft(find.text('PODEŠAVANJA')).dy,
+      tester.getTopLeft(find.text('DOMAĆINSTVO')).dy,
       greaterThan(tester.getBottomLeft(find.text('Odjavi se')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('PODEŠAVANJA')).dy,
+      greaterThan(
+        tester.getBottomLeft(find.text('Pridruži se novom domaćinstvu')).dy,
+      ),
     );
     expect(find.text('Sve je sačuvano u nalogu.'), findsOneWidget);
   });
 
-  testTavli('širok ekran: nalog levo, podešavanja desno, bez gornje trake', (
+  testTavli('širok ekran: nalog levo, domaćinstvo i podešavanja desno', (
     tester,
   ) async {
     await pumpTavli(tester, size: wide, location: '/profile');
     expect(find.byType(TavliBackAppBar), findsNothing);
     expect(find.widgetWithText(TavliPageHeader, 'Profil'), findsOneWidget);
     final account = tester.getTopLeft(find.text('NALOG'));
+    final household = tester.getTopLeft(find.text('DOMAĆINSTVO'));
     final settings = tester.getTopLeft(find.text('PODEŠAVANJA'));
-    expect(settings.dx, greaterThan(account.dx));
-    expect(settings.dy, account.dy);
+    final delete = tester.getTopLeft(find.text('BRISANJE NALOGA'));
+    expect(household.dx, greaterThan(account.dx));
+    expect(household.dy, account.dy);
+    expect(settings.dx, household.dx);
+    expect(settings.dy, greaterThan(household.dy));
+    expect(delete.dx, account.dx);
     expect(
       tester.getSize(find.byType(TavliPageHeader)).width,
       lessThanOrEqualTo(TavliWidth.page),

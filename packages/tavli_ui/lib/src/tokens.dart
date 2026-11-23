@@ -49,6 +49,10 @@ abstract final class TavliWidth {
   /// Najveća širina sadržaja ekrana sa podešavanjima na širokom ekranu.
   static const double page = 880;
 
+  /// QR kod pozivnice u domaćinstvo (kanvas: 220 na telefonu, 240 na
+  /// računaru); uži ekran ga smanjuje.
+  static const double qrCode = 240;
+
   /// Lista i detalj (Nabavka na računaru): detalj desno je najviše ove
   /// širine i najviše trećina sadržaja.
   static const double detail = 300;
