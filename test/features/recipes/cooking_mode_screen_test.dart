@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -35,6 +36,27 @@ void main() {
 
   bool enabled(WidgetTester tester, String label) =>
       tester.widget<TavliButton>(button(label)).onPressed != null;
+
+  testTavli('Strelice menjaju korak, a Esc izlazi iz kuvanja', (tester) async {
+    await pumpTavli(tester, location: '/recipes/m', recipes: [musaka()]);
+    await tester.tap(button('Kuvaj'));
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(find.text('KORAK 2 OD 3'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('KORAK 1 OD 3'), findsOneWidget);
+    // Pre prvog koraka se ne ide.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('KORAK 1 OD 3'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('Kuvanje'), findsNothing);
+  });
 
   testTavli('Kuvaj otvara korake bez navigacije i drži ekran upaljen', (
     tester,

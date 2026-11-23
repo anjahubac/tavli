@@ -53,6 +53,14 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
   FreeLibrary(user32_module);
 }
 
+// Height of the invisible resize frame, which a maximized window pushes past
+// the top of the screen.
+int FrameThickness(HWND hwnd) {
+  const UINT dpi = GetDpiForWindow(hwnd);
+  return GetSystemMetricsForDpi(SM_CYFRAME, dpi) +
+         GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+}
+
 }  // namespace
 
 // Manages the Win32Window's window class registration.
@@ -144,6 +152,12 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
+  // Ask Windows to recalculate the frame so the client area covers the title
+  // bar (see WM_NCCALCSIZE); Flutter draws the title bar itself.
+  SetWindowPos(window, nullptr, 0, 0, 0, 0,
+               SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                   SWP_NOACTIVATE);
+
   UpdateTheme(window);
 
   return OnCreate();
@@ -216,6 +230,27 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
+
+    case WM_NCCALCSIZE:
+      // Remove the system caption but keep the side and bottom resize
+      // borders, the shadow, snapping and the minimize/maximize animations.
+      // The top resize edge is handled by the Flutter title bar.
+      if (wparam == TRUE) {
+        auto params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+        const LONG top = params->rgrc[0].top;
+        const LRESULT result =
+            DefWindowProc(hwnd, message, wparam, lparam);
+        if (result != 0) {
+          return result;
+        }
+        params->rgrc[0].top = top;
+        if (IsZoomed(hwnd)) {
+          // A maximized window extends past the screen by its frame.
+          params->rgrc[0].top += FrameThickness(hwnd);
+        }
+        return 0;
+      }
+      break;
   }
 
   return DefWindowProc(window_handle_, message, wparam, lparam);

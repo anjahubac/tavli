@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
@@ -94,4 +95,133 @@ void main() {
       }
     });
   }
+
+  group('Windows: meni u naslovnoj traci', () {
+    Widget frame({VoidCallback? settings, bool menus = true}) => TavliMenuBar(
+      onSettings: settings,
+      onAbout: () {},
+      onQuit: () {},
+      windowsMenus: menus,
+      groups: [
+        TavliMenuGroup('Datoteka', [
+          TavliMenuCommand(
+            'Novi recept',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyN,
+              meta: true,
+            ),
+            onSelected: () {},
+          ),
+        ]),
+      ],
+      child: const TavliWindowFrame(child: Text('sadržaj')),
+    );
+
+    testWidgets('Datoteka, Uređivanje, Pomoć i Ctrl prečice', (tester) async {
+      var settings = 0;
+      await pump(
+        tester,
+        TargetPlatform.windows,
+        frame(settings: () => settings++),
+      );
+      for (final label in ['Datoteka', 'Uređivanje', 'Pomoć']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      expect(find.byType(PlatformMenuBar), findsNothing);
+      await tester.tap(find.text('Datoteka'));
+      await tester.pumpAndSettle();
+      expect(find.text('Novi recept'), findsOneWidget);
+      expect(find.text('Podešavanja'), findsOneWidget);
+      expect(find.text('Izlaz'), findsOneWidget);
+      await tester.tap(find.text('Podešavanja'));
+      await tester.pumpAndSettle();
+      expect(settings, 1);
+    });
+
+    testWidgets('bez menija pre prijave, dugmad prozora ostaju', (
+      tester,
+    ) async {
+      await pump(tester, TargetPlatform.windows, frame(menus: false));
+      expect(find.text('Datoteka'), findsNothing);
+      expect(find.bySemanticsLabel('Zatvori'), findsOneWidget);
+    });
+
+    testWidgets('dugmad prozora su uz desnu ivicu', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pump(tester, TargetPlatform.windows, frame());
+      final close = tester.getRect(find.bySemanticsLabel('Zatvori'));
+      expect(close.right, 1280);
+    });
+
+    testWidgets('uzan prozor: meni se seče, dugmad ostaju', (tester) async {
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pump(tester, TargetPlatform.windows, frame());
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.bySemanticsLabel('Zatvori')).right, 320);
+    });
+
+    testWidgets('prečica ⌘ postaje Ctrl', (tester) async {
+      final groups = const TavliMenuBar(
+        groups: [
+          TavliMenuGroup('Datoteka', [
+            TavliMenuCommand('Novi recept', onSelected: _noop),
+          ]),
+        ],
+        child: SizedBox(),
+      ).windowsGroups();
+      expect(groups.map((g) => g.label), ['Datoteka', 'Uređivanje']);
+    });
+
+    testWidgets('Pomoć aplikacije i „O aplikaciji“ su u jednom meniju', (
+      tester,
+    ) async {
+      var about = 0;
+      var shortcuts = 0;
+      final bar = TavliMenuBar(
+        onAbout: () => about++,
+        groups: [
+          const TavliMenuGroup('Datoteka', [
+            TavliMenuCommand('Novi recept', onSelected: _noop),
+          ]),
+          TavliMenuGroup('Pomoć', [
+            TavliMenuCommand(
+              'Prečice na tastaturi',
+              shortcut: const SingleActivator(
+                LogicalKeyboardKey.slash,
+                meta: true,
+              ),
+              onSelected: () => shortcuts++,
+            ),
+          ]),
+        ],
+        child: const TavliWindowFrame(child: Text('sadržaj')),
+      );
+      final groups = bar.windowsGroups();
+      expect(groups.map((g) => g.label), ['Datoteka', 'Uređivanje', 'Pomoć']);
+      expect(groups.last.items.map((c) => c?.label), [
+        'Prečice na tastaturi',
+        null,
+        'O aplikaciji Tavli',
+      ]);
+      final shortcut = groups.last.items.first!.shortcut! as SingleActivator;
+      expect(shortcut.control, isTrue);
+      expect(shortcut.meta, isFalse);
+
+      await pump(tester, TargetPlatform.windows, bar);
+      expect(find.text('Pomoć'), findsOneWidget);
+      for (final label in ['Prečice na tastaturi', 'O aplikaciji Tavli']) {
+        await tester.tap(find.text('Pomoć'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      }
+      expect((shortcuts, about), (1, 1));
+    });
+  });
 }
+
+void _noop() {}

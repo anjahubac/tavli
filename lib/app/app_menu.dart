@@ -55,15 +55,18 @@ class _PopupObserver extends NavigatorObserver {
   }
 }
 
-/// Traka menija na macOS-u: Datoteka (Novi recept ⌘N), Prikaz (tabovi
-/// ⌘1–5 po redu iz bočne trake, Pretraži recepte ⌘F) i Podešavanja ⌘,
-/// (Profil).
+/// Meni aplikacije: Datoteka (Novi recept ⌘N), Prikaz (tabovi ⌘1–5 po redu
+/// iz bočne trake, Pretraži recepte ⌘F) i Podešavanja ⌘, (Profil). Na
+/// macOS-u je traka menija, na Windows-u meni u naslovnoj traci prozora sa
+/// Ctrl prečicama; [windowsMenus] je `false` dok korisnik nije prijavljen.
 Widget appMenuBar(
   GoRouter router,
   WidgetRef ref,
   MenuPopupTracker popups,
-  Widget child,
-) {
+  Widget child, {
+  bool windowsMenus = true,
+  VoidCallback? onQuit,
+}) {
   final context = ref.context;
   SingleActivator cmd(LogicalKeyboardKey key) =>
       SingleActivator(key, meta: true);
@@ -99,6 +102,18 @@ Widget appMenuBar(
     ('Ostava', '/pantry'),
   ];
   return TavliMenuBar(
+    windowsMenus: windowsMenus,
+    onQuit: onQuit,
+    onAbout: () => unlessPopup(
+      () => unawaited(
+        showTavliDialog<void>(
+          router.routerDelegate.navigatorKey.currentContext ?? context,
+          title: 'O aplikaciji Tavli',
+          message: 'Recepti, plan obroka, nabavka i ostava na jednom mestu.',
+          actions: [const TavliDialogAction('Zatvori', null)],
+        ),
+      ),
+    ),
     onSettings: () => unlessPopup(() {
       if (router.state.uri.pathSegments.firstOrNull != 'profile') {
         unawaited(router.push('/profile'));
@@ -126,7 +141,57 @@ Widget appMenuBar(
           onSelected: () => recipes(MenuCommand.searchRecipes),
         ),
       ]),
+      TavliMenuGroup('Pomoć', [
+        TavliMenuCommand(
+          'Prečice na tastaturi',
+          shortcut: cmd(LogicalKeyboardKey.slash),
+          onSelected: () => unlessPopup(() {
+            final navigator = router.routerDelegate.navigatorKey.currentContext;
+            if (navigator != null) unawaited(showShortcutsDialog(navigator));
+          }),
+        ),
+      ]),
     ],
     child: child,
+  );
+}
+
+/// Pregled prečica na tastaturi (⌘/ na macOS-u, Ctrl+/ na Windows-u).
+Future<void> showShortcutsDialog(BuildContext context) {
+  String key(String k, {bool command = false}) =>
+      tavliShortcutHint(context, k, command: command);
+  final rows = [
+    ('Novi recept', key('N', command: true)),
+    ('Pretraži recepte', key('F', command: true)),
+    ('Početna, Plan, Nabavka, Recepti, Ostava', key('1–5', command: true)),
+    ('Profil', key(',', command: true)),
+    ('Prethodna ili sledeća nedelja u planu', key('←/→', command: true)),
+    ('Kuvanje: prethodni ili sledeći korak', key('←/→')),
+    ('Kuvanje: izlaz, zatvaranje prozora', key('Esc')),
+  ];
+  return showTavliDialog<void>(
+    context,
+    title: 'Prečice na tastaturi',
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (label, shortcut) in rows)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: TavliSpacing.small),
+            child: Row(
+              children: [
+                Expanded(child: Text(label)),
+                const SizedBox(width: TavliSpacing.medium),
+                Text(
+                  shortcut,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+    actions: const [TavliDialogAction('Zatvori', null, isDefault: true)],
   );
 }

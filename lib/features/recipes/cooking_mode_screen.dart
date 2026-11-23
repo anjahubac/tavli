@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -320,47 +321,63 @@ class _CookingModeScreenState extends ConsumerState<CookingModeScreen> {
       ],
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kuvanje'),
-        actions: [
-          if (!wide)
-            TavliButton.text(label: 'Sastojci', onPressed: _showIngredients),
-        ],
-      ),
-      body: wide
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(child: content),
-                      actions,
-                    ],
-                  ),
-                ),
-                const TavliDivider(vertical: true),
-                SizedBox(
-                  width: CookingModeScreen.panelWidth,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(TavliSpacing.large),
-                    child: _IngredientsChecklist(
-                      recipe: _recipe,
-                      done: _done,
-                      onChanged: _toggle,
-                      header: true,
+    void previous() {
+      if (_step > 0) setState(() => _step--);
+    }
+
+    void next() {
+      if (!last) setState(() => _step++);
+    }
+
+    return TavliKeyScope(
+      bindings: {
+        tavliShortcut(context, LogicalKeyboardKey.arrowLeft): previous,
+        tavliShortcut(context, LogicalKeyboardKey.arrowRight): next,
+        tavliShortcut(context, LogicalKeyboardKey.escape): () =>
+            unawaited(Navigator.of(context).maybePop()),
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Kuvanje'),
+          actions: [
+            if (!wide)
+              TavliButton.text(label: 'Sastojci', onPressed: _showIngredients),
+          ],
+        ),
+        body: wide
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(child: content),
+                        actions,
+                      ],
                     ),
                   ),
-                ),
-              ],
-            )
-          : Column(
-              children: [
-                Expanded(child: content),
-                SafeArea(top: false, child: actions),
-              ],
-            ),
+                  const TavliDivider(vertical: true),
+                  SizedBox(
+                    width: CookingModeScreen.panelWidth,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(TavliSpacing.large),
+                      child: _IngredientsChecklist(
+                        recipe: _recipe,
+                        done: _done,
+                        onChanged: _toggle,
+                        header: true,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  Expanded(child: content),
+                  SafeArea(top: false, child: actions),
+                ],
+              ),
+      ),
     );
   }
 }

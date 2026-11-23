@@ -39,7 +39,7 @@ void main() {
           .widget<PlatformMenuBar>(find.byType(PlatformMenuBar))
           .menus
           .map((m) => m.label),
-      ['Tavli', 'Uređivanje', 'Datoteka', 'Prikaz', 'Prozor'],
+      ['Tavli', 'Uređivanje', 'Datoteka', 'Prikaz', 'Pomoć', 'Prozor'],
     );
     final plan =
         menuItem(tester, 'Prikaz', 'Plan').shortcut! as SingleActivator;
@@ -48,6 +48,12 @@ void main() {
 
     await choose(tester, 'Prikaz', 'Recepti');
     expect(find.byType(RecipesScreen), findsOneWidget);
+
+    await choose(tester, 'Pomoć', 'Prečice na tastaturi');
+    expect(find.text('Prečice na tastaturi'), findsOneWidget);
+    expect(find.text('⌘N'), findsOneWidget);
+    await tester.tap(find.text('Zatvori'));
+    await tester.pumpAndSettle();
 
     await choose(tester, 'Prikaz', 'Pretraži recepte');
     final field = tester.widget<EditableText>(

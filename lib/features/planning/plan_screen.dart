@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -103,14 +104,26 @@ class _PlanView extends ConsumerWidget {
     // Raspored za računar tek kad sadržaj (bez bočne navigacije) ima mesta
     // za nedeljnu mrežu; u užem prozoru Plan je kao na telefonu, umesto da
     // se zaglavlje i dugmad slažu jedno ispod drugog.
-    builder: (context, constraints) => _build(
-      context,
-      ref,
-      wide: isWidePlan(context) && constraints.maxWidth >= TavliWidth.weekGrid,
-    ),
+    builder: (context, constraints) {
+      // Ctrl (⌘) + strelice menjaju nedelju ili mesec; ispunjava ih _build.
+      final keys = <ShortcutActivator, VoidCallback>{};
+      final body = _build(
+        context,
+        ref,
+        keys,
+        wide:
+            isWidePlan(context) && constraints.maxWidth >= TavliWidth.weekGrid,
+      );
+      return TavliKeyScope(bindings: keys, child: body);
+    },
   );
 
-  Widget _build(BuildContext context, WidgetRef ref, {required bool wide}) {
+  Widget _build(
+    BuildContext context,
+    WidgetRef ref,
+    Map<ShortcutActivator, VoidCallback> keys, {
+    required bool wide,
+  }) {
     final view = ref.watch(planViewProvider);
     final controller = ref.read(planViewProvider.notifier);
     final today = CivilDate.today(ref.watch(clockProvider));
@@ -152,8 +165,18 @@ class _PlanView extends ConsumerWidget {
         ? TavliPeriodSwitcher(
             compact: wide,
             label: monthLabel(selected),
-            previousLabel: 'Prethodni mesec',
-            nextLabel: 'Sledeći mesec',
+            previousLabel: tavliWithShortcut(
+              context,
+              'Prethodni mesec',
+              '←',
+              command: true,
+            ),
+            nextLabel: tavliWithShortcut(
+              context,
+              'Sledeći mesec',
+              '→',
+              command: true,
+            ),
             onPrevious: plan.range.start.isBefore(monthRange.start)
                 ? () => controller.selectDate(
                     clamp(monthOf(monthRange.start.addDays(-1)).start),
@@ -166,8 +189,18 @@ class _PlanView extends ConsumerWidget {
         : TavliPeriodSwitcher(
             compact: wide,
             label: weekLabel(week),
-            previousLabel: 'Prethodna nedelja',
-            nextLabel: 'Sledeća nedelja',
+            previousLabel: tavliWithShortcut(
+              context,
+              'Prethodna nedelja',
+              '←',
+              command: true,
+            ),
+            nextLabel: tavliWithShortcut(
+              context,
+              'Sledeća nedelja',
+              '→',
+              command: true,
+            ),
             onPrevious: plan.range.start.isBefore(week.start)
                 ? () => controller.selectDate(
                     clamp(selected.addDays(-DateTime.daysPerWeek)),
@@ -179,6 +212,42 @@ class _PlanView extends ConsumerWidget {
                   )
                 : null,
           );
+    final back = month
+        ? (plan.range.start.isBefore(monthRange.start)
+              ? () => controller.selectDate(
+                  clamp(monthOf(monthRange.start.addDays(-1)).start),
+                )
+              : null)
+        : (plan.range.start.isBefore(week.start)
+              ? () => controller.selectDate(
+                  clamp(selected.addDays(-DateTime.daysPerWeek)),
+                )
+              : null);
+    final forward = month
+        ? (plan.range.end.isAfter(monthRange.end)
+              ? () => controller.selectDate(clamp(monthRange.end.addDays(1)))
+              : null)
+        : (plan.range.end.isAfter(week.end)
+              ? () => controller.selectDate(
+                  clamp(selected.addDays(DateTime.daysPerWeek)),
+                )
+              : null);
+    if (back != null) {
+      keys[tavliShortcut(
+            context,
+            LogicalKeyboardKey.arrowLeft,
+            command: true,
+          )] =
+          back;
+    }
+    if (forward != null) {
+      keys[tavliShortcut(
+            context,
+            LogicalKeyboardKey.arrowRight,
+            command: true,
+          )] =
+          forward;
+    }
     final todayButton = TavliButton.text(
       label: 'Danas',
       glyph: TavliIcons.today,
