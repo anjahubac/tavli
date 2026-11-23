@@ -47,6 +47,20 @@ class RecipeRatingRepository {
                   ),
           );
 
+  /// All cached summaries of the active household, keyed by recipe id.
+  Stream<Map<String, RecipeRatingSummary>> watchHouseholdSummaries() =>
+      (_db.select(
+        _db.ratingSummaries,
+      )..where((t) => t.householdId.equals(_scope.householdId))).watch().map(
+        (rows) => {
+          for (final row in rows)
+            row.recipeId: RecipeRatingSummary(
+              averageStars: row.averageStars,
+              ratingCount: row.ratingCount,
+            ),
+        },
+      );
+
   /// Save or replace the current rating. A supplied [cookedAt] records the
   /// cooking action; editing the rating later leaves its original cook date.
   Future<void> save({

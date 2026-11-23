@@ -41,6 +41,20 @@ String normalizeForSearch(String s) => s
     .replaceAll('đ', 'dj')
     .trim();
 
+/// "1 ocena", "2 ocene", "5 ocena" (11–14 su "ocena").
+String ratingCountLabel(int n) {
+  final lastTwo = n % 100;
+  final last = n % 10;
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return '$n ocene';
+  }
+  return '$n ocena';
+}
+
+/// Prosek ocena sa jednom decimalom i zarezom: "4,3".
+String ratingAverageLabel(double average) =>
+    average.toStringAsFixed(1).replaceAll('.', ',');
+
 /// "1 porcija", "2 porcije", "5 porcija" (11–14 su "porcija").
 String servingsLabel(int n) {
   final lastTwo = n % 100;

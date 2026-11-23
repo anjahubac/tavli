@@ -6,7 +6,9 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/recipe_labels.dart';
+import '../../domain/recipe_rating.dart';
 import 'recipe_photo.dart';
+import 'recipe_rating_section.dart';
 
 /// Visina slike recepta iznad sadržaja.
 const _photoHeight = 220.0;
@@ -23,6 +25,7 @@ class RecipeView extends StatelessWidget {
     this.photoBytes,
     this.showTitle = false,
     this.onEditLabels,
+    this.ratingSummary,
   });
 
   final Recipe recipe;
@@ -33,6 +36,9 @@ class RecipeView extends StatelessWidget {
 
   /// Dugme „Izmeni oznake“; null = oznake se samo prikazuju.
   final VoidCallback? onEditLabels;
+
+  /// Prosek ocena domaćinstva; null = bez ocena, ništa se ne prikazuje.
+  final RecipeRatingSummary? ratingSummary;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +79,7 @@ class RecipeView extends StatelessWidget {
             _Fact(Icons.people_outline, servingsLabel(recipe.servings)),
             if (recipe.prepMinutes != null)
               _Fact(Icons.timer_outlined, '${recipe.prepMinutes} min'),
+            if (ratingSummary case final summary?) _RatingFact(summary),
           ],
         ),
         const SizedBox(height: TavliSpacing.medium),
@@ -214,6 +221,50 @@ class ReadableScroll extends StatelessWidget {
 }
 
 /// Podatak o receptu sa ikonicom: porcije, vreme pripreme.
+/// „★ 4,3 · 3 ocene“; prosek je podebljan.
+class _RatingFact extends StatelessWidget {
+  const _RatingFact(this.summary);
+
+  final RecipeRatingSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final average = ratingAverageLabel(summary.averageStars);
+    final count = ratingCountLabel(summary.ratingCount);
+    return Semantics(
+      label: 'Prosečna ocena $average, $count',
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: TavliSpacing.small,
+        children: [
+          const TavliIcon(
+            TavliIcons.star,
+            size: 24,
+            color: ratingStarColor,
+            filled: true,
+          ),
+          Flexible(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: average,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: ' · $count'),
+                ],
+              ),
+              style: TextStyle(color: muted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Fact extends StatelessWidget {
   const _Fact(this.icon, this.text);
 

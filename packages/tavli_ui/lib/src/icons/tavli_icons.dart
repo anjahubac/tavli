@@ -86,6 +86,8 @@ abstract final class TavliIcons {
   // Strelice.
   static const back = TavliIconData('back', ['M15 5l-7 7 7 7']);
   static const chevronRight = TavliIconData('chevronRight', ['M9 5l7 7-7 7']);
+  static const chevronDown = TavliIconData('chevronDown', ['M5 9l7 7 7-7']);
+  static const chevronUp = TavliIconData('chevronUp', ['M5 15l7-7 7 7']);
   static const arrowForward = TavliIconData('arrowForward', [
     'M5 12h14M13 6l6 6-6 6',
   ]);
@@ -150,6 +152,9 @@ abstract final class TavliIcons {
   static const lock = TavliIconData('lock', [
     'rect 5 11 14 10 2',
     'M8 11V8a4 4 0 0 1 8 0v3',
+  ]);
+  static const star = TavliIconData('star', [
+    'M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z',
   ]);
   static const dish = TavliIconData('dish', [
     'M5 10h14v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z',
@@ -229,6 +234,8 @@ abstract final class TavliIcons {
     today,
     back,
     chevronRight,
+    chevronDown,
+    chevronUp,
     arrowForward,
     arrowBack,
     key,
@@ -244,6 +251,7 @@ abstract final class TavliIcons {
     like,
     dislike,
     lock,
+    star,
     dish,
     allergenGluten,
     allergenMilk,
@@ -272,9 +280,13 @@ class TavliIcon extends StatelessWidget {
     this.size,
     this.color,
     this.semanticLabel,
+    this.filled = false,
   });
 
   final TavliIconData icon;
+
+  /// Popunjen oblik (zvezdica ocene, srce omiljenog), uz liniju.
+  final bool filled;
   final double? size;
   final Color? color;
   final String? semanticLabel;
@@ -287,7 +299,7 @@ class TavliIcon extends StatelessWidget {
         color ?? theme.color ?? DefaultTextStyle.of(context).style.color!;
     final drawing = SizedBox.square(
       dimension: side,
-      child: CustomPaint(painter: _IconPainter(icon, paint)),
+      child: CustomPaint(painter: _IconPainter(icon, paint, filled)),
     );
     if (semanticLabel == null) return ExcludeSemantics(child: drawing);
     return Semantics(label: semanticLabel, image: true, child: drawing);
@@ -295,10 +307,11 @@ class TavliIcon extends StatelessWidget {
 }
 
 class _IconPainter extends CustomPainter {
-  _IconPainter(this.icon, this.color);
+  _IconPainter(this.icon, this.color, this.filled);
 
   final TavliIconData icon;
   final Color color;
+  final bool filled;
 
   static final _cache = <String, Path>{};
 
@@ -314,18 +327,21 @@ class _IconPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..isAntiAlias = true;
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
     for (final shape in icon.shapes) {
-      canvas.drawPath(
-        _cache.putIfAbsent(shape, () => parseIconShape(shape)),
-        stroke,
-      );
+      final path = _cache.putIfAbsent(shape, () => parseIconShape(shape));
+      if (filled) canvas.drawPath(path, fill);
+      canvas.drawPath(path, stroke);
     }
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_IconPainter old) =>
-      old.icon != icon || old.color != color;
+      old.icon != icon || old.color != color || old.filled != filled;
 }
 
 /// Pretvara jedan oblik iz [TavliIconData.shapes] u [Path]: `rect x y w h
