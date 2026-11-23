@@ -60,7 +60,7 @@ select throws_ok($$insert into public.cookbook_chunks (cookbook_id, household_id
 -- Chunk mora da pripada domaćinstvu svoje knjige.
 select throws_ok($$insert into public.cookbook_chunks (cookbook_id, household_id, page, chunk_index, content, embedding) values ('c0000000-0000-4000-8000-00000000000a', gen_random_uuid(), 3, 0, 'tuđe domaćinstvo', pg_temp.unit(3))$$, '23503', null, 'chunk sa pogrešnim domaćinstvom se odbija');
 -- Nedozvoljen status.
-select throws_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path, status) values (%L, 't', 'f.pdf', 'p', 'nesto')$$, :'ha'), '23514', null, 'nepoznat status se odbija');
+select throws_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path, content_sha256, status) values (%L, 't', 'f.pdf', 'p', repeat('d', 64), 'nesto')$$, :'ha'), '23514', null, 'nepoznat status se odbija');
 
 -- Ko napusti domaćinstvo, odmah gubi pristup (RLS i pretraga).
 delete from public.household_members where user_id = :'ua' and household_id = :'ha';
@@ -82,8 +82,8 @@ select tests.clear_auth();
 insert into public.cookbooks (household_id, title, filename, storage_path, content_sha256)
 select :'hb', 'Knjiga ' || i, 'k' || i || '.pdf', :'hb' || '/k' || i || '.pdf', md5(i::text) || md5((i + 100)::text) from generate_series(1, 19) i;
 select is((select count(*) from public.cookbooks where household_id = :'hb'), 20::bigint, 'B ima 20 knjiga (jedna od ranije i 19 novih)');
-select throws_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path, content_sha256) values (%L, 'dvadeset prva', 'x.pdf', %L, repeat('x',64))$$, :'hb', :'hb' || '/x.pdf'), '23514', 'cookbook_limit', '21. knjiga domaćinstva se odbija u bazi');
-select lives_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path, content_sha256) values (%L, 'drugo domaćinstvo', 'y.pdf', %L, repeat('y',64))$$, :'ha', :'ha' || '/y.pdf'), 'limit je po domaćinstvu');
+select throws_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path, content_sha256) values (%L, 'dvadeset prva', 'x.pdf', %L, repeat('e',64))$$, :'hb', :'hb' || '/x.pdf'), '23514', 'cookbook_limit', '21. knjiga domaćinstva se odbija u bazi');
+select lives_ok(format($$insert into public.cookbooks (household_id, title, filename, storage_path, content_sha256) values (%L, 'drugo domaćinstvo', 'y.pdf', %L, repeat('f',64))$$, :'ha', :'ha' || '/y.pdf'), 'limit je po domaćinstvu');
 
 -- Atomsko preuzimanje obrade: samo jedan poziv dobija knjigu.
 insert into public.cookbooks (id, household_id, title, filename, storage_path, content_sha256) values

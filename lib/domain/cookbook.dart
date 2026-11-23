@@ -43,21 +43,27 @@ class CookbookSource {
     required this.bookId,
     required this.title,
     required this.page,
+    this.recipeId,
   });
 
   final String bookId;
   final String title;
   final int page;
+  final String? recipeId;
+
+  String get label =>
+      recipeId == null ? '$title, str. $page' : 'Sačuvani recept: $title';
 
   @override
   bool operator ==(Object other) =>
       other is CookbookSource &&
       other.bookId == bookId &&
       other.title == title &&
-      other.page == page;
+      other.page == page &&
+      other.recipeId == recipeId;
 
   @override
-  int get hashCode => Object.hash(bookId, title, page);
+  int get hashCode => Object.hash(bookId, title, page, recipeId);
 }
 
 class CookbookAnswer {

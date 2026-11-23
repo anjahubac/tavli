@@ -8,9 +8,11 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../app/animations/empty_tabs.dart';
 import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
+import '../../domain/church_calendar.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/plan_calendar.dart';
 import '../../domain/recipe_format.dart';
+import '../fasting/fasting_questions.dart';
 import '../planning/meal_actions.dart' show mealErrorText;
 import '../planning/plan_format.dart';
 import '../planning/planning_providers.dart';
@@ -98,11 +100,10 @@ class _HomeContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notice = ref.watch(homeNoticeProvider);
-    if (day.today.isEmpty && notice == null) {
-      return TavliPage.centered(child: _HomeEmptyState(hasPlans: day.hasPlans));
-    }
-
     final wide = MediaQuery.sizeOf(context).width >= wideLayoutWidth;
+    final fasting = FastingStatusCard(
+      calendar: ChurchCalendar(day.date.toWire()),
+    );
     final header = TavliPageHeader(
       title: 'Danas',
       overline: dayLabel(day.date),
@@ -124,7 +125,19 @@ class _HomeContent extends ConsumerWidget {
         return TavliPage(
           wide: wide,
           children: [
-            header,
+            if (side)
+              Row(
+                spacing: TavliSpacing.large,
+                children: [
+                  Expanded(child: header),
+                  SizedBox(
+                    width: TavliWidth.side(constraints.maxWidth),
+                    child: fasting,
+                  ),
+                ],
+              )
+            else
+              header,
             if (side)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,6 +162,7 @@ class _HomeContent extends ConsumerWidget {
               )
             else ...[
               today,
+              fasting,
               ?noticeCard,
               if (day.tomorrow.isNotEmpty) _Tomorrow(meals: day.tomorrow),
             ],

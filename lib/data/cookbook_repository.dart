@@ -67,7 +67,11 @@ abstract interface class CookbookRepository {
   /// Briše knjigu i njene delove; posle toga se ne pretražuje.
   Future<void> delete(String id);
 
-  Future<CookbookAnswer> ask(String question, {String? bookId});
+  Future<CookbookAnswer> ask(
+    String question, {
+    String? bookId,
+    bool includeRecipes = false,
+  });
 }
 
 /// Storage must succeed before deleting the durable row that holds its path.
@@ -108,8 +112,22 @@ Future<Cookbook> driveProcessing({
   var body = first;
   var lastPage = 0;
   var stalls = 0;
+  var quotaRetries = 0;
   for (var i = 0; i < maxSteps; i++) {
-    final data = await step(body);
+    final Map<String, dynamic> data;
+    try {
+      data = await step(body);
+      quotaRetries = 0;
+    } on CookbookQuotaExceeded catch (error) {
+      // Minute limits can interrupt a large PDF mid-book. The same step
+      // resumes processing; daily limits stay available for manual retry.
+      if (error.retryAfter > const Duration(minutes: 1) ||
+          quotaRetries++ >= 2) {
+        rethrow;
+      }
+      await sleep(error.retryAfter < pause ? pause : error.retryAfter);
+      continue;
+    }
     final id = data['id'] as String;
     final status = data['status'] as String;
     final next = data['nextPage'] as int? ?? 1;
@@ -225,10 +243,14 @@ class SupabaseCookbookRepository implements CookbookRepository {
     ),
   );
 
-  Future<Map<String, dynamic>> _process(Map<String, Object?> body) async {
-    final res = await _client.functions.invoke('cookbook-process', body: body);
-    return res.data as Map<String, dynamic>;
-  }
+  Future<Map<String, dynamic>> _process(Map<String, Object?> body) =>
+      _guard(() async {
+        final res = await _client.functions.invoke(
+          'cookbook-process',
+          body: body,
+        );
+        return res.data as Map<String, dynamic>;
+      });
 
   @override
   Future<void> delete(String id) => _guard(
@@ -251,28 +273,35 @@ class SupabaseCookbookRepository implements CookbookRepository {
   );
 
   @override
-  Future<CookbookAnswer> ask(String question, {String? bookId}) => _guard(
-    () async {
-      final res = await _client.functions.invoke(
-        'cookbook-ask',
-        body: {'question': question, 'bookId': ?bookId},
-      );
-      final data = res.data as Map<String, dynamic>;
-      final sources = [
-        for (final s
-            in (data['sources'] as List? ?? const [])
-                .cast<Map<String, dynamic>>())
-          CookbookSource(
-            bookId: s['bookId'] as String,
-            title: s['title'] as String,
-            page: s['page'] as int,
-          ),
-      ];
-      return data['status'] == 'answered' && sources.isNotEmpty
-          ? CookbookAnswer(content: data['content'] as String, sources: sources)
-          : const CookbookAnswer.unknown();
-    },
-  );
+  Future<CookbookAnswer> ask(
+    String question, {
+    String? bookId,
+    bool includeRecipes = false,
+  }) => _guard(() async {
+    final res = await _client.functions.invoke(
+      'cookbook-ask',
+      body: {
+        'question': question,
+        'bookId': ?bookId,
+        if (includeRecipes) 'includeRecipes': true,
+      },
+    );
+    final data = res.data as Map<String, dynamic>;
+    final sources = [
+      for (final s
+          in (data['sources'] as List? ?? const [])
+              .cast<Map<String, dynamic>>())
+        CookbookSource(
+          bookId: s['bookId'] as String,
+          title: s['title'] as String,
+          page: s['page'] as int,
+          recipeId: s['recipeId'] as String?,
+        ),
+    ];
+    return data['status'] == 'answered' && sources.isNotEmpty
+        ? CookbookAnswer(content: data['content'] as String, sources: sources)
+        : const CookbookAnswer.unknown();
+  });
 
   static String _safeName(String filename) {
     final base = filename.split(RegExp(r'[\\/]')).last;

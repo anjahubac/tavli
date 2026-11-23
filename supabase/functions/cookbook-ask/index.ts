@@ -32,6 +32,16 @@ const admin = createClient(
     auth: { persistSession: false, autoRefreshToken: false },
   },
 );
+const userClient = (token: string) =>
+  createClient(
+    env("SUPABASE_URL")!,
+    env("SUPABASE_ANON_KEY")!,
+    {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  );
+
 const embeddingModel = env("EMBEDDING_MODEL") || DEFAULT_EMBEDDING_MODEL;
 const embed = createEmbedder({
   apiKey: env("GEMINI_API_KEY") ?? "",
@@ -98,6 +108,54 @@ const deps: AskDeps = {
   minScore: Number(env("COOKBOOK_MIN_SCORE")) || 0.55,
 };
 
+function cosine(query: number[], document: number[]): number {
+  if (query.length !== document.length) return 0;
+  let dot = 0, left = 0, right = 0;
+  for (let i = 0; i < query.length; i++) {
+    dot += query[i] * document[i];
+    left += query[i] * query[i];
+    right += document[i] * document[i];
+  }
+  return left && right ? dot / Math.sqrt(left * right) : 0;
+}
+
+async function searchRecipes(
+  client: ReturnType<typeof userClient>,
+  question: string,
+  embedding: number[],
+  userId: string,
+  limit: number,
+): Promise<Hit[]> {
+  const { data, error } = await client.rpc("saved_recipe_question_candidates", {
+    p_question: question,
+  });
+  if (error) throw error;
+  const recipes = (data ?? []) as {
+    id: string;
+    title: string;
+    content: string;
+  }[];
+  if (recipes.length === 0) return [];
+  const reservation = await deps.reserve(userId);
+  if (!("id" in reservation)) {
+    throw new Error("Recipe embedding quota exhausted");
+  }
+  try {
+    const vectors = await embed(recipes.map((row) => row.content), "document");
+    return recipes.map((row, index): Hit => ({
+      chunkId: row.id,
+      recipeId: row.id,
+      cookbookId: "",
+      title: row.title,
+      page: 0,
+      content: row.content,
+      score: cosine(embedding, vectors[index]),
+    })).sort((a, b) => b.score - a.score).slice(0, limit);
+  } finally {
+    await deps.release(reservation.id).catch(() => {});
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   const token = (req.headers.get("Authorization") ?? "").replace(
@@ -108,14 +166,39 @@ Deno.serve(async (req: Request) => {
   const { data: userData, error: userError } = await admin.auth.getUser(token);
   if (userError || !userData?.user) return json(401, { error: "unauthorized" });
 
-  let body: { question?: unknown; bookId?: unknown };
+  let body: { question?: unknown; bookId?: unknown; includeRecipes?: unknown };
   try {
     body = await req.json();
   } catch {
     return json(400, { error: "bad_request" });
   }
   try {
-    const r = await ask(deps, userData.user.id, body);
+    if (
+      !body || typeof body !== "object" ||
+      (body.includeRecipes !== undefined &&
+        typeof body.includeRecipes !== "boolean")
+    ) {
+      return json(400, { error: "bad_request" });
+    }
+    const userId = userData.user.id;
+    const combined: AskDeps =
+      body.includeRecipes === true && body.bookId == null
+        ? {
+          ...deps,
+          search: async (id, vector, limit, bookId, question) => {
+            const recipes = userClient(token);
+            const [books, saved] = await Promise.all([
+              deps.search(id, vector, limit, bookId),
+              searchRecipes(recipes, question!, vector, id, limit),
+            ]);
+            return [...books, ...saved].sort((a, b) => b.score - a.score).slice(
+              0,
+              limit,
+            );
+          },
+        }
+        : deps;
+    const r = await ask(combined, userId, body);
     if (r.ok) {
       return json(200, {
         status: r.status,

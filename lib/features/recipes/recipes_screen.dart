@@ -40,7 +40,9 @@ const _floatingButtonClearance = 88.0;
 /// koloni i plutajuće „Dodaj recept“. Računar: zaglavlje sa pretragom i
 /// „Dodaj recept“ i mreža u tri kolone. Recept se otvara kao ceo ekran.
 class RecipesScreen extends ConsumerWidget {
-  const RecipesScreen({super.key});
+  const RecipesScreen({this.fastingOnly = false, super.key});
+
+  final bool fastingOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -67,7 +69,11 @@ class RecipesScreen extends ConsumerWidget {
                   label: 'Dodaj recept',
                   onPressed: () => showAddRecipeSheet(context),
                 ),
-          body: _RecipesBody(wide: wide, header: header),
+          body: _RecipesBody(
+            wide: wide,
+            header: header,
+            fastingOnly: fastingOnly,
+          ),
         );
       },
     );
@@ -86,7 +92,13 @@ class RecipeRoute extends StatelessWidget {
 }
 
 class _RecipesBody extends ConsumerStatefulWidget {
-  const _RecipesBody({required this.wide, required this.header});
+  const _RecipesBody({
+    required this.wide,
+    required this.header,
+    required this.fastingOnly,
+  });
+
+  final bool fastingOnly;
 
   /// Mreža kartica umesto liste.
   final bool wide;
@@ -153,6 +165,11 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
     ),
   );
 
+  Widget _fastingFilter() => InputChip(
+    label: const Text('Posni recepti'),
+    onDeleted: () => context.go('/recipes'),
+  );
+
   @override
   Widget build(BuildContext context) {
     // ⌘F iz trake menija na macOS-u.
@@ -183,7 +200,28 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                 ),
               );
             }
-            final recipes = searchRecipes(all, filter);
+            final candidates = widget.fastingOnly
+                ? all.where(
+                    (recipe) =>
+                        RegExp(r'posn\w*')
+                            .hasMatch(normalizeForSearch(recipe.title)) &&
+                        recipe.ingredients.isNotEmpty &&
+                        !recipe.ingredients.any(
+                          (item) =>
+                              item.category == 'meso i riba' ||
+                              item.category == 'mlečni proizvodi i jaja',
+                        ),
+                  )
+                : all;
+            final recipes = searchRecipes(candidates, filter);
+            if (widget.fastingOnly && candidates.isEmpty) {
+              return const _ScrollableMessage(
+                TavliEmptyState(
+                  glyph: TavliIcons.search,
+                  title: 'Nema sačuvanih recepata označenih kao posni.',
+                ),
+              );
+            }
             if (recipes.isEmpty) {
               return _ScrollableMessage(
                 filter.hasFilters
@@ -215,6 +253,16 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (widget.fastingOnly)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: TavliSpacing.large,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _fastingFilter(),
+              ),
+            ),
           if (hasRecipes)
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -250,6 +298,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
           child: TavliPageHeader(
             title: 'Recepti',
             actions: [
+              if (widget.fastingOnly) _fastingFilter(),
               SizedBox(width: _searchWidth, child: _searchField()),
               _filterButton(filter),
               _pantryButton(),

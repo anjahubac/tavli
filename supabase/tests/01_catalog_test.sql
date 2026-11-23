@@ -84,7 +84,7 @@ select is(
     'private.valid_allergen_selection', 'public.confirm_household_join',
     'public.get_household_recipe_rating_summaries', 'public.household_invite_token',
     'public.household_realtime_eligible', 'public.preview_household_join', 'public.remove_household_member',
-    'public.set_planning_preferences_sharing'
+    'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );

@@ -73,6 +73,32 @@ void main() {
     },
   );
 
+  test('minutni limit ponavlja isti korak obrade', () async {
+    var calls = 0;
+    final book = await driveProcessing(
+      step: (body) async {
+        bodies.add(body);
+        switch (calls++) {
+          case 0:
+            return _r('partial', next: 4);
+          case 1:
+            throw const CookbookQuotaExceeded(Duration(seconds: 27));
+          default:
+            return _r('ready', next: 11);
+        }
+      },
+      first: {'storagePath': 'hh/a.pdf', 'title': 'a'},
+      title: 'a',
+      filename: 'a.pdf',
+      pause: const Duration(seconds: 2),
+      wait: (duration) async => waits.add(duration),
+    );
+    expect(book.status, CookbookStatus.ready);
+    expect(bodies[1], {'bookId': 'b1'});
+    expect(bodies[2], bodies[1]);
+    expect(waits, [const Duration(seconds: 27)]);
+  });
+
   test('zauzeta obrada: pauza pa nastavak', () async {
     final book = await drive([_r('busy'), _r('ready', next: 11)]);
     expect(book.status, CookbookStatus.ready);

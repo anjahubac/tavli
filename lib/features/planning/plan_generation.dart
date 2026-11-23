@@ -142,12 +142,17 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
   }
 
   /// Nov predlog za trenutne izbore, ili nastavak otvorenog nacrta.
-  Future<void> generate() async {
+  Future<void> generate({bool fastingDraft = false}) async {
     if (state.busy) return;
     final range = state.setup.range(_today);
     if (range == null || state.setup.mealTypes.isEmpty) return;
     final previous = state.draft;
     final resume = previous != null && !previous.isComplete ? previous : null;
+    final wishes = [
+      if (state.setup.wishes.trim().isNotEmpty) state.setup.wishes.trim(),
+      if (fastingDraft)
+        'Predloži posna jela bez mesa, mlečnih proizvoda i jaja.',
+    ];
     final request =
         resume?.request ??
         PlanRequest(
@@ -155,9 +160,7 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
           mealTypes: state.setup.mealTypes,
           servings: state.setup.servings,
           usePantry: state.setup.usePantry,
-          wishes: state.setup.wishes.trim().isEmpty
-              ? null
-              : state.setup.wishes.trim(),
+          wishes: wishes.isEmpty ? null : wishes.join('\n'),
           pantryNames: state.setup.usePantry
               ? await ref
                     .read(mealPlanRepositoryProvider)

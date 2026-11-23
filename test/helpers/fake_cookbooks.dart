@@ -6,6 +6,7 @@ import 'package:tavli/features/cookbooks/book_picker.dart';
 
 /// Lažna knjižara u memoriji: beleži pozive i vraća zadate odgovore.
 class FakeCookbookRepository implements CookbookRepository {
+  bool includedRecipes = false;
   FakeCookbookRepository({List<Cookbook> books = const []})
     : books = [...books];
 
@@ -87,7 +88,12 @@ class FakeCookbookRepository implements CookbookRepository {
   }
 
   @override
-  Future<CookbookAnswer> ask(String question, {String? bookId}) async {
+  Future<CookbookAnswer> ask(
+    String question, {
+    String? bookId,
+    bool includeRecipes = false,
+  }) async {
+    includedRecipes = includeRecipes;
     questions.add((question: question, bookId: bookId));
     if (_take() case final f?) throw f;
     return answer;
@@ -100,9 +106,9 @@ class FakeBookPicker implements BookPicker {
   int calls = 0;
 
   @override
-  Future<PickedBook?> pick() async {
+  Future<List<PickedBook>> pick() async {
     calls++;
-    return next;
+    return [?next];
   }
 }
 

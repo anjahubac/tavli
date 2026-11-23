@@ -278,3 +278,37 @@ Deno.test("tačno jedan poziv modela po pitanju; pretraga je za pozivaoca i izab
   assertEquals(searchedFor[3], BOOK);
   assert(log.generate[0].prompt.includes("Koliko se kuva sarma?"));
 });
+
+Deno.test("odgovor navodi i sačuvane recepte i stranice kuvara", async () => {
+  const { deps, log } = fixture({
+    hits: [
+      hit(1),
+      hit(2, {
+        cookbookId: "",
+        recipeId: "recipe-a",
+        title: "Pasulj",
+        page: 0,
+      }),
+      hit(3, {
+        cookbookId: "",
+        recipeId: "recipe-b",
+        title: "Prebranac",
+        page: 0,
+      }),
+    ],
+    model: JSON.stringify({
+      answer: "Tri predloga za ručak.",
+      used: [1, 2, 3],
+    }),
+  });
+  const answer = await ask(deps, USER, { question: "Predloži ručak." });
+  assert(answer.ok);
+  assertEquals(answer.sources.map((source) => source.recipeId), [
+    undefined,
+    "recipe-a",
+    "recipe-b",
+  ]);
+  assertEquals(answer.sources[0].page, 10);
+  assert(log.generate[0].prompt.includes("Sačuvani recept: Pasulj"));
+  assert(log.generate[0].prompt.includes("Kuvar: Velika kuvarica, str. 10"));
+});

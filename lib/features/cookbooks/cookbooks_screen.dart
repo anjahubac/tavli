@@ -26,30 +26,61 @@ class _CookbooksScreenState extends ConsumerState<CookbooksScreen> {
   Future<void> _add() async {
     final repo = ref.read(cookbookRepositoryProvider);
     if (repo == null || _busy) return;
-    final picked = await ref.read(bookPickerProvider).pick();
-    if (picked == null || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _busy = true;
       _error = null;
-      _progress = 'Otpremam knjigu…';
     });
     try {
-      await repo.upload(
-        filename: picked.name,
-        bytes: picked.bytes,
-        onProgress: (book) {
-          if (mounted) setState(() => _progress = cookbookStatusText(book));
-        },
-      );
-      ref.invalidate(cookbooksProvider);
+      final picked = await ref.read(bookPickerProvider).pick();
+      if (picked.isEmpty || !mounted) return;
+      var ready = 0;
+      final failures = <String>[];
+      for (final (index, file) in picked.indexed) {
+        if (!mounted || ref.read(cookbookRepositoryProvider) != repo) return;
+        final position = picked.length == 1
+            ? ''
+            : '${index + 1}/${picked.length} · ';
+        setState(() => _progress = '${position}Otpremam knjigu…');
+        try {
+          await repo.upload(
+            filename: file.name,
+            bytes: file.bytes,
+            onProgress: (book) {
+              if (mounted) {
+                setState(
+                  () => _progress = '$position${cookbookStatusText(book)}',
+                );
+              }
+            },
+          );
+          ready++;
+        } on Exception catch (error) {
+          failures.add(
+            picked.length == 1
+                ? cookbookFailureText(error)
+                : '${file.name}: ${cookbookFailureText(error)}',
+          );
+        }
+      }
       if (!mounted) return;
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Knjiga je spremna.')));
-    } on Exception catch (e) {
       ref.invalidate(cookbooksProvider);
-      if (mounted) setState(() => _error = cookbookFailureText(e));
+      if (failures.isNotEmpty) setState(() => _error = failures.join('\n'));
+      if (ready > 0) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                picked.length == 1
+                    ? 'Knjiga je spremna.'
+                    : 'Spremno: $ready od ${picked.length} knjiga.',
+              ),
+            ),
+          );
+      }
+    } on Exception catch (error) {
+      if (mounted) setState(() => _error = cookbookFailureText(error));
     } finally {
       if (mounted) {
         setState(() {
