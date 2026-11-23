@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Pre-push: flutter analyze i testovi pogođeni commitovima koji se šalju.
+# Git na stdin daje spisak grana; scripts/check-push.sh ga čita.
+# Uključivanje (jednom po klonu): git config core.hooksPath .githooks
+set -euo pipefail
+
+root=$(git rev-parse --show-toplevel)
+exec "$root/scripts/check-push.sh"

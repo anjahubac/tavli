@@ -127,7 +127,7 @@ section to `TavliGallerySections` and a golden image.
 
 - `scripts/check.sh` formats and analyzes the package and fails when app code
   imports anything from `package:tavli_ui` other than `tavli_ui.dart`.
-- The pre-commit hook runs package tests when a package file changes.
+- The pre-push hook runs package tests when a pushed commit changes a package file.
 - Golden images (`packages/tavli_ui/test/goldens`, tag `golden`) are compared
   only on Linux, as in CI; other systems skip them. Regenerate them with
   `scripts/update-goldens.sh` (Docker, CI's Flutter version) and review the

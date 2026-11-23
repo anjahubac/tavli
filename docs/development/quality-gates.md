@@ -18,7 +18,10 @@ writing them here does not configure GitHub branch protection.
 | Release | full suite, macOS debug smoke build, local backend tests, UX evidence | tested dev artifact, production approval, compatibility/rollback notes |
 
 Before each commit, run `dart format lib test scripts` when Dart changed; the
-existing pre-commit hook runs check + affected tests. Do not bypass it. Preserve
+pre-commit hook checks format and `tavli_ui` imports of staged Dart files, and
+the pre-push hook runs `flutter analyze` plus the tests affected by the pushed
+commits (pushes without Dart or package-setting changes skip both). Do not
+bypass either hook. Preserve
 CI's full-suite behavior even for documentation PRs; optimizing CI requires a
 separate measured change. No real AI/provider/backend keys in tests.
 
@@ -95,8 +98,12 @@ SDK invocation note: `scripts/with-sdk-env.sh` clears repository-local Git
 variables only inside Dart/Flutter subprocesses. This prevents worktree hooks
 from making Flutter identify the app repository as its SDK checkout. The parent
 keeps its Git/index context for affected-file selection; command failures still
-propagate and both pre-commit checks remain enabled. The Python regression suite
-runs in the documentation/tooling CI job.
+propagate and both hooks remain enabled. For `dart`, the wrapper runs the cached
+Dart SDK directly when its stamp matches the Flutter checkout's
+`bin/internal/engine.version`; otherwise it keeps the `flutter/bin/dart`
+wrapper so the SDK cache can update. This skips the wrapper's per-call engine
+check, which takes 3-30 s on Windows. The Python regression suite runs in the
+documentation/tooling CI job.
 
 ## Sync changes
 

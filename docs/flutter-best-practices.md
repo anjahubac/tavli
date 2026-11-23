@@ -150,9 +150,9 @@ Binding for humans and AI agents. The constitution
   (fake the Supabase-facing repository/remote interface).
 - Server access rules are tested with `supabase test db` (pgTAP) against the
   local stack, outside `scripts/check.sh`.
-- Test runs: the pre-commit hook runs only the tests affected by the staged
-  files (`scripts/test-changed.sh`, which follows imports; a `pubspec` change
-  runs everything). The full suite runs in CI on every PR. A test that waits on
+- Test runs: the pre-push hook runs only the tests affected by the pushed
+  commits (`scripts/test-changed.sh`, which follows imports; a `pubspec` change
+  runs everything). The pre-commit hook only checks format and imports. The full suite runs in CI on every PR. A test that waits on
   real time (retries, debounce, animations) uses the fake clock of `testWidgets`
   (`tester.pump(duration)`) instead of real delays.
 - Test names in Serbian describing behaviour (existing convention).
@@ -209,8 +209,9 @@ Binding for humans and AI agents. The constitution
 
 **Commits**
 
-- Small commits that each build and pass the pre-commit hook (`scripts/check.sh`
-  + affected tests); one logical change per commit.
+- Small commits that each build and pass the pre-commit hook
+  (`scripts/check-staged.sh`); every push passes the pre-push hook (analyze +
+  affected tests); one logical change per commit.
 - Subject in imperative mood, ≤ 72 chars, with a type and optional scope:
   `feat(003): …`, `fix(ai): …`, `spec(004): …`, `docs: …`, `chore: …`, `test: …`, `refactor: …`.
 - The body explains *why*, not what the diff already shows.

@@ -1,4 +1,15 @@
 <!--
+Sync Impact Report — 2026-11-22
+- Version: 3.1.0 → 3.2.0 (MINOR: principle V and workflow step 3 move the
+  `flutter analyze` and affected-test gate from every commit to every push).
+- The pre-commit hook keeps the fast format and `tavli_ui` import checks for
+  staged Dart files; the new pre-push hook runs analyze plus the tests affected
+  by the pushed commits. CI still runs `scripts/check.sh` and the full suite.
+- Updated AGENTS.md, README.md, docs/development/quality-gates.md,
+  docs/flutter-best-practices.md, docs/development/ui-standard.md,
+  scripts/check-docs.py and the hook scripts.
+- No runtime, schema, credential, hosted settings or deployment change here.
+
 Sync Impact Report — 2026-11-19
 - Version: 3.0.1 → 3.1.0 (MINOR: principle VI expanded with the canonical design
   canvas and the no-fixed-sizes rule).
@@ -135,10 +146,11 @@ accounts, fake AI and a fail-closed endpoint guard (spec 013); never hosted
 projects, real keys or production data. Server access rules (RLS policies, grants,
 storage policies) MUST have database tests run against the local Supabase stack
 (`supabase test db`) with at least two test accounts. Widgets get widget tests
-for key flows. `flutter analyze` MUST be clean and the tests affected by the
-change (`scripts/test-changed.sh`, run by the pre-commit hook) MUST be green
-before every commit; the full `flutter test` suite MUST be green in CI before
-a pull request is merged.
+for key flows. Staged Dart files MUST pass the format and `tavli_ui` import
+checks before every commit (pre-commit hook); `flutter analyze` MUST be clean
+and the tests affected by the pushed commits (`scripts/test-changed.sh`, run by
+the pre-push hook) MUST be green before every push; the full `flutter test`
+suite MUST be green in CI before a pull request is merged.
 
 **Rationale**: AI output is messy; parsers and fallback logic are where bugs hide.
 
@@ -236,8 +248,10 @@ code or ticket count. Track remaining effort and integration risk per phase.
    → `/speckit-analyze` → `/speckit-implement`.
 3. Before each commit: `dart run build_runner build` (if drift tables changed),
    `dart format lib test`, then the pre-commit hook (`.githooks/pre-commit`:
-   `scripts/check.sh` format check + analyze, `scripts/test-changed.sh`
-   affected tests). CI runs the full test suite on every pull request.
+   `scripts/check-staged.sh` format and import checks). Before each push the
+   pre-push hook (`.githooks/pre-push`: `scripts/check-push.sh`) runs
+   `flutter analyze` and the affected tests. CI runs `scripts/check.sh` and the
+   full test suite on every pull request.
 4. Apply `docs/development/quality-gates.md`: runtime features need acceptance,
    Serbian UI, relevant offline/security/UI checks and a macOS debug smoke build.
    Documentation-only changes need document/link/register and diff checks;
@@ -256,4 +270,4 @@ wording), and updating dependent templates and docs in the same commit. Every ne
 `plan.md` Constitution Check MUST evaluate principles I–X; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 3.1.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-19
+**Version**: 3.2.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-22

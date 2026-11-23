@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Brza provera: formatiranje, javni ulaz paketa tavli_ui, preseljeni ekrani
-# bez sirovih Material widgeta i statička analiza
-# (bez testova).
-# Testovi idu kroz pre-commit hook (scripts/test-changed.sh), a ceo skup
-# pokreće CI; lokalno ceo skup: `flutter test`.
+# Puna provera: formatiranje celog repoa, javni ulaz paketa tavli_ui,
+# preseljeni ekrani bez sirovih Material widgeta i statička analiza
+# (bez testova). Pokreće je CI; lokalno je pokrivaju hookovi:
+# pre-commit (scripts/check-staged.sh) i pre-push (scripts/check-push.sh,
+# analiza + pogođeni testovi). Lokalno ceo skup: `flutter test`.
 # Usage: scripts/check.sh
 set -euo pipefail
 

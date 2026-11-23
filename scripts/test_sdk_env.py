@@ -46,5 +46,46 @@ class SdkEnvironmentTest(unittest.TestCase):
         self.assertEqual(self.invoke().returncode, 64)
 
 
+class DirectDartTest(unittest.TestCase):
+    """`dart` skips the slow flutter/bin wrapper only when the cache matches."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name) / "flutter"
+        self.cache = self.root / "bin/cache"
+        (self.root / "bin/internal").mkdir(parents=True)
+        (self.cache / "dart-sdk/bin").mkdir(parents=True)
+        self.script(self.root / "bin/flutter", "")
+        self.script(self.root / "bin/dart", 'echo WRAPPER "$@"')
+        self.script(self.cache / "dart-sdk/bin/dart", 'echo DIRECT "$@"')
+        (self.root / "bin/internal/engine.version").write_text("abc\n")
+
+    @staticmethod
+    def script(path, body):
+        path.write_text(f"#!/bin/sh\n{body}\n")
+        path.chmod(0o755)
+
+    def invoke(self, *args):
+        env = dict(os.environ, PATH=f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}")
+        return subprocess.run(["bash", str(WRAPPER), *args], env=env,
+                              text=True, capture_output=True)
+
+    def test_matching_cache_runs_sdk_dart_directly(self):
+        (self.cache / "engine-dart-sdk.stamp").write_bytes(b"abc\r\n")
+        result = self.invoke("dart", "format", "two words")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "DIRECT format two words")
+
+    def test_stale_or_missing_cache_keeps_wrapper(self):
+        self.assertEqual(self.invoke("dart", "x").stdout.strip(), "WRAPPER x")
+        (self.cache / "engine-dart-sdk.stamp").write_text("old\n")
+        self.assertEqual(self.invoke("dart", "x").stdout.strip(), "WRAPPER x")
+
+    def test_other_commands_are_unchanged(self):
+        (self.cache / "engine-dart-sdk.stamp").write_text("abc\n")
+        self.assertEqual(self.invoke("echo", "dart").stdout.strip(), "dart")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -101,10 +101,12 @@ flutter build macos --debug                                 # smoke build
 flutter run -d macos
 flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend + built-in AI keys (see secrets.example.json)
 flutter run -d macos --dart-define-from-file=secrets.json       # local stack (`supabase start`) or your own config
-scripts/check.sh                                            # format check + analyze (fast, no tests)
+scripts/check.sh                                            # full format check + analyze (no tests; CI runs it)
+scripts/check-staged.sh                                     # format + tavli_ui import checks for staged Dart files
 scripts/test-changed.sh                                     # tests affected by staged changes
 scripts/test-changed.sh origin/dev                          # tests affected by the whole branch
-git config core.hooksPath .githooks                         # once per clone: pre-commit runs both scripts above
+git config core.hooksPath .githooks                         # once per clone: pre-commit runs check-staged.sh,
+                                                            # pre-push runs analyze + tests affected by pushed commits
 
 supabase start          # local Supabase in Docker (API :55321, DB :55322, Studio :55323, mail :55324)
 supabase status         # local URL and anon key to copy into your own secrets.json
@@ -223,9 +225,11 @@ never from another feature branch, and its PR targets `dev`; full git rules are 
 - Never put the Supabase service-role key in the app, tests or repo; never call
   the hosted (production) project from tests or scripts.
 - Before each commit: `dart format lib test`; the pre-commit hook
-  (`.githooks/pre-commit`) then runs `scripts/check.sh` (format check,
-  `flutter analyze`) and `scripts/test-changed.sh` (tests affected by the staged
-  files, following imports). Never bypass it with `--no-verify`.
+  (`.githooks/pre-commit`) then runs `scripts/check-staged.sh` (format and
+  `tavli_ui` import checks for staged Dart files). Before each push the pre-push
+  hook (`.githooks/pre-push`) runs `flutter analyze` and `scripts/test-changed.sh`
+  for the pushed commits (following imports). Never bypass either hook with
+  `--no-verify`.
 - The full `flutter test` suite runs in CI on every PR; run it locally
   (`flutter test`) before opening a PR that touches shared code.
 - Keep changes scoped to the active spec/branch; note unrelated issues instead of fixing them in passing.
