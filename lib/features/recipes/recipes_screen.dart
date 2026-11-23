@@ -18,6 +18,7 @@ import 'add_recipe_sheet.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
 import 'recipe_providers.dart';
+import 'recipe_rating_section.dart';
 
 /// Od ove širine sadržaja recepti su mreža u tri kolone sa zaglavljem
 /// (platno, macOS i Windows · Recepti); uže je lista kartica kao na telefonu.
@@ -262,21 +263,45 @@ String _recipeFacts(Recipe recipe) => [
 ].join(' · ');
 
 /// Naziv i vreme sa porcijama, kao na kartici recepta.
-class _RecipeTitle extends StatelessWidget {
+class _RecipeTitle extends ConsumerWidget {
   const _RecipeTitle(this.recipe);
 
   final Recipe recipe;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
+    final summary = ref.watch(
+      recipeRatingSummariesProvider.select((s) => s.value?[recipe.id]),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(recipe.title, style: t.titleMedium),
-        Text(
-          _recipeFacts(recipe),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: _recipeFacts(recipe)),
+              if (summary != null) ...[
+                const TextSpan(text: '  '),
+                const WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: TavliIcon(
+                    TavliIcons.star,
+                    size: 14,
+                    color: ratingStarColor,
+                    filled: true,
+                  ),
+                ),
+                TextSpan(
+                  text:
+                      ' ${ratingAverageLabel(summary.averageStars)}'
+                      ' (${summary.ratingCount})',
+                ),
+              ],
+            ],
+          ),
           style: t.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

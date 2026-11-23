@@ -10,6 +10,7 @@ import 'ingredient_review_sheet.dart';
 import 'keep_screen_on.dart';
 import 'recipe_labels_sheet.dart';
 import 'recipe_providers.dart';
+import 'recipe_rating_section.dart';
 import 'recipe_view.dart';
 import 'versions_sheet.dart';
 
@@ -146,8 +147,16 @@ class _Detail extends ConsumerWidget {
                 ),
               ),
             ),
+            const SizedBox(height: TavliSpacing.medium),
+            RecipeRatingSection(recipeId: recipe.id),
             const SizedBox(height: TavliSpacing.large),
-            RecipeView(recipe, onEditLabels: () => _editLabels(context, ref)),
+            RecipeView(
+              recipe,
+              onEditLabels: () => _editLabels(context, ref),
+              ratingSummary: ref
+                  .watch(recipeRatingSummaryProvider(recipe.id))
+                  .value,
+            ),
           ],
         ),
       ),
