@@ -7,23 +7,33 @@ import '../domain/ids.dart';
 import '../domain/meal_plan.dart' show MealType;
 import '../domain/plan_calendar.dart';
 import '../domain/shopping_demand.dart' show normalizeUnit;
+import '../domain/shopping_sync.dart' show ingredientKey;
 import '../sync/synced_writer.dart';
 import 'cooking_repository.dart' show cookedEventFromRow;
 import 'database.dart';
+import 'shopping_repository.dart';
 
 /// Ostava domaćinstva; svaka izmena ima outbox u istoj transakciji.
 class PantryRepository {
   PantryRepository(
-    this._db, {
-    required this._scope,
-    required this._writer,
+    AppDatabase db, {
+    required AccountScope scope,
+    required SyncedWriter writer,
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+    ShoppingRepository? shopping,
+  }) : _db = db,
+       _scope = scope,
+       _writer = writer,
+       _clock = clock ?? DateTime.now,
+       _shopping =
+           shopping ??
+           ShoppingRepository(db, scope: scope, writer: writer, clock: clock);
 
   final AppDatabase _db;
   final AccountScope _scope;
   final SyncedWriter _writer;
   final DateTime Function() _clock;
+  final ShoppingRepository _shopping;
 
   static const _pantryItem = 'pantry_item';
   static const _consumption = 'pantry_consumption';
@@ -344,6 +354,24 @@ class PantryRepository {
           .watch()
           .map((rows) => {for (final r in rows) r.sourceShoppingItemId!});
 
+  /// Potvrđene namirnice bez poznate količine za napomenu u nabavci.
+  Stream<Set<String>> watchUnknownSupplyKeys() =>
+      (_db.select(_db.pantryItems)..where(
+            (t) =>
+                t.householdId.equals(_scope.householdId) &
+                t.confirmedAt.isNotNull() &
+                t.quantity.isNull(),
+          ))
+          .watch()
+          .map((rows) {
+            final now = _clock().toUtc();
+            return {
+              for (final item in rows)
+                if (item.expiresAt?.isBefore(now) != true)
+                  ingredientKey(item.name),
+            };
+          });
+
   /// Ručno brojanje: upisana količina je novo stanje, pa se kuvanje pre ovog
   /// trenutka više ne oduzima (ni kad se kasnije poništi). null = nepoznata.
   /// [unit] se menja samo uz [changeUnit]; bez količine jedinica se briše.
@@ -371,7 +399,9 @@ class PantryRepository {
                     : const Value.absent(),
               ),
             );
-    if (changed > 0) await _writer.upsert(_pantryItem, itemId);
+    if (changed == 0) return;
+    await _writer.upsert(_pantryItem, itemId);
+    await _shopping.reconcileSupply();
   });
 
   /// Dodaje više namirnica odjednom (npr. sa slike), jedna transakcija.

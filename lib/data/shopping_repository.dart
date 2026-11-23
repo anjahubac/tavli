@@ -81,6 +81,9 @@ class ShoppingRepository extends _ShoppingBase
   @override
   final DateTime Function() _clock;
 
+  /// Ažurira raspodelu i otvorene stavke nakon promene količine u ostavi.
+  Future<void> reconcileSupply() => _db.transaction(_reconcile);
+
   @override
   Future<String> _ensureList() => _db.transaction(() async {
     final existing =

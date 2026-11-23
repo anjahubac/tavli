@@ -99,6 +99,20 @@ mixin _ShoppingReconcile on _ShoppingBase {
         ),
       );
     }
+    // I received purchase belongs to the pantry lifecycle from this point on,
+    // even if its quantity is later cleared. Keep its original bought row
+    // from restoring stale numeric supply while the linked pantry row is
+    // unknown or expired.
+    final receivedPurchaseIds = {
+      for (final p
+          in await (_db.select(_db.pantryItems)..where(
+                (t) =>
+                    t.householdId.equals(hid) &
+                    t.sourceShoppingItemId.isNotNull(),
+              ))
+              .get())
+        p.sourceShoppingItemId!,
+    };
     for (final i
         in await (_db.select(_db.shoppingItems)..where(
               (t) =>
@@ -107,6 +121,7 @@ mixin _ShoppingReconcile on _ShoppingBase {
                   t.quantity.isNotNull(),
             ))
             .get()) {
+      if (receivedPurchaseIds.contains(i.id)) continue;
       final unit = normalizeUnit(i.unit);
       supplies.add(
         Supply(

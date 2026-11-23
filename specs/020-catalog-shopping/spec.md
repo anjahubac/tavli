@@ -93,6 +93,21 @@ become a regular regression test when catalog-based grouping lands there.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
+## Pantry live-update acceptance
+
+For [Trello #27](https://trello.com/c/7vjSMCs1), the
+[shopping screen regression test](../../test/features/shopping/shopping_pantry_live_update_test.dart)
+opens “Po planu” with 300 g of demand and 100 g of confirmed pantry stock.
+It verifies the change from 200 g to 300 g when the pantry quantity is
+cleared while shopping stays open. The item remains confirmed and shows
+“Imaš u ostavi, proveri”. Setting the quantity back to 100 g restores
+200 g of remaining demand and clears the note. The regression covers a single
+week and the whole plan at 320 px with 2× text.
+
+The pantry edit and shopping reconciliation share one local transaction and
+use the existing outbox. The note is derived from confirmed pantry rows
+with unknown quantities in the current household.
+
 ## Dependencies and open decisions
 
 Producer specs: [017](../017-kitchen-unit-conversion/spec.md), [018](../018-ingredient-catalog/spec.md)
