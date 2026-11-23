@@ -36,6 +36,21 @@ MIGRATED = (
     'lib/features/account/household_widgets.dart',
     'lib/features/settings/household_edit_dialog.dart',
     'lib/features/settings/profile_household_section.dart',
+    # Card "UI biblioteka 13", first part: Početna, plan steps, the rest of
+    # Plan, Profil and Nabavka.
+    'lib/features/home/home_notice.dart',
+    'lib/features/home/home_screen.dart',
+    'lib/features/home/home_today.dart',
+    'lib/features/planning/meal_actions.dart',
+    'lib/features/planning/plan_format.dart',
+    'lib/features/planning/plan_generation.dart',
+    'lib/features/planning/plan_preview_screen.dart',
+    'lib/features/planning/plan_setup_screen.dart',
+    'lib/features/planning/plan_step_page.dart',
+    'lib/features/planning/planning_providers.dart',
+    'lib/features/settings/ai_error_text.dart',
+    'lib/features/shopping/shopping_counts.dart',
+    'lib/features/shopping/shopping_providers.dart',
 )
 
 # Material widgets with a library replacement (Tavli* component or helper).

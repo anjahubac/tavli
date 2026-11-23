@@ -184,6 +184,8 @@ class _ChoicesDemoState extends State<_ChoicesDemo> {
   bool _month = false;
   _Shopping _shopping = _Shopping.plan;
   int _week = 1;
+  Set<String> _meals = {'Ručak'};
+  int _mode = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -222,6 +224,33 @@ class _ChoicesDemoState extends State<_ChoicesDemo> {
             ],
             selected: _week,
             onChanged: (v) => setState(() => _week = v),
+          ),
+        ),
+        gap,
+        GalleryLabeled(
+          'Segmentno · preko cele širine, sa ikonicama',
+          TavliChoice<int>.segmented(
+            expand: true,
+            options: const [
+              TavliOption(0, 'Svetla', glyph: TavliIcons.lightMode),
+              TavliOption(1, 'Tamna', glyph: TavliIcons.darkMode),
+              TavliOption(2, 'Kao sistem', glyph: TavliIcons.systemMode),
+            ],
+            selected: _mode,
+            onChanged: (v) => setState(() => _mode = v),
+          ),
+        ),
+        gap,
+        GalleryLabeled(
+          'Više izbora odjednom',
+          TavliMultiChoice<String>(
+            options: const [
+              TavliOption('Doručak', 'Doručak'),
+              TavliOption('Ručak', 'Ručak'),
+              TavliOption('Večera', 'Večera'),
+            ],
+            selected: _meals,
+            onChanged: (v) => setState(() => _meals = v),
           ),
         ),
       ],

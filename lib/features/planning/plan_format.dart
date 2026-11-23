@@ -1,4 +1,5 @@
 import '../../domain/plan_calendar.dart';
+import '../../domain/recipe_format.dart';
 
 const _weekdays = [
   'Ponedeljak',
@@ -45,8 +46,7 @@ String rangeLabel(DateRange r) {
 }
 
 /// "1 obrok", "3 obroka", "21 obrok".
-String mealsCount(int n) =>
-    '$n ${n % 10 == 1 && n % 100 != 11 ? 'obrok' : 'obroka'}';
+String mealsCount(int n) => countLabel(n, 'obrok', 'obroka', 'obroka');
 
 const _weekdaysShort = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
 const _weekdaysInitial = ['P', 'U', 'S', 'Č', 'P', 'S', 'N'];

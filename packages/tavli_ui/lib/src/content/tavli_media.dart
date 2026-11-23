@@ -15,7 +15,7 @@ class TavliThumbnail extends StatelessWidget {
     super.key,
     this.image,
     this.tintIndex = 0,
-    this.icon = Icons.restaurant_rounded,
+    this.glyph = TavliIcons.cook,
     this.photo,
   }) : width = 56,
        height = 56,
@@ -26,7 +26,7 @@ class TavliThumbnail extends StatelessWidget {
     super.key,
     this.image,
     this.tintIndex = 0,
-    this.icon = Icons.restaurant_rounded,
+    this.glyph = TavliIcons.cook,
     this.photo,
   }) : width = double.infinity,
        height = 120,
@@ -38,7 +38,7 @@ class TavliThumbnail extends StatelessWidget {
     super.key,
     this.image,
     this.tintIndex = 0,
-    this.icon = Icons.restaurant_rounded,
+    this.glyph = TavliIcons.cook,
     this.photo,
   }) : width = double.infinity,
        height = 120,
@@ -54,7 +54,9 @@ class TavliThumbnail extends StatelessWidget {
 
   /// Koja od tri meke boje teme (recepti se smenjuju).
   final int tintIndex;
-  final IconData icon;
+
+  /// Ikonica bez fotografije; na platnu je lonac ([TavliIcons.cook]).
+  final TavliIconData glyph;
   final double width;
   final double height;
 
@@ -67,9 +69,9 @@ class TavliThumbnail extends StatelessWidget {
     final placeholder = ColoredBox(
       color: x.tint(tintIndex),
       child: Center(
-        child: Icon(
-          icon,
-          size: height >= 100 ? 36 : 26,
+        child: TavliIcon(
+          glyph,
+          size: height >= 100 ? 32 : 24,
           color: c.onSurfaceVariant,
         ),
       ),

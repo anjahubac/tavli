@@ -148,7 +148,7 @@ class DeleteAccountSection extends ConsumerWidget {
             TavliListRow(
               title: 'Obriši nalog',
               subtitle: 'Trajno briše nalog i sve podatke',
-              leading: const Icon(Icons.delete_forever_outlined),
+              leading: const TavliIcon(TavliIcons.delete),
               destructive: true,
               onTap: () => _deleteAccount(context, ref),
             ),

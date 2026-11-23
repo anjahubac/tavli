@@ -23,7 +23,7 @@ class PlanSetup {
     required this.period,
     required this.anchor,
     this.mealTypes = const {MealType.lunch},
-    this.servings = 2,
+    this.servings = defaultPlanServings,
     this.usePantry = true,
     this.wishes = '',
   });
@@ -47,14 +47,9 @@ class PlanSetup {
   /// Susedna nedelja ili mesec.
   PlanSetup shifted(int by) => copyWith(
     anchor: period == PlanPeriod.week
-        ? anchor.addDays(7 * by)
-        : _addMonths(anchor, by),
+        ? addWeeks(anchor, by)
+        : firstOfMonthAfter(anchor, by),
   );
-
-  static CivilDate _addMonths(CivilDate d, int by) {
-    final m = d.month - 1 + by;
-    return CivilDate(d.year + (m / 12).floor(), m % 12 + 1, 1);
-  }
 
   PlanSetup copyWith({
     PlanPeriod? period,

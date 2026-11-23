@@ -10,6 +10,8 @@ import '../features/account/name_screen.dart';
 import '../features/account/sign_in_screen.dart';
 import '../features/account/sign_up_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/pantry/pantry_photo_screen.dart';
+import '../features/pantry/pantry_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
 import '../features/planning/plan_setup_screen.dart';
@@ -25,10 +27,8 @@ import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
 import '../features/settings/tastes/tastes_screen.dart';
 import '../features/shopping/shopping_screen.dart';
-import 'animations/empty_fridge.dart';
 import 'app_menu.dart';
 import 'home_shell.dart';
-import 'placeholder_screen.dart';
 
 /// Glavni ekran: Početna, srednji tab (021 FR-002).
 const homeLocation = '/home';
@@ -129,30 +129,36 @@ GoRouter createRouter({
         entryId: state.pathParameters['entryId']!,
       ),
     ),
-    // Profil i podešavanja su iznad tabova; otvaraju se preko avatara.
-    GoRoute(
-      path: '/profile',
-      builder: (context, state) => const ProfileScreen(),
+    // Profil i podešavanja su iznad tabova; otvaraju se preko avatara. Na
+    // širokom ekranu ostaju u okviru sa bočnom navigacijom, kao na platnu.
+    ShellRoute(
+      builder: (context, state, child) => ProfileShell(child: child),
       routes: [
         GoRoute(
-          path: 'ai-keys',
-          builder: (context, state) => const AiKeysScreen(),
-        ),
-        GoRoute(
-          path: 'household-share',
-          builder: (context, state) => const HouseholdShareScreen(),
-        ),
-        GoRoute(
-          path: 'appearance',
-          builder: (context, state) => const AppearanceScreen(),
-        ),
-        GoRoute(
-          path: 'tastes',
-          builder: (context, state) => const TastesScreen(),
-        ),
-        GoRoute(
-          path: 'animations',
-          builder: (context, state) => const AnimationsGalleryScreen(),
+          path: '/profile',
+          builder: (context, state) => const ProfileScreen(),
+          routes: [
+            GoRoute(
+              path: 'ai-keys',
+              builder: (context, state) => const AiKeysScreen(),
+            ),
+            GoRoute(
+              path: 'household-share',
+              builder: (context, state) => const HouseholdShareScreen(),
+            ),
+            GoRoute(
+              path: 'appearance',
+              builder: (context, state) => const AppearanceScreen(),
+            ),
+            GoRoute(
+              path: 'tastes',
+              builder: (context, state) => const TastesScreen(),
+            ),
+            GoRoute(
+              path: 'animations',
+              builder: (context, state) => const AnimationsGalleryScreen(),
+            ),
+          ],
         ),
       ],
     ),
@@ -260,11 +266,18 @@ GoRouter createRouter({
           routes: [
             GoRoute(
               path: '/pantry',
-              builder: (context, state) => const EmptyStateScreen(
-                art: EmptyFridge(),
-                title: 'Još nema unetih namirnica',
-                body: 'Ovde ćeš pratiti namirnice koje imaš kod kuće.',
-              ),
+              builder: (context, state) => const PantryScreen(),
+              routes: [
+                GoRoute(
+                  path: 'photo',
+                  builder: (context, state) => PantryPhotoScreen(
+                    initialPhoto: switch (state.extra) {
+                      final Uint8List photo => photo,
+                      _ => null,
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),

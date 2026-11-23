@@ -74,7 +74,7 @@ void main() {
   testTavli('telefon: natpisi režima staju u jedan red', (tester) async {
     await pumpTavli(tester, location: '/profile/appearance');
     final line = tester.getSize(find.text('Svetla')).height;
-    expect(tester.getSize(find.text('Sistem')).height, line);
+    expect(tester.getSize(find.text('Kao sistem')).height, line);
   });
 
   testTavli('širok ekran: sve tri teme i režimi su vidljivi', (tester) async {
@@ -85,7 +85,7 @@ void main() {
       'Borovnica',
       'Svetla',
       'Tamna',
-      'Sistem',
+      'Kao sistem',
     ]) {
       expect(find.text(name), findsOneWidget);
     }

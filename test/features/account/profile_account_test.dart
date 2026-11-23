@@ -73,7 +73,12 @@ void main() {
     testTavli('raspored zaglavlja na ${size.width.toInt()} px', (tester) async {
       await pumpTavli(tester, location: '/profile', size: size);
       expect(tester.takeException(), isNull);
-      expect(find.text('AP'), findsOneWidget);
+      // Na računaru je Profil u okviru sa bočnom navigacijom (platno), pa
+      // se avatar vidi i dole u meniju.
+      expect(
+        find.text('AP'),
+        size == phone ? findsOneWidget : findsNWidgets(2),
+      );
     });
   }
 

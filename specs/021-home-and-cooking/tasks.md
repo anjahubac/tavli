@@ -33,6 +33,9 @@ implementation/test/review estimates before Ready.
 - [ ] T021 [US1] D4-012 / FR-010, phase 2: **Provide a readable cooking mode** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T020; evidence: spec scenarios, applicable checks and reviewed PR.
 - [ ] T022 [US1] D4-013 / FR-011, phase 2: inspect existing evidence and add missing failing behavior/acceptance cases for **Add a recipe to a selected plan slot** at the tiers required by 013. Owner Dev 4; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
 - [ ] T023 [US1] D4-013 / FR-011, phase 2: **Add a recipe to a selected plan slot** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 4; reviewer independent domain consumer; depends T022; evidence: spec scenarios, applicable checks and reviewed PR.
+  - 2026-11-22: implementation on branch `feat/add-recipe-to-plan` per the
+    “Add to plan design” section of plan.md; repository and widget tests
+    cover SC-008. Checked off after review and merge.
 - [ ] T024 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 4; reviewer Dev 2 and Dev 1; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.
 
 ## Sequencing and effort
