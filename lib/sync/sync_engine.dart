@@ -188,18 +188,21 @@ class SyncEngine {
   /// prošlo do kraja.
   int get pullDeferred => _pullDeferred;
 
-  var _membershipCheck = false;
+  Completer<void>? _membershipCheck;
 
   /// Waits for old-scope work and suspends sync during server reconciliation.
   Future<T> reconcileMembership<T>(Future<T> Function() action) async {
-    if (_membershipCheck) throw StateError('Membership check in progress');
-    _membershipCheck = true;
+    if (_membershipCheck != null) {
+      throw StateError('Membership check in progress');
+    }
+    final finished = _membershipCheck = Completer<void>();
     try {
       await _inFlight;
       await _pullFinished?.future;
       return await action();
     } finally {
-      _membershipCheck = false;
+      _membershipCheck = null;
+      finished.complete();
       kick();
     }
   }
@@ -224,7 +227,7 @@ class SyncEngine {
   Future<void> pull() async {
     final downloader = _downloader;
     if (_stopped ||
-        _membershipCheck ||
+        _membershipCheck != null ||
         downloader == null ||
         _pullFinished != null) {
       return;
@@ -304,7 +307,7 @@ class SyncEngine {
 
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
-    if (_stopped || _membershipCheck) return Future.value();
+    if (_stopped || _membershipCheck != null) return Future.value();
     final pullFinished = _pullFinished;
     if (pullFinished != null) return pullFinished.future.then((_) => push());
     if (_running) {
@@ -357,17 +360,18 @@ class SyncEngine {
   /// active upload, so awaiting it here would deadlock.
   void _checkAccess() {
     final check = onForbidden;
-    if (check == null || _accessCheck || _membershipCheck || _stopped) return;
+    if (check == null || _accessCheck || _stopped) return;
     _accessCheck = true;
     _zone.run(
       () => unawaited(
         Future(() async {
           try {
+            // An upload can be denied while reconciliation waits for it.
+            await _membershipCheck?.future;
             // The engine may have stopped (sign-out, household switch)
             // between the denial and this callback.
             if (!_stopped) await check();
           } on Object {
-            // A failed check is retried by the next denial or app resume.
             // Nothing is logged: the error may carry account details.
           } finally {
             _accessCheck = false;

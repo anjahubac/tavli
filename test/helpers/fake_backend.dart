@@ -581,6 +581,7 @@ class FakeSyncRemote implements SyncRemote {
 
   final FakeServer server;
   final FakeAuth auth;
+  Future<void> Function()? beforeUpsert;
 
   String get _uid => auth.current?.userId ?? '';
 
@@ -600,6 +601,7 @@ class FakeSyncRemote implements SyncRemote {
     String onConflict = 'id',
     bool ignoreDuplicates = false,
   }) async {
+    await beforeUpsert?.call();
     _checkSession();
     if (server.enforceMembership &&
         rows.any(

@@ -306,15 +306,20 @@ void main() {
       },
     );
 
-    test('ne pokreće se dok provera članstva već traje', () async {
+    test('odbijanje čeka završetak tekuće provere članstva', () async {
       await addRecipe('a');
       removeFromHousehold();
       final push = guarded.push();
-      final check = guarded.reconcileMembership(() async {});
+      final finish = Completer<void>();
+      final check = guarded.reconcileMembership(() => finish.future);
       await push;
-      await check;
       await pumpQueue();
       expect(checks, 0);
+
+      finish.complete();
+      await check;
+      await pumpQueue();
+      expect(checks, 1);
     });
   });
 
