@@ -151,9 +151,10 @@ and the “Deli opis” consent are deferred to the later note slice.
   on the left with the pills beside them (product owner review replaced the
   canvas search field and its keyboard shortcuts).
 - “Plan domaćinstva”: switch “Deli ukuse i omiljene”, subtitle “Pomaže u
-  preporuci recepata.”, lock note “Alergene plan uvek poštuje, i kad je
+  preporuci recepata pomoću AI-a.”, lock note “Alergene plan uvek poštuje, i kad je
   deljenje isključeno.” Product owner review shortened the intro, allergen,
-  sharing and lock copy from the canvas text.
+  sharing and lock copy from the canvas text. On a wide screen the page is
+  centered and the two columns have a wider gap than the canvas.
 - Consent confirmation before enabling (not on the canvas; required by the
   [contract](contracts/member-planning-inputs.md#disclosure-and-consent), which
   asks the consent text to name the AI provider; needs Dev 4 review):

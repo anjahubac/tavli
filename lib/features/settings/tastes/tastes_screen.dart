@@ -35,10 +35,12 @@ class TastesScreen extends ConsumerWidget {
       title: 'Ukusi i alergeni',
       backLabel: 'Profil',
       fallbackLocation: '/profile',
+      centered: true,
       children: [
         const _Intro(),
         if (wide)
           const SettingsColumns(
+            gap: TavliSpacing.large + TavliSpacing.medium,
             start: [_AllergensSection(wide: true), _SharingSection()],
             end: [
               _KindsAndCuisinesSection(),
@@ -682,7 +684,7 @@ class _SharingSection extends ConsumerWidget {
             children: [
               TavliSwitchRow(
                 title: 'Deli ukuse i omiljene',
-                subtitle: 'Pomaže u preporuci recepata.',
+                subtitle: 'Pomaže u preporuci recepata pomoću AI-a.',
                 value: value,
                 onChanged: ready ? change : null,
               ),
