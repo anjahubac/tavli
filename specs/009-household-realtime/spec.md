@@ -20,6 +20,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 
 ## Behavioral requirements
 
+- Every verified household member receives shared signals on all signed-in devices, including solo households. Private edits to ratings, favorites, tastes and allergens wake only the owner.
 - **FR-101**: A remote change schedules the existing pull path; no direct realtime row writes from widgets.
 - **FR-102**: Coalesce bursts and reconnect using cursors; duplicate/out-of-order signals must not lose pending local writes or resurrect deletions.
 - **FR-103**: Subscription lifecycle follows account and membership; permission failures surface safely and fall back to existing resume/pull behavior.

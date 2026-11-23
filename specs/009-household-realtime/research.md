@@ -27,7 +27,9 @@ did not exercise the Flutter client, its full cursor and outbox paths, a multi-u
 load profile, or device and hosted network latency. Pantry and plan delivery and
 the one-to-two member transition remain acceptance cases.
 
-## Proposed Q1 decision for review
+## Original Q1 proposal
+
+The [current contract](contracts/signals.md) supersedes the original member-count threshold and outage-only polling below.
 
 Use Postgres Changes for updates on the two revision tables. Keep payloads to the
 scope ID and revision. A household subscription is eligible with at least two

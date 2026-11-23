@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,14 +7,65 @@ import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/shopping_repository.dart';
 import 'package:tavli/sync/downloader.dart';
+import 'package:tavli/sync/realtime_sync.dart';
 import 'package:tavli/sync/sync_engine.dart';
 import 'package:tavli/sync/synced_writer.dart';
 import 'package:tavli/sync/uploader.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_photo_store.dart';
+import '../helpers/fake_timers.dart';
 
 void main() {
+  test(
+    'one account on two devices receives shared edits and deletes',
+    () async {
+      final first = FakeBackend();
+      final a = await _Device.create(first, 'solo@example.test');
+      final b = await _Device.create(
+        FakeBackend(sharedServer: first.server),
+        'solo@example.test',
+      );
+      addTearDown(a.close);
+      addTearDown(b.close);
+      expect(b.scope.userId, a.scope.userId);
+      final timers = FakeTimers();
+      final signals = _SoloSignals();
+      var finished = Completer<void>();
+      final realtime = RealtimeSync(
+        remote: signals,
+        userId: b.scope.userId,
+        householdId: b.scope.householdId,
+        refreshMembership: () async {},
+        pull: () async {
+          final result = await b.engine.pullAfterCurrent();
+          finished.complete();
+          return result;
+        },
+        timer: timers.call,
+      );
+      addTearDown(realtime.dispose);
+      realtime.setForeground(true);
+      signals.accountReady(true);
+      await finished.future;
+      final list = await a.shopping.recipeList();
+      final item = await a.shopping.addManual(list, 'So');
+      await a.engine.push();
+      finished = Completer<void>();
+      signals.householdChanged();
+      await timers.fire(const Duration(milliseconds: 250));
+      await finished.future;
+      expect((await b.shopping.listItems(list)).single.id, item);
+      await a.shopping.deleteManual(item);
+      await a.engine.push();
+      finished = Completer<void>();
+      signals.householdChanged();
+      await timers.fire(const Duration(milliseconds: 250));
+      await finished.future;
+      expect(await b.shopping.listItems(list), isEmpty);
+    },
+  );
+
   for (final aFirst in [true, false]) {
     test(
       'independent shopping edits and deletion converge (A first: $aFirst)',
@@ -137,5 +190,28 @@ class _Device {
   Future<void> close() async {
     engine.stop();
     await db.close();
+  }
+}
+
+class _SoloSignals implements SyncSignalRemote {
+  late void Function(bool) accountReady;
+  late void Function() householdChanged;
+
+  @override
+  Future<bool?> householdEligible(String householdId) async => true;
+
+  @override
+  void Function() subscribe({
+    required SyncSignalScope scope,
+    required String id,
+    required void Function(bool) onConnection,
+    required void Function() onSignal,
+  }) {
+    if (scope == SyncSignalScope.account) {
+      accountReady = onConnection;
+    } else {
+      householdChanged = onSignal;
+    }
+    return () {};
   }
 }

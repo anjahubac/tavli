@@ -12,7 +12,7 @@ select revision as ar from public.account_sync_signals where id = :'a' \gset
 select revision as br from public.account_sync_signals where id = :'b' \gset
 
 select tests.authenticate_as(:'a');
-select is(public.household_realtime_eligible(:'home'), false, 'solo household is ineligible');
+select is(public.household_realtime_eligible(:'home'), true, 'a solo member can subscribe on multiple devices');
 select public.household_invite_token() as invite \gset
 select throws_ok('update public.account_sync_signals set revision = 12',
   '42501', null, 'account cannot send its own signal');
@@ -96,12 +96,32 @@ select tests.authenticate_as(:'a');
 select is((select revision from public.account_sync_signals where id = :'a'),
   :'ar_rename'::bigint + 1, 'an unchanged name sends no signal');
 
+-- A personal change wakes other devices of the same account only.
+select revision as before_favorite from public.account_sync_signals where id = :'a' \gset
+select tests.clear_auth();
+select revision as other_revision from public.account_sync_signals where id = :'b' \gset
+select tests.authenticate_as(:'a');
+insert into public.user_favorites(id, user_id, recipe_id, recipe_household_id, is_favorite)
+values (:'a' || ':rt-recipe', :'a', 'rt-recipe', :'home', true);
+update public.user_favorites set is_favorite = false where recipe_id = 'rt-recipe';
+select tests.clear_auth();
+delete from public.user_favorites where recipe_id = 'rt-recipe';
+select is((select revision from public.account_sync_signals where id = :'a'),
+  :'before_favorite'::bigint + 3, 'favorite insert, update and delete wake the owner');
+select tests.clear_auth();
+select is((select revision from public.account_sync_signals where id = :'b'),
+  :'other_revision'::bigint, 'private edits do not wake another member');
+
 -- Guard against drift: a new household-scoped table must publish signals or
--- be listed here with the reason it does not.
+-- be listed here with the reason it does not. Inspect as the test owner so
+-- tables without authenticated grants are visible too.
+select tests.clear_auth();
 select is((
-  select coalesce(string_agg(c.table_name, ', ' order by c.table_name), '')
+  select coalesce(string_agg(c.table_name || '.' || op.name, ', ' order by c.table_name, op.name), '')
   from information_schema.columns c
   join information_schema.tables t using (table_schema, table_name)
+  -- pg_trigger.tgtype for AFTER STATEMENT INSERT, UPDATE and DELETE.
+  cross join (values ('insert', 4), ('update', 16), ('delete', 8)) op(name, kind)
   where c.table_schema = 'public' and t.table_type = 'BASE TABLE'
     and c.column_name = 'household_id'
     and c.table_name not in (
@@ -111,7 +131,9 @@ select is((
     and not exists (
       select 1 from pg_catalog.pg_trigger g
       where g.tgrelid = format('public.%I', c.table_name)::regclass
-        and g.tgname = 'realtime_update' and not g.tgisinternal
+        and g.tgfoid = 'private.signal_household_changes()'::regprocedure
+        and g.tgtype = op.kind and g.tgenabled in ('O', 'A')
+        and not g.tgisinternal
     )
 ), '', 'every household-scoped table publishes realtime signals');
 
@@ -121,7 +143,7 @@ select tests.authenticate_as(:'a');
 select is(public.remove_household_member(:'b')->>'status', 'removed', 'owner removes through public RPC');
 select ok((select revision > :'ar'::bigint from public.account_sync_signals where id = :'a'),
   'remaining member gets personal signal on crossing threshold');
-select is(public.household_realtime_eligible(:'home'), false, 'remaining member is back to solo');
+select is(public.household_realtime_eligible(:'home'), true, 'remaining solo member stays subscribed');
 select tests.clear_auth();
 select tests.authenticate_as(:'b');
 select ok((select revision > :'br'::bigint from public.account_sync_signals where id = :'b'),

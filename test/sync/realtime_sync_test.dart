@@ -59,12 +59,12 @@ void main() {
   }
 
   test(
-    'personal signals enable and disable the shared stream at two members',
+    'legacy solo eligibility subscribes and loss of membership detaches',
     () async {
       remote.account.connection(true);
       await pumpQueue();
-      expect(remote.subscriptions, hasLength(1));
-      expect(timers.pending, isEmpty);
+      expect(remote.subscriptions, hasLength(2));
+      expect(timers.durations, [fallback]);
       expect(work, ['membership', 'pull']);
 
       remote.eligible = true;
@@ -73,17 +73,24 @@ void main() {
       final old = remote.household;
       expect(old.id, 'home');
 
-      remote.eligible = false;
+      remote.eligible = null;
       remote.account.signal();
       await pumpQueue();
       expect(old.closed, isTrue);
       work.clear();
       old.signal();
       old.connection(true);
-      await timers.fire();
+      await timers.fire(quiet);
       expect(work, isEmpty);
     },
   );
+
+  test('healthy channels catch up when a signal is silently missed', () async {
+    await connectBoth();
+    await timers.fire(fallback);
+    expect(work, ['membership', 'pull']);
+    expect(timers.durations, [fallback]);
+  });
 
   test('healthy channels retry a failed pull with capped backoff', () async {
     await connectBoth();
@@ -98,16 +105,19 @@ void main() {
 
     final delays = [...SyncEngine.backoff, SyncEngine.backoff.last];
     for (final (index, delay) in delays.indexed) {
-      expect(timers.durations, [delay]);
+      expect(timers.durations, unorderedEquals([fallback, delay]));
       await timers.fire(delay);
       expect(work, List.filled(index + 2, 'pull'));
     }
-    expect(timers.pending, isEmpty);
+    expect(timers.durations, [fallback]);
 
     transientFailures = 1;
     remote.household.signal();
     await timers.fire(quiet);
-    expect(timers.durations, [SyncEngine.backoff.first]);
+    expect(
+      timers.durations,
+      unorderedEquals([fallback, SyncEngine.backoff.first]),
+    );
   });
 
   test(
@@ -126,7 +136,10 @@ void main() {
       sync.setForeground(true);
       await pumpQueue();
       expect(work, ['pull', 'pull']);
-      expect(timers.durations, [SyncEngine.backoff[1]]);
+      expect(
+        timers.durations,
+        unorderedEquals([fallback, SyncEngine.backoff[1]]),
+      );
 
       sync.dispose();
       expect(timers.pending, isEmpty);
@@ -146,6 +159,11 @@ void main() {
       expect(remote.subscriptions, hasLength(1));
       expect(timers.durations, contains(SyncEngine.backoff.first));
 
+      remote.account.signal();
+      remote.account.connection(true);
+      await pumpQueue();
+      expect(work, ['membership']);
+
       await timers.fire(SyncEngine.backoff.first);
       expect(work, ['membership', 'membership']);
       expect(remote.subscriptions, hasLength(1));
@@ -158,12 +176,31 @@ void main() {
     },
   );
 
+  test('an exception from an in-flight pull preserves the retry', () async {
+    await connectBoth();
+    final first = blockedPull = Completer<void>();
+    remote.household.signal();
+    await timers.fire(quiet);
+    first.completeError(Exception('cache unavailable'));
+    await pumpQueue();
+    expect(
+      timers.durations,
+      unorderedEquals([fallback, SyncEngine.backoff.first]),
+    );
+    await timers.fire(SyncEngine.backoff.first);
+    expect(work, ['pull', 'pull']);
+    expect(timers.durations, [fallback]);
+  });
+
   test('membership changes are checked during pull backoff', () async {
     await connectBoth();
     transientFailures = 1;
     remote.household.signal();
     await timers.fire(quiet);
-    expect(timers.durations, [SyncEngine.backoff.first]);
+    expect(
+      timers.durations,
+      unorderedEquals([fallback, SyncEngine.backoff.first]),
+    );
 
     remote.eligible = null;
     remote.account.signal();
@@ -180,8 +217,11 @@ void main() {
       now = now.add(const Duration(milliseconds: 180));
       remote.household.signal();
     }
-    expect(timers.durations, [const Duration(milliseconds: 100)]);
-    await timers.fire();
+    expect(
+      timers.durations,
+      unorderedEquals([fallback, const Duration(milliseconds: 100)]),
+    );
+    await timers.fire(const Duration(milliseconds: 100));
     expect(work, ['pull']);
   });
 
@@ -211,7 +251,7 @@ void main() {
       remote.household.connection(true);
       await pumpQueue();
       expect(work, ['membership', 'pull']);
-      expect(timers.pending, isEmpty);
+      expect(timers.durations, [fallback]);
       first.complete();
       await pumpQueue();
       expect(work, ['membership', 'pull', 'membership', 'pull']);

@@ -53,11 +53,10 @@ class RealtimeSync {
   Timer? _batch;
   Timer? _retry;
   var _retryStep = 0;
+  var _membershipBackoff = false;
   DateTime? _firstSignal;
-  bool? _eligible;
+  var _membershipVerified = false;
   var _householdGeneration = 0;
-  var _accountReady = false;
-  var _householdReady = false;
   var _foreground = false;
   var _pending = false;
   var _membership = false;
@@ -80,9 +79,7 @@ class RealtimeSync {
       id: userId,
       onConnection: (ready) {
         if (_disposed) return;
-        _accountReady = ready;
         if (ready) _request(membership: true);
-        _updateFallback();
       },
       onSignal: () => _request(membership: true),
     );
@@ -90,13 +87,12 @@ class RealtimeSync {
     unawaited(_drain());
   }
 
-  void _configureHousehold(bool eligible) {
-    _eligible = eligible;
-    if (!eligible) {
+  void _configureHousehold(bool verified) {
+    _membershipVerified = verified;
+    if (!verified) {
       ++_householdGeneration;
       _closeHousehold?.call();
       _closeHousehold = null;
-      _householdReady = false;
       return;
     }
     if (_closeHousehold != null) return;
@@ -106,9 +102,7 @@ class RealtimeSync {
       id: householdId,
       onConnection: (ready) {
         if (_disposed || generation != _householdGeneration) return;
-        _householdReady = ready;
         if (ready) _request(membership: true);
-        _updateFallback();
       },
       onSignal: () {
         if (!_disposed && generation == _householdGeneration) _batchSignal();
@@ -139,13 +133,7 @@ class RealtimeSync {
   }
 
   void _updateFallback() {
-    final unhealthy =
-        !_accountReady || _eligible == null || (_eligible! && !_householdReady);
-    if (!_foreground || _disposed || !unhealthy) {
-      _fallback?.cancel();
-      _fallback = null;
-      return;
-    }
+    if (!_foreground || _disposed) return;
     _fallback ??= _timer(fallbackEvery, () {
       _fallback = null;
       _request(membership: true);
@@ -167,7 +155,7 @@ class RealtimeSync {
       while (_pending &&
           _foreground &&
           !_disposed &&
-          (_retry == null || _membership)) {
+          (_retry == null || (_membership && !_membershipBackoff))) {
         final checkMembership = _membership;
         _pending = _membership = false;
         if (checkMembership) {
@@ -178,29 +166,41 @@ class RealtimeSync {
             if (_disposed) return;
             if (eligible == null) {
               _configureHousehold(false);
-              _eligible = null;
               _cancelRetry();
               _retryStep = 0;
               continue;
             }
-            _configureHousehold(eligible);
+            // Older servers return false for verified solo households.
+            _configureHousehold(true);
           } on Exception {
             if (_disposed) return;
             // A failed membership check must not drop the scheduled work:
             // keep it pending, retry with backoff (contracts/signals.md) and
             // leave the fallback armed. `break` waits for the retry timer.
-            _eligible = null;
+            _membershipVerified = false;
             _pending = _membership = true;
-            if (_foreground) _scheduleRetry();
+            if (_foreground) {
+              _membershipBackoff = true;
+              _scheduleRetry();
+            }
             break;
           }
         }
-        if (_eligible == null) continue;
+        if (!_membershipVerified) continue;
         if (!_foreground || _retry != null) {
           _pending = true;
           continue;
         }
-        final outcome = await pull();
+        final PullOutcome outcome;
+        try {
+          outcome = await pull();
+        } on Exception {
+          // Local cache and post-pull callbacks can also fail.
+          if (_disposed) return;
+          _pending = true;
+          if (_foreground) _scheduleRetry();
+          continue;
+        }
         if (_disposed) return;
         if (outcome == PullOutcome.retryableFailure) {
           _pending = true;
@@ -211,7 +211,6 @@ class RealtimeSync {
       }
     } finally {
       _running = false;
-      _updateFallback();
     }
   }
 
@@ -221,6 +220,7 @@ class RealtimeSync {
     if (_retryStep < SyncEngine.backoff.length - 1) _retryStep++;
     _retry = _timer(delay, () {
       _retry = null;
+      _membershipBackoff = false;
       unawaited(_drain());
     });
   }
@@ -228,6 +228,7 @@ class RealtimeSync {
   void _cancelRetry() {
     _retry?.cancel();
     _retry = null;
+    _membershipBackoff = false;
   }
 
   void dispose() {

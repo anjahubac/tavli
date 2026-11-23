@@ -9,7 +9,7 @@ Owner: Dev 3. Independent contract reviewer: Dev 1 (confirmed by Matija, 2026-11
 | Stream | Record | Recipient | Meaning |
 | --- | --- | --- | --- |
 | Household | `id`: household UUID, `revision`: positive integer | Authenticated current members of that household | At least one committed shared change is available |
-| Personal | `id`: account UUID, `revision`: positive integer | The authenticated owner of that account | Recheck membership, role, and whether the household has at least two members |
+| Personal | `id`: account UUID, `revision`: positive integer | The authenticated owner of that account | Recheck membership, role, and private data |
 
 Use Postgres Changes on two dedicated revision tables and subscribe to UPDATE
 events filtered by scope ID. The Realtime publication emits UPDATE only so
@@ -27,18 +27,16 @@ and aliases. A household rename notifies each member's personal signal (a row-le
 trigger on `households.name`), because the client reads the name with the
 membership check, not in the pull.
 `supabase/tests/14_household_realtime_test.sql` fails when a public table with a
-`household_id` column has no `realtime_update` trigger and is not listed there
+`household_id` column lacks an enabled statement trigger calling the signal function for INSERT, UPDATE or DELETE and is not listed there
 with a reason (`household_members` uses personal signals; `deletions` is written
 by the delete triggers of the sources). Publish from the transaction that makes the change,
-including deletes and writes through RPCs. Off-scope business data and personal
-data are outside these streams. Review trigger batching and the cost of
+including deletes and writes through RPCs. Off-scope business data are outside these streams. Review trigger batching and the cost of
 multiple concurrent commits to one household revision row.
 
 ## Subscription and scheduling
 
 A signed-in account listens to its own signal. The active household stream
-is eligible when membership is verified and the server reports at least two
-members. In the same transaction as a membership change, increment the personal
+is eligible for every verified member, including one account on multiple devices. In the same transaction as a membership change, increment the personal
 revision for the changed account and for any remaining member affected by
 crossing the two-member threshold. On a one-to-two join, increment both the
 existing member's revision and the joining member's revision. On a two-to-one
@@ -46,7 +44,7 @@ departure, increment the departing and remaining members' revisions. Each
 device receives only its own account's notification. Establish
 subscriptions and perform a membership check and catch-up on confirmed
 connection or reconnect to cover changes during setup. The eligibility RPC takes the expected household UUID and returns true for
-two or more members, false for a solo membership, or null when the caller
+any verified member, or null when the caller
 cannot verify membership in that household.
 
 One scheduler owns pulls for each active account and household. It batches
@@ -57,12 +55,16 @@ channels are healthy. Retry from the saved cursors after 5 seconds, 10 seconds
 and then every 30 seconds while in the foreground. Membership checks can run
 during backoff and discard pending retries if the scope is no longer verified.
 Backgrounding pauses the retry timer and foregrounding drains pending work.
-A settled pull resets the backoff.
-For an unavailable applicable stream, run a check every 15 minutes while
-foregrounded. If the membership stream is unavailable, that check includes
-membership before a pull. Stop the timer when the stream recovers, on
-backgrounding or when the scope ends. An intentionally absent household stream
-for a solo household does not start the timer by itself.
+Signals received during membership-check backoff coalesce until the next retry.
+A pull that throws an exception also keeps the request pending. A settled pull resets the backoff.
+Every 15 minutes in the foreground, verify membership and pull even if the
+subscriptions appear healthy. This covers a single missed event. Stop the
+timer in the background and on disposal. At the first pull and once per day
+of use, rewind all per-account entity cursors together, including deletions.
+The durable rewind marker and cursor reset share a Drift transaction. The
+following paged downloads retain the usual per-page checkpoints and outbox
+rules. This repairs late commits outside the ordinary 60-second overlap at
+the cost of periodically reading the account's visible history.
 
 On sign-out or a household change, detach old subscriptions, discard scheduled
 old-scope work and reject callbacks tagged with the old scope. Preserve the
@@ -79,9 +81,8 @@ relies on those recovery paths under the current proposal.
 
 - **Zero-row delete (RT-08):** accepted for 009, not fixed. See the known gap in
   [spec.md](../spec.md#known-gap-carried-from-the-denied-write-fix).
-- **Personal data** (ratings, favorites, taste profiles, allergens) does not
-  publish signals. Another device of the same account sees it on resume, reconnect
-  or the foreground fallback.
+- **Personal data** changes to ratings, favorites, taste profiles and allergens
+  increment only the owner's account revision. Devices use the normal authorized pull.
 - **Publication is update-only and global:** `alter publication supabase_realtime
   set (publish = 'update')` applies to every table in it. Deleted rows are never
   published because Realtime cannot apply RLS to them, so a delete would reveal
