@@ -47,6 +47,9 @@ select is(
     'shopping_items:delete', 'shopping_items:insert', 'shopping_items:select', 'shopping_items:update',
     'shopping_lists:delete', 'shopping_lists:insert', 'shopping_lists:select', 'shopping_lists:update',
     'shopping_sources:delete', 'shopping_sources:insert', 'shopping_sources:select', 'shopping_sources:update',
+    'store_price_imports:select',
+    'store_price_mappings:select',
+    'store_price_observations:select',
     'supply_allocations:delete', 'supply_allocations:insert', 'supply_allocations:select', 'supply_allocations:update',
     'taste_profiles:delete', 'taste_profiles:insert', 'taste_profiles:select', 'taste_profiles:update',
     'user_allergen_selections:insert', 'user_allergen_selections:select', 'user_allergen_selections:update',
@@ -87,7 +90,8 @@ select is(
     'public.prepare_new_household', 'public.preview_household_join',
     'public.regenerate_household_invite', 'public.remove_household_member',
     'public.rename_household',
-    'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing', 'public.take_household_removal'
+    'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing', 'public.take_household_removal',
+    'public.store_price_offers_for_food_ids'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );

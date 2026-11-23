@@ -4,6 +4,7 @@ import '../../account/auth_controller.dart';
 import '../../data/database.dart';
 import '../../data/pantry_repository.dart';
 import '../../data/shopping_repository.dart';
+import '../../data/store_price_repository.dart';
 import '../../domain/plan_calendar.dart';
 import '../../providers.dart';
 import '../recipes/recipe_providers.dart';
@@ -24,6 +25,14 @@ final unknownPantrySupplyProvider = StreamProvider.autoDispose<Set<String>>(
   (ref) => ref.watch(pantryRepositoryProvider).watchUnknownSupplyKeys(),
 );
 
+/// Javni cenovnici se čitaju odvojeno od privatne, lokalne korpe.
+final storePriceRepositoryProvider = Provider<StorePriceRepository>((ref) {
+  return StorePriceRepository(
+    client: ref.watch(supabaseClientProvider),
+    syncEngine: ref.watch(syncEngineProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+  );
+});
 /// Stavke nedeljnih lista plana, uživo.
 final planShoppingProvider = StreamProvider.autoDispose
     .family<List<PlanShoppingItem>, String>(
