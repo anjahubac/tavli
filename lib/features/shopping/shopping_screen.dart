@@ -318,11 +318,14 @@ class _PlanPeriod extends ConsumerWidget {
         body: const TavliLoading(),
       );
     }
+    final unknownPantrySupply =
+        ref.watch(unknownPantrySupplyProvider).value ?? const <String>{};
     if (wholePlan) {
       return _WholePlan(
         mode: mode,
         filters: filters,
         items: [for (final i in all) i.item],
+        unknownPantrySupply: unknownPantrySupply,
       );
     }
     final repo = ref.read(shoppingRepositoryProvider);
@@ -334,6 +337,7 @@ class _PlanPeriod extends ConsumerWidget {
           if (i.weekStart == week.range.start) i.item,
       ],
       listId: () => repo.weekList(plan.id, week),
+      unknownPantrySupply: unknownPantrySupply,
       emptyText: 'Za ovu nedelju nema šta da se kupi.',
     );
   }
@@ -385,11 +389,13 @@ class _WholePlan extends ConsumerStatefulWidget {
     required this.mode,
     required this.filters,
     required this.items,
+    required this.unknownPantrySupply,
   });
 
   final Widget mode;
   final List<Widget> filters;
   final List<ShoppingItemRow> items;
+  final Set<String> unknownPantrySupply;
 
   @override
   ConsumerState<_WholePlan> createState() => _WholePlanState();
@@ -448,6 +454,10 @@ class _WholePlanState extends ConsumerState<_WholePlan> {
           ].join(' · ');
           return TavliCheckRow(
             title: t.name,
+            subtitle:
+                !bought && widget.unknownPantrySupply.contains(t.ingredient)
+                ? pantryQuantityNote
+                : null,
             detail: detail.isEmpty ? null : detail,
             checked: bought,
             onChanged: isReceived

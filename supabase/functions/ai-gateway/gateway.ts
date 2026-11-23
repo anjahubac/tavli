@@ -7,6 +7,16 @@ import {
   record,
 } from "./input.ts";
 import {
+  generateImage,
+  type ImageLimits,
+  imageLimits,
+  imageProvider,
+  type ImageReservation,
+  imageTask,
+  maxImageRequestBytes,
+  parseImageRequest,
+} from "./image.ts";
+import {
   chains,
   type Env,
   type Kind,
@@ -34,6 +44,16 @@ interface GatewayDependencies {
   authenticate(token: string): Promise<string | null>;
   reserve(uid: string, kind: Kind, limits: Limits): Promise<Reservation>;
   release(id: string): Promise<void>;
+  reserveImage(
+    uid: string,
+    recipeId: string,
+    limits: ImageLimits,
+  ): Promise<ImageReservation>;
+  storeImage(
+    householdId: string,
+    file: string,
+    jpeg: Uint8Array,
+  ): Promise<void>;
   send: typeof fetch;
 }
 
@@ -161,9 +181,47 @@ async function complete(
   }
 }
 
-export function gateway(
-  { env, authenticate, reserve, release, send }: GatewayDependencies,
-) {
+/** `recipe_image`: limiti, jedan poziv FLUX-a, upis u recipe-photos. */
+async function recipeImage(
+  raw: unknown,
+  uid: string,
+  { env, reserveImage, storeImage, send }: GatewayDependencies,
+): Promise<Response> {
+  const provider = imageProvider(env);
+  if (!provider) return failure(503, "disabled");
+  if (JSON.stringify(raw).length > maxImageRequestBytes) {
+    return failure(413, "too_large");
+  }
+  const input = parseImageRequest(raw);
+  if (!input) return failure(400, "bad_request");
+
+  const reservation = await reserveImage(uid, input.recipeId, imageLimits(env));
+  if ("error" in reservation) return failure(403, "forbidden");
+  if ("limit" in reservation) {
+    console.info("ai_image_quota_" + reservation.limit);
+    return response(429, {
+      error: "quota_exceeded",
+      limit: reservation.limit,
+      retryAfterSeconds: reservation.retryAfterSeconds,
+    });
+  }
+
+  const result = await generateImage(provider, input.description, send);
+  if (!result.ok) {
+    // Samo vrsta greške: bez opisa, odgovora provajdera i ključeva.
+    console.warn("ai_image_failed_" + String(result.body.error));
+    return response(result.status, result.body);
+  }
+  const file = "ai_" + crypto.randomUUID() + ".jpg";
+  await storeImage(reservation.householdId, file, result.jpeg);
+  return response(200, {
+    file,
+    path: reservation.householdId + "/" + file,
+  });
+}
+
+export function gateway(dependencies: GatewayDependencies) {
+  const { env, authenticate, reserve, release, send } = dependencies;
   return async (request: Request): Promise<Response> => {
     if (request.method !== "GET" && request.method !== "POST") {
       return response(405, { error: "method_not_allowed" }, {
@@ -194,14 +252,18 @@ export function gateway(
       if (Number(request.headers.get("Content-Length")) > maxBodyBytes) {
         return failure(413, "too_large");
       }
-      let input: Completion | undefined;
+      let raw: unknown;
       try {
-        input = parseCompletion(await boundedJson(request.body, maxBodyBytes));
+        raw = await boundedJson(request.body, maxBodyBytes);
       } catch (error) {
         return error instanceof BodyTooLarge
           ? failure(413, "too_large")
           : failure(400, "bad_request");
       }
+      if (record(raw)?.task === imageTask) {
+        return await recipeImage(raw, uid, dependencies);
+      }
+      const input: Completion | undefined = parseCompletion(raw);
       if (!input) return failure(400, "bad_request");
 
       const candidate = chains[input.kind].find((entry) =>

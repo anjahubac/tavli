@@ -66,6 +66,7 @@ class TavliCheckRow extends StatelessWidget {
     required this.checked,
     required this.onChanged,
     this.detail,
+    this.subtitle,
     this.onSelect,
     this.selected = false,
     this.onLongPress,
@@ -80,6 +81,9 @@ class TavliCheckRow extends StatelessWidget {
 
   /// Kratak podatak desno, npr. količina „1,5 kg“.
   final String? detail;
+
+  /// Napomena ispod naslova, prelama se na užem ekranu.
+  final String? subtitle;
   final bool checked;
 
   /// `null` isključuje štikliranje.
@@ -110,18 +114,32 @@ class TavliCheckRow extends StatelessWidget {
     }
 
     final box = _CheckBox(checked: checked, enabled: enabled);
+    final titleText = Text(
+      title,
+      style: t.bodyLarge?.copyWith(
+        fontSize: 16,
+        height: 1.35,
+        color: muted ? c.onSurfaceVariant : c.onSurface,
+        decoration: checked ? TextDecoration.lineThrough : null,
+        decorationColor: c.onSurfaceVariant,
+      ),
+    );
+    final subtitle = this.subtitle;
     final texts = <Widget>[
       Expanded(
-        child: Text(
-          title,
-          style: t.bodyLarge?.copyWith(
-            fontSize: 16,
-            height: 1.35,
-            color: muted ? c.onSurfaceVariant : c.onSurface,
-            decoration: checked ? TextDecoration.lineThrough : null,
-            decorationColor: c.onSurfaceVariant,
-          ),
-        ),
+        child: subtitle == null
+            ? titleText
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleText,
+                  Text(
+                    subtitle,
+                    style: t.bodyMedium?.copyWith(color: c.onSurfaceVariant),
+                  ),
+                ],
+              ),
       ),
       if (detail != null) ...[
         const SizedBox(width: TavliSpacing.small),

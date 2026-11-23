@@ -77,6 +77,13 @@ final recipeRatingSummaryProvider = StreamProvider.autoDispose
           .watchHouseholdSummary(recipeId),
     );
 
+/// Prosek ocena svih recepata domaćinstva za listu, po id-u recepta.
+final recipeRatingSummariesProvider =
+    StreamProvider.autoDispose<Map<String, RecipeRatingSummary>>(
+      (ref) =>
+          ref.watch(recipeRatingRepositoryProvider).watchHouseholdSummaries(),
+    );
+
 final recipePhotoFileProvider = FutureProvider.autoDispose
     .family<File?, String>(
       (ref, path) => ref.watch(recipePhotoStoreProvider).file(path),

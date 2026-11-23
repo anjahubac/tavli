@@ -50,6 +50,8 @@ function setup({
       released.push(id);
       return Promise.resolve();
     },
+    reserveImage: () => Promise.reject(new Error("unexpected")),
+    storeImage: () => Promise.reject(new Error("unexpected")),
     send: (url: string | URL | Request, init?: RequestInit) => {
       calls.push({ url: String(url), init });
       return Promise.resolve(upstream());

@@ -316,6 +316,25 @@ void main() {
   });
 
   group('TavliSearchField', () {
+    testWidgets('lupa je crtana u sredini polja po visini', (tester) async {
+      await pump(
+        tester,
+        const SizedBox(
+          width: 300,
+          child: TavliSearchField(hint: 'Pretraži recepte'),
+        ),
+      );
+      final field = tester.getRect(find.byType(TextField));
+      final drawing = tester.getRect(
+        find.descendant(
+          of: find.byType(TavliIcon),
+          matching: find.byType(CustomPaint),
+        ),
+      );
+      expect(drawing.height, 20);
+      expect(drawing.center.dy, closeTo(field.center.dy, 0.5));
+    });
+
     testWidgets('lupa, visina 48, brisanje teksta', (tester) async {
       final changes = <String>[];
       await pump(
