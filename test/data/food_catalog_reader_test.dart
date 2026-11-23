@@ -223,6 +223,115 @@ void main() {
     );
   });
 
+  group('visibleFoodById', () {
+    FoodCatalogReader reader() => FoodCatalogReader(db);
+
+    test(
+      'returns only active exact-ID food visible to scope and status',
+      () async {
+        await food('shared');
+        await food('own', household: 'h1');
+        await food('other', household: 'h2');
+        final shared = await reader().visibleFoodById(
+          home,
+          'shared',
+          status: CatalogStatus.available,
+        );
+        expect(shared?.id, 'shared');
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.available,
+          ))?.id,
+          'own',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'other',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.accessDenied,
+          ))?.id,
+          'shared',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.accessDenied,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.failed,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.notOnServer,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'missing',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test('rejects withdrawn and unknown-unit rows', () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'withdrawn',
+              slug: 'withdrawn',
+              name: 'Povučena',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              withdrawnAt: Value(t),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      await food('unknown-unit', unit: 'bushel');
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'withdrawn',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'unknown-unit',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('search', () {
     Future<void> named(
       String id,

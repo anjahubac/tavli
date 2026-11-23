@@ -1,9 +1,11 @@
 # Nutrition reference and portion-calculation research
 
-**Status:** USDA values are extracted as a research artifact. Four candidate
-identities, units and source mappings have human review recorded; the remaining
-334 worksheet rows have not been approved for seeding. This
-research does not ship a diary, recipe-calculation or nutrition-display feature.
+**Status:** Candidate identity/base-unit review and USDA FDC mapping approval
+were confirmed by the project owner in chat on 2026-11-23; individual reviewers
+are unspecified where not recorded. The 167 candidate foods are eligible for a
+seed migration, while 171 legacy rows remain reference-only. This research does
+not ship a diary or nutrition-display feature; a pure per-portion calculator is
+implemented separately with incomplete coverage preserved.
 Dev 1 evidence for D1-011, D1-015 and D1-016 / FR-001–003 in
 [spec 023](spec.md).
 
@@ -50,11 +52,10 @@ seed. It does not include Ciqual values.
 
 The extractor test uses a synthetic two-food archive to prove ID-based joining,
 unknown preservation and source attribution. Coverage is measured against 338 worksheet rows; 311 have complete values in
-this extract and 27 do not. Only four candidate rows are marked reviewed, so the
-seed generator still rejects the worksheet until every row selected for import
-has a recorded review decision and required reviewer fields. No shared catalog
-rows or aliases are seeded by this change. No allergen data is
-inferred from nutrition values.
+this extract and 27 do not. Candidate seed rows require the recorded owner identity/base-unit approval
+and USDA mapping approval before their attributed values are emitted. Legacy
+reference rows are not seed identities. No allergen data is inferred from
+nutrition values; unknown stays unknown unless separately reviewed.
 
 ## Earlier prototype evidence
 
@@ -137,4 +138,6 @@ as verified. The stored fixture does not satisfy that gate.
   on the actual team implementation. No clinical accuracy or personalized
   target calculation is established by synthetic unit tests.
 
-No source approval, team review or task completion is asserted by this report.
+The recorded owner approvals cover candidate identity/base units and FDC
+mappings only. They do not resolve optional calculator review, display rounding,
+conversion factors, or Dev 3 diary/target decisions.

@@ -109,6 +109,7 @@ class FoodCatalogReader {
             name: byId[id]!.name,
             category: byId[id]!.category,
             baseUnit: unit,
+            nutrition: _nutrition(byId[id]!),
           ),
     ];
     // Prvo one koje počinju upitom, pa po nazivu.
@@ -119,6 +120,41 @@ class FoodCatalogReader {
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
     return found.take(limit).toList();
+  }
+
+  /// Returns a catalog identity only for an active row visible in [scope].
+  /// Failed and unavailable server states fail closed; access-denied reads may
+  /// use shared rows only. This lookup is by exact immutable food ID and does
+  /// not attempt name matching.
+  Future<FoodIdentity?> visibleFoodById(
+    FoodLookupScope scope,
+    String foodId, {
+    required CatalogStatus status,
+  }) async {
+    if (foodId.isEmpty ||
+        (status != CatalogStatus.available &&
+            status != CatalogStatus.accessDenied)) {
+      return null;
+    }
+    final row = await (_db.select(
+      _db.foods,
+    )..where((food) => food.id.equals(foodId))).getSingleOrNull();
+    if (row == null || row.withdrawnAt != null) return null;
+    final sharedOnly = status == CatalogStatus.accessDenied;
+    final visible =
+        row.householdId == null ||
+        (!sharedOnly && row.householdId == scope.householdId);
+    if (!visible) return null;
+    final baseUnit = FoodBaseUnit.values.asNameMap()[row.baseUnit];
+    if (baseUnit == null) return null;
+    return FoodIdentity(
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      category: row.category,
+      baseUnit: baseUnit,
+      nutrition: _nutrition(row),
+    );
   }
 
   FoodNutrition? _nutrition(FoodRow row) {
