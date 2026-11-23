@@ -21,6 +21,7 @@ import '../features/settings/ai_keys_screen.dart';
 import '../features/settings/animations_gallery_screen.dart';
 import '../features/settings/appearance_screen.dart';
 import '../features/settings/profile_screen.dart';
+import '../features/settings/tastes/tastes_screen.dart';
 import '../features/shopping/shopping_screen.dart';
 import 'animations/empty_fridge.dart';
 import 'app_menu.dart';
@@ -133,6 +134,10 @@ GoRouter createRouter({
             GoRoute(
               path: 'appearance',
               builder: (context, state) => const AppearanceScreen(),
+            ),
+            GoRoute(
+              path: 'tastes',
+              builder: (context, state) => const TastesScreen(),
             ),
             GoRoute(
               path: 'animations',

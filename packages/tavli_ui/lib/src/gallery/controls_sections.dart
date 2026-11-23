@@ -5,6 +5,7 @@ import '../controls/tavli_button.dart';
 import '../controls/tavli_choice.dart';
 import '../controls/tavli_icon_button.dart';
 import '../controls/tavli_rows.dart';
+import '../controls/tavli_taste_chips.dart';
 import '../controls/tavli_text_field.dart';
 import '../icons/tavli_icons.dart';
 import '../tokens.dart';
@@ -164,6 +165,7 @@ class TavliControlsGallerySections extends StatelessWidget {
         ),
         const GallerySection(title: 'Izbori', child: _ChoicesDemo()),
         const GallerySection(title: 'Redovi', child: _RowsDemo()),
+        const GallerySection(title: 'Ukusi i alergeni', child: _TastesDemo()),
       ],
     );
   }
@@ -307,6 +309,109 @@ class _RowsDemoState extends State<_RowsDemo> {
               onChanged: (v) => setState(() => _sync = v),
             ),
           ]),
+        ),
+      ],
+    );
+  }
+}
+
+class _TastesDemo extends StatefulWidget {
+  const _TastesDemo();
+
+  @override
+  State<_TastesDemo> createState() => _TastesDemoState();
+}
+
+class _TastesDemoState extends State<_TastesDemo> {
+  var _milk = true;
+  var _eggs = false;
+  final _kinds = {
+    'Čorba ili supa': TavliLiking.like,
+    'Testenina': TavliLiking.none,
+    'Slatko': TavliLiking.dislike,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        GalleryLabeled(
+          'Alergen · pilula 44, dodir 48',
+          TavliChipWrap(
+            children: [
+              TavliToggleChip(
+                label: 'Mleko',
+                icon: TavliIcons.allergenMilk,
+                selected: _milk,
+                onChanged: (v) => setState(() => _milk = v),
+              ),
+              TavliToggleChip(
+                label: 'Jaja',
+                icon: TavliIcons.allergenEggs,
+                selected: _eggs,
+                onChanged: (v) => setState(() => _eggs = v),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: TavliSpacing.medium),
+        GalleryLabeled(
+          'Alergen · pločica (računar)',
+          Row(
+            spacing: TavliSpacing.small,
+            children: [
+              Expanded(
+                child: TavliToggleChip.tile(
+                  label: 'Mleko',
+                  icon: TavliIcons.allergenMilk,
+                  selected: _milk,
+                  onChanged: (v) => setState(() => _milk = v),
+                ),
+              ),
+              Expanded(
+                child: TavliToggleChip.tile(
+                  label: 'Jaja',
+                  icon: TavliIcons.allergenEggs,
+                  selected: _eggs,
+                  onChanged: (v) => setState(() => _eggs = v),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: TavliSpacing.medium),
+        GalleryLabeled(
+          'Volim · Ne volim · bez izbora',
+          TavliChipWrap(
+            children: [
+              for (final MapEntry(:key, :value) in _kinds.entries)
+                TavliLikingChip(
+                  label: key,
+                  liking: value,
+                  onChanged: (v) => setState(() => _kinds[key] = v),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: TavliSpacing.medium),
+        const GalleryLabeled(
+          'Izabrane namirnice i dodavanje',
+          TavliChipWrap(
+            children: [
+              TavliRemovableChip(
+                label: 'Paradajz',
+                liking: TavliLiking.like,
+                onRemove: _noop,
+              ),
+              TavliRemovableChip(
+                label: 'Cvekla',
+                liking: TavliLiking.dislike,
+                onRemove: _noop,
+              ),
+              TavliAddChip(label: 'Dodaj', onTap: _noop),
+            ],
+          ),
         ),
       ],
     );

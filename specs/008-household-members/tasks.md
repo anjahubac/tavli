@@ -73,5 +73,18 @@ and merged PR; checkbox completion alone is not a release or an external approva
   plus pgTAP for leaving a household, stale replay, saving again after rejoin and recipe/account
   deletion. UI and integrated planner acceptance are tracked by the same task.
 
+### UI evidence on the implementation branch
+
+- **T006 / T016 / T020 (UI)**: `lib/features/settings/tastes/` connects the
+  verified repositories to Profil › Ishrana › Ukusi i alergeni (canvas variant
+  A): allergens, dish kinds, cuisines, catalog foods, favorite recipes and the
+  online, revision-checked consent with confirmation. Reusable chips and tiles
+  live in `packages/tavli_ui` with gallery entries and goldens. Widget tests
+  cover saving, the three-state cycle, food and favorite pickers, consent
+  confirmation, offline and stale-revision consent, missing backend, phone and
+  wide layouts and 2× text. The note, its consent and the AI suggestion remain
+  open for the later note slice; real-device VoiceOver/TalkBack and macOS runs
+  are not yet recorded.
+
 The parent task checkboxes remain open until their acceptance scenarios pass
 and the implementation is reviewed.

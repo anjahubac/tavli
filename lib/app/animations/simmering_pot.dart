@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import 'empty_art.dart';
+
 /// Poruke dok AI pravi recept.
 const cookingMessages = [
   'Seckam luk…',
@@ -11,9 +13,6 @@ const cookingMessages = [
   'Mešam…',
   'Probam da li je slano…',
 ];
-
-const _flame = Color(0xFFF08A24);
-const _flameCore = Color(0xFFFFC94A);
 
 /// Lonac koji krčka (para i mehurići) i poruke koje se smenjuju.
 class SimmeringPot extends StatefulWidget {
@@ -59,7 +58,7 @@ class _SimmeringPotState extends State<SimmeringPot> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final art = EmptyArtColors.of(Theme.of(context).colorScheme);
     final message = widget.messages.isEmpty
         ? null
         : widget.messages[_index % widget.messages.length];
@@ -68,18 +67,12 @@ class _SimmeringPotState extends State<SimmeringPot> {
       children: [
         MotionBuilder(
           duration: const Duration(milliseconds: 2400),
-          restValue: 0.3,
+          restValue: 0.12,
           builder: (context, t, still) => MotionCanvas(
             size: widget.size,
             design: 200,
             label: 'Lonac koji krčka',
-            painter: PotPainter(
-              t,
-              pot: colors.primary,
-              potShade: colors.onPrimaryContainer,
-              liquid: colors.primaryContainer,
-              steam: colors.onSurfaceVariant,
-            ),
+            painter: EmptyArtPainter(t, art, simmeringPot),
           ),
         ),
         if (message != null) ...[
@@ -100,107 +93,92 @@ class _SimmeringPotState extends State<SimmeringPot> {
   }
 }
 
-/// Lonac na ringli: mehurići, para, plamen (koordinate 200×200).
-class PotPainter extends CustomPainter {
-  PotPainter(
-    this.t, {
-    required this.pot,
-    required this.potShade,
-    required this.liquid,
-    required this.steam,
-  });
+/// Lonac na ringli u linijskom stilu (koordinate 200×200): poklopac
+/// povremeno poskoči, para se diže, plamen treperi.
+void simmeringPot(Canvas canvas, double t, EmptyArtColors c) {
+  // Plamen.
+  for (var i = 0; i < 3; i++) {
+    final x = 80.0 + i * 20;
+    final s = 0.85 + 0.15 * math.sin(t * math.pi * 6 + i * 2);
+    canvas
+      ..save()
+      ..translate(x, 172)
+      ..scale(1, s)
+      ..drawPath(
+        Path()
+          ..quadraticBezierTo(-6, -8, 0, -16)
+          ..quadraticBezierTo(6, -8, 0, 0)
+          ..close(),
+        fill(c.primary),
+      )
+      ..restore();
+  }
+  canvas
+    ..drawLine(const Offset(66, 172), const Offset(134, 172), stroke(c.line))
+    ..drawPath(
+      Path()
+        ..moveTo(60, 112)
+        ..lineTo(48, 112)
+        ..moveTo(140, 112)
+        ..lineTo(152, 112),
+      stroke(c.line, width: 4),
+    );
+  final body = Path()
+    ..moveTo(60, 102)
+    ..lineTo(60, 140)
+    ..quadraticBezierTo(60, 156, 76, 156)
+    ..lineTo(124, 156)
+    ..quadraticBezierTo(140, 156, 140, 140)
+    ..lineTo(140, 102);
+  canvas
+    ..drawPath(body, fill(c.surface))
+    ..drawPath(body, stroke(c.line))
+    ..drawPath(
+      Path()
+        ..moveTo(66, 124)
+        ..quadraticBezierTo(83, 118, 100, 124)
+        ..quadraticBezierTo(117, 130, 134, 124),
+      stroke(c.softLine, width: 2.5),
+    );
 
-  final double t;
-  final Color pot;
-  final Color potShade;
-  final Color liquid;
-  final Color steam;
+  // Poklopac.
+  final jig = math.pow(math.max(0, math.sin(t * math.pi * 4)), 6).toDouble();
+  canvas
+    ..save()
+    ..translate(0, -5 * jig)
+    ..translate(100, 100)
+    ..rotate(deg(3 * jig * math.sin(t * math.pi * 8)))
+    ..translate(-100, -100);
+  final lid = Path()
+    ..moveTo(54, 102)
+    ..quadraticBezierTo(100, 84, 146, 102)
+    ..close();
+  canvas
+    ..drawPath(lid, fill(c.surface))
+    ..drawPath(lid, stroke(c.line))
+    ..drawCircle(const Offset(100, 88), 4.5, fill(c.surface))
+    ..drawCircle(const Offset(100, 88), 4.5, stroke(c.line))
+    ..restore();
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Para: tri talasaste linije koje se dižu i blede.
-    for (var i = 0; i < 3; i++) {
-      final p = (t + i / 3) % 1;
-      final x = 70.0 + i * 30;
-      final path = Path()..moveTo(x, 92 - p * 40);
-      for (var k = 1; k <= 4; k++) {
-        path.quadraticBezierTo(
-          x + (k.isOdd ? 8 : -8),
-          92 - p * 40 - k * 9 + 4.5,
-          x,
-          92 - p * 40 - k * 9,
-        );
-      }
+  // Para: tri talasaste linije koje se dižu i blede.
+  for (var i = 0; i < 3; i++) {
+    final x = 78.0 + i * 22;
+    final ph = (t + i / 3) % 1;
+    final path = Path()
+      ..moveTo(x, 78)
+      ..relativeQuadraticBezierTo(-7, -8, 0, -16)
+      ..relativeQuadraticBezierTo(7, -8, 0, -16)
+      ..relativeQuadraticBezierTo(-7, -8, 0, -16);
+    for (final metric in path.computeMetrics()) {
+      final l = metric.length;
+      final start = l * (0.45 - 1.45 * ph);
+      final a = math.max(0.0, start);
+      final b = math.min(l, start + 0.45 * l);
+      if (b <= a) continue;
       canvas.drawPath(
-        path,
-        Paint()
-          ..color = steam.withValues(alpha: 0.55 * math.sin(p * math.pi))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..strokeCap = StrokeCap.round,
+        metric.extractPath(a, b),
+        stroke(c.primary, opacity: math.sin(math.pi * ph) * 0.9),
       );
-    }
-
-    // Telo lonca i drške.
-    final body = RRect.fromLTRBAndCorners(
-      40,
-      100,
-      160,
-      164,
-      bottomLeft: const Radius.circular(22),
-      bottomRight: const Radius.circular(22),
-    );
-    final handle = Paint()
-      ..color = potShade
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(26, 112), const Offset(40, 112), handle);
-    canvas.drawLine(const Offset(160, 112), const Offset(174, 112), handle);
-    canvas.drawRRect(body, Paint()..color = pot);
-    // Površina jela.
-    canvas.drawOval(
-      Rect.fromCenter(center: const Offset(100, 101), width: 120, height: 18),
-      Paint()..color = liquid,
-    );
-    canvas.drawRRect(
-      RRect.fromLTRBR(34, 94, 166, 102, const Radius.circular(4)),
-      Paint()..color = potShade,
-    );
-
-    // Mehurići na površini.
-    for (final (x, phase, r) in const [
-      (72.0, 0.0, 5.0),
-      (100.0, 0.45, 6.0),
-      (126.0, 0.75, 4.5),
-    ]) {
-      final p = (t * 2 + phase) % 1;
-      final rise = p * 18;
-      canvas.drawCircle(
-        Offset(x, 96 - rise),
-        r * (0.6 + 0.4 * p),
-        Paint()
-          ..color = liquid.withValues(alpha: 1 - p * 0.8)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
-    }
-
-    // Plamen ispod lonca.
-    for (var i = 0; i < 3; i++) {
-      final x = 76.0 + i * 24;
-      final flicker = 1 + 0.15 * math.sin((t * 6 + i * 0.7) * 2 * math.pi);
-      final h = 16 * flicker;
-      final flame = Path()
-        ..moveTo(x - 7, 184)
-        ..quadraticBezierTo(x - 6, 184 - h, x, 184 - h * 1.4)
-        ..quadraticBezierTo(x + 6, 184 - h, x + 7, 184)
-        ..close();
-      canvas.drawPath(flame, Paint()..color = _flame);
-      canvas.drawCircle(Offset(x, 180), 3, Paint()..color = _flameCore);
     }
   }
-
-  @override
-  bool shouldRepaint(PotPainter old) => old.t != t || old.pot != pot;
 }

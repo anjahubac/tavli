@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../app/animations/all_bought.dart';
 import '../../data/database.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/recipe.dart';
@@ -86,10 +87,15 @@ List<Widget> groupedRows<T>({
   if (open.isEmpty)
     Padding(
       padding: const EdgeInsets.symmetric(vertical: TavliSpacing.large),
-      child: Text(
-        bought.isEmpty ? emptyText : allBoughtText,
-        textAlign: TextAlign.center,
-        style: text.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
+      child: Column(
+        children: [
+          if (bought.isNotEmpty) const AllBoughtArt(),
+          Text(
+            bought.isEmpty ? emptyText : allBoughtText,
+            textAlign: TextAlign.center,
+            style: text.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
+          ),
+        ],
       ),
     ),
   for (final (c, list) in byCategory(open, category)) ...[

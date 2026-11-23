@@ -158,7 +158,8 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     scope: scope,
     writer: SyncedWriter(db, accountId: scope.userId),
   );
-  final engine = SyncEngine(
+  late final SyncEngine engine;
+  engine = SyncEngine(
     db: db,
     scope: scope,
     uploader: Uploader(
@@ -181,6 +182,10 @@ final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
     refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    // A removed member's writes are denied by RLS: re-check membership, which
+    // quarantines old-household writes and switches the scope.
+    onForbidden: () =>
+        ref.read(authControllerProvider.notifier).recheckMembership(engine),
     // Ceo red obroka može da stigne zastareo; oznaka „skuvano“ se ponovo
     // izvodi iz zapisa kuvanja.
     afterPull: () async {

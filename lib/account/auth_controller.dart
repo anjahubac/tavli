@@ -170,17 +170,21 @@ class AuthController extends Notifier<AuthState> {
     _retryMembership();
   }
 
-  void _retryMembership() {
+  void _retryMembership({SyncEngine? deniedBy}) {
     if (!ref.mounted || !_hasAccount) return;
     _membershipRetry?.cancel();
     _membershipRetry = Timer(const Duration(seconds: 5), () {
-      unawaited(restoreSession());
+      unawaited(
+        deniedBy == null ? restoreSession() : recheckMembership(deniedBy),
+      );
     });
   }
 
   /// Obnavlja sačuvanu sesiju (start, povratak u aplikaciju). Bez mreže
   /// ostaje prijavljen; odbijena obnova vraća na prijavu.
-  Future<void> restoreSession({SyncEngine? sync}) async {
+  Future<void> restoreSession({SyncEngine? sync}) => _restore(sync);
+
+  Future<void> _restore(SyncEngine? sync, {bool afterDenial = false}) async {
     if (!ref.mounted ||
         !_hasAccount ||
         _restoringSession ||
@@ -189,15 +193,39 @@ class AuthController extends Notifier<AuthState> {
     }
     _restoringSession = true;
     try {
-      await _restoreSession(sync);
+      await _restoreSession(sync, afterDenial: afterDenial);
     } finally {
       _restoringSession = false;
     }
+    final recheck = _pendingRecheck;
+    _pendingRecheck = null;
+    if (recheck != null) await recheckMembership(recheck);
   }
+
+  /// The server denied a write (RLS 42501, Storage 403): the user may have
+  /// been removed from the household. When a check is already running, it may
+  /// have read membership before the removal, so one more check runs after it.
+  Future<void> recheckMembership(SyncEngine sync) async {
+    if (!ref.mounted || !_hasAccount) return;
+    if (_restoringSession) {
+      _pendingRecheck = sync;
+      return;
+    }
+    if (_checkingMembership) {
+      _retryMembership(deniedBy: sync);
+      return;
+    }
+    await _restore(sync, afterDenial: true);
+  }
+
+  SyncEngine? _pendingRecheck;
 
   var _restoringSession = false;
 
-  Future<void> _restoreSession(SyncEngine? sync) async {
+  Future<void> _restoreSession(
+    SyncEngine? sync, {
+    required bool afterDenial,
+  }) async {
     final store = _store, gateway = _gateway;
     final String? json;
     try {
@@ -226,7 +254,10 @@ class AuthController extends Notifier<AuthState> {
         Future<void> reconcile() async {
           final account = await service.refreshMembership(initial.account);
           if (!ref.mounted || !identical(state, initial)) return;
-          if (account.householdId != initial.account.householdId) sync?.stop();
+          if (account.householdId != initial.account.householdId) {
+            sync?.stop();
+            _pendingRecheck = null;
+          }
           _membershipRetry?.cancel();
           if (!initial.membershipVerified ||
               account.householdId != initial.account.householdId ||
@@ -244,12 +275,16 @@ class AuthController extends Notifier<AuthState> {
       }
     } on SecretStorageException {
       await _lockSession(gateway);
-    } on Offline {
-      _retryIfUnverified();
-    } on Unavailable {
-      _retryIfUnverified();
     } on AuthFailure catch (f) {
-      if (ref.mounted) await sessionExpired(accountGone: f is AccountGone);
+      if (f is Offline || f is Unavailable) {
+        if (afterDenial) {
+          _retryMembership(deniedBy: sync);
+        } else {
+          _retryIfUnverified();
+        }
+      } else if (ref.mounted) {
+        await sessionExpired(accountGone: f is AccountGone);
+      }
     }
   }
 
@@ -310,6 +345,7 @@ class AuthController extends Notifier<AuthState> {
           if (account != null && ref.mounted && identical(state, initial)) {
             if (account.householdId != initial.account.householdId) {
               sync?.stop();
+              _membershipRetry?.cancel();
             }
             _set(_signedIn(account));
           }
@@ -459,7 +495,10 @@ class AuthController extends Notifier<AuthState> {
   /// Posle čekanja kontroler je možda već uklonjen (test, odjava).
   void _set(AuthState s) {
     if (!ref.mounted) return;
-    if (s is SignedOut) _membershipRetry?.cancel();
+    if (s is SignedOut) {
+      _membershipRetry?.cancel();
+      _pendingRecheck = null;
+    }
     state = s;
   }
 
