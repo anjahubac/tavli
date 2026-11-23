@@ -79,6 +79,33 @@ and source details for review.
 - Existing shopping rows migrate with `food_id == null`. Do not backfill by
   name or fuzzy match. A later explicit resolution flow is a separate task.
 
+### Identity before demand aggregation
+
+Resolve each source ingredient's `ShoppingFoodIdentity` before calling
+`demandFor`. Pass that identity with the ingredient into `DemandSource`; include
+it in `DemandKey` together with the source ID and unit group. `demandFor` must
+therefore merge only ingredients with the same identity. Recipe identity is
+catalog-linked only when the ingredient's saved `foodId` is still visible and
+its `matchedKey` equals `ingredientKey(name)`; otherwise it is unlinked text.
+
+Persist the identity on each `ShoppingContribution` as well. Reconciliation
+groups contributions by identity and unit group when it creates or updates
+shopping rows. Display aggregation then projects rows by the same pair. It may
+combine quantities only after both earlier stages have preserved identity; a
+display-only split cannot recover quantities that `demandFor` or reconciliation
+already merged.
+
+### Invalid cached identity on reconnect
+
+If the server rejects a queued linked row because its cached food was
+withdrawn or is no longer visible, retain the row's existing ID, name,
+quantity, unit, category, notes and provenance. In one local transaction,
+clear only `food_id` and enqueue a replacement upsert for the same row ID as
+unlinked text; the rejected attempt remains auditable, and the replacement
+must not create a duplicate row. A user can then edit or delete the ordinary
+text row. Cross-household IDs follow the same fallback, never a retry with the
+rejected ID.
+
 ### Grouping and quantity
 
 The proposed display key is the typed pair
@@ -128,7 +155,11 @@ The server migration is additive: nullable `food_id`, a foreign key to `foods`,
 and a validation trigger/policy for active shared or same-household foods. It
 must preserve existing RLS behavior and not cascade-delete shopping rows. Add
 two-household SQL tests for valid shared/same-household links and a denied
-cross-household link.
+cross-household link. The trigger validates only on `INSERT` or when
+`food_id` changes. It must allow ordinary edits (such as checking off a row)
+that already references a food which was later withdrawn; otherwise a valid
+queued shopping row becomes permanently unwritable after withdrawal. Add a SQL
+case proving that update passes while setting a withdrawn food ID is denied.
 
 Old clients do not know `food_id`. The current sync path batches rows through
 `SupabaseSyncRemote` and calls the locked `postgrest` 2.9.1 `.upsert` with
@@ -162,9 +193,15 @@ to regular regression tests with the implementation.
    without one.
 6. A stale recipe link, withdrawn food or foreign-household ID cannot form a
    catalog group. Original text remains visible.
-7. Unknown amounts, unsupported units and approximate inputs retain the
+   Include a single recipe with 200 g of linked “pavlaka” and 50 g of unlinked
+   “pavlaka”; demand, reconciliation and display must preserve two rows in
+   both shopping modes.
+7. Save 100 g of a cached shared food while offline, withdraw it on the server,
+   then reconnect. The rejected linked write retries as unlinked text with the
+   same row ID and amount/unit, and exactly one row survives.
+8. Unknown amounts, unsupported units and approximate inputs retain the
    behaviors above; no unsupported conversion is guessed.
-8. Empty catalog, cached offline selection, catalog read failure, retry and
+9. Empty catalog, cached offline selection, catalog read failure, retry and
    cancellation do not create an unintended linked item.
 
 ## Decisions for review
