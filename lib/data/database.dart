@@ -33,8 +33,29 @@ class Recipes extends Table {
   TextColumn get dishKind => text().nullable()();
   TextColumn get labelsSource => text().nullable()();
 
+  /// Opis gotovog jela za AI sliku (v11, engleski) i ko je postavio sliku
+  /// (`ai`/`user`); null = nepoznato.
+  TextColumn get imageDescription => text().nullable()();
+  TextColumn get imageSource => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// AI recepti koji čekaju AI sliku na ovom uređaju (v11). Samo lokalno:
+/// nije deo podataka naloga i ne ide u red za slanje.
+@DataClassName('RecipeImageJobRow')
+class RecipeImageJobs extends Table {
+  TextColumn get accountId => text()();
+  TextColumn get recipeId => text()();
+
+  /// Ne pre ovog vremena (limit, greška provajdera); null = odmah.
+  DateTimeColumn get retryAt => dateTime().nullable()();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {accountId, recipeId};
 }
 
 /// Prethodne verzije recepta, za vraćanje posle AI izmene.
@@ -533,6 +554,7 @@ class UserFavorites extends Table {
     UserProfiles,
     UserAllergenSelections,
     UserFavorites,
+    RecipeImageJobs,
     AppSettings,
     ModelStatuses,
     Accounts,
@@ -545,7 +567,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -567,8 +589,23 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8) await transaction(_migrateToRecipeRatings);
       if (from < 9) await transaction(() => _migrateToFoodCatalog(m));
       if (from < 10) await transaction(() => _migrateToMemberPlanning(m));
+      if (from < 11) await transaction(() => _migrateToRecipeImages(m));
     },
   );
+
+  /// v11: opis i izvor slike recepta i lokalni red za AI slike. Samo
+  /// dodaje; ponovljen korak (vraćen user_version) ne pada.
+  Future<void> _migrateToRecipeImages(Migrator m) async {
+    final hasRecipes = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'recipes'",
+    ).get();
+    // Delimične šeme u testovima starijih koraka nemaju recepte.
+    if (hasRecipes.isNotEmpty) {
+      await _addMissingColumn(m, recipes, recipes.imageDescription);
+      await _addMissingColumn(m, recipes, recipes.imageSource);
+    }
+    await m.createTable(recipeImageJobs);
+  }
 
   /// v10: private allergen selections and favorites. Drift creates tables
   /// with IF NOT EXISTS, so a cache that already has them opens unchanged.

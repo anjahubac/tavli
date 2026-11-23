@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
@@ -9,6 +10,7 @@ import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/placeholder_screen.dart' show EmptyStateBody;
 import '../../app/tab_app_bar.dart';
 import '../../data/pantry_repository.dart';
+import '../recipes/cook_from_pantry_screen.dart' show cookFromPantryPath;
 import '../shopping/shopping_list_view.dart' show amountLabel;
 import '../shopping/shopping_providers.dart' show pantryRepositoryProvider;
 import 'add_pantry_item_sheet.dart';
@@ -165,6 +167,13 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                           ),
                           child: _searchField(),
                         ),
+                      // TRELLO-103: recepti od onoga što je u ostavi.
+                      if (hasItems)
+                        TavliButton.secondary(
+                          label: 'Šta da skuvam?',
+                          glyph: TavliIcons.cook,
+                          onPressed: () => context.push(cookFromPantryPath),
+                        ),
                       TavliButton.primary(
                         label: 'Dodaj namirnicu',
                         icon: Icons.add,
@@ -181,7 +190,18 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                     TavliSpacing.large,
                     TavliSpacing.medium,
                   ),
-                  child: _searchField(),
+                  child: Row(
+                    children: [
+                      Expanded(child: _searchField()),
+                      const SizedBox(width: TavliSpacing.small),
+                      // TRELLO-103: recepti od onoga što je u ostavi.
+                      TavliIconButton(
+                        glyph: TavliIcons.cook,
+                        semanticLabel: 'Šta da skuvam?',
+                        onPressed: () => context.push(cookFromPantryPath),
+                      ),
+                    ],
+                  ),
                 ),
               Expanded(child: content),
             ],

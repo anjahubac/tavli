@@ -14,6 +14,7 @@ import '../features/pantry/pantry_screen.dart';
 import '../features/planning/plan_preview_screen.dart';
 import '../features/planning/plan_screen.dart';
 import '../features/planning/plan_setup_screen.dart';
+import '../features/recipes/cook_from_pantry_screen.dart';
 import '../features/recipes/cooking_mode_screen.dart';
 import '../features/recipes/from_name_screen.dart';
 import '../features/recipes/from_photo_screen.dart';
@@ -230,6 +231,11 @@ GoRouter createRouter({
                 GoRoute(
                   path: 'new/voice',
                   builder: (context, state) => const VoiceRecipeScreen(),
+                ),
+                // Pre ':id', da „from-pantry“ ne bude id recepta.
+                GoRoute(
+                  path: 'from-pantry',
+                  builder: (context, state) => const CookFromPantryScreen(),
                 ),
                 GoRoute(
                   path: ':id',

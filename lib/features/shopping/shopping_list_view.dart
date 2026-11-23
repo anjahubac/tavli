@@ -10,10 +10,13 @@ import '../../domain/meal_plan.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/shopping_source.dart';
+import '../../domain/shopping_sync.dart' show ingredientKey;
 import '../../providers.dart';
 import '../planning/plan_format.dart';
 import 'shopping_frame.dart';
 import 'shopping_providers.dart';
+
+const pantryQuantityNote = 'Imaš u ostavi, proveri';
 
 /// "1,5 kg", "~35 ml", "2 kom"; null kad količina nije poznata.
 String? amountLabel(
@@ -125,6 +128,7 @@ class ShoppingItemsList extends ConsumerStatefulWidget {
     required this.listId,
     this.filters = const [],
     this.header = const [],
+    this.unknownPantrySupply = const {},
     this.emptyText = 'Ovde nema šta da se kupi.',
   });
 
@@ -138,6 +142,7 @@ class ShoppingItemsList extends ConsumerStatefulWidget {
   /// Sadržaj iznad polja za dodavanje (npr. „Recepti u nabavci“).
   final List<Widget> header;
   final String emptyText;
+  final Set<String> unknownPantrySupply;
 
   @override
   ConsumerState<ShoppingItemsList> createState() => _ShoppingItemsListState();
@@ -188,6 +193,9 @@ class _ShoppingItemsListState extends ConsumerState<ShoppingItemsList> {
           item: i,
           resolveList: widget.listId,
           received: received.contains(i.id),
+          hasUnknownPantrySupply:
+              !i.isBought &&
+              widget.unknownPantrySupply.contains(ingredientKey(i.name)),
           selected: selected?.id == i.id,
           onSelect: withDetail
               ? () => setState(() => _selectedId = i.id)
@@ -239,6 +247,7 @@ class ShoppingItemTile extends ConsumerWidget {
     required this.item,
     required this.resolveList,
     this.received = false,
+    this.hasUnknownPantrySupply = false,
     this.selected = false,
     this.onSelect,
   });
@@ -246,6 +255,7 @@ class ShoppingItemTile extends ConsumerWidget {
   final ShoppingItemRow item;
   final Future<String> Function() resolveList;
   final bool received;
+  final bool hasUnknownPantrySupply;
   final bool selected;
   final VoidCallback? onSelect;
 
@@ -299,6 +309,7 @@ class ShoppingItemTile extends ConsumerWidget {
       ],
       child: TavliCheckRow(
         title: item.name,
+        subtitle: hasUnknownPantrySupply ? pantryQuantityNote : null,
         detail: detail.isEmpty ? null : detail,
         checked: item.isBought,
         onChanged: received ? null : (_) => toggle(),

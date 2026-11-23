@@ -104,6 +104,7 @@ text and reject only on structure (wrong type, blank, too long).
 | R9 | `ingredients[].note` | open | string ≤ 200 characters or `null` | wrong type or too long → reject |
 | R10 | `steps` | open | list of strings, ≤ 40 items, each ≤ 1000 characters, blank items dropped, no numbering; missing or `null` → `[]` (summary recipe); when refining a recipe that has steps, an empty result is rejected so steps are never dropped silently | not a list, non-string item, too many or too long → reject |
 | R11 | error object | — | `{"error": "not_a_recipe"}` from photo import only | outcome *not a recipe* (Serbian message), not a format error |
+| I1 | `image_description` | fallback | English text for the AI image; trimmed and cut at 600 characters; missing allowed | `null`, never reject |
 
 ### `plan-outline.v1`
 

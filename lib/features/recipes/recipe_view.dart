@@ -6,7 +6,9 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/recipe_labels.dart';
+import '../../domain/recipe_rating.dart';
 import 'recipe_photo.dart';
+import 'recipe_rating_section.dart';
 
 /// Visina slike recepta iznad sadržaja.
 const _photoHeight = 220.0;
@@ -30,6 +32,7 @@ class RecipeView extends StatelessWidget {
     this.photoBytes,
     this.showTitle = false,
     this.onEditLabels,
+    this.ratingSummary,
   });
 
   final Recipe recipe;
@@ -40,6 +43,9 @@ class RecipeView extends StatelessWidget {
 
   /// Dugme „Izmeni oznake“; null = oznake se samo prikazuju.
   final VoidCallback? onEditLabels;
+
+  /// Prosek ocena domaćinstva; null = bez ocena, ništa se ne prikazuje.
+  final RecipeRatingSummary? ratingSummary;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -87,6 +93,7 @@ class RecipeView extends StatelessWidget {
       if (recipe.prepMinutes != null)
         _Fact(TavliIcons.timer, '${recipe.prepMinutes} min'),
       _Fact(TavliIcons.servings, servingsLabel(recipe.servings)),
+      if (ratingSummary case final summary?) _RatingFact(summary),
     ];
     return [
       if (bytes != null)
@@ -101,7 +108,22 @@ class RecipeView extends StatelessWidget {
           ),
         )
       else if (path != null)
-        RecipePhoto(path, height: _photoHeight)
+        recipe.imageSource == RecipeImageSource.ai
+            ? SizedBox(
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.passthrough,
+                  children: [
+                    RecipePhoto(path, height: _photoHeight),
+                    const PositionedDirectional(
+                      top: TavliSpacing.small,
+                      end: TavliSpacing.small,
+                      child: AiImageLabel(),
+                    ),
+                  ],
+                ),
+              )
+            : RecipePhoto(path, height: _photoHeight)
       else
         const TavliThumbnail.banner(),
       if (showTitle) Text(recipe.title, style: theme.textTheme.headlineSmall),
@@ -352,6 +374,50 @@ class ReadableScroll extends StatelessWidget {
 }
 
 /// Podatak o receptu sa ikonicom: porcije, vreme pripreme.
+/// „★ 4,3 · 3 ocene“; prosek je podebljan.
+class _RatingFact extends StatelessWidget {
+  const _RatingFact(this.summary);
+
+  final RecipeRatingSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final average = ratingAverageLabel(summary.averageStars);
+    final count = ratingCountLabel(summary.ratingCount);
+    return Semantics(
+      label: 'Prosečna ocena $average, $count',
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: TavliSpacing.small,
+        children: [
+          const TavliIcon(
+            TavliIcons.star,
+            size: 24,
+            color: ratingStarColor,
+            filled: true,
+          ),
+          Flexible(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: average,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: ' · $count'),
+                ],
+              ),
+              style: TextStyle(color: muted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Fact extends StatelessWidget {
   const _Fact(this.glyph, this.text);
 
@@ -371,6 +437,38 @@ class _Fact extends StatelessWidget {
           child: Text(text, style: TextStyle(color: muted)),
         ),
       ],
+    );
+  }
+}
+
+/// Mala oznaka „AI slika“ preko slike koju je napravio AI (TRELLO-130).
+/// Platno je još nema; oblik prati oznake recepta (radijus čipa).
+class AiImageLabel extends StatelessWidget {
+  const AiImageLabel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Semantics(
+      label: 'Sliku je napravio AI',
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: c.surface.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(TavliRadius.chip),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: TavliSpacing.small,
+            vertical: TavliSpacing.small / 2,
+          ),
+          child: Text(
+            'AI slika',
+            style: Theme.of(context).textTheme.labelMedium
+                ?.copyWith(color: c.onSurface, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
     );
   }
 }
