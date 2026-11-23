@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 
 import '../account/auth_controller.dart';
+import '../domain/food_matcher.dart';
 import '../domain/ids.dart';
 import '../domain/plan_calendar.dart';
 import '../domain/recipe.dart';
@@ -11,8 +12,10 @@ import '../domain/shopping_demand.dart';
 import '../domain/shopping_source.dart';
 import '../domain/shopping_sync.dart';
 import '../domain/supply_allocation.dart';
+import '../sync/catalog_status.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
+import 'food_catalog_reader.dart';
 import 'shopping_models.dart';
 import 'shopping_totals.dart';
 
@@ -41,6 +44,7 @@ String weekListId(String planId, CivilDate start) => sha256
 /// (`shopping_sources.dart`, `shopping_items.dart`, `shopping_reconcile.dart`).
 abstract class _ShoppingBase {
   AppDatabase get _db;
+  FoodCatalogReader get _catalogReader;
   AccountScope get _scope;
   SyncedWriter get _writer;
   DateTime Function() get _clock;
@@ -56,10 +60,11 @@ abstract class _ShoppingBase {
     List<ShoppingSourceRow> sources,
     Map<String, ShoppingContributionRow> contributions,
   );
-  List<DemandLine> _demand(
+  Future<List<DemandLine>> _demand(
     ShoppingSourceRow s,
-    Map<String, MealPlanEntryRow> entries,
-  );
+    Map<String, MealPlanEntryRow> entries, {
+    required CatalogStatus catalogStatus,
+  });
 }
 
 /// Kupovina domaćinstva; svaka izmena ima outbox u istoj transakciji.
@@ -69,8 +74,10 @@ class ShoppingRepository extends _ShoppingBase
     this._db, {
     required this._scope,
     required this._writer,
+    FoodCatalogReader? catalogReader,
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : _catalogReader = catalogReader ?? FoodCatalogReader(_db),
+       _clock = clock ?? DateTime.now;
 
   @override
   final AppDatabase _db;
@@ -78,6 +85,8 @@ class ShoppingRepository extends _ShoppingBase
   final AccountScope _scope;
   @override
   final SyncedWriter _writer;
+  @override
+  final FoodCatalogReader _catalogReader;
   @override
   final DateTime Function() _clock;
 

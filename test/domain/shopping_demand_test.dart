@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/domain/food_matcher.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_demand.dart';
+import 'package:tavli/domain/shopping_sync.dart';
 
 DemandSource source(
   String id,
@@ -8,12 +10,14 @@ DemandSource source(
   int baseServings = 2,
   int servings = 2,
   bool kitchenMeasures = false,
+  Map<String, FoodIdentity> visibleFoods = const {},
 }) => DemandSource(
   id: id,
   baseServings: baseServings,
   servings: servings,
   ingredients: ingredients,
   kitchenMeasures: kitchenMeasures,
+  visibleFoods: visibleFoods,
 );
 
 void main() {
@@ -196,6 +200,72 @@ void main() {
         ).single.approximate,
         isFalse,
       );
+    });
+  });
+
+  group('identitet namirnice', () {
+    test('sabira samo potvrđene linkove ka istoj vidljivoj namirnici', () {
+      const butter = FoodIdentity(
+        id: 'food-butter',
+        slug: 'butter',
+        name: 'Maslac',
+        category: 'mlečni proizvodi i jaja',
+        baseUnit: FoodBaseUnit.gram,
+      );
+      final lines = demandFor(
+        source(
+          'meal',
+          [
+            Ingredient(
+              name: 'maslac domaći',
+              quantity: 100,
+              unit: 'g',
+              link: IngredientLink(
+                foodId: butter.id,
+                matchedKey: ingredientKey('maslac domaći'),
+                linkSource: LinkSource.confirmed,
+              ),
+            ),
+            Ingredient(
+              name: 'putar',
+              quantity: 200,
+              unit: 'g',
+              link: IngredientLink(
+                foodId: butter.id,
+                matchedKey: ingredientKey('putar'),
+                linkSource: LinkSource.matched,
+              ),
+            ),
+          ],
+          visibleFoods: {butter.id: butter},
+        ),
+      );
+
+      expect(lines, hasLength(1));
+      expect(lines.single.key.ingredient, 'food:${butter.id}');
+      expect(lines.single.name, 'Maslac');
+      expect(lines.single.micros, toMicros(300));
+    });
+
+    test('stale link bez vidljivog identiteta zadržava sirovo ime', () {
+      final lines = demandFor(
+        source('meal', [
+          const Ingredient(
+            name: 'maslac domaći',
+            quantity: 100,
+            unit: 'g',
+            link: IngredientLink(
+              foodId: 'food-butter',
+              matchedKey: 'old-label',
+              linkSource: LinkSource.confirmed,
+            ),
+          ),
+        ]),
+      );
+
+      expect(lines.single.key.ingredient, ingredientKey('maslac domaći'));
+      expect(lines.single.name, 'maslac domaći');
+      expect(lines.single.micros, toMicros(100));
     });
   });
 
