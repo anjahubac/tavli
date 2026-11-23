@@ -55,15 +55,18 @@ class _PopupObserver extends NavigatorObserver {
   }
 }
 
-/// Traka menija na macOS-u: Datoteka (Novi recept ⌘N), Prikaz (tabovi
-/// ⌘1–5 po redu iz bočne trake, Pretraži recepte ⌘F) i Podešavanja ⌘,
-/// (Profil).
+/// Meni aplikacije: Datoteka (Novi recept ⌘N), Prikaz (tabovi ⌘1–5 po redu
+/// iz bočne trake, Pretraži recepte ⌘F) i Podešavanja ⌘, (Profil). Na
+/// macOS-u je traka menija, na Windows-u meni u naslovnoj traci prozora sa
+/// Ctrl prečicama; [windowsMenus] je `false` dok korisnik nije prijavljen.
 Widget appMenuBar(
   GoRouter router,
   WidgetRef ref,
   MenuPopupTracker popups,
-  Widget child,
-) {
+  Widget child, {
+  bool windowsMenus = true,
+  VoidCallback? onQuit,
+}) {
   final context = ref.context;
   SingleActivator cmd(LogicalKeyboardKey key) =>
       SingleActivator(key, meta: true);
@@ -99,6 +102,18 @@ Widget appMenuBar(
     ('Ostava', '/pantry'),
   ];
   return TavliMenuBar(
+    windowsMenus: windowsMenus,
+    onQuit: onQuit,
+    onAbout: () => unlessPopup(
+      () => unawaited(
+        showTavliDialog<void>(
+          router.routerDelegate.navigatorKey.currentContext ?? context,
+          title: 'O aplikaciji Tavli',
+          message: 'Recepti, plan obroka, nabavka i ostava na jednom mestu.',
+          actions: [const TavliDialogAction('Zatvori', null)],
+        ),
+      ),
+    ),
     onSettings: () => unlessPopup(() {
       if (router.state.uri.pathSegments.firstOrNull != 'profile') {
         unawaited(router.push('/profile'));

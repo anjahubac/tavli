@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
@@ -94,4 +95,69 @@ void main() {
       }
     });
   }
+
+  group('Windows: meni u naslovnoj traci', () {
+    Widget frame({VoidCallback? settings, bool menus = true}) => TavliMenuBar(
+      onSettings: settings,
+      onAbout: () {},
+      onQuit: () {},
+      windowsMenus: menus,
+      groups: [
+        TavliMenuGroup('Datoteka', [
+          TavliMenuCommand(
+            'Novi recept',
+            shortcut: const SingleActivator(
+              LogicalKeyboardKey.keyN,
+              meta: true,
+            ),
+            onSelected: () {},
+          ),
+        ]),
+      ],
+      child: const TavliWindowFrame(child: Text('sadržaj')),
+    );
+
+    testWidgets('Datoteka, Uređivanje, Pomoć i Ctrl prečice', (tester) async {
+      var settings = 0;
+      await pump(
+        tester,
+        TargetPlatform.windows,
+        frame(settings: () => settings++),
+      );
+      for (final label in ['Datoteka', 'Uređivanje', 'Pomoć']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      expect(find.byType(PlatformMenuBar), findsNothing);
+      await tester.tap(find.text('Datoteka'));
+      await tester.pumpAndSettle();
+      expect(find.text('Novi recept'), findsOneWidget);
+      expect(find.text('Podešavanja'), findsOneWidget);
+      expect(find.text('Izlaz'), findsOneWidget);
+      await tester.tap(find.text('Podešavanja'));
+      await tester.pumpAndSettle();
+      expect(settings, 1);
+    });
+
+    testWidgets('bez menija pre prijave, dugmad prozora ostaju', (
+      tester,
+    ) async {
+      await pump(tester, TargetPlatform.windows, frame(menus: false));
+      expect(find.text('Datoteka'), findsNothing);
+      expect(find.bySemanticsLabel('Zatvori'), findsOneWidget);
+    });
+
+    testWidgets('prečica ⌘ postaje Ctrl', (tester) async {
+      final groups = const TavliMenuBar(
+        groups: [
+          TavliMenuGroup('Datoteka', [
+            TavliMenuCommand('Novi recept', onSelected: _noop),
+          ]),
+        ],
+        child: SizedBox(),
+      ).windowsGroups();
+      expect(groups.map((g) => g.label), ['Datoteka', 'Uređivanje']);
+    });
+  });
 }
+
+void _noop() {}

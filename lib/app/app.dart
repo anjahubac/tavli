@@ -17,6 +17,7 @@ import 'router.dart';
 import 'theme_controller.dart';
 
 const _macosWindow = MethodChannel('tavli/macos_window');
+const _windowsWindow = MethodChannel('tavli/windows_window');
 
 class TavliApp extends ConsumerStatefulWidget {
   const TavliApp({
@@ -43,6 +44,8 @@ class _TavliAppState extends ConsumerState<TavliApp> {
   final _messenger = GlobalKey<ScaffoldMessengerState>();
   late final bool _observesMacosWindow;
   bool? _macosFullScreen;
+  late final bool _observesWindowsWindow;
+  bool _windowsMaximized = false;
 
   @override
   void initState() {
@@ -63,6 +66,17 @@ class _TavliAppState extends ConsumerState<TavliApp> {
         return null;
       });
       unawaited(_readMacosFullScreen());
+    }
+    _observesWindowsWindow = defaultTargetPlatform == TargetPlatform.windows;
+    if (_observesWindowsWindow) {
+      _windowsWindow.setMethodCallHandler((call) async {
+        if (call.arguments case final bool maximized
+            when mounted && call.method == 'maximizedChanged') {
+          setState(() => _windowsMaximized = maximized);
+        }
+        return null;
+      });
+      unawaited(_readWindowsMaximized());
     }
     ref.listenManual(authControllerProvider, (_, _) => _authChanges.ping());
     // Drži engine za slanje živim dok je nalog prijavljen.
@@ -118,6 +132,37 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     }
   }
 
+  /// Radnje prozora na Windows-u idu u runner; u testovima bez njega ne rade
+  /// ništa.
+  Future<void> _windowCall(String method) async {
+    try {
+      await _windowsWindow.invokeMethod<void>(method);
+    } on MissingPluginException {
+      // Testovi bez Windows runnera.
+    }
+  }
+
+  Future<void> _readWindowsMaximized() async {
+    try {
+      final maximized = await _windowsWindow.invokeMethod<bool>('isMaximized');
+      if (mounted && maximized != null) {
+        setState(() => _windowsMaximized = maximized);
+      }
+    } on MissingPluginException {
+      // Testovi bez Windows runnera.
+    }
+  }
+
+  TavliWindowControls get _windowControls => TavliWindowControls(
+    maximized: _windowsMaximized,
+    onMinimize: () => unawaited(_windowCall('minimize')),
+    onToggleMaximize: () => unawaited(_windowCall('toggleMaximize')),
+    onClose: () => unawaited(_windowCall('close')),
+    onStartDrag: () => unawaited(_windowCall('startDrag')),
+    onStartResizeTop: () => unawaited(_windowCall('startResizeTop')),
+    onShowSystemMenu: () => unawaited(_windowCall('showSystemMenu')),
+  );
+
   void _onResume() => unawaited(_resumeSync());
 
   Future<void> _resumeSync() async {
@@ -131,6 +176,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
   void dispose() {
     unawaited(_links?.cancel());
     if (_observesMacosWindow) _macosWindow.setMethodCallHandler(null);
+    if (_observesWindowsWindow) _windowsWindow.setMethodCallHandler(null);
     _lifecycle.dispose();
     _router.dispose();
     _authChanges.dispose();
@@ -141,6 +187,9 @@ class _TavliAppState extends ConsumerState<TavliApp> {
   Widget build(BuildContext context) {
     final starting = ref.watch(
       authControllerProvider.select((s) => s is Starting),
+    );
+    final signedIn = ref.watch(
+      authControllerProvider.select((s) => s is SignedIn),
     );
     final choice = ref.watch(themeControllerProvider);
     final theme = buildTavliTheme(choice.theme.motif, Brightness.light);
@@ -172,18 +221,25 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       darkTheme: darkTheme,
       themeMode: mode,
       routerConfig: _router,
-      builder: (context, child) =>
-          appMenuBar(_router, ref, _menuPopups, _textScaling(context, child)),
+      builder: (context, child) => appMenuBar(
+        _router,
+        ref,
+        _menuPopups,
+        _textScaling(context, child),
+        windowsMenus: signedIn,
+        onQuit: () => unawaited(_windowCall('close')),
+      ),
       scaffoldMessengerKey: _messenger,
     );
   }
 
-  /// Sporije skalira velike naslove i ostavlja mesto za semafore na macOS-u.
+  /// Sporije skalira velike naslove i ostavlja mesto za semafore na macOS-u i naslovnu traku na Windows-u.
   Widget _textScaling(BuildContext context, Widget? child) {
     final scaled = TavliTextScaling(child: child ?? const SizedBox.shrink());
-    return TavliPlatform.of(context) == TavliPlatform.macos
+    return TavliPlatform.of(context).isDesktop
         ? TavliWindowFrame(
             macosFullScreen: _macosFullScreen ?? false,
+            windowControls: _windowControls,
             child: scaled,
           )
         : scaled;

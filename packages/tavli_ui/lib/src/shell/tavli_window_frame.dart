@@ -1,15 +1,16 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../platform.dart';
-import '../theme/tavli_colors.dart';
-import 'shell_parts.dart';
+import 'tavli_menu_bar.dart';
+import 'windows_title_bar.dart';
 
-/// Okvir prozora na računaru, za sada prazan.
+/// Okvir prozora na računaru.
 ///
-/// Windows: naslovna traka visine 40 sa nazivom aplikacije levo i praznim
-/// mestom desno za dugmad prozora (umanji, uvećaj, zatvori). Meni u
-/// prozoru (Datoteka, Uređivanje, Prikaz, Pomoć) i prava dugmad stižu sa
-/// Windows fazom.
+/// Windows: naslovna traka visine 40 koju crta aplikacija: naziv levo, meni
+/// u prozoru (Datoteka, Uređivanje, Prikaz, Pomoć, iz [TavliMenuBar]) i
+/// dugmad prozora desno (umanji, uvećaj ili vrati, zatvori). Prazan deo
+/// trake pomera prozor, dvoklik ga uvećava, desni klik otvara sistemski
+/// meni, a gornja ivica menja visinu.
 /// macOS: bez trake; prozor crta sadržaj ispod providne naslovne trake, pa
 /// semafori stoje u vrhu bočne navigacije, koja za njih ostavlja prostor.
 /// Ekrani bez bočne navigacije (prijava, uzan prozor) dobijaju gornju
@@ -20,11 +21,15 @@ class TavliWindowFrame extends StatelessWidget {
     super.key,
     this.title = 'Tavli',
     this.macosFullScreen = false,
+    this.windowControls = const TavliWindowControls(),
     required this.child,
   });
 
   final String title;
   final bool macosFullScreen;
+
+  /// Radnje dugmadi i trake prozora na Windows-u.
+  final TavliWindowControls windowControls;
   final Widget child;
 
   /// Visina naslovne trake na Windows-u.
@@ -38,9 +43,6 @@ class TavliWindowFrame extends StatelessWidget {
   static double macosTitleBarInsetOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_MacosWindowChrome>()?.inset ??
       macosTitleBarHeight;
-
-  /// Širina tri dugmeta prozora na Windows-u (3 x 46).
-  static const _windowsButtons = 138.0;
 
   @override
   Widget build(BuildContext context) {
@@ -64,45 +66,16 @@ class TavliWindowFrame extends StatelessWidget {
       );
     }
     if (platform != TavliPlatform.windows) return child;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: windowsTitleBarHeight,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: shellSurface(context),
-              border: Border(
-                bottom: BorderSide(color: TavliColors.of(context).line),
-              ),
-            ),
-            child: MediaQuery.withNoTextScaling(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: _windowsButtons),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Expanded(child: child),
-      ],
+    // Meniji i opisi dugmadi prozora otvaraju se iznad sadržaja, a okvir
+    // stoji iznad navigatora aplikacije.
+    return Overlay.wrap(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          WindowsTitleBar(title: title, controls: windowControls),
+          Expanded(child: child),
+        ],
+      ),
     );
   }
 }

@@ -39,6 +39,7 @@ export 'src/shell/tavli_navigation.dart';
 export 'src/shell/tavli_page.dart';
 export 'src/shell/tavli_page_header.dart';
 export 'src/shell/tavli_window_frame.dart';
+export 'src/shell/windows_title_bar.dart' show TavliWindowControls;
 export 'src/theme/tavli_colors.dart';
 export 'src/theme/tavli_motif.dart';
 export 'src/theme/tavli_palette.dart';
