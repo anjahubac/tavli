@@ -100,7 +100,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testTavli('tajmer: zaustavi ga uklanja, a novi zamenjuje stari', (
+  testTavli('tajmer: otkaži ga uklanja, a novi zamenjuje stari', (
     tester,
   ) async {
     final now = DateTime.utc(2026, 11, 23, 12);
@@ -115,7 +115,7 @@ void main() {
     );
     await tester.tap(button('Pokreni tajmer · 8:00'));
     await tester.pump();
-    await tester.tap(button('Zaustavi'));
+    await tester.tap(button('Otkaži'));
     await tester.pump();
     expect(find.bySemanticsLabel('Jaje se kuva'), findsNothing);
     expect(button('Pokreni tajmer · 8:00'), findsOneWidget);
@@ -135,7 +135,7 @@ void main() {
     await tester.pump();
     expect(find.text('20:00'), findsOneWidget);
     expect(find.textContaining('Tajmer ·'), findsNothing);
-    await tester.tap(button('Zaustavi'));
+    await tester.tap(button('Otkaži'));
     await tester.pumpAndSettle();
   });
 
@@ -160,8 +160,8 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.textContaining('Tajmer ·'));
       await tester.pump();
-      await tester.ensureVisible(button('Zaustavi'));
-      await tester.tap(button('Zaustavi'));
+      await tester.ensureVisible(button('Otkaži'));
+      await tester.tap(button('Otkaži'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });

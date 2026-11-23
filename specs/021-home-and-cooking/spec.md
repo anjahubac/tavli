@@ -142,13 +142,13 @@ not on the design canvas yet. Extends the cooking mode design above.
   step replaces the running one (the block says so).
 - **Running**: the egg-in-pot animation with the circle behind it and a ring
   that shrinks with the remaining time, the remaining time, and “Pauziraj” /
-  “Nastavi”, “+1 min” and “Zaustavi”. Reduced motion shows the still picture.
+  “Nastavi”, “+1 min” and “Otkaži”. Reduced motion shows the still picture.
 - **Other steps**: while the timer runs in another step, a strip above the
   step shows “Tajmer · 4:58 · korak N”; tapping it returns to that step.
 - **Finished**: the sound plays three times; on phones (Android, iOS) each is
   paired with a short vibration, on desktop only the sound. The strip or card
   shows “Vreme je isteklo” and stays on every step until the user taps
-  “Zatvori”. “Zaustavi” removes a timer right away.
+  “Zatvori”. “Otkaži” removes a timer right away.
 - **Scope**: the timer lives while the cooking screen is open; leaving the
   screen ends it. Notifications while the app is in the background are not
   part of this slice (they need a local notifications dependency and
@@ -156,7 +156,7 @@ not on the design canvas yet. Extends the cooking mode design above.
 
 Additional UI copy: “Tajmer za ovaj korak”, “Korak pominje vreme.”,
 “Pokretanje zamenjuje tajmer iz drugog koraka.”, “Pokreni tajmer · M:SS”,
-“Preostalo”, “Pauzirano”, “Pauziraj”, “Nastavi”, “+1 min”, “Zaustavi”,
+“Preostalo”, “Pauzirano”, “Pauziraj”, “Nastavi”, “+1 min”, “Otkaži”,
 “Zatvori”, “Vreme je isteklo”, “Tajmer · M:SS · korak N”.
 
 ## Narrow navigation slice — 2026-11-20

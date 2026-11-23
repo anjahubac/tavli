@@ -9,6 +9,13 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../app/animations/egg_timer.dart';
 import 'recipe_providers.dart';
 
+/// Štoperica u bloku tajmera (linijska ikonica, kao u pregledu).
+const _timerIcon = TavliIconData('timer', [
+  'circle 12 13 8',
+  'M12 9v4l2.5 2.5',
+  'M9 2h6',
+]);
+
 enum CookingTimerPhase { running, paused, finished }
 
 /// Jedan tajmer u režimu kuvanja, vezan za korak u kome je pokrenut.
@@ -128,7 +135,7 @@ class CookingTimer extends Notifier<CookingTimerState?> {
     }
   }
 
-  /// Zaustavi (ili zatvori poruku kad je isteklo).
+  /// Otkaži (ili zatvori poruku kad je isteklo).
   void stop() {
     _timer?.cancel();
     state = null;
@@ -254,7 +261,7 @@ class CookingTimerBlock extends ConsumerWidget {
                     onPressed: notifier.addMinute,
                   ),
                   TavliButton.secondary(
-                    label: finished ? 'Zatvori' : 'Zaustavi',
+                    label: finished ? 'Zatvori' : 'Otkaži',
                     onPressed: notifier.stop,
                   ),
                 ],
@@ -273,15 +280,31 @@ class CookingTimerBlock extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Tajmer za ovaj korak', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 2),
-            Text(
-              timer == null
-                  ? 'Korak pominje vreme.'
-                  : 'Pokretanje zamenjuje tajmer iz drugog koraka.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: c.onSurfaceVariant,
-              ),
+            Row(
+              children: [
+                TavliIcon(_timerIcon, size: 28, color: c.onSurfaceVariant),
+                const SizedBox(width: TavliSpacing.medium),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tajmer za ovaj korak',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        timer == null
+                            ? 'Korak pominje vreme.'
+                            : 'Pokretanje zamenjuje tajmer iz drugog koraka.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: c.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: TavliSpacing.medium),
             TavliButtonRow(
