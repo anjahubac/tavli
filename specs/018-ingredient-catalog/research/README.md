@@ -32,10 +32,11 @@ remains unknown.
 `catalog-review-worksheet.csv` joins the 167 candidates and the 171 historical
 reference rows (338 rows total). The 167 candidate rows carry the owner-confirmed
 identity/base-unit decision. The 171 reference rows remain comparison material
-and are not new catalog identities or seed rows. USDA mappings with an FDC ID
-carry the owner's separate manual mapping approval dated 2026-11-23; individual
-reviewers were not recorded. The first eleven columns match `candidates.csv`;
-the rest add evidence and review details.
+and are not new catalog identities or seed rows. The owner confirmed manual
+review of all 338 USDA mapping decisions on 2026-11-23; individual reviewers
+were not recorded. Of these, 312 have an approved FDC ID and 26 have no suitable
+match. The first eleven columns match `candidates.csv`; the rest add evidence
+and review details.
 
 | Column | Meaning |
 | --- | --- |
@@ -46,9 +47,11 @@ the rest add evidence and review details.
 | `usda_alternates` | Other records the search found, for the reviewer to compare. |
 | `notes` | Known approximations, for example a cut of meat or a proxy species or product. |
 | `base_unit_reviewer` | Owner-confirmed manual review on 2026-11-23; individual reviewer unspecified for candidate rows. Empty for reference rows. |
-| `usda_reviewer` | Owner-authorized manual mapping review on 2026-11-23 for each row with an FDC ID; individual reviewer unspecified where not previously recorded. |
+| `usda_reviewer` | Owner-authorized manual mapping review on 2026-11-23 for rows with an FDC ID; individual reviewer unspecified where not previously recorded. A blank ID means no match was selected. |
 
-Of the 338 worksheet rows, 312 have a reviewed FDC mapping and 26 have none.
+Of the 338 worksheet rows, all mapping outcomes were reviewed: 312 have an
+approved FDC mapping and 26 have no suitable match. No nutrition value is
+assigned to the unmatched rows.
 Red onion uses a USDA Foundation Foods record and has no value in the SR Legacy-only
 nutrition extract. Name matching alone can select the wrong food, a different cut
 or a proxy; the owner separately confirmed the recorded mappings on 2026-11-23.
