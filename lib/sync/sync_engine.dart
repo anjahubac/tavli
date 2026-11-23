@@ -88,6 +88,10 @@ class SyncEngine {
 
   /// Sesija je odbijena i posle obnove: nazad na prijavu.
   final Future<void> Function()? onUnauthorized;
+
+  /// The server denied a write by RLS or Storage policy: the account may have
+  /// lost access (e.g. removed from the household), so membership is checked
+  /// again. Called at most once at a time and never during a membership check.
   final Future<void> Function()? onForbidden;
 
   /// Posle svakog uspešnog preuzimanja: lokalne projekcije koje zavise od
@@ -190,19 +194,20 @@ class SyncEngine {
   /// prošlo do kraja.
   int get pullDeferred => _pullDeferred;
 
-  Completer<void>? _membershipFinished;
-  bool get _membershipCheck => _membershipFinished != null;
+  Completer<void>? _membershipCheck;
 
   /// Waits for old-scope work and suspends sync during server reconciliation.
   Future<T> reconcileMembership<T>(Future<T> Function() action) async {
-    if (_membershipCheck) throw StateError('Membership check in progress');
-    final finished = _membershipFinished = Completer<void>();
+    if (_membershipCheck != null) {
+      throw StateError('Membership check in progress');
+    }
+    final finished = _membershipCheck = Completer<void>();
     try {
       await _inFlight;
       await _pullFinished?.future;
       return await action();
     } finally {
-      _membershipFinished = null;
+      _membershipCheck = null;
       finished.complete();
       kick();
     }
@@ -228,9 +233,9 @@ class SyncEngine {
   Future<PullOutcome> pullAfterCurrent() async {
     await _startup;
     while (!_stopped) {
-      final underway = _membershipFinished ?? _pullFinished;
+      final underway = _membershipCheck?.future ?? _pullFinished?.future;
       if (underway == null) return pull();
-      await underway.future;
+      await underway;
     }
     return PullOutcome.settled;
   }
@@ -239,7 +244,7 @@ class SyncEngine {
   Future<PullOutcome> pull() async {
     final downloader = _downloader;
     if (_stopped ||
-        _membershipCheck ||
+        _membershipCheck != null ||
         downloader == null ||
         _pullFinished != null) {
       return PullOutcome.settled;
@@ -324,7 +329,7 @@ class SyncEngine {
 
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
-    if (_stopped || _membershipCheck) return Future.value();
+    if (_stopped || _membershipCheck != null) return Future.value();
     final pullFinished = _pullFinished;
     if (pullFinished != null) return pullFinished.future.then((_) => push());
     if (_running) {
@@ -338,15 +343,14 @@ class SyncEngine {
     _running = true;
     _retryTimer?.cancel();
     var refreshRatings = false;
-    var forbidden = false;
     try {
       do {
         _again = false;
         final ratingChanges = await _hasRatingChanges();
         if (await _waitingCount() > 0) _emit(const Sending());
         final result = await _uploader.run();
-        forbidden |= result.forbidden;
         if (_stopped) return;
+        if (result.forbidden) _checkAccess();
         if (result.unauthorized) {
           await onUnauthorized?.call();
           return;
@@ -366,20 +370,45 @@ class SyncEngine {
       } while (_again && !_stopped);
     } finally {
       _running = false;
-      if (!_stopped) {
-        await refreshStatus();
-        if (forbidden && onForbidden != null) {
-          // Membership reconciliation waits for this upload to finish.
-          unawaited(
-            Future<void>.microtask(() async {
-              if (!_stopped) await onForbidden!();
-            }),
-          );
-        }
-      }
+      if (!_stopped) await refreshStatus();
     }
     // Pull waits for an active upload, so release the upload slot first.
     if (refreshRatings) await pull();
+  }
+
+  var _accessCheck = false;
+  var _accessCheckPending = false;
+
+  /// Runs [onForbidden] outside the upload: the membership check waits for the
+  /// active upload, so awaiting it here would deadlock.
+  void _checkAccess() {
+    final check = onForbidden;
+    if (check == null || _stopped) return;
+    if (_accessCheck) {
+      _accessCheckPending = true;
+      return;
+    }
+    _accessCheck = true;
+    _zone.run(
+      () => unawaited(
+        Future(() async {
+          try {
+            // An upload can be denied while reconciliation waits for it.
+            await _membershipCheck?.future;
+            // The engine may have stopped (sign-out, household switch)
+            // between the denial and this callback.
+            if (!_stopped) await check();
+          } on Object {
+            // Nothing is logged: the error may carry account details.
+          } finally {
+            _accessCheck = false;
+            final recheck = _accessCheckPending;
+            _accessCheckPending = false;
+            if (recheck && !_stopped) _checkAccess();
+          }
+        }),
+      ),
+    );
   }
 
   void _scheduleRetry() {

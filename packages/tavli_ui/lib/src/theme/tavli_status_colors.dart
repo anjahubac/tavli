@@ -8,22 +8,29 @@ class TavliStatusColors extends ThemeExtension<TavliStatusColors> {
     required this.success,
     required this.warning,
     required this.info,
+    required this.dislike,
   });
 
   static const light = TavliStatusColors(
     success: (foreground: Color(0xFF245C38), background: Color(0xFFE5F3E9)),
     warning: (foreground: Color(0xFF714900), background: Color(0xFFFFF0CD)),
     info: (foreground: Color(0xFF244F78), background: Color(0xFFE5F0FA)),
+    dislike: (foreground: Color(0xFF7A3214), background: Color(0xFFF8E8E0)),
   );
   static const dark = TavliStatusColors(
     success: (foreground: Color(0xFFA7DEB6), background: Color(0xFF193B26)),
     warning: (foreground: Color(0xFFFFD98A), background: Color(0xFF49340C)),
     info: (foreground: Color(0xFFB1D7FB), background: Color(0xFF193750)),
+    dislike: (foreground: Color(0xFFFFC2A8), background: Color(0xFF4A2618)),
   );
 
   final StatusTone success;
   final StatusTone warning;
   final StatusTone info;
+
+  /// „Ne volim“ u ukusima (terakota sa platna): ista u svakoj paleti, da se
+  /// ne pomeša sa bojom teme za „Volim“.
+  final StatusTone dislike;
 
   static TavliStatusColors of(BuildContext context) =>
       Theme.of(context).extension<TavliStatusColors>()!;
@@ -33,10 +40,12 @@ class TavliStatusColors extends ThemeExtension<TavliStatusColors> {
     StatusTone? success,
     StatusTone? warning,
     StatusTone? info,
+    StatusTone? dislike,
   }) => TavliStatusColors(
     success: success ?? this.success,
     warning: warning ?? this.warning,
     info: info ?? this.info,
+    dislike: dislike ?? this.dislike,
   );
 
   @override
@@ -50,6 +59,7 @@ class TavliStatusColors extends ThemeExtension<TavliStatusColors> {
       success: mix(success, other.success),
       warning: mix(warning, other.warning),
       info: mix(info, other.info),
+      dislike: mix(dislike, other.dislike),
     );
   }
 }

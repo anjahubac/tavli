@@ -6,6 +6,7 @@ import '../content/tavli_list.dart';
 import '../content/tavli_media.dart';
 import '../content/tavli_notice.dart';
 import '../content/tavli_plan.dart';
+import '../content/tavli_recipe_tile.dart';
 import '../content/tavli_states.dart';
 import '../content/tavli_tag.dart';
 import '../controls/tavli_button.dart';
@@ -56,9 +57,30 @@ class TavliContentGallerySections extends StatelessWidget {
         GallerySection(title: 'Sličica, avatar i oznaka', child: _Media()),
         GallerySection(title: 'Prazan ekran i učitavanje', child: _States()),
         GallerySection(title: 'Plan: nedelja i mesec', child: _Plan()),
+        GallerySection(title: 'Omiljeni recepti', child: _Favorites()),
       ],
     );
   }
+}
+
+class _Favorites extends StatelessWidget {
+  const _Favorites();
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 10,
+        children: [
+          TavliAddTile(label: 'Dodaj', onTap: () {}),
+          TavliRecipeTile(title: 'Musaka od krompira', onTap: () {}),
+          TavliRecipeTile(title: 'Punjene paprike', tintIndex: 1, onTap: () {}),
+        ],
+      ),
+    ),
+  );
 }
 
 class _WarningNotice extends StatelessWidget {

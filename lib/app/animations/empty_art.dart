@@ -12,7 +12,8 @@ class EmptyArtColors {
       softLine = c.outlineVariant,
       muted = c.onSurfaceVariant,
       primary = c.primary,
-      onPrimary = c.onPrimary;
+      onPrimary = c.onPrimary,
+      tint = c.tertiaryContainer;
 
   /// Krug u pozadini.
   final Color container;
@@ -31,16 +32,20 @@ class EmptyArtColors {
   final Color primary;
   final Color onPrimary;
 
+  /// Topla boja za hranu (čorba, jaje, tanjir na slici).
+  final Color tint;
+
   @override
   bool operator ==(Object other) =>
       other is EmptyArtColors &&
       other.container == container &&
       other.surface == surface &&
       other.line == line &&
-      other.primary == primary;
+      other.primary == primary &&
+      other.tint == tint;
 
   @override
-  int get hashCode => Object.hash(container, surface, line, primary);
+  int get hashCode => Object.hash(container, surface, line, primary, tint);
 }
 
 /// Crta scenu u koordinatama 200×200 za trenutak `t` (0..1).
@@ -48,8 +53,8 @@ typedef EmptyScene = void Function(Canvas canvas, double t, EmptyArtColors c);
 
 /// Zajednički okvir svih animacija praznih ekrana: isti krug u pozadini,
 /// crtež sveden na istu veličinu ([fit]) i ista širina na svakom tabu.
-/// Igra jednom i stane na završnoj slici; uz smanjeno kretanje odmah
-/// crta završnu sliku.
+/// Igra jednom i stane na završnoj slici (ili se vrti u krug sa [repeat]);
+/// uz smanjeno kretanje odmah crta mirnu sliku ([restValue]).
 class EmptyArt extends StatelessWidget {
   const EmptyArt({
     super.key,
@@ -57,6 +62,8 @@ class EmptyArt extends StatelessWidget {
     required this.duration,
     required this.scene,
     this.fit = 1,
+    this.repeat = false,
+    this.restValue = 1,
   });
 
   /// Opis za čitač ekrana.
@@ -67,6 +74,12 @@ class EmptyArt extends StatelessWidget {
   /// Koliko se crtež umanji oko centra kruga, da svi budu vizuelno iste
   /// veličine (širok kalendar ili visok frižider se umanje).
   final double fit;
+
+  /// Vrti se u krug dok se čeka (umesto da igra jednom).
+  final bool repeat;
+
+  /// Mirna slika kad se traži smanjeno kretanje.
+  final double restValue;
 
   /// Crtež raste sa prostorom, ali nikad preko ove veličine.
   static const double maxSize = 200;
@@ -90,13 +103,14 @@ class EmptyArt extends StatelessWidget {
           widthFactor: 1,
           heightFactor: 1,
           child: MotionBuilder(
-            repeat: false,
+            repeat: repeat,
+            restValue: restValue,
             duration: duration,
             builder: (context, t, _) => MotionCanvas(
               size: size,
               design: _design,
               label: label,
-              painter: _EmptyArtPainter(t, colors, scene, fit),
+              painter: EmptyArtPainter(t, colors, scene, fit),
             ),
           ),
         );
@@ -105,8 +119,10 @@ class EmptyArt extends StatelessWidget {
   }
 }
 
-class _EmptyArtPainter extends CustomPainter {
-  _EmptyArtPainter(this.t, this.colors, this.scene, this.fit);
+/// Krug u pozadini i scena; koristi ga i [EmptyArt] i animacije koje
+/// moraju same da određuju veličinu (lonac, varjača).
+class EmptyArtPainter extends CustomPainter {
+  EmptyArtPainter(this.t, this.colors, this.scene, [this.fit = 1]);
 
   final double t;
   final EmptyArtColors colors;
@@ -126,7 +142,7 @@ class _EmptyArtPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_EmptyArtPainter old) =>
+  bool shouldRepaint(EmptyArtPainter old) =>
       old.t != t ||
       old.colors != colors ||
       old.fit != fit ||
@@ -159,6 +175,15 @@ Paint stroke(Color color, {double width = 3, double opacity = 1}) => Paint()
 
 Paint fill(Color color, {double opacity = 1}) =>
     Paint()..color = color.withValues(alpha: color.a * opacity);
+
+/// Prvih [p] (0..1) dužine putanje: linija koja se iscrtava.
+Path partial(Path source, double p) {
+  final out = Path();
+  for (final metric in source.computeMetrics()) {
+    out.addPath(metric.extractPath(0, metric.length * p), Offset.zero);
+  }
+  return out;
+}
 
 /// Isprekidana linija po putanji: [dash] crta, [gap] razmak.
 Path dashed(Path source, double dash, double gap) {

@@ -12,7 +12,9 @@ import '../../domain/meal_plan.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/shopping_demand.dart' show scaleQuantity;
+import '../../domain/step_duration.dart';
 import '../planning/planning_providers.dart';
+import 'cooking_timer.dart';
 import 'keep_screen_on.dart';
 import 'recipe_providers.dart';
 
@@ -271,6 +273,8 @@ class _CookingModeScreenState extends ConsumerState<CookingModeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Tajmer živi dok je ekran kuvanja otvoren.
+    ref.watch(cookingTimerProvider);
     final wide =
         MediaQuery.sizeOf(context).width >= CookingModeScreen.panelBreakpoint;
     final steps = _recipe.steps;
@@ -300,10 +304,20 @@ class _CookingModeScreenState extends ConsumerState<CookingModeScreen> {
       ],
     );
 
-    final content = _CookingContent(
-      recipe: _recipe,
-      step: _step,
-      showIngredients: steps.isEmpty && !wide,
+    final content = Column(
+      children: [
+        CookingTimerStrip(
+          step: _step,
+          onOpen: (i) => setState(() => _step = i),
+        ),
+        Expanded(
+          child: _CookingContent(
+            recipe: _recipe,
+            step: _step,
+            showIngredients: steps.isEmpty && !wide,
+          ),
+        ),
+      ],
     );
 
     return Scaffold(
@@ -416,6 +430,10 @@ class _CookingContent extends StatelessWidget {
                       height: 1.4,
                     ),
                   ),
+                ),
+                CookingTimerBlock(
+                  step: step,
+                  duration: stepDuration(steps[step]),
                 ),
                 if (used.isNotEmpty) ...[
                   const SizedBox(height: TavliSpacing.medium),

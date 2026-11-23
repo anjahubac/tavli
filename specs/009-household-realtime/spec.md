@@ -23,6 +23,12 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-101**: A remote change schedules the existing pull path; no direct realtime row writes from widgets.
 - **FR-102**: Coalesce bursts and reconnect using cursors; duplicate/out-of-order signals must not lose pending local writes or resurrect deletions.
 - **FR-103**: Subscription lifecycle follows account and membership; permission failures surface safely and fall back to existing resume/pull behavior.
+- **FR-104**: A change to the user's own membership (removal, transfer, join) runs the existing membership check (`AuthController.restoreSession` → `AccountService.refreshMembership`), not only a pull. A pull cannot detect removal: RLS returns zero old-household rows without an error. The signal must come through a row the removed user can still read (for example their own account or profile row). Household tables stop delivering events once RLS denies access.
+- **FR-105**: Realtime supplements, not replaces, the reactive check on denied writes (RLS `42501`, Storage `403` → `SyncEngine.onForbidden`). A signal can be missed while offline, in the background or during a reconnect.
+
+### Known gap carried from the denied-write fix
+
+An RLS-filtered `DELETE` by a removed member affects zero rows and returns no error. The uploader marks it sent, and no membership check starts. A removed member who only deletes is therefore detected at the next resume or start. Options: return deleted rows (`.select()`) and treat an empty result for a known row as a possible denial, or rely on the FR-104 signal. Decide together with Q1. The old household loses nothing, because the removed member no longer has access to it.
 
 ## User scenarios and acceptance
 

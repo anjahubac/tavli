@@ -12,12 +12,14 @@ class UploadResult {
   const UploadResult({
     this.sent = 0,
     this.rejected = 0,
-    this.stoppedBy,
     this.forbidden = false,
+    this.stoppedBy,
   });
 
   final int sent;
   final int rejected;
+
+  /// At least one rejection was an access denial ([PermanentSyncError.forbidden]).
   final bool forbidden;
 
   /// Privremena greška (nema mreže) ili odbijena sesija; null = sve poslato.
@@ -66,14 +68,8 @@ class Uploader {
 
   Future<UploadResult> run() async {
     var sent = 0, rejected = 0;
-    var refreshed = false;
     var forbidden = false;
-    UploadResult result([SyncError? stoppedBy]) => UploadResult(
-      sent: sent,
-      rejected: rejected,
-      stoppedBy: stoppedBy,
-      forbidden: forbidden,
-    );
+    var refreshed = false;
 
     Future<SyncError?> attempt(List<OutboxRow> batch) async {
       while (true) {
@@ -99,7 +95,12 @@ class Uploader {
       final error = await attempt(batch);
       if (error == null) continue;
       if (error is! PermanentSyncError) {
-        return result(error);
+        return UploadResult(
+          sent: sent,
+          rejected: rejected,
+          forbidden: forbidden,
+          stoppedBy: error,
+        );
       }
       // Jedan loš red ne sme da obori ostale iz grupe: šalju se pojedinačno.
       for (final entry in batch) {
@@ -107,11 +108,16 @@ class Uploader {
         if (single == null) continue;
         final e = await attempt([single]);
         if (e is PermanentSyncError) {
-          forbidden |= e.code == '42501';
           await _reject(single, e);
           rejected++;
+          forbidden |= e.forbidden;
         } else if (e != null) {
-          return result(e);
+          return UploadResult(
+            sent: sent,
+            rejected: rejected,
+            forbidden: forbidden,
+            stoppedBy: e,
+          );
         }
       }
     }
@@ -122,15 +128,15 @@ class Uploader {
         await _sendPhoto(entry);
         sent++;
       } on PermanentSyncError catch (e) {
-        forbidden |= e.code == '403' || e.code == '42501';
         await _reject(entry, e);
         rejected++;
+        forbidden |= e.forbidden;
       } on SyncError catch (e) {
         await _postpone(entry, e);
         if (e is TransientSyncError) break;
       }
     }
-    return result();
+    return UploadResult(sent: sent, rejected: rejected, forbidden: forbidden);
   }
 
   SimpleSelectStatement<$SyncOutboxTable, OutboxRow> _pending(

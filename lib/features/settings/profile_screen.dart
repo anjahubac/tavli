@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
@@ -6,9 +7,11 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../app/router.dart';
 import 'profile_account_section.dart';
 import 'settings_page.dart';
+import 'tastes/taste_labels.dart';
+import 'tastes/tastes_providers.dart';
 
-/// Profil i podešavanja, kao na platnu: nalog, podešavanja i brisanje
-/// naloga; na širokom ekranu nalog levo, ostalo desno.
+/// Profil i podešavanja, kao na platnu: nalog, ishrana, podešavanja i
+/// brisanje naloga; na širokom ekranu nalog i ishrana levo, ostalo desno.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -20,7 +23,7 @@ class ProfileScreen extends StatelessWidget {
       fallbackLocation: homeLocation,
       children: [
         SettingsColumns(
-          start: const [AccountSection()],
+          start: const [AccountSection(), _DietSection()],
           end: [
             SettingsSection(
               title: 'Podešavanja',
@@ -62,6 +65,44 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
             const DeleteAccountSection(),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Odeljak „Ishrana“: ulaz u Ukuse i alergene sa kratkim pregledom izbora.
+class _DietSection extends ConsumerWidget {
+  const _DietSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allergens = ref.watch(allergenSelectionProvider).value?.length ?? 0;
+    final dish = ref.watch(dishPreferencesProvider).value;
+    final cuisine = ref.watch(cuisinePreferencesProvider).value;
+    final food = ref.watch(foodPreferencesProvider).value;
+    final favorites = ref.watch(favoriteRecipeIdsProvider).value?.length ?? 0;
+    final likes =
+        (dish?.liked.length ?? 0) +
+        (cuisine?.liked.length ?? 0) +
+        (food?.liked.length ?? 0);
+    return SettingsSection(
+      title: 'Ishrana',
+      children: [
+        TavliListGroup(
+          children: [
+            TavliListRow(
+              title: 'Ukusi i alergeni',
+              subtitle: tastesSummary(
+                allergens: allergens,
+                likes: likes,
+                favorites: favorites,
+              ),
+              leading: const TavliIcon(TavliIcons.like),
+              showChevron: true,
+              onTap: () => context.go('/profile/tastes'),
+            ),
           ],
         ),
       ],
