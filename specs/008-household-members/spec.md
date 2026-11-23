@@ -114,6 +114,68 @@ meantime. A terminal rejection retains its diagnostic code locally and does
 not block the switch. The explicit skip applies only to old-household edits,
 and takes effect only after the server confirms the membership change.
 
+### Tastes and allergens screen (variant A)
+
+The screen follows the canvas “Predlog: Ukusi i alergeni”, variant A
+(iOS and macOS artboards `Profil`, `Ukusi A`, `Dodaj omiljeni recept`,
+`Dodaj namirnicu`). Route `/profile/tastes`, opened from Profil › Ishrana.
+The free-text “O meni” note, the AI suggestion “Predloži iz mojih recepata”
+and the “Deli opis” consent are deferred to the later note slice.
+
+- Profil: section “Ishrana”, row “Ukusi i alergeni”, summary such as
+  “2 alergena · 6 sviđanja · 3 omiljena recepta” (zero parts omitted;
+  “Ništa nije izabrano” when nothing is chosen). “Sviđanja” counts liked dish
+  kinds, cuisines and foods.
+- Intro: “Tavli ovo koristi da predloži jela koja ti prijaju.”
+- “Alergeni”, summary “Izabrano: {n}” or “Nijedan”, help “Jela sa ovim
+  sastojcima ne ulaze u plan.” Labels: Gluten, Mleko,
+  Jaja, Orašasti plodovi, Kikiriki, Riba, Rakovi, Mekušci, Soja, Susam, Celer,
+  Slačica, Sulfiti, Lupina.
+- “Vrste jela” with help “Dodirni jednom za Volim, još jednom za Ne volim.”;
+  “Kuhinje” (Srpska, Italijanska, Japanska, Francuska, Meksička). Wide layout:
+  “Vrste jela i kuhinje” with “Klik: Volim · još jednom: Ne volim”.
+- “Omiljeni recepti” with “Dodaj”; wide empty state “Još nema omiljenih recepata.”
+  Picker: “Omiljeni recepti”, “Izabrano: {n}”, “Pretraži recepte”, “Moji recepti”,
+  “Gotovo”, “Nema recepta sa tim imenom.”; wide dialog “Klikni recept da ga dodaš
+  ili ukloniš.”, “Samo omiljeni”, “Zatvori”. No recipes: “Još nema recepata” /
+  “Dodaj recept u Receptima, pa ga označi kao omiljeni.” A recipe that left the
+  household: “Recept više nije dostupan.” Heart button labels: “Dodaj u
+  omiljene: {naziv}” and “Ukloni iz omiljenih: {naziv}”.
+- “Namirnice” with help “Ono što ne voliš ne zabranjuje jelo, samo ga ređe
+  predlažemo.”, groups “Volim” and “Ne volim”, chip action “Ukloni {naziv}”.
+  Each group ends with a “Dodaj” pill that opens the picker (phone sheet,
+  wide dialog) preset to that group: “Dodaj namirnicu”, “Pretraži namirnice”, “Već je u Volim”,
+  “Već je u Ne volim”, “Ukloni”, “Nema te namirnice u katalogu.”; empty
+  catalog “Katalog namirnica još nije preuzet” / “Namirnice stižu sa servera
+  kad je aplikacija na mreži.” Wide layout: “Volim” and “Ne volim” labels
+  on the left with the pills beside them (product owner review replaced the
+  canvas search field and its keyboard shortcuts).
+- “Plan domaćinstva”: switch “Deli ukuse i omiljene”, subtitle “Pomaže u
+  preporuci recepata pomoću AI-a.”, lock note “Alergene plan uvek poštuje, i kad je
+  deljenje isključeno.” Product owner review shortened the intro, allergen,
+  sharing and lock copy from the canvas text. On a wide screen the page is
+  centered and the two columns have a wider gap than the canvas.
+- Consent confirmation before enabling (not on the canvas; required by the
+  [contract](contracts/member-planning-inputs.md#disclosure-and-consent), which
+  asks the consent text to name the AI provider; needs Dev 4 review):
+  title “Deli ukuse i omiljene?”, message “Tvoji ukusi i omiljeni recepti
+  pomažu kad Tavli pravi plan za celo domaćinstvo. Za taj plan šalju se AI
+  servisu (Gemini, Groq ili OpenRouter), bez tvog imena. Ostali članovi ne
+  vide tvoje izbore. Deljenje možeš da isključiš kad god želiš.”, actions
+  “Otkaži” / “Deli”. Turning sharing off needs no confirmation.
+- Consent errors: “Nema veze sa internetom. Deljenje nije promenjeno.”,
+  “Deljenje je promenjeno na drugom uređaju. Proveri i pokušaj ponovo.”,
+  “Deljenje nije promenjeno. Pokušaj ponovo.”; unreadable consent: notice
+  “Deljenje se menja samo uz internet. Trenutno ne možemo da proverimo
+  podešavanje.” with “Pokušaj ponovo”.
+
+Deviations from the canvas, kept for the accessibility and icon rules of the
+[UI standard](../../docs/development/ui-standard.md): hearts are outline
+icons (no filled icons); chips keep the 44 px look inside a 48 px touch area,
+and the removable food chip is 44 instead of 40 px tall; desktop chips keep
+the phone size instead of the denser 34 px canvas size; the profile row uses
+the plain list-row icon instead of a tinted square.
+
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 For ratings, the agreed phrases are “Da li ti se svidelo?” and “Oceni”. The

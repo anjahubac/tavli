@@ -66,3 +66,40 @@ class FoodCatalogReader {
     ], foods: foods.values.toList());
   }
 }
+
+/// Namirnica iz kataloga za izbor u ukusima (Volim, Ne volim).
+class CatalogFoodEntry {
+  const CatalogFoodEntry({
+    required this.id,
+    required this.name,
+    required this.category,
+  });
+
+  final String id;
+  final String name;
+  final String category;
+}
+
+/// Namirnice koje korisnik može da izabere u ukusima: deljene i namirnice
+/// njegovog domaćinstva iz lokalnog keša, bez povučenih, po nazivu.
+class CatalogFoodList {
+  CatalogFoodList(this._db);
+
+  final AppDatabase _db;
+
+  Stream<List<CatalogFoodEntry>> watchVisible(String householdId) =>
+      (_db.select(_db.foods)
+            ..where(
+              (t) =>
+                  t.withdrawnAt.isNull() &
+                  (t.householdId.isNull() | t.householdId.equals(householdId)),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+          .watch()
+          .map(
+            (rows) => List.unmodifiable([
+              for (final r in rows)
+                CatalogFoodEntry(id: r.id, name: r.name, category: r.category),
+            ]),
+          );
+}
