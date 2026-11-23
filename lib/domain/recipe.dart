@@ -2,6 +2,16 @@ import 'recipe_labels.dart';
 
 enum RecipeSource { photo, ai, manual }
 
+/// Ko je postavio sliku recepta. AI slika nikad ne zamenjuje sliku
+/// korisnika; `null` = nepoznato (stari recepti).
+enum RecipeImageSource {
+  ai,
+  user;
+
+  static RecipeImageSource? tryParse(Object? value) =>
+      value is String ? values.asNameMap()[value] : null;
+}
+
 /// `summary` = naziv i sastojci (dovoljno za plan i listu za kupovinu),
 /// `full` = i koraci pripreme.
 enum DetailLevel { summary, full }
@@ -143,6 +153,8 @@ class Recipe {
     this.imagePath,
     this.answeredBy,
     this.labels = RecipeLabels.none,
+    this.imageDescription,
+    this.imageSource,
   });
 
   final String id;
@@ -160,6 +172,18 @@ class Recipe {
 
   /// Obrok, težina i vrsta jela. Nisu deo istorije verzija.
   final RecipeLabels labels;
+
+  /// Kratak opis gotovog jela na engleskom, za AI sliku (TRELLO-130).
+  final String? imageDescription;
+
+  /// Ko je postavio [imagePath].
+  final RecipeImageSource? imageSource;
+
+  /// AI recept bez slike za koji AI sme da napravi sliku.
+  bool get wantsAiImage =>
+      source == RecipeSource.ai &&
+      imagePath == null &&
+      imageSource != RecipeImageSource.user;
 
   DetailLevel get detailLevel =>
       steps.isEmpty ? DetailLevel.summary : DetailLevel.full;
@@ -215,6 +239,8 @@ class Recipe {
     String? imagePath,
     String? answeredBy,
     RecipeLabels? labels,
+    String? imageDescription,
+    RecipeImageSource? imageSource,
   }) => Recipe(
     id: id,
     title: title ?? this.title,
@@ -227,6 +253,8 @@ class Recipe {
     answeredBy: answeredBy ?? this.answeredBy,
     createdAt: createdAt,
     labels: labels ?? this.labels,
+    imageDescription: imageDescription ?? this.imageDescription,
+    imageSource: imageSource ?? this.imageSource,
   );
 
   /// Ceo recept za čuvanje (npr. prethodne verzije u bazi).
@@ -237,6 +265,8 @@ class Recipe {
     'imagePath': imagePath,
     'answeredBy': answeredBy,
     'createdAt': createdAt.toUtc().toIso8601String(),
+    'imageDescription': imageDescription,
+    'imageSource': imageSource?.name,
   };
 
   /// Čita oblik iz [toJson]. Baca [FormatException] na pokvaren zapis.
@@ -247,6 +277,7 @@ class Recipe {
     if (id is! String || source == null || createdAt == null) {
       throw const FormatException('Pokvaren zapis recepta');
     }
+    final description = json['imageDescription'];
     return Recipe.fromAiJson(
       json,
       id: id,
@@ -254,6 +285,11 @@ class Recipe {
       createdAt: createdAt,
       answeredBy: json['answeredBy'] as String?,
       imagePath: json['imagePath'] as String?,
+    ).copyWith(
+      imageDescription: description is String && description.trim().isNotEmpty
+          ? description.trim()
+          : null,
+      imageSource: RecipeImageSource.tryParse(json['imageSource']),
     );
   }
 

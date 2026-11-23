@@ -28,7 +28,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 | [019-meal-selection-rules](019-meal-selection-rules/spec.md) | Dev 2 | Draft; resolve recorded questions before dependent implementation |
 | [020-catalog-shopping](020-catalog-shopping/spec.md) | Dev 1 | Draft; resolve recorded questions before dependent implementation |
 | [021-home-and-cooking](021-home-and-cooking/spec.md) | Dev 4 | Draft; resolve recorded questions before dependent implementation |
-| [022-simple-pantry](022-simple-pantry/spec.md) | Dev 4 | Draft; resolve recorded questions before dependent implementation |
+| [022-simple-pantry](022-simple-pantry/spec.md) | Dev 4 | Implemented in one slice; awaiting review |
 | [023-optional-nutrition](023-optional-nutrition/spec.md) | Dev 3 | Draft; resolve recorded questions before dependent implementation |
 | [024-store-prices](024-store-prices/spec.md) | Dev 1 | Draft; resolve recorded questions before dependent implementation |
 | [025-receipt-qr-spike](025-receipt-qr-spike/spec.md) | Dev 1 | Draft; resolve recorded questions before dependent implementation |

@@ -298,6 +298,9 @@ class AccountService {
         _db.ratings,
       )..where((t) => t.userId.equals(userId))).go();
       await (_db.delete(
+        _db.recipeImageJobs,
+      )..where((t) => t.accountId.equals(userId))).go();
+      await (_db.delete(
         _db.userFavorites,
       )..where((t) => t.userId.equals(userId))).go();
       await (_db.delete(

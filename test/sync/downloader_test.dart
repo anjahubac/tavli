@@ -317,6 +317,41 @@ void main() {
     expect(await db.select(db.syncOutbox).get(), isEmpty);
   });
 
+  test(
+    'daily rewind recovers a late row and a late deletion after restart',
+    () async {
+      var now = DateTime.utc(2026, 11, 23);
+      Future<void> pull() async {
+        await Downloader(
+          db: db,
+          remote: backend.sync,
+          scope: scope,
+          clock: () => now,
+        ).run();
+      }
+
+      serverRecipe('keep');
+      serverRecipe('removed');
+      serverRecipe('early-delete');
+      backend.server.delete('recipes', ['early-delete'], 'id');
+      await pull();
+
+      const old = '2001-01-01T00:00:00.000Z';
+      serverRecipe('late');
+      backend.server.table('recipes')['late']!['updated_at'] = old;
+      backend.server.delete('recipes', ['removed'], 'id');
+      backend.server.table('deletions')['recipe/removed']!['deleted_at'] = old;
+      Future<List<String>> ids() async => [
+        for (final row in await db.select(db.recipes).get()) row.id,
+      ];
+      await pull();
+      expect(await ids(), unorderedEquals(['keep', 'removed']));
+      now = now.add(const Duration(days: 1));
+      await pull();
+      expect(await ids(), unorderedEquals(['keep', 'late']));
+    },
+  );
+
   test('strane od 500 sa sačuvanom pozicijom posle svake', () async {
     for (var i = 0; i < 1200; i++) {
       serverRecipe('r${i.toString().padLeft(4, '0')}');

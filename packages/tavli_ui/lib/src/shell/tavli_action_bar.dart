@@ -15,9 +15,13 @@ import '../tokens.dart';
 /// Dugmad u traci su visine 48 (glavno i sporedno isto), sa manjim unutrašnjim razmakom i tekstom 15, da „Ponovo
 /// predloži“ i „Otvori nabavku“ stanu u jedan red na telefonu.
 class TavliActionBar extends StatelessWidget {
-  const TavliActionBar({super.key, required this.actions});
+  const TavliActionBar({super.key, required this.actions, this.note});
 
   final List<TavliButton> actions;
+
+  /// Kratak tekst ispod dugmadi, u sredini (npr. „14 obroka · 2 porcije po
+  /// obroku“ ispod „Predloži plan“).
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +36,23 @@ class TavliActionBar extends StatelessWidget {
           horizontal: TavliSpacing.large,
           vertical: TavliSpacing.small,
         ),
-        child: TavliButtonScope.actionBar(
-          child: TavliButtonRow(expand: true, children: actions),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: TavliSpacing.small - 2,
+          children: [
+            TavliButtonScope.actionBar(
+              child: TavliButtonRow(expand: true, children: actions),
+            ),
+            if (note case final text?)
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
         ),
       ),
     );

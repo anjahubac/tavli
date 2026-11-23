@@ -6,7 +6,7 @@ proposed reviewers: Dev 1 (choose a different human from the implementer).
 Paths and contracts are in plan.md; finalize exact filenames and remaining
 implementation/test/review estimates before Ready.
 
-- [ ] T001 Resolve blocking questions in spec.md, agree typed contract/migration needs and acceptance fixtures. Owner Dev 3; reviewer Dev 1; depends on producer specs in plan.md; evidence: accepted decision/contract links.
+- [x] T001 Resolve blocking questions in spec.md, agree typed contract/migration needs and acceptance fixtures. Owner Dev 3; reviewer Dev 1; depends on producer specs in plan.md; evidence: [signal contract](contracts/signals.md) and [acceptance fixtures](contracts/acceptance.md); Matija confirmed Dev 1 review in the implementation session on 2026-11-23.
 - [ ] T002 [US1] D3-012 / FR-001, phase 3: inspect existing evidence and add missing failing behavior/acceptance cases for **Signal household changes in realtime** at the tiers required by 013. Owner Dev 3; reviewer independent domain consumer; depends T001 and relevant producer; evidence: reproducible missing behavior or documented existing coverage.
 - [ ] T003 [US1] D3-012 / FR-001, phase 3: **Signal household changes in realtime** using plan.md paths and its agreed contract; update consumers and docs. Owner Dev 3; reviewer independent domain consumer; depends T002; evidence: spec scenarios, applicable checks and reviewed PR.
 - [ ] T004 Integrate consumer/release evidence, reconcile source ticket status and record unresolved limits. Owner Dev 3; reviewer Dev 1; depends on applicable implementation tasks; evidence: check commands/SHA/results and release decisions.

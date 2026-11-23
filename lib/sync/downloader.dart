@@ -20,10 +20,12 @@ class Downloader {
     required this._db,
     required this._remote,
     required this._scope,
+    DateTime Function()? clock,
     this.pageSize = 500,
     this.overlap = const Duration(seconds: 60),
-  });
+  }) : _clock = clock ?? DateTime.now;
 
+  final DateTime Function() _clock;
   final AppDatabase _db;
   final SyncRemote _remote;
   final AccountScope _scope;
@@ -38,6 +40,7 @@ class Downloader {
   /// preuzimanja kataloga namirnica; njegova greška ne zaustavlja ostalo.
   Future<({int deferred, bool adoptedWeek, CatalogStatus catalog})>
   run() async {
+    await _rewindIfDue();
     var adoptedWeek = false;
     final deferred = <(String, String)>{};
     var skipped = await _pull(
@@ -84,6 +87,39 @@ class Downloader {
       catalog: catalog.status,
     );
   }
+
+  // Timestamp ordering can differ from commit ordering. Periodically start a
+  // fresh paged pass, including tombstones. Record the rewind atomically so
+  // an interrupted pass resumes from its ordinary per-table checkpoints.
+  Future<void> _rewindIfDue() => _db.transaction(() async {
+    const marker = '_last_full_rewind';
+    final now = _clock().toUtc();
+    final previous =
+        await (_db.select(_db.syncCursors)..where(
+              (row) =>
+                  row.accountId.equals(_scope.userId) &
+                  row.entity.equals(marker),
+            ))
+            .getSingleOrNull();
+    if (previous != null &&
+        !now.isBefore(previous.updatedAt) &&
+        now.difference(previous.updatedAt) < const Duration(days: 1)) {
+      return;
+    }
+    await (_db.delete(
+      _db.syncCursors,
+    )..where((row) => row.accountId.equals(_scope.userId))).go();
+    await _db
+        .into(_db.syncCursors)
+        .insert(
+          SyncCursorsCompanion.insert(
+            accountId: _scope.userId,
+            entity: marker,
+            updatedAt: now,
+            lastId: '',
+          ),
+        );
+  });
 
   /// Katalog namirnica (018, data-model.md „Rollout“ korak 3): samo čitanje.
   /// Stariji server bez tabela nije greška za korisnika. Kad je pristup

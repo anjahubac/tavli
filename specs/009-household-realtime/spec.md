@@ -2,7 +2,7 @@
 
 **ID**: 009-household-realtime | **Feature key**: REALTIME
 **Created**: 2026-11-14 | **Baseline**: dev 207c94c
-**Status**: Draft implementation specification; decisions below gate dependent tasks.
+**Status**: implementation in review; release and device acceptance are pending.
 **Lead**: Dev 3 | **Proposed independent reviewer**: Dev 1
 
 ## Scope and source
@@ -20,6 +20,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 
 ## Behavioral requirements
 
+- Every verified household member receives shared signals on all signed-in devices, including solo households. Private edits to ratings, favorites, tastes and allergens wake only the owner.
 - **FR-101**: A remote change schedules the existing pull path; no direct realtime row writes from widgets.
 - **FR-102**: Coalesce bursts and reconnect using cursors; duplicate/out-of-order signals must not lose pending local writes or resurrect deletions.
 - **FR-103**: Subscription lifecycle follows account and membership; permission failures surface safely and fall back to existing resume/pull behavior.
@@ -30,7 +31,11 @@ not reassigns them. No additional feature is authorized merely by a technical se
 
 An RLS-filtered `DELETE` by a removed member affects zero rows and returns no error. The uploader marks it sent, and no membership check starts. A removed member who only deletes is therefore detected at the next resume or start. Options: return deleted rows (`.select()`) and treat an empty result for a known row as a possible denial, or rely on the FR-104 signal. Decide together with Q1. The old household loses nothing, because the removed member no longer has access to it.
 
+**Decision:** accepted as a known limitation of 009. It is not fixed here and relies on the FR-104 signal and the recovery paths above.
+
 ## User scenarios and acceptance
+
+See the [Realtime acceptance fixtures](contracts/acceptance.md).
 
 - **US1 / SC-001**: Two local clients converge after one edits and the other reconnects, without duplicate rows.
 - **US2 / SC-002**: After sign-out or member removal, old-channel events cannot change current-account UI/cache.
@@ -54,7 +59,7 @@ that UI task becomes Ready. English is used for engineering documents only.
 
 Producer specs: [008](../008-household-members/spec.md)
 
-- **Q1** (Dev 3 with reviewer): Select channel/publication policy, debounce/backoff budget and reconnect freshness target after a local load experiment.
+- **Q1** (Dev 3 and Dev 1, confirmed by Matija on 2026-11-23): use Postgres Changes on scoped revision tables, a 250 ms quiet window with a one-second cap, SDK reconnection, and a five-second local freshness target. See the [experiment](research.md) and [signal contract](contracts/signals.md).
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

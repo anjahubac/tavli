@@ -1,8 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:tavli/domain/meal_plan.dart';
+import 'package:tavli/domain/planning_tastes.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli/providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -55,6 +59,35 @@ Future<TestApp> pumpPlan(
 );
 
 void main() {
+  testTavli('pregled plana premešta čuvanje prema širini sadržaja', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpPlan(tester, size: wide, ai: fullWeek);
+    await tapButton(tester, 'Napravi plan');
+    await tapButton(tester, 'Predloži plan');
+
+    final save = find.text('Sačuvaj plan');
+    final fixedSave = find.descendant(
+      of: find.byType(TavliActionBar),
+      matching: save,
+    );
+    for (final width in [1200.0, 1000.0, 999.0, 720.0, 719.0, 320.0, 1200.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Jelo 1\n'), findsOneWidget);
+      expect(save, findsOneWidget);
+      expect(
+        fixedSave,
+        width == 1200 ? findsNothing : findsOneWidget,
+        reason: 'width: $width',
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   for (final (name, size) in [('telefon', phone), ('široko', wide)]) {
     testTavli('$name: prvi plan bez ostave — podešavanje, pregled, '
         'pa čuvanje', (tester) async {
@@ -97,9 +130,14 @@ void main() {
     await pumpPlan(tester);
     await tapButton(tester, 'Napravi plan');
 
-    final chips = tester.widgetList<FilterChip>(find.byType(FilterChip));
+    final chips = tester.widget<TavliMultiChoice<MealType>>(
+      find.byType(TavliMultiChoice<MealType>),
+    );
     expect(
-      [for (final c in chips) ((c.label as Text).data, c.selected)],
+      [
+        for (final o in chips.options)
+          (o.label, chips.selected.contains(o.value)),
+      ],
       [
         ('Doručak', false),
         ('Užina pre podne', false),
@@ -126,7 +164,13 @@ void main() {
       await pumpPlan(tester, size: size);
       await tapButton(tester, 'Napravi plan');
 
-      expect(find.byType(FilterChip), findsNWidgets(5));
+      expect(
+        find.descendant(
+          of: find.byType(TavliMultiChoice<MealType>),
+          matching: find.byType(Text),
+        ),
+        findsNWidgets(5),
+      );
       expect(tester.takeException(), isNull);
     });
   }
@@ -139,7 +183,7 @@ void main() {
 
     await tester.tap(find.text('Večera'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Više porcija'));
+    await tester.tap(iconButton('Više porcija'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Više opcija'));
     await tester.pumpAndSettle();
@@ -202,7 +246,10 @@ void main() {
     await tapButton(tester, 'Odbaci');
     expect(find.text('Odbaciti predlog?'), findsOneWidget);
     await tester.tap(
-      find.descendant(of: find.byType(AlertDialog), matching: button('Odbaci')),
+      find.descendant(
+        of: find.byType(TavliDialog<bool>),
+        matching: find.text('Odbaci'),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -217,7 +264,7 @@ void main() {
   group('zamena jednog jela u predlogu', () {
     /// Otvara izbor zamene za [index]-to jelo u predlogu.
     Future<void> openReplace(WidgetTester tester, int index) async {
-      final replace = find.byTooltip('Zameni jelo').at(index);
+      final replace = iconButton('Zameni jelo').at(index);
       await tester.ensureVisible(replace);
       await tester.pumpAndSettle();
       await tester.tap(replace);
@@ -262,6 +309,9 @@ void main() {
       expect(app.adapter.requests[before].data.toString(), contains('Jelo 3'));
       expect(await app.db.select(app.db.mealPlans).get(), isEmpty);
 
+      // Poruka o zameni prekriva traku dole dok ne nestane.
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
       await tapButton(tester, 'Sačuvaj plan');
       final titles = await app.titles();
       expect(titles, contains('Pasulj'));
@@ -288,6 +338,9 @@ void main() {
       expect(find.textContaining('Sarma\nIz mojih recepata'), findsOneWidget);
       expect(find.textContaining('Jelo 1\n'), findsNothing);
 
+      // Poruka o zameni prekriva traku dole dok ne nestane.
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
       await tapButton(tester, 'Sačuvaj plan');
       final entries = await app.db.select(app.db.mealPlanEntries).get();
       expect(entries, hasLength(7));
@@ -310,4 +363,62 @@ void main() {
       expect(await app.titles(), contains('Jelo 3'));
     });
   });
+
+  group('ukusi članova (TRELLO-41)', () {
+    testTavli('nedostupni ukusi: plan se pravi, a pregled to kaže', (
+      tester,
+    ) async {
+      await pumpTavli(
+        tester,
+        location: '/plan',
+        ai: fullWeek,
+        overrides: [
+          clockProvider.overrideWithValue(() => today),
+          planningTastesProvider.overrideWithValue(
+            const _Tastes(PlanningTastesUnavailable()),
+          ),
+        ],
+      );
+      await tapButton(tester, 'Napravi plan');
+      await tapButton(tester, 'Predloži plan');
+
+      expect(find.text('Sačuvaj plan'), findsOneWidget);
+      expect(
+        find.textContaining('Ukusi članova trenutno nisu dostupni'),
+        findsOneWidget,
+      );
+    });
+
+    testTavli('odbijeni ukusi: plan staje sa porukom, bez AI poziva', (
+      tester,
+    ) async {
+      final app = await pumpTavli(
+        tester,
+        location: '/plan',
+        ai: fullWeek,
+        overrides: [
+          clockProvider.overrideWithValue(() => today),
+          planningTastesProvider.overrideWithValue(
+            const _Tastes(PlanningTastesDenied()),
+          ),
+        ],
+      );
+      await tapButton(tester, 'Napravi plan');
+      await tapButton(tester, 'Predloži plan');
+
+      expect(
+        find.textContaining('Ukusi domaćinstva nisu mogli da se provere'),
+        findsOneWidget,
+      );
+      expect(app.adapter.requests, isEmpty);
+    });
+  });
+}
+
+class _Tastes implements PlanningTastesSource {
+  const _Tastes(this.error);
+  final Exception error;
+
+  @override
+  Future<PlanningTastes> current() async => throw error;
 }

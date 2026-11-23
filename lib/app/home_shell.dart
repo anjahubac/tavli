@@ -274,3 +274,33 @@ class _LargeTextDestination extends StatelessWidget {
     );
   }
 }
+
+/// Okvir Profila i podešavanja: na širokom ekranu bočna navigacija ostaje,
+/// sa istaknutim Profilom dole (platno: Profil, Izgled, AI ključevi na
+/// računaru). Na telefonu samo ekran, preko tabova.
+class ProfileShell extends ConsumerWidget {
+  const ProfileShell({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (MediaQuery.sizeOf(context).width < wideLayoutWidth) return child;
+    return Scaffold(
+      body: Row(
+        children: [
+          TavliNavigation(
+            layout: TavliNavigationLayout.side,
+            destinations: _destinations,
+            selectedIndex: null,
+            onSelected: (index) => context.go(tabs[index].path),
+            initials: profileInitials(ref),
+            profileSelected: true,
+            onProfile: () => context.go('/profile'),
+          ),
+          Expanded(child: TavliBesideNavigation(child: child)),
+        ],
+      ),
+    );
+  }
+}

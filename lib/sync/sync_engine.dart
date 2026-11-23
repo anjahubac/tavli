@@ -43,6 +43,9 @@ class Rejected extends SyncStatus {
 /// Duži posao posle prijave: prebacivanje starih podataka, preuzimanje.
 enum SyncPhase { moving, downloading }
 
+/// Whether a pull needs another attempt after a transient sync error.
+enum PullOutcome { settled, retryableFailure }
+
 typedef TimerFactory = Timer Function(Duration, void Function());
 
 /// Raspored slanja i preuzimanja za jedan prijavljen nalog (research R13).
@@ -143,7 +146,10 @@ class SyncEngine {
   }
 
   /// Posle prijave ili pokretanja aplikacije: slanje pa preuzimanje.
-  Future<void> onStart() async {
+  Future<void> onStart() => _startup = _start();
+  Future<void>? _startup;
+
+  Future<void> _start() async {
     // Slanje prekinuto gašenjem aplikacije: te izmene opet čekaju.
     await (_db.update(_db.syncOutbox)..where(
           (t) =>
@@ -223,34 +229,46 @@ class SyncEngine {
     );
   });
 
+  /// A Realtime check may arrive after an ongoing pull read the changed table.
+  Future<PullOutcome> pullAfterCurrent() async {
+    await _startup;
+    while (!_stopped) {
+      final underway = _membershipCheck?.future ?? _pullFinished?.future;
+      if (underway == null) return pull();
+      await underway;
+    }
+    return PullOutcome.settled;
+  }
+
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
-  Future<void> pull() async {
+  Future<PullOutcome> pull() async {
     final downloader = _downloader;
     if (_stopped ||
         _membershipCheck != null ||
         downloader == null ||
         _pullFinished != null) {
-      return;
+      return PullOutcome.settled;
     }
     final finished = _pullFinished = Completer<void>();
     var adoptedWeek = false;
+    var outcome = PullOutcome.settled;
     try {
       // Prevezivanje lokalnih redova i slanje njihovog starog ID-ja ne smeju
       // da teku istovremeno.
       if (_running) await _inFlight;
-      if (_stopped) return;
+      if (_stopped) return PullOutcome.settled;
       final first = !((await _account())?.initialDownloadDone ?? false);
       if (first) setPhase(SyncPhase.downloading);
       final result = await _download(downloader);
       adoptedWeek = result.adoptedWeek;
-      if (_stopped) return;
+      if (_stopped) return PullOutcome.settled;
       await (_db.update(_db.accounts)..where(
             (t) =>
                 t.userId.equals(_scope.userId) &
                 t.householdId.equals(_scope.householdId),
           ))
           .write(AccountsCompanion(catalogStatus: Value(result.catalog.name)));
-      if (_stopped) return;
+      if (_stopped) return PullOutcome.settled;
       await afterPull?.call();
       // Preuzimanje je stiglo do kraja i kad je neki red odložen: taj red
       // ostaje ispred sačuvane pozicije i ponovo se pokušava pri sledećem
@@ -271,8 +289,11 @@ class SyncEngine {
     } on UnauthorizedSyncError {
       setPhase(null);
       if (!_stopped) await onUnauthorized?.call();
-    } on SyncError {
-      // Bez mreže: nastavlja se sledeći put od sačuvane pozicije.
+    } on TransientSyncError {
+      // Nastavlja se od sačuvane pozicije.
+      setPhase(null);
+      outcome = PullOutcome.retryableFailure;
+    } on PermanentSyncError {
       setPhase(null);
     } finally {
       _pullFinished = null;
@@ -280,6 +301,7 @@ class SyncEngine {
       if (!_stopped) await refreshStatus();
     }
     if (adoptedWeek && !_stopped) await push();
+    return _stopped ? PullOutcome.settled : outcome;
   }
 
   Future<({int deferred, bool adoptedWeek, CatalogStatus catalog})> _download(

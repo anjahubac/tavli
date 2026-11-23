@@ -41,9 +41,10 @@ class AppearanceScreen extends ConsumerWidget {
           title: 'Režim',
           children: [
             TavliChoice<AppThemeMode>.segmented(
+              expand: true,
               options: [
                 for (final mode in AppThemeMode.values)
-                  TavliOption(mode, mode.label),
+                  TavliOption(mode, mode.label, glyph: _modeGlyph[mode]),
               ],
               selected: choice.mode,
               onChanged: (mode) => unawaited(set(choice.copyWith(mode: mode))),
@@ -67,6 +68,13 @@ class AppearanceScreen extends ConsumerWidget {
     );
   }
 }
+
+/// Ikonice režima, kao na platnu (Izgled).
+const _modeGlyph = {
+  AppThemeMode.light: TavliIcons.lightMode,
+  AppThemeMode.dark: TavliIcons.darkMode,
+  AppThemeMode.system: TavliIcons.systemMode,
+};
 
 /// Kartica teme: naziv i mali primer (red recepta i glavno dugme) u bojama
 /// te teme, u trenutnom režimu.
@@ -111,7 +119,7 @@ class _ThemeCard extends StatelessWidget {
                       theme.label,
                       style: TavliSectionHeaderStyle.bold,
                       trailing: selected
-                          ? Icon(Icons.check_rounded, color: p.primary)
+                          ? TavliIcon(TavliIcons.check, color: p.primary)
                           : null,
                     ),
                     const TavliListGroup(
@@ -119,7 +127,9 @@ class _ThemeCard extends StatelessWidget {
                         TavliListRow(
                           title: 'Pasta sa povrćem',
                           subtitle: 'Recept · 20 min',
-                          leading: TavliThumbnail.row(),
+                          leading: TavliThumbnail.row(
+                            glyph: TavliIcons.recipes,
+                          ),
                         ),
                       ],
                     ),

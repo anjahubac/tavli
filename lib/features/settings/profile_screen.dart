@@ -21,6 +21,7 @@ class ProfileScreen extends StatelessWidget {
       title: 'Profil',
       // Otvoren direktnom adresom nema kuda nazad, pa vodi na početni tab.
       fallbackLocation: homeLocation,
+      backWhenWide: false,
       children: [
         SettingsColumns(
           start: const [AccountSection(), _DietSection()],
@@ -33,14 +34,14 @@ class ProfileScreen extends StatelessWidget {
                     TavliListRow(
                       title: 'Izgled',
                       subtitle: 'Boje, tema i svetli ili tamni režim',
-                      leading: const Icon(Icons.palette_outlined),
+                      leading: const TavliIcon(TavliIcons.palette),
                       showChevron: true,
                       onTap: () => context.go('/profile/appearance'),
                     ),
                     TavliListRow(
                       title: 'AI ključevi',
                       subtitle: 'Gemini, Groq, OpenRouter',
-                      leading: const Icon(Icons.key_outlined),
+                      leading: const TavliIcon(TavliIcons.key),
                       showChevron: true,
                       onTap: () => context.go('/profile/ai-keys'),
                     ),
@@ -48,7 +49,7 @@ class ProfileScreen extends StatelessWidget {
                       TavliListRow(
                         title: 'Animacije',
                         subtitle: 'Pregled animacija (samo za razvoj)',
-                        leading: const Icon(Icons.animation),
+                        leading: const TavliIcon(TavliIcons.sparkle),
                         showChevron: true,
                         onTap: () => context.go('/profile/animations'),
                       ),
@@ -56,7 +57,7 @@ class ProfileScreen extends StatelessWidget {
                       TavliListRow(
                         title: 'Komponente',
                         subtitle: 'Galerija UI biblioteke (samo za razvoj)',
-                        leading: const Icon(Icons.widgets_outlined),
+                        leading: const TavliIcon(TavliIcons.checklist),
                         showChevron: true,
                         onTap: () => context.push(componentsPath),
                       ),

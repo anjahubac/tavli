@@ -123,6 +123,20 @@ DateRange weekOf(CivilDate date) {
   return DateRange(monday, monday.addDays(6));
 }
 
+/// Dan [weeks] nedelja posle [date] (pre, za negativan broj).
+CivilDate addWeeks(CivilDate date, int weeks) =>
+    date.addDays(DateTime.daysPerWeek * weeks);
+
+/// Prvi dan meseca [months] meseci posle meseca u kome je [date].
+CivilDate firstOfMonthAfter(CivilDate date, int months) {
+  final m = date.month - 1 + months;
+  return CivilDate(
+    date.year + (m / DateTime.monthsPerYear).floor(),
+    m % DateTime.monthsPerYear + 1,
+    1,
+  );
+}
+
 /// Ceo kalendarski mesec u kome je [date].
 DateRange monthOf(CivilDate date) {
   final first = CivilDate(date.year, date.month, 1);

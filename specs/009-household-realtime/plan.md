@@ -1,15 +1,16 @@
 # Implementation plan: Household change signals and reconnect recovery
 
-**Status**: scoped proposal; runtime implementation not started by this revision.
+**Status**: implementation in review; release and device acceptance are pending.
 **Spec**: [requirements](spec.md) | **Lead/review**: Dev 3 / Dev 1
 **Baseline**: dev 207c94c; every implementing branch starts from then-current origin/dev.
 
 ## Existing boundaries and proposed files
 
 - `lib/sync/sync_engine.dart`
-- `lib/sync/sync_remote.dart`
+- `lib/sync/realtime_sync.dart` and `lib/sync/supabase_sync_signals.dart`
+- `lib/sync/uploader.dart`
 - `lib/providers.dart`
-- `lib/account/auth_controller.dart`
+- `lib/app/app.dart` for foreground lifecycle
 - `supabase/migrations/`
 
 Items marked new/proposed/external do not exist at baseline. Verify exact existing
@@ -74,3 +75,20 @@ compatibility, pending-outbox migration, failure/undo and forward recovery for
 state changes. No destructive reset as a migration. Platform/source/legal/retention
 limits from open questions remain release gates. UI follows the design canvas and the
 UI standard; do not invent layouts or move components into the package incidentally.
+
+
+## Impact of this slice
+
+- Privacy: household signals carry scope IDs and revisions only. Personal
+  membership signals are visible to their account only.
+- Abuse: clients cannot send revisions. Eligibility is limited to the caller's
+  household. Statement-level triggers merge row updates into a single bump per
+  household per statement.
+- Credentials, file access, AI and UI: N/A for this slice.
+- Schema and deployment: additive Supabase migration, no Drift schema change.
+  Confirm that the Realtime publication has no manually configured tables
+  before deployment. The migration requires exclusive use of the publication
+  to prevent disclosure through DELETE events. Deploy SQL before enabling
+  the client for users. Existing clients retain
+  the prior sync path. Shared lifecycle wiring requires Dev 4 review.
+  Dev 3 and Dev 1 coordinate shared providers and sync changes.

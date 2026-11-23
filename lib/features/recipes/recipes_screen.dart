@@ -8,15 +8,18 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../app/animations/empty_tabs.dart';
 import '../../app/animations/spoon_refresh.dart';
 import '../../app/app_menu.dart';
+import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/recipe_labels.dart';
 import '../../domain/recipe_search.dart';
 import 'add_recipe_sheet.dart';
+import 'cook_from_pantry_screen.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
 import 'recipe_providers.dart';
+import 'recipe_rating_section.dart';
 
 /// Od ove širine sadržaja recepti su mreža u tri kolone sa zaglavljem
 /// (platno, macOS i Windows · Recepti); uže je lista kartica kao na telefonu.
@@ -51,16 +54,20 @@ class RecipesScreen extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= _gridMinWidth;
+        // Uz bočnu navigaciju (računar) „Dodaj recept“ je u zaglavlju, kao
+        // na platnu, i kad je prozor uzak za mrežu.
+        final header =
+            wide || MediaQuery.sizeOf(context).width >= wideLayoutWidth;
         return Scaffold(
           appBar: const TabAppBar(),
-          floatingActionButton: wide
+          floatingActionButton: header
               ? null
               : TavliFloatingButton(
                   icon: Icons.add,
                   label: 'Dodaj recept',
                   onPressed: () => showAddRecipeSheet(context),
                 ),
-          body: _RecipesBody(wide: wide),
+          body: _RecipesBody(wide: wide, header: header),
         );
       },
     );
@@ -79,9 +86,13 @@ class RecipeRoute extends StatelessWidget {
 }
 
 class _RecipesBody extends ConsumerStatefulWidget {
-  const _RecipesBody({required this.wide});
+  const _RecipesBody({required this.wide, required this.header});
 
+  /// Mreža kartica umesto liste.
   final bool wide;
+
+  /// Zaglavlje „Recepti“ sa pretragom i „Dodaj recept“ (računar).
+  final bool header;
 
   @override
   ConsumerState<_RecipesBody> createState() => _RecipesBodyState();
@@ -122,8 +133,15 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
     onChanged: ref.read(recipeSearchProvider.notifier).setQuery,
   );
 
+  /// „Šta da skuvam?“ (TRELLO-103): recepti od onoga što je u ostavi.
+  Widget _pantryButton() => TavliIconButton(
+    glyph: TavliIcons.cook,
+    semanticLabel: 'Šta da skuvam?',
+    onPressed: () => context.push(cookFromPantryPath),
+  );
+
   Widget _filterButton(RecipeFilter filter) => TavliIconButton(
-    icon: Icons.tune,
+    glyph: TavliIcons.filter,
     semanticLabel: filter.hasFilters
         ? 'Filteri (${filter.activeFilters})'
         : 'Filteri',
@@ -150,7 +168,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
           loading: () => const TavliLoading(),
           error: (_, _) => const _ScrollableMessage(
             TavliEmptyState(
-              icon: Icons.error_outline,
+              glyph: TavliIcons.info,
               title: 'Recepti nisu učitani.',
             ),
           ),
@@ -170,7 +188,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
               return _ScrollableMessage(
                 filter.hasFilters
                     ? TavliEmptyState(
-                        icon: Icons.search_off,
+                        glyph: TavliIcons.search,
                         title: 'Nema recepata za izabrane filtere.',
                         action: TavliButton.secondary(
                           label: 'Očisti filtere',
@@ -180,7 +198,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                         ),
                       )
                     : TavliEmptyState(
-                        icon: Icons.search_off,
+                        glyph: TavliIcons.search,
                         title: 'Nema recepata za „${filter.query.trim()}“.',
                       ),
               );
@@ -192,7 +210,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
           },
         );
 
-    if (!widget.wide) {
+    if (!widget.header) {
       final hasRecipes = ref.watch(recipesProvider).value?.isNotEmpty ?? false;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,6 +228,8 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                   Expanded(child: _searchField()),
                   const SizedBox(width: TavliSpacing.small),
                   _filterButton(filter),
+                  const SizedBox(width: TavliSpacing.small),
+                  _pantryButton(),
                 ],
               ),
             ),
@@ -232,6 +252,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
             actions: [
               SizedBox(width: _searchWidth, child: _searchField()),
               _filterButton(filter),
+              _pantryButton(),
               TavliButton.primary(
                 label: 'Dodaj recept',
                 icon: Icons.add,
@@ -253,21 +274,45 @@ String _recipeFacts(Recipe recipe) => [
 ].join(' · ');
 
 /// Naziv i vreme sa porcijama, kao na kartici recepta.
-class _RecipeTitle extends StatelessWidget {
+class _RecipeTitle extends ConsumerWidget {
   const _RecipeTitle(this.recipe);
 
   final Recipe recipe;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = Theme.of(context).textTheme;
+    final summary = ref.watch(
+      recipeRatingSummariesProvider.select((s) => s.value?[recipe.id]),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(recipe.title, style: t.titleMedium),
-        Text(
-          _recipeFacts(recipe),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: _recipeFacts(recipe)),
+              if (summary != null) ...[
+                const TextSpan(text: '  '),
+                const WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: TavliIcon(
+                    TavliIcons.star,
+                    size: 14,
+                    color: ratingStarColor,
+                    filled: true,
+                  ),
+                ),
+                TextSpan(
+                  text:
+                      ' ${ratingAverageLabel(summary.averageStars)}'
+                      ' (${summary.ratingCount})',
+                ),
+              ],
+            ],
+          ),
           style: t.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -312,7 +357,6 @@ class _RecipeList extends StatelessWidget {
                 children: [
                   TavliThumbnail.row(
                     tintIndex: i,
-                    icon: Icons.soup_kitchen_outlined,
                     photo: path == null ? null : RecipePhoto(path),
                   ),
                   const SizedBox(width: TavliSpacing.medium),
@@ -358,7 +402,6 @@ class _RecipeGrid extends StatelessWidget {
               children: [
                 TavliThumbnail.cardTop(
                   tintIndex: i,
-                  icon: Icons.soup_kitchen_outlined,
                   photo: path == null ? null : RecipePhoto(path),
                 ),
                 Padding(

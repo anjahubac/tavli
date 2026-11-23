@@ -77,6 +77,48 @@ abstract final class TavliIcons {
     'M13 7l4 4',
   ]);
   static const close = TavliIconData('close', ['M6 6l12 12M18 6L6 18']);
+  static const remove = TavliIconData('remove', ['M5 12h14']);
+  static const filter = TavliIconData('filter', [
+    'M4 7h9M17 7h3M4 17h3M11 17h9',
+    'circle 15 7 2',
+    'circle 9 17 2',
+  ]);
+  static const checklist = TavliIconData('checklist', [
+    'M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17',
+    'M11 6h9M11 12h9M11 18h9',
+  ]);
+  static const timer = TavliIconData('timer', [
+    'circle 12 13 7',
+    'M12 9v4l2.5 2.5M10 3h4',
+  ]);
+  static const servings = TavliIconData('servings', [
+    'circle 9 9 3',
+    'M3.5 19a5.5 5.5 0 0 1 11 0',
+    'circle 17 10 2.5',
+    'M15.5 15.2a4.5 4.5 0 0 1 5.5 3.8',
+  ]);
+  static const joinHousehold = TavliIconData('joinHousehold', [
+    'circle 9 8 3.5',
+    'M3 19a6 6 0 0 1 12 0',
+    'M18 8v6M15 11h6',
+  ]);
+  static const more = TavliIconData('more', [
+    'circle 12 5.5 1',
+    'circle 12 12 1',
+    'circle 12 18.5 1',
+  ]);
+  static const swap = TavliIconData('swap', [
+    'M5 8h14M15 4l4 4-4 4',
+    'M19 16H5M9 12l-4 4 4 4',
+  ]);
+  static const sparkle = TavliIconData('sparkle', [
+    'M11 4l1.8 5.2L18 11l-5.2 1.8L11 18l-1.8-5.2L4 11l5.2-1.8z',
+    'M18 3v4M16 5h4',
+  ]);
+  static const replay = TavliIconData('replay', [
+    'M5 12a7 7 0 1 0 2-4.9',
+    'M5 4v4h4',
+  ]);
   static const today = TavliIconData('today', [
     'rect 4 5 16 15 3',
     'M4 10h16',
@@ -86,6 +128,8 @@ abstract final class TavliIcons {
   // Strelice.
   static const back = TavliIconData('back', ['M15 5l-7 7 7 7']);
   static const chevronRight = TavliIconData('chevronRight', ['M9 5l7 7-7 7']);
+  static const chevronDown = TavliIconData('chevronDown', ['M5 9l7 7 7-7']);
+  static const chevronUp = TavliIconData('chevronUp', ['M5 15l7-7 7 7']);
   static const arrowForward = TavliIconData('arrowForward', [
     'M5 12h14M13 6l6 6-6 6',
   ]);
@@ -150,6 +194,9 @@ abstract final class TavliIcons {
   static const lock = TavliIconData('lock', [
     'rect 5 11 14 10 2',
     'M8 11V8a4 4 0 0 1 8 0v3',
+  ]);
+  static const star = TavliIconData('star', [
+    'M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z',
   ]);
   static const dish = TavliIconData('dish', [
     'M5 10h14v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z',
@@ -226,9 +273,21 @@ abstract final class TavliIcons {
     delete,
     edit,
     close,
+    remove,
+    filter,
+    checklist,
+    timer,
+    servings,
+    joinHousehold,
+    more,
+    swap,
+    sparkle,
+    replay,
     today,
     back,
     chevronRight,
+    chevronDown,
+    chevronUp,
     arrowForward,
     arrowBack,
     key,
@@ -244,6 +303,7 @@ abstract final class TavliIcons {
     like,
     dislike,
     lock,
+    star,
     dish,
     allergenGluten,
     allergenMilk,
@@ -272,9 +332,13 @@ class TavliIcon extends StatelessWidget {
     this.size,
     this.color,
     this.semanticLabel,
+    this.filled = false,
   });
 
   final TavliIconData icon;
+
+  /// Popunjen oblik (zvezdica ocene, srce omiljenog), uz liniju.
+  final bool filled;
   final double? size;
   final Color? color;
   final String? semanticLabel;
@@ -287,7 +351,7 @@ class TavliIcon extends StatelessWidget {
         color ?? theme.color ?? DefaultTextStyle.of(context).style.color!;
     final drawing = SizedBox.square(
       dimension: side,
-      child: CustomPaint(painter: _IconPainter(icon, paint)),
+      child: CustomPaint(painter: _IconPainter(icon, paint, filled)),
     );
     if (semanticLabel == null) return ExcludeSemantics(child: drawing);
     return Semantics(label: semanticLabel, image: true, child: drawing);
@@ -295,10 +359,11 @@ class TavliIcon extends StatelessWidget {
 }
 
 class _IconPainter extends CustomPainter {
-  _IconPainter(this.icon, this.color);
+  _IconPainter(this.icon, this.color, this.filled);
 
   final TavliIconData icon;
   final Color color;
+  final bool filled;
 
   static final _cache = <String, Path>{};
 
@@ -314,18 +379,21 @@ class _IconPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..isAntiAlias = true;
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
     for (final shape in icon.shapes) {
-      canvas.drawPath(
-        _cache.putIfAbsent(shape, () => parseIconShape(shape)),
-        stroke,
-      );
+      final path = _cache.putIfAbsent(shape, () => parseIconShape(shape));
+      if (filled) canvas.drawPath(path, fill);
+      canvas.drawPath(path, stroke);
     }
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_IconPainter old) =>
-      old.icon != icon || old.color != color;
+      old.icon != icon || old.color != color || old.filled != filled;
 }
 
 /// Pretvara jedan oblik iz [TavliIconData.shapes] u [Path]: `rect x y w h
