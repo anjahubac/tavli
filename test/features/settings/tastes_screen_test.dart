@@ -307,7 +307,7 @@ void main() {
     expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
   });
 
-  testTavli('širok ekran: dve kolone i pretraga namirnica u kartici', (
+  testTavli('širok ekran: dve kolone, namirnice kao pilule sa „Dodaj“', (
     tester,
   ) async {
     final app = await _open(tester, size: wide);
@@ -318,11 +318,21 @@ void main() {
     expect(kinds.dy, closeTo(allergens.dy, 4));
     expect(find.byType(TavliToggleChip), findsNWidgets(14));
 
-    await tester.enterText(find.byType(TextField).first, 'cvek');
+    // Bez polja za pretragu u kartici: „Dodaj“ u redu „Ne volim“ otvara
+    // prozor sa izborom već postavljenim na Ne volim.
+    expect(find.byType(TextField), findsNothing);
+    await _tap(tester, find.byType(TavliAddChip).at(1));
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Dodaj namirnicu'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, 'cvek');
     await tester.pumpAndSettle();
-    await tester.tap(iconButton('Ne volim: Cvekla'));
+    await tester.tap(find.widgetWithText(TavliButton, 'Ne volim'));
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TavliButton, 'Gotovo'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsNothing);
     expect((await _tastes(app).getFoodPreferences()).disliked, {_beet});
+    expect(find.text('Cvekla'), findsOneWidget);
   });
 
   for (final size in [const Size(320, 700), wide]) {

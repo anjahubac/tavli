@@ -435,9 +435,11 @@ class TavliAddChip extends StatelessWidget {
                       spacing: 4,
                       children: [
                         TavliIcon(TavliIcons.add, size: 16, color: c.primary),
-                        Text(
-                          label,
-                          style: _chipLabel(context, c.primary, true),
+                        Flexible(
+                          child: Text(
+                            label,
+                            style: _chipLabel(context, c.primary, true),
+                          ),
                         ),
                       ],
                     ),

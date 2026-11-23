@@ -126,9 +126,9 @@ and the “Deli opis” consent are deferred to the later note slice.
   “2 alergena · 6 sviđanja · 3 omiljena recepta” (zero parts omitted;
   “Ništa nije izabrano” when nothing is chosen). “Sviđanja” counts liked dish
   kinds, cuisines and foods.
-- Intro: “Tavli ovo koristi da predloži jela koja ti prijaju. Promene se čuvaju same.”
+- Intro: “Tavli ovo koristi da predloži jela koja ti prijaju.”
 - “Alergeni”, summary “Izabrano: {n}” or “Nijedan”, help “Jela sa ovim
-  sastojcima ne ulaze u plan. Izbor vidiš samo ti.” Labels: Gluten, Mleko,
+  sastojcima ne ulaze u plan.” Labels: Gluten, Mleko,
   Jaja, Orašasti plodovi, Kikiriki, Riba, Rakovi, Mekušci, Soja, Susam, Celer,
   Slačica, Sulfiti, Lupina.
 - “Vrste jela” with help “Dodirni jednom za Volim, još jednom za Ne volim.”;
@@ -143,15 +143,17 @@ and the “Deli opis” consent are deferred to the later note slice.
   omiljene: {naziv}” and “Ukloni iz omiljenih: {naziv}”.
 - “Namirnice” with help “Ono što ne voliš ne zabranjuje jelo, samo ga ređe
   predlažemo.”, groups “Volim” and “Ne volim”, chip action “Ukloni {naziv}”.
-  Phone sheet: “Dodaj namirnicu”, “Pretraži namirnice”, “Već je u Volim”,
+  Each group ends with a “Dodaj” pill that opens the picker (phone sheet,
+  wide dialog) preset to that group: “Dodaj namirnicu”, “Pretraži namirnice”, “Već je u Volim”,
   “Već je u Ne volim”, “Ukloni”, “Nema te namirnice u katalogu.”; empty
   catalog “Katalog namirnica još nije preuzet” / “Namirnice stižu sa servera
-  kad je aplikacija na mreži.” Wide field “Dodaj namirnicu…” with
-  “Enter: Volim · Shift+Enter: Ne volim” (the canvas ⇧ glyph is not in the
-  bundled font), option buttons “Volim: {naziv}” / “Ne volim: {naziv}”.
-- “Plan domaćinstva”: switch “Deli ukuse i omiljene”, subtitle “Pomažu kad
-  Tavli pravi plan za sve. Ostali članovi ne vide tvoje izbore.”, lock note
-  “Alergene plan uvek poštuje, i kad je deljenje isključeno. Niko ih drugi ne vidi.”
+  kad je aplikacija na mreži.” Wide layout: “Volim” and “Ne volim” labels
+  on the left with the pills beside them (product owner review replaced the
+  canvas search field and its keyboard shortcuts).
+- “Plan domaćinstva”: switch “Deli ukuse i omiljene”, subtitle “Pomaže u
+  preporuci recepata.”, lock note “Alergene plan uvek poštuje, i kad je
+  deljenje isključeno.” Product owner review shortened the intro, allergen,
+  sharing and lock copy from the canvas text.
 - Consent confirmation before enabling (not on the canvas; required by the
   [contract](contracts/member-planning-inputs.md#disclosure-and-consent), which
   asks the consent text to name the AI provider; needs Dev 4 review):

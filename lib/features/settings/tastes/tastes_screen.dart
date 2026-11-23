@@ -68,8 +68,7 @@ class _Intro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-    'Tavli ovo koristi da predloži jela koja ti prijaju. '
-    'Promene se čuvaju same.',
+    'Tavli ovo koristi da predloži jela koja ti prijaju.',
     style: _helpStyle(context),
   );
 }
@@ -150,7 +149,7 @@ class _AllergensSection extends ConsumerWidget {
     }
 
     final help = Text(
-      'Jela sa ovim sastojcima ne ulaze u plan. Izbor vidiš samo ti.',
+      'Jela sa ovim sastojcima ne ulaze u plan.',
       style: _helpStyle(context),
     );
     final summary = _HeaderNote(
@@ -190,14 +189,14 @@ class _AllergensSection extends ConsumerWidget {
       child: _Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: TavliSpacing.small,
+          spacing: TavliSpacing.medium,
           children: [
             help,
             for (var i = 0; i < tiles.length; i += 2)
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: TavliSpacing.small,
+                  spacing: TavliSpacing.medium,
                   children: [
                     Expanded(child: tiles[i]),
                     Expanded(
@@ -523,13 +522,12 @@ class _FoodsSection extends ConsumerWidget {
                     ? () => setFoodLiking(ref, f.id, TavliLiking.none)
                     : null,
               ),
-            if (!wide)
-              TavliAddChip(
-                label: 'Dodaj',
-                onTap: enabled
-                    ? () => showFoodPicker(context, initial: liking)
-                    : null,
-              ),
+            TavliAddChip(
+              label: 'Dodaj',
+              onTap: enabled
+                  ? () => showFoodPicker(context, initial: liking, wide: wide)
+                  : null,
+            ),
           ],
         );
 
@@ -539,10 +537,13 @@ class _FoodsSection extends ConsumerWidget {
     );
     const likeRow = _FoodGroupLabel(liking: TavliLiking.like);
     const dislikeRow = _FoodGroupLabel(liking: TavliLiking.dislike);
-    if (!wide) {
+    // Uz krupan tekst oznaka ne staje pored pilula, pa ide iznad njih kao
+    // na telefonu.
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+    if (!wide || largeText) {
       return _TasteSection(
         title: 'Namirnice',
-        help: help,
+        help: wide ? null : help,
         child: _Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -558,6 +559,8 @@ class _FoodsSection extends ConsumerWidget {
         ),
       );
     }
+    // Računar: oznaka „Volim“ / „Ne volim“ levo, pilule i „+ Dodaj“
+    // desno; „Dodaj“ otvara prozor sa pretragom namirnica.
     return _TasteSection(
       title: 'Namirnice',
       child: _Panel(
@@ -565,38 +568,31 @@ class _FoodsSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: TavliSpacing.medium,
           children: [
-            InlineFoodSearch(enabled: enabled),
             Table(
               columnWidths: const {
                 0: IntrinsicColumnWidth(),
                 1: FlexColumnWidth(),
               },
               children: [
-                for (final (label, list, liking) in [
+                for (final (i, (label, list, liking)) in [
                   (likeRow, liked, TavliLiking.like),
                   (dislikeRow, disliked, TavliLiking.dislike),
-                ])
+                ].indexed)
                   TableRow(
                     children: [
                       Padding(
-                        padding: const EdgeInsetsDirectional.only(
-                          end: TavliSpacing.medium,
+                        padding: EdgeInsetsDirectional.only(
+                          end: TavliSpacing.large,
                           top: TavliSpacing.medium,
+                          bottom: i == 0 ? TavliSpacing.medium : 0,
                         ),
                         child: label,
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: TavliSpacing.small,
+                        padding: EdgeInsets.only(
+                          bottom: i == 0 ? TavliSpacing.medium : 0,
                         ),
-                        child: list.isEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.only(
-                                  top: TavliSpacing.medium,
-                                ),
-                                child: Text('—', style: _helpStyle(context)),
-                              )
-                            : chips(list, liking),
+                        child: chips(list, liking),
                       ),
                     ],
                   ),
@@ -686,9 +682,7 @@ class _SharingSection extends ConsumerWidget {
             children: [
               TavliSwitchRow(
                 title: 'Deli ukuse i omiljene',
-                subtitle:
-                    'Pomažu kad Tavli pravi plan za sve. Ostali članovi ne '
-                    'vide tvoje izbore.',
+                subtitle: 'Pomaže u preporuci recepata.',
                 value: value,
                 onChanged: ready ? change : null,
               ),
@@ -728,8 +722,7 @@ class _AllergenAssurance extends StatelessWidget {
           TavliIcon(TavliIcons.lock, size: 16, color: style?.color),
           Expanded(
             child: Text(
-              'Alergene plan uvek poštuje, i kad je deljenje isključeno. '
-              'Niko ih drugi ne vidi.',
+              'Alergene plan uvek poštuje, i kad je deljenje isključeno.',
               style: style,
             ),
           ),
