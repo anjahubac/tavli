@@ -188,9 +188,9 @@ void main() {
     }
   }
 
-  testTavli('Profil u debug verziji ima Animacije', (tester) async {
+  testTavli('Profil nema ulaz u Animacije', (tester) async {
     await pumpTavli(tester, location: '/profile');
-    expect(find.text('Animacije'), findsOneWidget);
+    expect(find.text('Animacije'), findsNothing);
     expect(find.text('Izgled'), findsOneWidget);
   });
 }
