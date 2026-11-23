@@ -25,6 +25,7 @@ enum AITask {
   recipeRefine('recipe_refine'),
   planOutline('plan_outline'),
   recipeSummaries('recipe_summaries'),
+  recipeImageDescription('recipe_image_description'),
   pantryFromPhoto('pantry_from_photo'),
 
   /// Glasovni nacrt recepta: prepis + nacrt → dozvoljene radnje (spec 027).

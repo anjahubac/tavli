@@ -106,7 +106,7 @@ void main() {
     expect(calls, ['GET', 'POST']);
   });
 
-  test('completion encodes the task ID for all six Tavli AI tasks', () async {
+  test('completion encodes the task ID for every Tavli AI task', () async {
     final bodies = <Map<String, Object?>>[];
     final client = GatewayChatClient(
       accountId: () => 'account',
@@ -139,6 +139,7 @@ void main() {
       'recipe_refine',
       'plan_outline',
       'recipe_summaries',
+      'recipe_image_description',
       'pantry_from_photo',
       'voice_draft_actions',
     ]);

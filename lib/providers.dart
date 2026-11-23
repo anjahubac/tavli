@@ -19,6 +19,7 @@ import 'ai/key_store.dart';
 import 'ai/meal_plan_ai.dart';
 import 'ai/pantry_ai.dart';
 import 'ai/recipe_ai.dart';
+import 'ai/recipe_image_client.dart';
 import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
@@ -26,10 +27,12 @@ import 'data/favorite_repository.dart';
 import 'data/food_catalog_reader.dart';
 import 'data/planning_sharing_repository.dart';
 import 'data/planning_tastes_remote.dart';
+import 'data/recipe_image_jobs.dart';
 import 'data/shopping_repository.dart';
 import 'data/taste_profile_repository.dart';
 import 'domain/planning_tastes.dart';
 import 'features/planning/planning_providers.dart';
+import 'features/recipes/recipe_image_queue.dart';
 import 'features/recipes/recipe_providers.dart';
 import 'sync/downloader.dart';
 import 'sync/legacy_mover.dart';
@@ -286,6 +289,43 @@ final aiRouterProvider = Provider<AIRouter>(
 final recipeAIProvider = Provider<RecipeAI>(
   (ref) => RecipeAI(ref.watch(aiRouterProvider)),
 );
+
+final recipeImageClientProvider = Provider<RecipeImageClient?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? null
+      : RecipeImageClient.supabase(client, refresh: () => _refreshSession(ref));
+});
+
+/// AI slike za AI recepte (TRELLO-130), u pozadini dok je nalog prijavljen;
+/// null bez naloga ili servera. Nov nalog → nov red (stari se zaustavlja).
+final Provider<RecipeImageQueue?> recipeImageQueueProvider =
+    Provider<RecipeImageQueue?>((ref) {
+      final verified = ref.watch(
+        authControllerProvider.select(
+          (state) => state is SignedIn && state.membershipVerified,
+        ),
+      );
+      if (!verified) return null;
+      final scope = ref.watch(accountScopeProvider);
+      final client = ref.watch(recipeImageClientProvider);
+      final photos = ref.watch(photoRemoteProvider);
+      if (scope == null || client == null || photos == null) return null;
+      final recipeAI = ref.watch(recipeAIProvider);
+      final queue = RecipeImageQueue(
+        jobs: RecipeImageJobStore(ref.watch(databaseProvider), scope),
+        recipes: ref.watch(recipeRepositoryProvider),
+        client: client,
+        photos: photos,
+        store: ref.watch(recipePhotoStoreProvider),
+        scope: scope,
+        describe: recipeAI.describeImage,
+        clock: ref.watch(clockProvider),
+      );
+      ref.onDispose(queue.stop);
+      queue.start();
+      return queue;
+    });
 
 /// Ukusi članova za plan (TRELLO-41); bez Supabase klijenta nema ukusa.
 final planningTastesProvider = Provider<PlanningTastesSource?>((ref) {

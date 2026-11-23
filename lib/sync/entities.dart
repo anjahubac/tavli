@@ -118,6 +118,8 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
     'weight': r.weight,
     'dish_kind': r.dishKind,
     'labels_source': r.labelsSource,
+    'image_description': r.imageDescription,
+    'image_source': r.imageSource,
   };
 
   @override
@@ -141,6 +143,8 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
     weight: Value(j['weight'] as String?),
     dishKind: Value(j['dish_kind'] as String?),
     labelsSource: Value(j['labels_source'] as String?),
+    imageDescription: Value(j['image_description'] as String?),
+    imageSource: Value(j['image_source'] as String?),
   );
 }
 
