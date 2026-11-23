@@ -92,7 +92,9 @@ class _PlanSetupScreenState extends ConsumerState<PlanSetupScreen> {
       child: PlanStepPage(
         title: 'Novi plan',
         onBack: () => unawaited(_back()),
-        bottom: TavliActionBar(actions: [startButton], note: summary),
+        bottom: wide
+            ? null
+            : TavliActionBar(actions: [startButton], note: summary),
         children: [
           _Section(
             title: 'Period',

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
-import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../domain/meal_plan.dart';
 import '../../domain/recipe_format.dart';
 import 'meal_actions.dart';
@@ -106,10 +105,6 @@ class PlanPreviewScreen extends ConsumerWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
 
-    final wide = MediaQuery.sizeOf(context).width >= wideLayoutWidth;
-    // Telefon: kad je predlog potpun, „Sačuvaj plan“ je zakucan dole.
-    final barSave =
-        !wide && draft.isComplete && phase != GenerationPhase.generating;
     final days = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: TavliSpacing.medium,
@@ -159,111 +154,120 @@ class PlanPreviewScreen extends ConsumerWidget {
       replacing: state.replacing != null,
     );
 
+    final summary = <Widget>[
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TavliSectionHeader(
+            rangeLabel(request.range),
+            style: TavliSectionHeaderStyle.title,
+          ),
+          Text(
+            '${mealsCount(total)} · ${servingsLabel(request.servings)} '
+            'po obroku · predlog još nije sačuvan',
+            style: muted,
+          ),
+        ],
+      ),
+      if (phase == GenerationPhase.generating)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: TavliSpacing.small,
+          children: [
+            TavliProgressBar(
+              value: total == 0 ? null : ready / total,
+              message:
+                  'Pripremam plan… Pripremljeno $ready od $total '
+                  'obroka.',
+              semanticLabel: 'Napredak predloga',
+            ),
+            TavliButton.text(label: 'Prekini', onPressed: controller.cancel),
+          ],
+        ),
+      if (phase == GenerationPhase.failed)
+        TavliNotice(
+          tone: TavliNoticeTone.error,
+          message:
+              '${state.error ?? 'Predlog nije završen.'} '
+              'Gotovo je $ready od $total; nastavak pravi samo ono što '
+              'nedostaje.',
+          linkLabel: 'Nastavi',
+          onLink: () => unawaited(controller.generate()),
+        ),
+      if (phase == GenerationPhase.cancelled)
+        TavliNotice(
+          message:
+              'Prekinuto. Gotovo je $ready od $total; '
+              'možeš da nastaviš kad želiš.',
+        ),
+      if (state.error != null &&
+          phase != GenerationPhase.failed &&
+          phase != GenerationPhase.generating)
+        Text(
+          state.error!,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.error,
+          ),
+        ),
+    ];
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) backToSetup();
       },
-      child: PlanStepPage(
-        title: isChange ? 'Pregled izmena' : 'Predlog plana',
-        backLabel: isChange ? 'Plan' : 'Novi plan',
-        onBack: backToSetup,
-        maxWidth: TavliWidth.page,
-        bottom: barSave
-            ? TavliActionBar(
-                actions: [
-                  TavliButton.primary(
-                    label: isChange ? 'Prihvati' : 'Sačuvaj plan',
-                    glyph: TavliIcons.check,
-                    onPressed: state.busy || phase == GenerationPhase.saving
-                        ? null
-                        : () => unawaited(save()),
-                  ),
-                ],
-              )
-            : null,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Širina prostora koji je ostao posle bočne navigacije.
+          final wide = constraints.maxWidth >= TavliWidth.listDetail;
+          final barSave =
+              !wide && draft.isComplete && phase != GenerationPhase.generating;
+          return PlanStepPage(
+            title: isChange ? 'Pregled izmena' : 'Predlog plana',
+            backLabel: isChange ? 'Plan' : 'Novi plan',
+            onBack: backToSetup,
+            maxWidth: TavliWidth.page,
+            bottom: barSave
+                ? TavliActionBar(
+                    actions: [
+                      TavliButton.primary(
+                        label: isChange ? 'Prihvati' : 'Sačuvaj plan',
+                        glyph: TavliIcons.check,
+                        onPressed: state.busy || phase == GenerationPhase.saving
+                            ? null
+                            : () => unawaited(save()),
+                      ),
+                    ],
+                  )
+                : null,
             children: [
-              TavliSectionHeader(
-                rangeLabel(request.range),
-                style: TavliSectionHeaderStyle.title,
-              ),
-              Text(
-                '${mealsCount(total)} · ${servingsLabel(request.servings)} '
-                'po obroku · predlog još nije sačuvan',
-                style: muted,
-              ),
-            ],
-          ),
-          if (phase == GenerationPhase.generating)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: TavliSpacing.small,
-              children: [
-                TavliProgressBar(
-                  value: total == 0 ? null : ready / total,
-                  message:
-                      'Pripremam plan… Pripremljeno $ready od $total '
-                      'obroka.',
-                  semanticLabel: 'Napredak predloga',
-                ),
-                TavliButton.text(
-                  label: 'Prekini',
-                  onPressed: controller.cancel,
-                ),
-              ],
-            ),
-          if (phase == GenerationPhase.failed)
-            TavliNotice(
-              tone: TavliNoticeTone.error,
-              message:
-                  '${state.error ?? 'Predlog nije završen.'} '
-                  'Gotovo je $ready od $total; nastavak pravi samo ono što '
-                  'nedostaje.',
-              linkLabel: 'Nastavi',
-              onLink: () => unawaited(controller.generate()),
-            ),
-          if (phase == GenerationPhase.cancelled)
-            TavliNotice(
-              message:
-                  'Prekinuto. Gotovo je $ready od $total; '
-                  'možeš da nastaviš kad želiš.',
-            ),
-          if (state.error != null &&
-              phase != GenerationPhase.failed &&
-              phase != GenerationPhase.generating)
-            Text(
-              state.error!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
-          if (wide)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: TavliSpacing.large,
-              children: [
-                Expanded(child: days),
-                SizedBox(
-                  width: TavliWidth.detail,
-                  child: TavliCard(
-                    padding: const EdgeInsets.all(TavliSpacing.large),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: TavliSpacing.medium,
-                      children: [actions(showSave: true)],
+              ...summary,
+              if (wide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: TavliSpacing.large,
+                  children: [
+                    Expanded(child: days),
+                    SizedBox(
+                      width: TavliWidth.detail,
+                      child: TavliCard(
+                        padding: const EdgeInsets.all(TavliSpacing.large),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          spacing: TavliSpacing.medium,
+                          children: [actions(showSave: true)],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  ],
+                )
+              else ...[
+                days,
+                actions(showSave: !barSave),
               ],
-            )
-          else ...[
-            days,
-            actions(showSave: !barSave),
-          ],
-        ],
+            ],
+          );
+        },
       ),
     );
   }

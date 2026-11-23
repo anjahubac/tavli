@@ -188,18 +188,29 @@ class _IngredientRow extends StatelessWidget {
           horizontal: TavliSpacing.medium + 2,
           vertical: TavliSpacing.small,
         ),
-        child: Row(
-          spacing: TavliSpacing.medium,
-          children: [
-            Expanded(
-              child: Text(
-                note == null ? ingredient.name : '${ingredient.name} ($note)',
-                style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            spacing: TavliSpacing.medium,
+            children: [
+              Expanded(
+                child: Text(
+                  note == null ? ingredient.name : '${ingredient.name} ($note)',
+                  style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                ),
               ),
-            ),
-            if (quantity.isNotEmpty)
-              Text(quantity, style: t.bodyMedium?.copyWith(color: muted)),
-          ],
+              if (quantity.isNotEmpty)
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth * 0.4,
+                  ),
+                  child: Text(
+                    quantity,
+                    textAlign: TextAlign.end,
+                    style: t.bodyMedium?.copyWith(color: muted),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

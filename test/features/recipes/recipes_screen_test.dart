@@ -158,6 +158,33 @@ void main() {
     expect(find.text('1 porcija'), findsOneWidget);
   });
 
+  testTavli('duga jedinica se prelama pored sastojka na 320 px i 2×', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    const name = 'belo brašno';
+    const unit = 'velikih i vrhom punih šolja za čaj';
+    await pumpTavli(
+      tester,
+      size: const Size(320, 800),
+      location: '/recipes/a',
+      recipes: [
+        sampleRecipe('a', 'Hleb').copyWith(
+          ingredients: const [Ingredient(name: name, quantity: 2, unit: unit)],
+        ),
+      ],
+    );
+
+    final nameBounds = tester.getRect(find.text(name));
+    final quantityBounds = tester.getRect(find.text('2 $unit'));
+    expect(nameBounds.width, greaterThan(quantityBounds.width));
+    expect(quantityBounds.left, greaterThan(nameBounds.right));
+    expect(quantityBounds.right, lessThan(320));
+    expect(quantityBounds.height, greaterThan(nameBounds.height));
+    expect(tester.takeException(), isNull);
+  });
+
   testTavli('oznake: neoznačen recept, izmena i čuvanje', (tester) async {
     final app = await pumpTavli(
       tester,

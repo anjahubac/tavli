@@ -25,8 +25,7 @@ class PlanStepPage extends StatelessWidget {
   final String backLabel;
   final List<Widget> children;
 
-  /// Traka sa akcijama zakucana dole na telefonu (platno); na širokom
-  /// ekranu se ne prikazuje, pa ekran stavlja akcije u [children].
+  /// Traka sa akcijama zakucana ispod sadržaja koji se pomera.
   final Widget? bottom;
 
   /// Najveća širina sadržaja na širokom ekranu.
@@ -44,6 +43,7 @@ class PlanStepPage extends StatelessWidget {
           Expanded(
             child: SafeArea(
               top: wide,
+              bottom: bottom == null,
               child: TavliPage(
                 wide: wide,
                 maxWidth: maxWidth,
@@ -59,7 +59,7 @@ class PlanStepPage extends StatelessWidget {
               ),
             ),
           ),
-          if (!wide && bottom != null) bottom!,
+          if (bottom case final bar?) SafeArea(top: false, child: bar),
         ],
       ),
     );

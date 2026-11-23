@@ -57,6 +57,35 @@ Future<TestApp> pumpPlan(
 );
 
 void main() {
+  testTavli('pregled plana premešta čuvanje prema širini sadržaja', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpPlan(tester, size: wide, ai: fullWeek);
+    await tapButton(tester, 'Napravi plan');
+    await tapButton(tester, 'Predloži plan');
+
+    final save = find.text('Sačuvaj plan');
+    final fixedSave = find.descendant(
+      of: find.byType(TavliActionBar),
+      matching: save,
+    );
+    for (final width in [1200.0, 1000.0, 999.0, 720.0, 719.0, 320.0, 1200.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Jelo 1\n'), findsOneWidget);
+      expect(save, findsOneWidget);
+      expect(
+        fixedSave,
+        width == 1200 ? findsNothing : findsOneWidget,
+        reason: 'width: $width',
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   for (final (name, size) in [('telefon', phone), ('široko', wide)]) {
     testTavli('$name: prvi plan bez ostave — podešavanje, pregled, '
         'pa čuvanje', (tester) async {
