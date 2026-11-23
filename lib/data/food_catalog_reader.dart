@@ -132,6 +132,17 @@ class FoodCatalogReader {
     final version = row.nutritionSourceVersion;
     final ref = row.nutritionSourceRef;
     if (source == null || version == null || ref == null) return null;
+    final values = [
+      row.kcalPer100g,
+      row.proteinGramsPer100g,
+      row.fatGramsPer100g,
+      row.carbsGramsPer100g,
+    ];
+    if (values.any(
+      (value) => value != null && (!value.isFinite || value < 0),
+    )) {
+      return null;
+    }
     return FoodNutrition(
       kcalPer100g: row.kcalPer100g,
       proteinGramsPer100g: row.proteinGramsPer100g,

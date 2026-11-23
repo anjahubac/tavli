@@ -2,13 +2,13 @@
 -- This adds storage only; no unreviewed candidate values are seeded.
 alter table public.foods
   add column kcal_per_100g double precision
-    check (kcal_per_100g is null or kcal_per_100g >= 0),
+    check (kcal_per_100g is null or (kcal_per_100g >= 0 and kcal_per_100g < 'Infinity'::double precision)),
   add column protein_grams_per_100g double precision
-    check (protein_grams_per_100g is null or protein_grams_per_100g >= 0),
+    check (protein_grams_per_100g is null or (protein_grams_per_100g >= 0 and protein_grams_per_100g < 'Infinity'::double precision)),
   add column fat_grams_per_100g double precision
-    check (fat_grams_per_100g is null or fat_grams_per_100g >= 0),
+    check (fat_grams_per_100g is null or (fat_grams_per_100g >= 0 and fat_grams_per_100g < 'Infinity'::double precision)),
   add column carbs_grams_per_100g double precision
-    check (carbs_grams_per_100g is null or carbs_grams_per_100g >= 0),
+    check (carbs_grams_per_100g is null or (carbs_grams_per_100g >= 0 and carbs_grams_per_100g < 'Infinity'::double precision)),
   add column nutrition_source text,
   add column nutrition_source_version text,
   add column nutrition_source_ref text,

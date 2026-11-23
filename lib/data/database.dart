@@ -632,7 +632,7 @@ class AppDatabase extends _$AppDatabase {
     await m.createTable(userFavorites);
   }
 
-  /// v11: attributed nutrition reference values on shared foods. Existing
+  /// v12: attributed nutrition reference values on shared foods. Existing
   /// catalog rows stay unknown until reviewed values are loaded.
   Future<void> _migrateToFoodNutrition(Migrator m) async {
     final foodsExists = await customSelect(

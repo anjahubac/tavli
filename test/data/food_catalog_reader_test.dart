@@ -114,6 +114,32 @@ void main() {
     expect(unattributed.food.nutrition, isNull);
   });
 
+  test(
+    'zanemaruje neispravnu nutritivnu referencu umesto da obori matcher',
+    () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'f-infinite',
+              slug: 'beskonacno',
+              name: 'beskonacno',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(double.infinity),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: const Value('FDC 1'),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+
+      final matched = await find('beskonacno') as Matched;
+      expect(matched.food.nutrition, isNull);
+    },
+  );
+
   test('tuđe domaćinstvo i nepoznata jedinica se ne vide', () async {
     await food('f-tudja', household: 'h2');
     await alias('a1', 'f-tudja', 'ajvar', household: 'h2');
