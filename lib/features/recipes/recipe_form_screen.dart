@@ -407,8 +407,11 @@ class _IngredientDialogState extends State<_IngredientDialog> {
     return AlertDialog(
       title: const Text('Sastojak'),
       content: SingleChildScrollView(
+        // Razmak mora biti eksplicitan: polja ga nemaju sama od sebe, pa bi se
+        // uokvirena polja i plutajuće oznake dodirivali i preklapali.
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          spacing: TavliSpacing.medium,
           children: [
             TextField(
               controller: _name,
@@ -416,6 +419,7 @@ class _IngredientDialogState extends State<_IngredientDialog> {
               decoration: const InputDecoration(labelText: 'Naziv'),
             ),
             Row(
+              spacing: TavliSpacing.medium,
               children: [
                 Expanded(
                   child: TextField(
@@ -426,7 +430,6 @@ class _IngredientDialogState extends State<_IngredientDialog> {
                     decoration: const InputDecoration(labelText: 'Količina'),
                   ),
                 ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _unit,

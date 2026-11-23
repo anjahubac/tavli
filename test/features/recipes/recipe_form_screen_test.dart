@@ -32,6 +32,30 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testTavli('dijalog sastojka: polja se ne dodiruju i ne preklapaju', (
+    tester,
+  ) async {
+    await pumpTavli(tester, location: '/recipes/new/manual');
+    await tester.ensureVisible(find.text('Dodaj sastojak'));
+    await tester.pumpAndSettle();
+    await tapButton(tester, 'Dodaj sastojak');
+    final dialog = find.byType(AlertDialog);
+    Rect rect(Finder f) =>
+        tester.getRect(find.descendant(of: dialog, matching: f).first);
+    final name = rect(find.widgetWithText(TextField, 'Naziv'));
+    final qty = rect(find.widgetWithText(TextField, 'Količina'));
+    final unit = rect(find.widgetWithText(TextField, 'Jedinica'));
+    final category = rect(find.byType(DropdownButtonFormField<String>));
+    final note = rect(find.widgetWithText(TextField, 'Napomena'));
+
+    // Svaka dva susedna reda moraju imati vidljiv razmak, a kolone razmak
+    // između sebe.
+    expect(qty.top - name.bottom, greaterThanOrEqualTo(8));
+    expect(category.top - qty.bottom, greaterThanOrEqualTo(8));
+    expect(note.top - category.bottom, greaterThanOrEqualTo(8));
+    expect(unit.left - qty.right, greaterThanOrEqualTo(8));
+  });
+
   testTavli('telefon: porcije i minuti stoje jedno pored drugog', (
     tester,
   ) async {
