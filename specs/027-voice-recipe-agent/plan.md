@@ -85,6 +85,13 @@ These are design obligations, not executed pass results. Any violation blocks Re
 until resolved under governance. No dependency is added by this documentation;
 implementer records each proposed package/service with a reason before adoption.
 
+**Dependency (2026-11-22, Dev 2)**: `record` ^7.2.0 — microphone capture to a
+temporary AAC/WAV file on Android, iOS, macOS and Windows behind
+`VoiceRecorder`; Flutter has no built-in recorder, and the plugin is the
+maintained cross-platform option. Coordinator for `pubspec.yaml`: Dev 4.
+Platform changes: `RECORD_AUDIO` (Android), `NSMicrophoneUsageDescription`
+(iOS, macOS) and the macOS `device.audio-input` entitlement.
+
 ## Verification, rollout and risks
 
 Use [testing 013](../013-testing-strategy/spec.md), its journey matrix, and

@@ -51,6 +51,7 @@ validator; the gateway does not parse recipes.
 | `plan_outline` | text | `MealPlanAI` outline |
 | `recipe_summaries` | text | `MealPlanAI` summaries |
 | `pantry_from_photo` | vision | `PantryAI.fromPhoto` (spec 022) |
+| `voice_draft_actions` | text | `VoiceAgent.interpret` (spec 027) |
 
 Any other value is `400 bad_request`. A new AI feature adds its task here first.
 

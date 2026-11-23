@@ -408,6 +408,11 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+# Govor u tekst za glasovni nacrt recepta (spec 027). GROQ_API_KEY je tajna.
+[functions.voice-transcribe]
+enabled = true
+verify_jwt = true
+
 [functions.household-invite]
 enabled = true
 verify_jwt = false
