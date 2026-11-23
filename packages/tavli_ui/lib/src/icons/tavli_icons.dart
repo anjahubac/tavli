@@ -349,9 +349,15 @@ class TavliIcon extends StatelessWidget {
     final side = size ?? theme.size ?? 24;
     final paint =
         color ?? theme.color ?? DefaultTextStyle.of(context).style.color!;
-    final drawing = SizedBox.square(
-      dimension: side,
-      child: CustomPaint(painter: _IconPainter(icon, paint, filled)),
+    // Center: kad roditelj nametne veću minimalnu veličinu (npr. lupa u polju
+    // od 48), crtež ostaje kvadrat u sredini umesto u gornjem levom uglu.
+    final drawing = Center(
+      widthFactor: 1,
+      heightFactor: 1,
+      child: SizedBox.square(
+        dimension: side,
+        child: CustomPaint(painter: _IconPainter(icon, paint, filled)),
+      ),
     );
     if (semanticLabel == null) return ExcludeSemantics(child: drawing);
     return Semantics(label: semanticLabel, image: true, child: drawing);
