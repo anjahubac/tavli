@@ -138,6 +138,7 @@ class WorksheetChecks(unittest.TestCase):
                 'proposed_base_unit': 'kom', 'usda_fdc_id': '',
                 'usda_description': '',
                 'usda_basis': 'no SR Legacy mapping in historical map',
+                'usda_reviewer': '',
             },
         ]
 
