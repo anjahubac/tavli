@@ -178,12 +178,6 @@ def generate(worksheet: Path, nutrition_csv: Path, output: Path) -> tuple[int, i
         rows.append("  (" + ", ".join(values) + ")")
     statements.extend(",\n".join(rows).splitlines())
     statements.append("on conflict (id) do nothing;")
-    statements += [
-        "",
-        "insert into public.food_aliases (",
-        "  id, food_id, household_id, alias, alias_normalized, created_at, updated_at",
-        ") values",
-    ]
     alias_rows = []
     for normalized, (alias, food_id) in sorted(aliases.items()):
         alias_rows.append(
@@ -192,8 +186,15 @@ def generate(worksheet: Path, nutrition_csv: Path, output: Path) -> tuple[int, i
                 sql(food_id), "null", sql(alias), sql(normalized), "now()", "now()",
             ]) + ")"
         )
-    statements.extend(",\n".join(alias_rows).splitlines())
-    statements.append("on conflict (id) do nothing;")
+    if alias_rows:
+        statements += [
+            "",
+            "insert into public.food_aliases (",
+            "  id, food_id, household_id, alias, alias_normalized, created_at, updated_at",
+            ") values",
+            *",\n".join(alias_rows).splitlines(),
+            "on conflict (id) do nothing;",
+        ]
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(statements) + "\n", encoding="utf-8")
     return len(foods), sum(bool(row["nutrition"]) for row in foods), len(aliases)

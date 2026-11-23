@@ -176,8 +176,3 @@ insert into public.foods (
   ('38bff68f-614e-5902-b121-b5e7a155ecf2', null, 'crveni-luk', 'crveni luk', 'voće i povrće', 'gram', 'Owner-confirmed manual identity/base-unit review via chat (2026-11-23); individual reviewer unspecified.', now(), null, null, null, null, null, null, null, now(), now()),
   ('acb8688a-33dd-5a12-94fb-7035393859c6', null, 'zumance', 'žumance', 'mlečni proizvodi i jaja', 'gram', 'Owner-confirmed manual identity/base-unit review via chat (2026-11-23); individual reviewer unspecified.', now(), 322.0, 15.86, 26.54, 3.59, 'USDA FoodData Central', 'SR Legacy 2018-04', 'FDC 172184', now(), now())
 on conflict (id) do nothing;
-
-insert into public.food_aliases (
-  id, food_id, household_id, alias, alias_normalized, created_at, updated_at
-) values
-on conflict (id) do nothing;

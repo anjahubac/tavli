@@ -23,6 +23,7 @@ class BuildFoodCatalogSeedTests(unittest.TestCase):
         identity_status: str = "reviewed",
         usda_reviewer: str = "owner approval",
         include_legacy: bool = False,
+        legacy_aliases: str = "Kisela dunja",
     ):
         worksheet = directory / "worksheet.csv"
         nutrition = directory / "nutrition.csv"
@@ -38,7 +39,7 @@ class BuildFoodCatalogSeedTests(unittest.TestCase):
             "identity_source": "owner review", "identity_reviewer": "unspecified",
             "base_unit_basis": "owner review", "base_unit_reviewer": "unspecified",
             "usda_basis": "SR Legacy", "usda_fdc_id": "222",
-            "usda_reviewer": usda_reviewer, "legacy_aliases": "Kisela dunja",
+            "usda_reviewer": usda_reviewer, "legacy_aliases": legacy_aliases,
             "origin": "candidate",
         }]
         if include_legacy:
@@ -106,6 +107,17 @@ class BuildFoodCatalogSeedTests(unittest.TestCase):
             generate(worksheet, nutrition, output)
             sql = output.read_text(encoding="utf-8")
             self.assertIn("'Kisela dunja', 'kisela dunja'", sql)
+
+    def test_empty_alias_set_does_not_emit_an_invalid_insert(self):
+        with tempfile.TemporaryDirectory() as temp:
+            worksheet, nutrition = self.write_fixture(
+                Path(temp), legacy_aliases=""
+            )
+            output = Path(temp) / "seed.sql"
+            generate(worksheet, nutrition, output)
+            sql = output.read_text(encoding="utf-8")
+            self.assertNotIn("insert into public.food_aliases", sql)
+            self.assertNotIn(") values\non conflict", sql)
 
     def test_legacy_references_are_not_seeded_as_catalog_foods(self):
         with tempfile.TemporaryDirectory() as temp:
