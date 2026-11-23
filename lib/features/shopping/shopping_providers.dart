@@ -33,6 +33,7 @@ final storePriceRepositoryProvider = Provider<StorePriceRepository>((ref) {
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
   );
 });
+
 /// Stavke nedeljnih lista plana, uživo.
 final planShoppingProvider = StreamProvider.autoDispose
     .family<List<PlanShoppingItem>, String>(
