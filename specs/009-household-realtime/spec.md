@@ -30,6 +30,8 @@ not reassigns them. No additional feature is authorized merely by a technical se
 
 An RLS-filtered `DELETE` by a removed member affects zero rows and returns no error. The uploader marks it sent, and no membership check starts. A removed member who only deletes is therefore detected at the next resume or start. Options: return deleted rows (`.select()`) and treat an empty result for a known row as a possible denial, or rely on the FR-104 signal. Decide together with Q1. The old household loses nothing, because the removed member no longer has access to it.
 
+**Decision:** accepted as a known limitation of 009. It is not fixed here and relies on the FR-104 signal and the recovery paths above.
+
 ## User scenarios and acceptance
 
 See the [Realtime acceptance fixtures](contracts/acceptance.md).

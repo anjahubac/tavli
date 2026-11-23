@@ -77,6 +77,44 @@ insert into public.meal_plans (id, household_id, start_date, end_date, meal_type
 select is((select revision from public.household_sync_signals where id = :'home'),
   :'rev'::bigint + 4, 'plan writes advance revision');
 
+insert into public.recipes (id, household_id, title, servings, source, ingredients, steps)
+  values ('rt-recipe', :'home', 'Soup', 2, 'manual', '[]', '[]');
+select is((select revision from public.household_sync_signals where id = :'home'),
+  :'rev'::bigint + 5, 'recipe writes advance revision');
+update public.recipes set title = 'Better soup' where id = 'rt-recipe';
+select is((select revision from public.household_sync_signals where id = :'home'),
+  :'rev'::bigint + 6, 'recipe edits advance revision');
+select revision as ar_rename from public.account_sync_signals where id = :'a' \gset
+select tests.clear_auth();
+update public.households set name = 'Renamed' where id = :'home';
+select tests.authenticate_as(:'a');
+select is((select revision from public.account_sync_signals where id = :'a'),
+  :'ar_rename'::bigint + 1, 'a rename sends each member a personal signal');
+select tests.clear_auth();
+update public.households set name = 'Renamed' where id = :'home';
+select tests.authenticate_as(:'a');
+select is((select revision from public.account_sync_signals where id = :'a'),
+  :'ar_rename'::bigint + 1, 'an unchanged name sends no signal');
+
+-- Guard against drift: a new household-scoped table must publish signals or
+-- be listed here with the reason it does not.
+select is((
+  select coalesce(string_agg(c.table_name, ', ' order by c.table_name), '')
+  from information_schema.columns c
+  join information_schema.tables t using (table_schema, table_name)
+  where c.table_schema = 'public' and t.table_type = 'BASE TABLE'
+    and c.column_name = 'household_id'
+    and c.table_name not in (
+      'household_members', -- personal signals, see signal_membership_change
+      'deletions'          -- written by the delete triggers of the tables above
+    )
+    and not exists (
+      select 1 from pg_catalog.pg_trigger g
+      where g.tgrelid = format('public.%I', c.table_name)::regclass
+        and g.tgname = 'realtime_update' and not g.tgisinternal
+    )
+), '', 'every household-scoped table publishes realtime signals');
+
 select tests.clear_auth();
 select revision as br from public.account_sync_signals where id = :'b' \gset
 select tests.authenticate_as(:'a');

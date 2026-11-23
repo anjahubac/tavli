@@ -135,6 +135,29 @@ void main() {
     },
   );
 
+  test(
+    'a failed membership check is retried with backoff, not 15 min',
+    () async {
+      remote.eligible = true;
+      remote.failEligible = 2;
+      remote.account.connection(true);
+      await pumpQueue();
+      expect(work, ['membership']);
+      expect(remote.subscriptions, hasLength(1));
+      expect(timers.durations, contains(SyncEngine.backoff.first));
+
+      await timers.fire(SyncEngine.backoff.first);
+      expect(work, ['membership', 'membership']);
+      expect(remote.subscriptions, hasLength(1));
+      expect(timers.durations, contains(SyncEngine.backoff[1]));
+
+      await timers.fire(SyncEngine.backoff[1]);
+      expect(work, ['membership', 'membership', 'membership', 'pull']);
+      expect(remote.subscriptions, hasLength(2));
+      expect(remote.household.id, 'home');
+    },
+  );
+
   test('membership changes are checked during pull backoff', () async {
     await connectBoth();
     transientFailures = 1;
@@ -235,13 +258,20 @@ void main() {
 
 class _Remote implements SyncSignalRemote {
   bool? eligible = false;
+  int failEligible = 0;
   final subscriptions = <_Subscription>[];
 
   _Subscription get account => subscriptions.first;
   _Subscription get household => subscriptions.last;
 
   @override
-  Future<bool?> householdEligible(String householdId) async => eligible;
+  Future<bool?> householdEligible(String householdId) async {
+    if (failEligible > 0) {
+      failEligible--;
+      throw TimeoutException('membership check');
+    }
+    return eligible;
+  }
 
   @override
   void Function() subscribe({

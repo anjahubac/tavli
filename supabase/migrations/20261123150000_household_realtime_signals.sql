@@ -107,7 +107,8 @@ begin
   foreach source in array array[
     'shopping_lists', 'shopping_items', 'shopping_sources', 'shopping_contributions',
     'supply_allocations', 'pantry_items', 'pantry_consumptions', 'cooked_events',
-    'meal_plans', 'meal_plan_entries'
+    'meal_plans', 'meal_plan_entries', 'recipes', 'recipe_versions',
+    'foods', 'food_aliases'
   ] loop
     execute format('create trigger realtime_insert after insert on public.%I referencing new table as inserted_rows for each statement execute function private.signal_household_changes()', source);
     execute format('create trigger realtime_update after update on public.%I referencing old table as deleted_rows new table as inserted_rows for each statement execute function private.signal_household_changes()', source);
@@ -115,6 +116,28 @@ begin
   end loop;
 end;
 $$;
+
+-- The household name is not part of the pull: the client reads it with the
+-- membership check. A rename therefore notifies each member's personal signal,
+-- which already triggers that check and then a pull. Row level: transition
+-- tables cannot be combined with a column list, and a rename is one row.
+-- Sorted upserts keep the account lock order stable.
+create function private.signal_household_rename()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  insert into public.account_sync_signals(id)
+  select m.user_id from public.household_members m
+  where m.household_id = new.id
+  order by m.user_id
+  on conflict (id) do update set revision = account_sync_signals.revision + 1;
+  return null;
+end;
+$$;
+revoke all on function private.signal_household_rename() from public, anon, authenticated;
+create trigger realtime_rename after update of name on public.households
+  for each row when (old.name is distinct from new.name)
+  execute function private.signal_household_rename();
 
 -- Realtime cannot enforce row visibility after a row was physically deleted.
 -- Publish only updates so cascade deletion never reveals a former scope ID.

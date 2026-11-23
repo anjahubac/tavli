@@ -21,8 +21,15 @@ of the downloader's persisted cursor. An event with an invalid shape or
 unexpected ID is ignored. A lost signal is handled by catch-up or fallback.
 
 Shared business sources include shopping lists,
-items, sources and contributions, pantry items and consumption entries, and
-meal plans and entries. Publish from the transaction that makes the change,
+items, sources and contributions, pantry items and consumption entries,
+meal plans and entries, recipes and recipe versions, household custom foods
+and aliases. A household rename notifies each member's personal signal (a row-level
+trigger on `households.name`), because the client reads the name with the
+membership check, not in the pull.
+`supabase/tests/14_household_realtime_test.sql` fails when a public table with a
+`household_id` column has no `realtime_update` trigger and is not listed there
+with a reason (`household_members` uses personal signals; `deletions` is written
+by the delete triggers of the sources). Publish from the transaction that makes the change,
 including deletes and writes through RPCs. Off-scope business data and personal
 data are outside these streams. Review trigger batching and the cost of
 multiple concurrent commits to one household revision row.
@@ -67,3 +74,22 @@ session check on return to the app, the check on confirmed reconnect, or the
 foreground fallback during a known outage can detect the membership change.
 A filtered delete that returns zero rows may produce no denied-write error; it
 relies on those recovery paths under the current proposal.
+
+## Known limitations and design notes
+
+- **Zero-row delete (RT-08):** accepted for 009, not fixed. See the known gap in
+  [spec.md](../spec.md#known-gap-carried-from-the-denied-write-fix).
+- **Personal data** (ratings, favorites, taste profiles, allergens) does not
+  publish signals. Another device of the same account sees it on resume, reconnect
+  or the foreground fallback.
+- **Publication is update-only and global:** `alter publication supabase_realtime
+  set (publish = 'update')` applies to every table in it. Deleted rows are never
+  published because Realtime cannot apply RLS to them, so a delete would reveal
+  the former scope ID to any signed-in subscriber. The migration raises if the
+  publication already holds tables. Before deploy, confirm it is empty in the hosted
+  project. Future realtime features receive UPDATE events only.
+- **Visibility:** the app counts as visible unless the lifecycle state is `hidden`
+  or `paused`. `inactive` (an unfocused desktop window, Android split screen)
+  keeps realtime running.
+- **Failed membership check:** the scheduled work stays pending and retries after
+  5, 10 and then 30 seconds, instead of waiting for the 15 minute fallback.

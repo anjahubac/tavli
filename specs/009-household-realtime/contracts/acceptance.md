@@ -16,6 +16,9 @@ in household H. Account C is outside H unless a fixture says otherwise.
 | RT-06 | Keep the app foregrounded with the applicable Realtime subscription unavailable. Advance the clock 15 minutes, then recover, background or sign out. Repeat with a healthy personal subscription in a solo household. | Fallback checks for changes every 15 minutes during the foreground outage. It stops on recovery, background or sign-out. A healthy solo account does not start a fallback for an intentionally absent household channel. Existing resume behavior remains covered. | Flutter sync |
 | RT-07 | C tries reading both signal scopes and writing revisions. A also tries client writes to its own revision. Remove B while its connection stays open. | Neither C nor B can receive or read unauthorized household updates. Each user can read their own account signal only. Signed-in and anonymous clients cannot modify revisions. Server writes and authorized reads remain functional. | Local SQL and Realtime |
 | RT-08 | Drop B's membership signal. Exercise a reconnect or fallback after removal and the existing denied-write recovery where available. | B eventually rechecks membership and stops work in the old scope. Confirm the correct behavior for a zero-row delete with the reviewer before finalizing the negative fixture. | Flutter auth/sync and local backend |
+| RT-09 | The membership check fails (timeout, 503) on the first connection, then succeeds. Also fail it twice. | The pending work is kept. Retries run after 5 and 10 seconds, not after the 15 minute fallback. The household subscription and a pull follow the first success. | Flutter sync (`test/sync/realtime_sync_test.dart`) |
+| RT-10 | A edits a recipe, or the owner renames the household, with B subscribed. A rename to the same name. A new household-scoped table has no signal trigger. | B receives one household signal per recipe change and pulls it. A rename sends each member a personal signal (membership check, then pull); an unchanged name sends nothing. The SQL guard test fails for the table without a trigger. | Local SQL (`supabase/tests/14_household_realtime_test.sql`) |
+| RT-11 | The app window loses focus on desktop (`inactive`), then is hidden or paused. | Realtime keeps running while `inactive` and pauses on `hidden` or `paused`. | Flutter (`test/app/app_lifecycle_test.dart`) |
 
 ## Existing regression suites
 
@@ -25,5 +28,5 @@ behavior, `test/sync/downloader_test.dart` for cursor and deletion behavior,
 `test/sync/shopping_offline_replay_test.dart` for the two-client and replay
 setup, and `test/account/auth_controller_test.dart` for session transitions.
 The SQL member removal suite provides the allowed case for the removal RPC.
-These suites establish baseline behavior; RT-01 through RT-08 still require
+These suites establish baseline behavior; RT-01 through RT-11 still require
 feature evidence. The local Realtime experiment covers only part of that matrix.

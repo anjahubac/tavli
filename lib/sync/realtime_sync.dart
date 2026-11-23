@@ -185,9 +185,14 @@ class RealtimeSync {
             }
             _configureHousehold(eligible);
           } on Exception {
-            // Keep the fallback armed if the membership read was unavailable.
+            if (_disposed) return;
+            // A failed membership check must not drop the scheduled work:
+            // keep it pending, retry with backoff (contracts/signals.md) and
+            // leave the fallback armed. `break` waits for the retry timer.
             _eligible = null;
-            continue;
+            _pending = _membership = true;
+            if (_foreground) _scheduleRetry();
+            break;
           }
         }
         if (_eligible == null) continue;
@@ -211,6 +216,7 @@ class RealtimeSync {
   }
 
   void _scheduleRetry() {
+    if (_retry != null) return;
     final delay = SyncEngine.backoff[_retryStep];
     if (_retryStep < SyncEngine.backoff.length - 1) _retryStep++;
     _retry = _timer(delay, () {

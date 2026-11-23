@@ -19,6 +19,13 @@ import 'theme_controller.dart';
 
 const _macosWindow = MethodChannel('tavli/macos_window');
 
+/// Realtime radi dok korisnik vidi prozor. `inactive` je na desktopu (i u
+/// podeljenom ekranu na Androidu) vidljiv prozor bez fokusa, pa se pauzira
+/// tek na `hidden` i `paused`.
+@visibleForTesting
+bool isVisibleLifecycle(AppLifecycleState? state) =>
+    state != AppLifecycleState.hidden && state != AppLifecycleState.paused;
+
 class TavliApp extends ConsumerStatefulWidget {
   const TavliApp({
     super.key,
@@ -81,9 +88,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
         );
       }
     });
-    final lifecycleState = WidgetsBinding.instance.lifecycleState;
-    _foreground =
-        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
+    _foreground = isVisibleLifecycle(WidgetsBinding.instance.lifecycleState);
     ref.listenManual(realtimeSyncProvider, (_, next) {
       _realtime = next;
       next?.setForeground(_foreground);
@@ -91,7 +96,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     _lifecycle = AppLifecycleListener(
       onResume: _onResume,
       onStateChange: (state) {
-        _foreground = state == AppLifecycleState.resumed;
+        _foreground = isVisibleLifecycle(state);
         _realtime?.setForeground(_foreground);
       },
     );
