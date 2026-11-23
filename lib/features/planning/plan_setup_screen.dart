@@ -19,7 +19,9 @@ import 'plan_step_page.dart';
 /// Prvi korak: period, obroci i porcije na jednom ekranu; ostava i želje
 /// su dodatne opcije koje nisu obavezne.
 class PlanSetupScreen extends ConsumerStatefulWidget {
-  const PlanSetupScreen({super.key});
+  const PlanSetupScreen({this.fastingDraft = false, super.key});
+
+  final bool fastingDraft;
 
   @override
   ConsumerState<PlanSetupScreen> createState() => _PlanSetupScreenState();
@@ -51,8 +53,12 @@ class _PlanSetupScreenState extends ConsumerState<PlanSetupScreen> {
     final state = ref.read(planGenerationProvider);
     // Otvoren nacrt istih izbora se samo ponovo prikazuje.
     // Napredak i greške pregled prati preko stanja.
-    if (state.draft == null) unawaited(_controller.generate());
-    context.go('/plan/new/preview');
+    if (state.draft == null) {
+      unawaited(_controller.generate(fastingDraft: widget.fastingDraft));
+    }
+    context.go(
+      widget.fastingDraft ? '/plan/new/preview?posni=1' : '/plan/new/preview',
+    );
   }
 
   @override
@@ -90,7 +96,7 @@ class _PlanSetupScreenState extends ConsumerState<PlanSetupScreen> {
         }
       },
       child: PlanStepPage(
-        title: 'Novi plan',
+        title: widget.fastingDraft ? 'Novi posni plan' : 'Novi plan',
         onBack: () => unawaited(_back()),
         bottom: wide
             ? null

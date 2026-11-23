@@ -111,6 +111,107 @@ void main() {
     });
   });
 
+  group('SupabaseAccountApi: korak i članovi domaćinstva', () {
+    late SupabaseClient client;
+    late List<http.Request> requests;
+    late http.Response Function(http.Request) handler;
+
+    setUp(() async {
+      requests = [];
+      client = createSupabaseClient(
+        const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+        secrets: MapSecretStorage(),
+        httpClient: mockHttp((r) {
+          requests.add(r);
+          return handler(r);
+        }),
+      );
+      handler = (_) => throw StateError('nema mreže u testu');
+      await client.auth.recoverSession(jsonEncode(sessionBody()));
+    });
+    tearDown(() => client.dispose());
+
+    SupabaseAccountApi api() =>
+        SupabaseAccountApi(client, retryDelay: Duration.zero);
+
+    test('fetch čita da li je korak „Tvoje domaćinstvo“ završen', () async {
+      handler = (r) => jsonResponse(
+        r.url.path.endsWith('/profiles')
+            ? [
+                {
+                  'id': 'u1',
+                  'email': 'ana@mail.com',
+                  'display_name': 'Ana',
+                  'household_setup_done': false,
+                },
+              ]
+            : [
+                {
+                  'household_id': 'h1',
+                  'role': 'owner',
+                  'households': {'name': 'Moje domaćinstvo'},
+                },
+              ],
+      );
+      final a = await api().fetch();
+      expect(a.householdSetupDone, isFalse);
+      final p = requests.firstWhere((r) => r.url.path.endsWith('/profiles'));
+      expect(p.url.queryParameters['select'], contains('household_setup_done'));
+    });
+
+    test('renameHousehold šalje naziv i čita ishod', () async {
+      for (final (status, expected) in [
+        ('renamed', RenameHouseholdResult.renamed),
+        ('invalid_name', RenameHouseholdResult.invalidName),
+        ('not_allowed', RenameHouseholdResult.notAllowed),
+      ]) {
+        handler = (_) => jsonResponse({'status': status});
+        expect(await api().renameHousehold('Kuća'), expected);
+      }
+      final r = requests.last;
+      expect(r.url.path, endsWith('/rpc/rename_household'));
+      expect(jsonDecode(r.body), {'name': 'Kuća'});
+
+      handler = (_) => jsonResponse({'status': 'drugo'});
+      await expectLater(
+        api().renameHousehold('Kuća'),
+        throwsA(isA<Unavailable>()),
+      );
+    });
+
+    test(
+      'householdMembers čita ime i ulogu; neispravan red je greška',
+      () async {
+        handler = (_) => jsonResponse([
+          {
+            'user_id': 'u1',
+            'display_name': 'Ana',
+            'role': 'owner',
+            'joined_at': '2026-11-01T00:00:00Z',
+          },
+          {'user_id': 'u2', 'display_name': null, 'role': 'member'},
+        ]);
+        final members = await api().householdMembers();
+        expect(members, const [
+          HouseholdMember(userId: 'u1', role: 'owner', displayName: 'Ana'),
+          HouseholdMember(userId: 'u2', role: 'member'),
+        ]);
+        expect(
+          requests.last.url.path,
+          endsWith('/rpc/household_members_overview'),
+        );
+
+        handler = (_) => jsonResponse([
+          {'user_id': 7, 'role': 'owner'},
+        ]);
+        await expectLater(
+          api().householdMembers(),
+          throwsA(isA<Unavailable>()),
+        );
+      },
+    );
+  });
+
   group('SupabaseAccountApi.removeHouseholdMember', () {
     late SupabaseClient client;
     late List<http.Request> requests;

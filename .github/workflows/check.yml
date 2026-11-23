@@ -14,6 +14,18 @@ permissions:
   contents: read
 
 jobs:
+  deno-functions:
+    name: deno-functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+          cache: true
+      - run: deno test supabase/functions
+
   linux-build:
     name: linux-build
     runs-on: ubuntu-24.04

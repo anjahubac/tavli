@@ -5,6 +5,7 @@
 // Funkcija ne loguje tokene, adrese e-pošte ni imena objekata.
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { removeHouseholdCookbooks } from "./cookbook_storage_cleanup.ts";
 
 const BUCKET = "recipe-photos";
 
@@ -22,21 +23,29 @@ async function removeHouseholdPhotos(
   householdId: string,
 ): Promise<void> {
   while (true) {
-    const { data: paths, error } = await admin.rpc("retired_household_photo_paths", {
-      caller_id: uid,
-      hid: householdId,
-    });
+    const { data: paths, error } = await admin.rpc(
+      "retired_household_photo_paths",
+      {
+        caller_id: uid,
+        hid: householdId,
+      },
+    );
     if (error) throw error;
     if (!paths?.length) return;
     const prefix = `${householdId}/`;
     for (const path of paths as string[]) {
-      if (!path.startsWith(prefix) || path.slice(prefix.length).split("/").some(
-        (part) => !part || part === "." || part === ".." || part.includes("\\"),
-      )) {
+      if (
+        !path.startsWith(prefix) || path.slice(prefix.length).split("/").some(
+          (part) =>
+            !part || part === "." || part === ".." || part.includes("\\"),
+        )
+      ) {
         throw new Error("invalid_recipe_photo_path");
       }
     }
-    const { error: removeError } = await admin.storage.from(BUCKET).remove(paths);
+    const { error: removeError } = await admin.storage.from(BUCKET).remove(
+      paths,
+    );
     if (removeError) throw removeError;
   }
 }
@@ -75,6 +84,10 @@ Deno.serve(async (req: Request) => {
       if (!households?.length) break;
       for (const householdId of households as string[]) {
         await removeHouseholdPhotos(admin, uid, householdId);
+        await removeHouseholdCookbooks(
+          admin.storage.from("cookbooks"),
+          householdId,
+        );
         const { error: cleanupError } = await admin.rpc(
           "household_join_photo_cleanup",
           { caller_id: uid, completed_id: householdId },

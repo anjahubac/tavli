@@ -134,9 +134,10 @@ inputs feed the same validation/preview/persistence path.
 
 ## Household and personal data
 
-The owner shares one reusable invitation as a link, a QR payload or a code
+Any household member shares the one reusable invitation as a link, a QR payload or a code
 that the recipient can type. The QR scanner in Tavli reads the same code. The
-invite has no scheduled expiry or owner-facing deactivation. Any signed-in bearer
+invite has no scheduled expiry; the owner can replace it with a new one, which
+retires the old link, QR and code. Any signed-in bearer
 can see the destination household name and confirm a direct switch. The
 confirmation offers joining with eligible recipes, joining without recipes,
 or staying. Plans, shopping and pantry stay outside the transfer. If the

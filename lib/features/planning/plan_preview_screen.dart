@@ -16,7 +16,9 @@ import 'planning_providers.dart';
 /// Drugi i treći korak: napredak, predlog po danima i odobrenje. Ništa se
 /// ne čuva dok osoba ne izabere "Sačuvaj plan" (ili izričito nepotpun plan).
 class PlanPreviewScreen extends ConsumerWidget {
-  const PlanPreviewScreen({super.key});
+  const PlanPreviewScreen({this.fastingDraft = false, super.key});
+
+  final bool fastingDraft;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,8 +45,9 @@ class PlanPreviewScreen extends ConsumerWidget {
       }
     }
 
-    void backToSetup() =>
-        isChange ? unawaited(discard()) : context.go('/plan/new');
+    void backToSetup() => isChange
+        ? unawaited(discard())
+        : context.go(fastingDraft ? '/plan/new?posni=1' : '/plan/new');
 
     if (draft == null) {
       return PlanStepPage(
