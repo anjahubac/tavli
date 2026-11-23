@@ -135,7 +135,8 @@ Owner: Dev 4. Decided by Anja on 2026-11-23; the design is a proposal and is
 not on the design canvas yet. Extends the cooking mode design above.
 
 - **Time from the step text**: a step that mentions a time (“kuvaj 8 minuta”,
-  “1 sat i 30 minuta”, “10-15 min”, “30 sekundi”) shows a timer block under
+  “1 sat i 30 minuta”, “10-15 min”, “30 sekundi”, “1/2 sata”, “pola sata”)
+  shows a timer block under
   the step text with “Pokreni tajmer · 8:00”. A range uses the larger value.
   Steps without a time show no block. The user does not set the time by hand.
 - **One timer**: only one timer runs at a time. Starting a timer in another
@@ -146,9 +147,10 @@ not on the design canvas yet. Extends the cooking mode design above.
 - **Other steps**: while the timer runs in another step, a strip above the
   step shows “Tajmer · 4:58 · korak N”; tapping it returns to that step.
 - **Finished**: the sound plays three times; on phones (Android, iOS) each is
-  paired with a short vibration, on desktop only the sound. The strip or card
-  shows “Vreme je isteklo” and stays on every step until the user taps
-  “Zatvori”. “Otkaži” removes a timer right away.
+  paired with a short vibration, on desktop only the sound. Android uses the
+  system click and iOS uses the system tick, subject to device sound settings.
+  The strip or card shows “Vreme je isteklo” and stays on every step until the
+  user taps “Zatvori”. “Otkaži” removes a timer right away.
 - **Scope**: the timer lives while the cooking screen is open; leaving the
   screen ends it. Notifications while the app is in the background are not
   part of this slice (they need a local notifications dependency and
@@ -157,7 +159,9 @@ not on the design canvas yet. Extends the cooking mode design above.
 Additional UI copy: “Tajmer za ovaj korak”, “Korak pominje vreme.”,
 “Pokretanje zamenjuje tajmer iz drugog koraka.”, “Pokreni tajmer · M:SS”,
 “Preostalo”, “Pauzirano”, “Pauziraj”, “Nastavi”, “+1 min”, “Otkaži”,
-“Zatvori”, “Vreme je isteklo”, “Tajmer · M:SS · korak N”.
+“Zatvori”, “Vreme je isteklo”, “Tajmer · M:SS · korak N”. The animation
+gallery describes the timer as “U režimu kuvanja, dok tajmer za korak odbrojava
+vreme.”
 
 ## Narrow navigation slice — 2026-11-20
 

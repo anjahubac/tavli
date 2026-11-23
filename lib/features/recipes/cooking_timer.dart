@@ -62,9 +62,15 @@ class SystemCookingTimerAlert implements CookingTimerAlert {
 
   @override
   Future<void> play() async {
+    // Flutter ne pušta SystemSoundType.alert na telefonima.
+    final sound = switch (defaultTargetPlatform) {
+      TargetPlatform.android => SystemSoundType.click,
+      TargetPlatform.iOS => SystemSoundType.tick,
+      _ => SystemSoundType.alert,
+    };
     try {
       for (var i = 0; i < 3; i++) {
-        await SystemSound.play(SystemSoundType.alert);
+        await SystemSound.play(sound);
         if (_phone) await HapticFeedback.vibrate();
         await Future<void>.delayed(const Duration(milliseconds: 600));
       }

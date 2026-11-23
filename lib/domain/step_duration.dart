@@ -9,17 +9,26 @@ Duration? stepDuration(String step) {
     final value = high > low ? high : low;
     seconds += value * _unitSeconds(m.group(3)!);
   }
-  if (seconds < 1 || seconds > 24 * 3600) return null;
+  if (!seconds.isFinite || seconds < 1 || seconds > 24 * 3600) return null;
   return Duration(seconds: seconds.round());
 }
 
+const _valuePattern = r'(?:\d+\s*/\s*\d+|\d+(?:[.,]\d+)?|pola)';
+
 final _pattern = RegExp(
-  r'(\d+(?:[.,]\d+)?)(?:\s*[-–]\s*(\d+(?:[.,]\d+)?))?\s*'
+  r'(?<![\w/čćšžđ])'
+  '($_valuePattern)(?:\\s*[-–]\\s*($_valuePattern))?\\s*'
   r'(sati|sata|sat|h|minuta|minute|minut|min|sekundi|sekunde|sekund|sek)'
   r'(?![a-zčćšžđ])',
 );
 
-double _number(String s) => double.parse(s.replaceAll(',', '.'));
+double _number(String s) {
+  if (s == 'pola') return 0.5;
+  final slash = s.indexOf('/');
+  if (slash < 0) return double.parse(s.replaceAll(',', '.'));
+  return double.parse(s.substring(0, slash)) /
+      double.parse(s.substring(slash + 1));
+}
 
 double _unitSeconds(String unit) => switch (unit) {
   'sati' || 'sata' || 'sat' || 'h' => 3600,

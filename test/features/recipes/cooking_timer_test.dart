@@ -1,5 +1,5 @@
-import 'dart:ui' show Size;
-
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/cooking_timer.dart';
@@ -16,6 +16,46 @@ class _FakeAlert implements CookingTimerAlert {
 }
 
 void main() {
+  testWidgets(
+    'tajmer koristi podržani sistemski zvuk i vibraciju na telefonu',
+    (tester) async {
+      final calls = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        calls.add(call);
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+
+      final alert = const SystemCookingTimerAlert().play();
+      await tester.pump();
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 600));
+      }
+      await alert;
+
+      final (sound, vibrates) = switch (defaultTargetPlatform) {
+        TargetPlatform.android => ('SystemSoundType.click', true),
+        TargetPlatform.iOS => ('SystemSoundType.tick', true),
+        _ => ('SystemSoundType.alert', false),
+      };
+      expect(calls.map((call) => (call.method, call.arguments)), [
+        for (var i = 0; i < 3; i++) ...[
+          ('SystemSound.play', sound),
+          if (vibrates) ('HapticFeedback.vibrate', null),
+        ],
+      ]);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+      TargetPlatform.macOS,
+    }),
+  );
+
   Recipe pasta() => Recipe(
     id: 'm',
     title: 'Testenina',

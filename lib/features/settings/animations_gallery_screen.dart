@@ -89,8 +89,7 @@ final animationEntries = <AnimationEntry>[
   ),
   AnimationEntry(
     'Tajmer sa jajetom',
-    'Još nije u aplikaciji. Planirano za režim kuvanja, kad korak ima '
-        'vreme i tajmer je uključen.',
+    'U režimu kuvanja, dok tajmer za korak odbrojava vreme.',
     (_) => const _EggDemo(),
   ),
 ];
