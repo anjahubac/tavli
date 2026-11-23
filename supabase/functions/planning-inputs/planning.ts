@@ -4,7 +4,8 @@
 // listu vidljivih namirnica i poziva `planning_advisory_inputs` sa
 // `for_provider = true`: doprinose samo članovi koji su uključili deljenje
 // za planiranje, i za sopstvene podatke, jer rezultat ide AI-ju. Odgovor ima
-// tačno šest nizova ukusa: bez članova, imena, omiljenih i alergena.
+// šest nizova ukusa i broj članova po omiljenom receptu (TRELLO-44): bez
+// članova, imena i alergena.
 // Ništa se ne kešira i ne loguje.
 
 export const tasteKeys = [
@@ -16,7 +17,9 @@ export const tasteKeys = [
   "dislikedCuisineCodes",
 ] as const;
 
-export type Tastes = Record<(typeof tasteKeys)[number], string[]>;
+export type Tastes = Record<(typeof tasteKeys)[number], string[]> & {
+  favoriteRecipeCounts: Record<string, number>;
+};
 
 export interface AdvisoryRequest {
   actor: string;
@@ -79,7 +82,7 @@ export async function parseRequest(request: Request): Promise<string | null> {
     : null;
 }
 
-/** Tačno šest nizova kratkih tekstova; višak (npr. omiljeni) se odbacuje. */
+/** Šest nizova kratkih tekstova i omiljeni (id recepta → broj članova). */
 export function project(raw: unknown): Tastes {
   if (typeof raw !== "object" || raw === null) {
     throw new Error("planning_inputs_shape");
@@ -96,6 +99,27 @@ export function project(raw: unknown): Tastes {
     }
     result[key] = value as string[];
   }
+  const favorites = source.favoriteRecipeCounts;
+  if (
+    typeof favorites !== "object" || favorites === null ||
+    Array.isArray(favorites)
+  ) {
+    throw new Error("planning_inputs_shape");
+  }
+  const entries = Object.entries(favorites);
+  if (
+    entries.length > maxItems ||
+    !entries.every(([id, count]) =>
+      id.length > 0 && id.length <= 64 && Number.isInteger(count) &&
+      (count as number) >= 1 && (count as number) <= 100
+    )
+  ) {
+    throw new Error("planning_inputs_shape");
+  }
+  result.favoriteRecipeCounts = Object.fromEntries(entries) as Record<
+    string,
+    number
+  >;
   return result;
 }
 

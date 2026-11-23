@@ -12,6 +12,9 @@ import 'recipe_labels.dart';
 /// Isti recept se ne ponavlja u ovoliko uzastopnih dana.
 const repeatWindowDays = 3;
 
+/// Omiljen recept (TRELLO-44) ide najviše jednom u ovoliko dana.
+const favoriteRepeatWindowDays = 7;
+
 /// Šta pravila znaju o jelu na jednom mestu.
 class MealFacts {
   const MealFacts({
@@ -60,7 +63,8 @@ enum MealRule {
   /// Najviše jedan jak obrok dnevno.
   secondHearty,
 
-  /// Isti recept ne ide dva puta u [repeatWindowDays] dana.
+  /// Isti recept ne ide dva puta u [repeatWindowDays] dana; omiljen
+  /// recept ne ide dva puta u [favoriteRepeatWindowDays] dana.
   repeated,
 }
 
@@ -88,10 +92,12 @@ Set<MealRule> slotRuleBreaks(MealType type, MealFacts facts) => {
 /// ([movable]), krši ga ono koje sme da se menja, da bi popravka uopšte
 /// bila moguća. Inače: kod dva jaka obroka u danu krši pravilo onaj koji
 /// nije ručak, kod ponovljenog recepta kasnije mesto. Bez [movable] sva
-/// mesta smeju da se menjaju.
+/// mesta smeju da se menjaju. Recepti iz [favorites] (ključevi recepata)
+/// ponavljaju se najviše jednom u [favoriteRepeatWindowDays] dana.
 Map<MealSlot, Set<MealRule>> mealRuleBreaks(
   Map<MealSlot, MealFacts> meals, {
   Set<MealSlot>? movable,
+  Set<String> favorites = const {},
 }) {
   final result = <MealSlot, Set<MealRule>>{};
   void add(MealSlot s, MealRule r) => (result[s] ??= {}).add(r);
@@ -127,8 +133,11 @@ Map<MealSlot, Set<MealRule>> mealRuleBreaks(
   for (var i = 0; i < slots.length; i++) {
     for (var j = 0; j < i; j++) {
       final a = slots[j], b = slots[i];
-      if (meals[a]!.recipeKey == meals[b]!.recipeKey &&
-          a.date.daysUntil(b.date) < repeatWindowDays) {
+      final key = meals[a]!.recipeKey;
+      final window = favorites.contains(key)
+          ? favoriteRepeatWindowDays
+          : repeatWindowDays;
+      if (key == meals[b]!.recipeKey && a.date.daysUntil(b.date) < window) {
         if (kept(b) && !kept(a)) {
           add(a, MealRule.repeated);
           continue;

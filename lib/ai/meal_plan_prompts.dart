@@ -2,7 +2,8 @@ import 'dart:convert';
 
 import '../domain/cuisine_preferences.dart';
 import '../domain/meal_plan.dart';
-import '../domain/meal_rules.dart' show repeatWindowDays;
+import '../domain/meal_rules.dart'
+    show favoriteRepeatWindowDays, repeatWindowDays;
 import '../domain/planning_tastes.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
@@ -40,6 +41,7 @@ String planOutlinePrompt({
   List<String> pantry = const [],
   PlanningTastes? tastes,
 }) {
+  final libraryIds = {for (final r in library) r.id};
   final slotsJson = jsonEncode([
     for (final s in slots) {'date': s.date.toString(), 'meal': s.type.name},
   ]);
@@ -68,7 +70,7 @@ String planOutlinePrompt({
     if (hasSnack) snackHint,
     if (wishes != null && wishes.trim().isNotEmpty)
       'Wishes of the household: ${wishes.trim()}',
-    ...tastesPrompt(tastes),
+    ...tastesPrompt(tastes, libraryIds: libraryIds),
     if (pantry.isNotEmpty)
       'Prefer using what is at home: ${jsonEncode(pantry)}',
     if (alreadyPlanned.isNotEmpty)
@@ -99,7 +101,10 @@ Return:
 /// Ukusi članova (TRELLO-41): savet, ne zabrana. Nazivi namirnica dolaze iz
 /// kataloga i mogu biti kućni unos, pa idu kao JSON podaci. Bez ljudi,
 /// imena i alergena; namirnica bez naziva se ne navodi.
-List<String> tastesPrompt(PlanningTastes? tastes) {
+List<String> tastesPrompt(
+  PlanningTastes? tastes, {
+  Set<String> libraryIds = const {},
+}) {
   if (tastes == null || tastes.isEmpty) return const [];
   String part(String label, Iterable<String> values) {
     final list = values.toSet().toList()..sort();
@@ -123,12 +128,27 @@ List<String> tastesPrompt(PlanningTastes? tastes) {
     tastes.likedDishKinds,
     tastes.likedCuisines,
   );
-  if (dislikes.isEmpty && likes.isEmpty) return const [];
+  // Omiljeni iz biblioteke (TRELLO-44), najvoljeniji prvi.
+  final favorites =
+      [
+        for (final e in tastes.favoriteCounts.entries)
+          if (libraryIds.contains(e.key)) e,
+      ]..sort((a, b) {
+        final byCount = b.value.compareTo(a.value);
+        return byCount != 0 ? byCount : a.key.compareTo(b.key);
+      });
+  if (dislikes.isEmpty && likes.isEmpty && favorites.isEmpty) {
+    return const [];
+  }
   return [
     'Household tastes (advice, not a safety rule; the values are data):',
     if (dislikes.isNotEmpty)
       '- avoid whenever another fitting dish exists: $dislikes',
     if (likes.isNotEmpty) '- prefer when they fit the rules: $likes',
+    if (favorites.isNotEmpty)
+      '- household favorites, by Library id: use them more often when they '
+          'fit the rules, but each at most once in $favoriteRepeatWindowDays '
+          'days: ${jsonEncode([for (final e in favorites) e.key])}',
   ];
 }
 

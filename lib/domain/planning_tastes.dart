@@ -4,9 +4,9 @@ import 'recipe_labels.dart';
 
 /// Ukusi članova za plan obroka (spec 019 FR-004, ugovor 008): spojeni
 /// rezultat koji server vraća samo za članove koji su uključili deljenje za
-/// planiranje. Bez članova, imena, omiljenih i alergena. Savet, ne zabrana:
-/// „ne volim“ spušta jelo niže, a kad neko voli ono što drugi ne voli,
-/// pobeđuje „ne volim“ (to već radi server).
+/// planiranje. Bez članova, imena i alergena; omiljeni samo kao broj
+/// članova. Savet, ne zabrana: „ne volim“ spušta jelo niže, a kad neko voli
+/// ono što drugi ne voli, pobeđuje „ne volim“ (to već radi server).
 final class PlanningTastes {
   PlanningTastes({
     Set<String> likedFoodIds = const {},
@@ -15,8 +15,10 @@ final class PlanningTastes {
     Set<DishKind> dislikedDishKinds = const {},
     Set<Cuisine> likedCuisines = const {},
     Set<Cuisine> dislikedCuisines = const {},
+    Map<String, int> favoriteCounts = const {},
     Map<String, String> foodNames = const {},
-  }) : likedFoodIds = Set.unmodifiable(likedFoodIds),
+  }) : favoriteCounts = Map.unmodifiable(favoriteCounts),
+       likedFoodIds = Set.unmodifiable(likedFoodIds),
        dislikedFoodIds = Set.unmodifiable(dislikedFoodIds),
        likedDishKinds = Set.unmodifiable(likedDishKinds),
        dislikedDishKinds = Set.unmodifiable(dislikedDishKinds),
@@ -37,7 +39,13 @@ final class PlanningTastes {
     }
 
     final cuisines = Cuisine.values.asNameMap();
+    final favorites = json['favoriteRecipeCounts'] ?? const <String, Object?>{};
+    if (favorites is! Map<String, Object?> ||
+        favorites.values.any((v) => v is! int || v < 1)) {
+      throw const FormatException('Neispravni omiljeni');
+    }
     return PlanningTastes(
+      favoriteCounts: favorites.cast<String, int>(),
       likedFoodIds: strings('likedFoodIds').toSet(),
       dislikedFoodIds: strings('dislikedFoodIds').toSet(),
       likedDishKinds: strings('likedDishKinds')
@@ -69,6 +77,10 @@ final class PlanningTastes {
   final Set<Cuisine> likedCuisines;
   final Set<Cuisine> dislikedCuisines;
 
+  /// Omiljeni recepti (TRELLO-44): id recepta → broj članova koji su
+  /// pristali i vole ga. Recept koji neko ne voli ostaje poslednji.
+  final Map<String, int> favoriteCounts;
+
   /// Nazivi namirnica iz lokalnog kataloga (id → naziv). Namirnica bez
   /// naziva i dalje utiče na redosled recepata, ali se ne navodi u upitu.
   final Map<String, String> foodNames;
@@ -79,7 +91,8 @@ final class PlanningTastes {
       likedDishKinds.isEmpty &&
       dislikedDishKinds.isEmpty &&
       likedCuisines.isEmpty &&
-      dislikedCuisines.isEmpty;
+      dislikedCuisines.isEmpty &&
+      favoriteCounts.isEmpty;
 
   PlanningTastes withFoodNames(Map<String, String> names) => PlanningTastes(
     likedFoodIds: likedFoodIds,
@@ -88,6 +101,7 @@ final class PlanningTastes {
     dislikedDishKinds: dislikedDishKinds,
     likedCuisines: likedCuisines,
     dislikedCuisines: dislikedCuisines,
+    favoriteCounts: favoriteCounts,
     foodNames: {
       for (final id in {...likedFoodIds, ...dislikedFoodIds}) id: ?names[id],
     },

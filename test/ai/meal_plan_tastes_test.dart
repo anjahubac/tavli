@@ -286,4 +286,104 @@ void main() {
     expect(draft.isComplete, isTrue);
     expect(draft.withoutTastes, isFalse);
   });
+
+  group('omiljeni recepti (TRELLO-44)', () {
+    test('omiljeni idu napred po broju članova; koji neko ne voli ostaje '
+        'na kraju', () async {
+      final tastes = PlanningTastes(
+        dislikedFoodIds: {fishId},
+        favoriteCounts: {'two': 2, 'one': 1, 'fish': 3, 'nema-u-biblioteci': 1},
+      );
+      await planner(FakeTastes([tastes])).propose(
+        weekRequest(),
+        library: [
+          libraryRecipe('plain', 'Pasulj'),
+          libraryRecipe('one', 'Gibanica'),
+          withFood('fish', 'Riblja čorba', fishId),
+          libraryRecipe('two', 'Sarma'),
+        ],
+      );
+      final outline = client.requests.firstWhere(isOutline);
+      expect(libraryIdsIn(outline), ['two', 'one', 'plain', 'fish']);
+      // U upitu samo omiljeni iz ponuđene biblioteke, najvoljeniji prvi.
+      expect(
+        outline.prompt,
+        contains(
+          'household favorites, by Library id: use them more often when '
+          'they fit the rules, but each at most once in 7 days: '
+          '["fish","two","one"]',
+        ),
+      );
+      expect(outline.prompt, isNot(contains('nema-u-biblioteci')));
+    });
+
+    test(
+      'omiljen recept predložen dvaput u nedelji: drugi put se menja',
+      () async {
+        final mon = MealSlot(monday, MealType.lunch);
+        final fri = MealSlot(monday.addDays(4), MealType.lunch);
+        var outlines = 0;
+        client.handler = (r) {
+          if (!isOutline(r)) return goodAnswer(r);
+          outlines++;
+          return jsonEncode({
+            'meals': [
+              for (final s in slotsIn(r))
+                {
+                  ...s,
+                  'recipeId':
+                      outlines == 1 &&
+                          (s['date'] == '2026-11-02' ||
+                              s['date'] == '2026-11-06')
+                      ? 'fav'
+                      : null,
+                  'title': 'Jelo ${s['date']}',
+                },
+            ],
+          });
+        };
+
+        final draft = await planner(
+          FakeTastes([
+            PlanningTastes(favoriteCounts: {'fav': 2}),
+          ]),
+        ).propose(weekRequest(), library: [libraryRecipe('fav', 'Sarma')]);
+
+        expect(draft.proposals[mon]!.libraryRecipeId, 'fav');
+        expect(draft.proposals[fri]!.libraryRecipeId, isNull);
+        final retry = client.requests.where(isOutline).last;
+        expect(slotsIn(retry).map((s) => s['date']), ['2026-11-06']);
+      },
+    );
+
+    test(
+      'bez ukusa isti recept posle 4 dana ostaje (pravilo 3 dana)',
+      () async {
+        client.handler = (r) => isOutline(r)
+            ? jsonEncode({
+                'meals': [
+                  for (final s in slotsIn(r))
+                    {
+                      ...s,
+                      'recipeId':
+                          s['date'] == '2026-11-02' || s['date'] == '2026-11-06'
+                          ? 'fav'
+                          : null,
+                      'title': 'Jelo ${s['date']}',
+                    },
+                ],
+              })
+            : goodAnswer(r);
+        final draft = await planner(null)
+            .propose(weekRequest(), library: [libraryRecipe('fav', 'Sarma')]);
+        expect(
+          draft
+              .proposals[MealSlot(monday.addDays(4), MealType.lunch)]!
+              .libraryRecipeId,
+          'fav',
+        );
+        expect(client.requests.where(isOutline), hasLength(1));
+      },
+    );
+  });
 }

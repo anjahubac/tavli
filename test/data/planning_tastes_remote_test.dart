@@ -118,6 +118,36 @@ void main() {
       );
     }
   });
+
+  test('omiljeni: broj članova po receptu; neispravan oblik je privremena '
+      'greška', () async {
+    final tastes = await remote(
+      () => FunctionResponse(
+        data: {
+          ...body(disliked: const []),
+          'favoriteRecipeCounts': {'r1': 2},
+        },
+        status: 200,
+      ),
+    ).current();
+    expect(tastes.favoriteCounts, {'r1': 2});
+
+    for (final bad in [
+      <String, Object?>{'r1': 0},
+      <String, Object?>{'r1': 'dva'},
+      <Object?>[],
+    ]) {
+      await expectLater(
+        remote(
+          () => FunctionResponse(
+            data: {...body(), 'favoriteRecipeCounts': bad},
+            status: 200,
+          ),
+        ).current(),
+        throwsA(isA<PlanningTastesUnavailable>()),
+      );
+    }
+  });
 }
 
 class SocketLikeError implements Exception {

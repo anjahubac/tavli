@@ -26,6 +26,7 @@ const emptyTastes = {
   dislikedDishKinds: [],
   likedCuisineCodes: [],
   dislikedCuisineCodes: [],
+  favoriteRecipeCounts: {},
 };
 
 function setup(over: Partial<PlanningDependencies> = {}) {
@@ -43,6 +44,7 @@ function setup(over: Partial<PlanningDependencies> = {}) {
         dislikedFoodIds: [fish],
         likedCuisineCodes: ["italian"],
         favoriteRecipeCounts: { "recipe-1": 2 },
+        extra: "dropped",
       });
     },
     allow: () => true,
@@ -59,7 +61,7 @@ function post(body: unknown, token = "test-session") {
   });
 }
 
-Deno.test("returns exactly the six taste arrays, without favorites", async () => {
+Deno.test("returns the six taste arrays and favorite counts", async () => {
   const { handle, advisory } = setup();
   const response = await handle(post({ householdId: household }));
   equal(response.status, 200);
@@ -68,6 +70,7 @@ Deno.test("returns exactly the six taste arrays, without favorites", async () =>
     ...emptyTastes,
     dislikedFoodIds: [fish],
     likedCuisineCodes: ["italian"],
+    favoriteRecipeCounts: { "recipe-1": 2 },
   });
   // Server bira učesnike (svi članovi) i listu namirnica.
   equal(advisory, [{
@@ -140,6 +143,10 @@ Deno.test("an unexpected RPC shape is an internal error, not data", async () => 
       { ...emptyTastes, likedFoodIds: "fish" },
       { ...emptyTastes, dislikedCuisineCodes: [1] },
       { likedFoodIds: [] },
+      { ...emptyTastes, favoriteRecipeCounts: [] },
+      { ...emptyTastes, favoriteRecipeCounts: { "recipe-1": 0 } },
+      { ...emptyTastes, favoriteRecipeCounts: { "recipe-1": 1.5 } },
+      { ...emptyTastes, favoriteRecipeCounts: { ["x".repeat(65)]: 1 } },
     ]
   ) {
     const { handle } = setup({ advisory: () => Promise.resolve(shape) });

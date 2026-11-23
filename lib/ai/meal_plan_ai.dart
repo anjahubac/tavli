@@ -74,12 +74,27 @@ class MealPlanAI {
     final byId = {for (final r in eligible) r.id: r};
     var tastes = PlanningTastes.none;
 
-    // Recepti koje neko ne voli idu na kraj, pre ograničenja broja, pa ih
-    // zamene drugi kad ih ima dovoljno. Redosled ostalih se ne menja.
-    List<Recipe> offeredFor(PlanningTastes t) => [
-      ...eligible.where((r) => !t.dislikes(r)),
-      ...eligible.where(t.dislikes),
-    ].take(maxLibraryInPrompt).toList();
+    // Pre ograničenja broja: omiljeni prvi (više članova, više napred),
+    // pa ostali, a recepti koje neko ne voli na kraj, i kad su omiljeni.
+    // Unutar grupe redosled biblioteke ostaje.
+    List<Recipe> offeredFor(PlanningTastes t) {
+      int favorite(Recipe r) => t.dislikes(r) ? 0 : t.favoriteCounts[r.id] ?? 0;
+      // Stabilno: kod istog broja članova ostaje redosled biblioteke.
+      final liked =
+          [
+            for (final (i, r) in eligible.indexed)
+              if (favorite(r) > 0) (i, r),
+          ]..sort((a, b) {
+            final byCount = favorite(b.$2).compareTo(favorite(a.$2));
+            return byCount != 0 ? byCount : a.$1.compareTo(b.$1);
+          });
+      return [
+        for (final (_, r) in liked) r,
+        ...eligible.where((r) => favorite(r) == 0 && !t.dislikes(r)),
+        ...eligible.where(t.dislikes),
+      ].take(maxLibraryInPrompt).toList();
+    }
+
     var offered = offeredFor(tastes);
 
     Future<T> step<T>(Future<T> Function() run) async {
@@ -215,6 +230,7 @@ class MealPlanAI {
         put: put,
         retry: (slots, rejected) => outline(slots, rejected: rejected),
         library: offered,
+        favorites: () => tastes.favoriteCounts.keys.toSet(),
       );
       if (!identical(before, draft.proposals)) onProgress?.call(draft);
     }
@@ -266,9 +282,17 @@ class MealPlanAI {
     )
     retry,
     required List<Recipe> library,
+    Set<String> Function()? favorites,
   }) async {
+    Map<MealSlot, Set<MealRule>> breaksOf(Map<MealSlot, MealFacts> meals) =>
+        mealRuleBreaks(
+          meals,
+          movable: movable,
+          favorites: favorites?.call() ?? const {},
+        );
+
     List<MealSlot> broken() {
-      final breaks = mealRuleBreaks(facts(), movable: movable);
+      final breaks = breaksOf(facts());
       return [
         for (final s in movable)
           if (breaks[s]?.isNotEmpty ?? false) s,
@@ -291,7 +315,7 @@ class MealPlanAI {
 
     bad = broken();
     for (final slot in bad) {
-      final before = mealRuleBreaks(facts(), movable: movable);
+      final before = breaksOf(facts());
       for (final r in library) {
         final weight = r.labels.weightValue;
         if (weight == null) continue;
@@ -301,10 +325,7 @@ class MealPlanAI {
           weight: weight,
           dishKind: r.labels.dishKindValue,
         );
-        final after = mealRuleBreaks({
-          ...facts(),
-          slot: candidate.facts,
-        }, movable: movable);
+        final after = breaksOf({...facts(), slot: candidate.facts});
         final fits =
             (after[slot]?.isEmpty ?? true) &&
             after.entries.every(
