@@ -4,10 +4,12 @@
 This material supports D1-006 / FR-003 in [spec 018](../spec.md); it does not
 resolve the spec's open decisions or mark any implementation task complete.
 
-The candidate CSV contains 163 generated name/category suggestions. Their
-identity, base units, sources and allergen details have not been independently
-reviewed. Every row starts `pending`, with allergen status `unknown`. They are
-not included in application code, database seeds or migrations.
+The candidate CSV contains 167 name/category suggestions. Four rows (svinjski
+but, svinjska mast, crveni luk and žumance) have a recorded human review; the
+other 163 remain pending with unknown allergen status. These are research
+records only and are not included in application code, database seeds or
+migrations. The svinjski but USDA record is an approximation for a whole leg
+with separable lean and fat, including bone and skin; see its row-level note.
 
 The adjacent `legacy-food-reference.csv` lists 171 food names with their
 category and aliases, collected before the team catalog work began. It is a
@@ -25,11 +27,10 @@ T-500 candidates remain pending with unknown allergen status.
 
 ## Review worksheet
 
-`catalog-review-worksheet.csv` joins the 163 candidates and the 171 reference
-rows (334 foods) with **proposed** evidence for a human reviewer. It is a
-reviewer aid: no row is accepted, nothing is imported, and every row keeps
-`identity_status = pending` and `allergen_status = unknown`. The first eleven
-columns match `candidates.csv`; the rest are added evidence.
+`catalog-review-worksheet.csv` joins the 167 candidates and the 171 reference
+rows (338 foods). It records proposed evidence for pending rows and row-level
+human review for four candidates. Nothing is imported into the app. The first
+eleven columns match `candidates.csv`; the rest add evidence and review details.
 
 | Column | Meaning |
 | --- | --- |
@@ -39,12 +40,13 @@ columns match `candidates.csv`; the rest are added evidence.
 | `usda_basis` | How the record was chosen: a keyword search of record descriptions (proposal), the historical mapping (its id and description match the downloaded release; the food match itself is not reviewed), or no match found. |
 | `usda_alternates` | Other records the search found, for the reviewer to compare. |
 | `notes` | Known approximations, for example a cut of meat or a proxy species or product. |
-| `base_unit_reviewer`, `usda_reviewer` | Empty; filled by an independent human reviewer. |
+| `base_unit_reviewer`, `usda_reviewer` | Human reviewer recorded for approved candidate rows; otherwise empty. |
 
-Current counts: 308 rows have a proposed USDA record and 26 have none (the
-foods are not in SR Legacy, such as halloumi, skyr and sumac). The matching only
-compares names, so a proposed record can be the wrong food, a different cut or a
-proxy. A record is evidence for the reviewer to confirm, not a conversion or
+Of the original 334 worksheet rows, 308 had a proposed USDA SR Legacy record
+and 26 had none. The four reviewed candidates add USDA mappings; red onion uses
+a USDA Foundation Foods record and has no value in the SR Legacy-only nutrition
+extract. Name matching alone can still select the wrong food, a different cut or
+a proxy. A record is evidence for the reviewer to confirm, not a conversion or
 nutrition value to use. USDA terms and the seed provenance still need the team's
 acceptance under Q1. The offline checker below validates the worksheet: it must list
 every candidate and reference food exactly once, keep each row's origin, category
@@ -65,8 +67,8 @@ unrecognized allergen codes and normalized exact duplicate names against this
 historical reference or another candidate. A rejected candidate may remain as
 history if it has a reason. It also checks the worksheet against its sources. The
 scripts CI job runs the checker against all four CSV files via the test suite.
-The current expected output is 171 reference rows, 163 proposals, 334 worksheet
-rows and zero marked reviewed.
+The current expected output is 171 reference rows, 167 proposals, 338 worksheet
+rows and four marked reviewed.
 
 **A passing check is not approval.** Exact comparison does not catch every
 semantic duplicate, establish that a reference alias is correct, verify a
@@ -82,4 +84,5 @@ name, base unit and a documented source. Allergen assessment requires its own
 recorded evidence and reviewer; `unknown` must remain unknown until supported.
 Reject or keep pending anything ambiguous. Recheck accepted names against the
 actual current team catalog and resolve conflicts before a separate migration.
-No review status, source or approval has been invented in this research.
+Review markers record Uroš Milutinović as reviewer for the four approved rows;
+they do not by themselves prove review quality or approve remaining rows.

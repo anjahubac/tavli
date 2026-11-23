@@ -1,7 +1,8 @@
 # Nutrition reference and portion-calculation research
 
-**Status:** USDA values are extracted as a research artifact. The candidate
-identities, units and source mappings have not been approved for seeding. This
+**Status:** USDA values are extracted as a research artifact. Four candidate
+identities, units and source mappings have human review recorded; the remaining
+334 worksheet rows have not been approved for seeding. This
 research does not ship a diary, recipe-calculation or nutrition-display feature.
 Dev 1 evidence for D1-011, D1-015 and D1-016 / FR-001–003 in
 [spec 023](spec.md).
@@ -35,9 +36,12 @@ python3 scripts/build_nutrition_reference_csv.py \
   specs/023-optional-nutrition/research/nutrition-values-sr-legacy-2018.csv
 ```
 
-Observed result: 334 worksheet rows; 308 rows (92.2%) have all four requested
-nutrients (energy kcal, protein, total fat and carbohydrate). The remaining 26
-have no complete USDA record and stay unknown. Values are copied by exact FDC ID
+Observed result: 338 worksheet rows; 311 rows (92.0%) have all four requested
+nutrients (energy kcal, protein, total fat and carbohydrate). The remaining 27
+have no complete SR Legacy record and stay unknown. Three of the four newly
+reviewed foods (pork leg, lard and fresh egg yolk) have complete SR Legacy
+records. Red onion uses USDA Foundation Foods and stays without values in this
+SR Legacy-only extract. Values are copied by exact FDC ID
 from the dataset's nutrient records, not inferred from food names. The generated
 [review artifact](research/nutrition-values-sr-legacy-2018.csv) records the source,
 release, FDC reference and CC0 1.0 for complete rows. The artifact does not
@@ -45,11 +49,11 @@ alter the worksheet's identity or source review state and is not an application
 seed. It does not include Ciqual values.
 
 The extractor test uses a synthetic two-food archive to prove ID-based joining,
-unknown preservation and source attribution. Coverage is measured against 334
-worksheet proposals; 308 have a proposed USDA record and 26 do not. The worksheet
-still marks all rows `pending`, so the seed generator rejects it until each
-imported row has a recorded review decision and required reviewer fields. No
-shared catalog rows or aliases are seeded by this change. No allergen data is
+unknown preservation and source attribution. Coverage is measured against 338 worksheet rows; 311 have complete values in
+this extract and 27 do not. Only four candidate rows are marked reviewed, so the
+seed generator still rejects the worksheet until every row selected for import
+has a recorded review decision and required reviewer fields. No shared catalog
+rows or aliases are seeded by this change. No allergen data is
 inferred from nutrition values.
 
 ## Earlier prototype evidence
