@@ -132,3 +132,30 @@ $$;
 
 revoke all on function public.prepare_new_household(text) from public, anon;
 grant execute on function public.prepare_new_household(text) to authenticated;
+
+-- Napušteno prazno domaćinstvo (korisnik odustao posle "Kreiraj novo
+-- domaćinstvo") se briše posle jednog dana. Brisanje reda pokreće okidač
+-- `pending_new_households_drop_unused`. Posao je idempotentan: ako ne uspe,
+-- sledeći sat ga ponavlja. Domaćinstvo čiji je poslednji član otišao već
+-- briše `private.depart_household`.
+create function private.purge_stale_new_households()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  purged integer;
+begin
+  delete from private.pending_new_households p
+   where p.created_at < now() - interval '1 day';
+  get diagnostics purged = row_count;
+  return purged;
+end;
+$$;
+
+revoke all on function private.purge_stale_new_households()
+  from public, anon, authenticated, service_role;
+
+select cron.schedule('stale-new-households', '17 * * * *',
+  'select private.purge_stale_new_households()');

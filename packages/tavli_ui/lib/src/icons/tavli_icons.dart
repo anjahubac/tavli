@@ -129,7 +129,7 @@ abstract final class TavliIcons {
   static const back = TavliIconData('back', ['M15 5l-7 7 7 7']);
   static const chevronRight = TavliIconData('chevronRight', ['M9 5l7 7-7 7']);
   static const chevronDown = TavliIconData('chevronDown', ['M5 9l7 7 7-7']);
-  static const chevronUp = TavliIconData('chevronUp', ['M6 15l6-6 6 6']);
+  static const chevronUp = TavliIconData('chevronUp', ['M5 15l7-7 7 7']);
   static const arrowForward = TavliIconData('arrowForward', [
     'M5 12h14M13 6l6 6-6 6',
   ]);

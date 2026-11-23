@@ -85,7 +85,7 @@ select is(
     'public.preview_household_join',
     'public.regenerate_household_invite', 'public.remove_household_member',
     'public.rename_household',
-    'public.set_planning_preferences_sharing'
+    'public.set_planning_preferences_sharing', 'public.take_household_removal'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );

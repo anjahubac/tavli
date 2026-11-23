@@ -22,6 +22,8 @@ class FakeServer {
   final tables = <String, Map<String, Map<String, Object?>>>{};
   final photos = <String, Uint8List>{};
   final revoked = <String>{}; // userId-jevi kojima je sesija opozvana
+  final removals =
+      <String, String>{}; // userId → domaćinstvo iz kog je uklonjen
 
   bool offline = false;
 
@@ -677,9 +679,19 @@ class FakeAccountApi implements AccountApi {
     if (home == null || server.households[memberId] != home) {
       return 'not_allowed';
     }
+    server.removals[memberId] = home;
     server.households[memberId] = 'home-$memberId';
     server.roles[memberId] = 'owner';
     return 'removed';
+  }
+
+  @override
+  Future<bool> takeHouseholdRemoval(String previousHouseholdId) async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if (server.removals[uid] != previousHouseholdId) return false;
+    server.removals.remove(uid);
+    return true;
   }
 
   @override

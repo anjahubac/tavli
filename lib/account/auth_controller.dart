@@ -158,7 +158,7 @@ class AuthController extends Notifier<AuthState> {
       final session = await gateway.restore(json);
       await store.write(session.json);
       final fresh = await service.loadOrFetch(session, allowOffline: false);
-      if (account != null) _noticeIfRemoved(account, fresh);
+      if (account != null) await _noticeIfRemoved(account, fresh);
       _set(_signedIn(fresh));
     } on SecretStorageException {
       await _lockSession(gateway);
@@ -269,7 +269,8 @@ class AuthController extends Notifier<AuthState> {
             sync?.stop();
             _pendingRecheck = null;
           }
-          _noticeIfRemoved(initial.account, account);
+          await _noticeIfRemoved(initial.account, account);
+          if (!ref.mounted || !identical(state, initial)) return;
           _membershipRetry?.cancel();
           if (!initial.membershipVerified ||
               account.householdId != initial.account.householdId ||
@@ -532,18 +533,18 @@ class AuthController extends Notifier<AuthState> {
   /// "Promeni e-poštu" i "Nazad": nazad na korak sa e-poštom.
   void changeEmail() => state = const SignedOut();
 
-  /// Posle čekanja kontroler je možda već uklonjen (test, odjava).
-  /// Domaćinstvo se promenilo van ovog uređaja. Sopstveni prelazak na
-  /// drugom uređaju daje ulogu člana; uklanjanje (`remove_household_member`)
-  /// pravi novo lično domaćinstvo sa ulogom vlasnika. Ako je osoba na
-  /// drugom uređaju prešla pa postala naslednik vlasnika, obaveštenje bi
-  /// bilo pogrešno; to je redak slučaj bez posebnog signala sa servera.
-  void _noticeIfRemoved(Account before, Account after) {
+  /// Domaćinstvo se promenilo van ovog uređaja. Obaveštenje se prikazuje samo
+  /// ako server ima zapis o uklanjanju iz prethodnog domaćinstva
+  /// (`remove_household_member`); sopstveni prelazak ili "Kreiraj novo
+  /// domaćinstvo" na drugom uređaju ga ne pravi. Greška mreže se propagira da
+  /// se provera članstva ponovi, pa obaveštenje ne ostaje izgubljeno.
+  Future<void> _noticeIfRemoved(Account before, Account after) async {
     if (before.userId != after.userId ||
-        before.householdId == after.householdId ||
-        !after.isOwner) {
+        before.householdId == after.householdId) {
       return;
     }
+    if (!await _service.takeHouseholdRemoval(before.householdId)) return;
+    if (!ref.mounted) return;
     ref
         .read(householdRemovalNoticeProvider.notifier)
         .set(

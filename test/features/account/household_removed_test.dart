@@ -45,7 +45,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(removedTitle), findsNothing);
 
-    // Marko uklanja Anu: server joj pravi novo lično domaćinstvo.
+    // Marko uklanja Anu: server joj pravi novo lično domaćinstvo i zapis.
+    backend.server.removals[ana] = backend.server.households[marko]!;
     backend.server.households[ana] = 'home-removed';
     backend.server.roles[ana] = 'owner';
     await container.read(authControllerProvider.notifier).restoreSession();
@@ -74,6 +75,7 @@ void main() {
     final backend = FakeBackend();
     final ana = backend.server.userFor(testEmail);
     backend.server.profiles[ana]!['display_name'] = 'Ana Petrović';
+    backend.server.removals[ana] = 'home-old';
     await pumpTavli(
       tester,
       location: '/profile',
@@ -89,6 +91,23 @@ void main() {
           ),
     );
     expect(find.text(removedTitle), findsOneWidget);
+  });
+
+  testTavli('novo domaćinstvo sa drugog uređaja ne prikazuje obaveštenje', (
+    tester,
+  ) async {
+    final (:backend, :ana, marko: _) = sharedHome();
+    final app = await pumpTavli(tester, location: '/profile', backend: backend);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(Scaffold).first),
+    );
+    // Ana je sama napravila novo domaćinstvo: uloga vlasnika, bez zapisa.
+    backend.server.households[ana] = 'home-own-new';
+    backend.server.roles[ana] = 'owner';
+    await container.read(authControllerProvider.notifier).restoreSession();
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Više nisi u domaćinstvu'), findsNothing);
+    expect(app.scope.householdId, 'home-own-new');
   });
 
   testTavli('prelazak sa drugog uređaja ne prikazuje obaveštenje', (

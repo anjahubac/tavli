@@ -1,7 +1,7 @@
 -- "Kreiraj novo domaćinstvo": prazno domaćinstvo sa kodom, prelazak istim
 -- tokom kao pridruživanje, vlasništvo i čišćenje napuštenih pokušaja.
 begin;
-select plan(22);
+select plan(27);
 
 select has_function('public', 'prepare_new_household', array['text'],
   'postoji RPC za novo domaćinstvo');
@@ -101,6 +101,23 @@ select tests.authenticate_as(:'owner_id');
 select is(public.rename_household('Vikendica 2')->>'status', 'renamed',
   'vlasnik novog domaćinstva menja naziv');
 select tests.clear_auth();
+
+-- Napušteno prazno domaćinstvo se briše tek posle jednog dana.
+select tests.create_user('new-abandon@test.local') as abandon_id \gset
+select tests.authenticate_as(:'abandon_id');
+select public.prepare_new_household('Napušteno') as abandoned \gset
+select tests.clear_auth();
+select household_id as abandoned_home from private.pending_new_households
+  where user_id = :'abandon_id' \gset
+select is(private.purge_stale_new_households(), 0, 'svež pokušaj se ne briše');
+update private.pending_new_households set created_at = now() - interval '25 hours'
+  where user_id = :'abandon_id';
+select is(private.purge_stale_new_households(), 1, 'stari pokušaj se briše');
+select is((select count(*)::int from public.households where id = :'abandoned_home'), 0,
+  'briše se i prazno domaćinstvo');
+select is(private.purge_stale_new_households(), 0, 'ponovljeno pokretanje ne menja ništa');
+select is((select count(*)::int from cron.job where jobname = 'stale-new-households'), 1,
+  'čišćenje je zakazano');
 
 select * from finish();
 rollback;

@@ -142,6 +142,10 @@ class AccountService {
   Future<String> removeHouseholdMember(String memberId) =>
       _api.removeHouseholdMember(memberId);
 
+  /// Vidi [AccountApi.takeHouseholdRemoval].
+  Future<bool> takeHouseholdRemoval(String previousHouseholdId) =>
+      _api.takeHouseholdRemoval(previousHouseholdId);
+
   Future<HouseholdJoinResult> confirmHouseholdJoin({
     required Account account,
     required String token,
