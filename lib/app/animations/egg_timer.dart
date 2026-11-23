@@ -14,12 +14,16 @@ class EggTimer extends StatelessWidget {
     this.running = true,
     this.remaining,
     this.total,
+    this.showTime = true,
     this.size = 180,
   });
 
   final bool running;
   final Duration? remaining;
   final Duration? total;
+
+  /// Vreme ispod slike (u maloj traci ga ispisuje ekran).
+  final bool showTime;
   final double size;
 
   static String format(Duration d) {
@@ -55,7 +59,7 @@ class EggTimer extends StatelessWidget {
             ),
           ),
         ),
-        if (left != null)
+        if (left != null && showTime)
           Text(
             format(left),
             style: theme.textTheme.displaySmall,
