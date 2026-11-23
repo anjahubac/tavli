@@ -10,14 +10,15 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../../helpers/test_app.dart';
 
 void main() {
-  testTavli('Profil: inicijali, ime, e-pošta, domaćinstvo, uloga', (
+  testTavli('Profil: inicijali, ime, e-pošta i kartica domaćinstva', (
     tester,
   ) async {
     await pumpTavli(tester, location: '/profile');
     expect(find.text('AP'), findsOneWidget);
     expect(find.text('Ana Petrović'), findsOneWidget);
     expect(find.text(testEmail), findsOneWidget);
-    expect(find.text('Moje domaćinstvo · Vlasnik'), findsOneWidget);
+    expect(find.text('Moje domaćinstvo'), findsOneWidget);
+    expect(find.text('1 član'), findsOneWidget);
     expect(find.text('Izmeni ime'), findsOneWidget);
     // Zaglavlje je iznad postojećih stavki.
     expect(

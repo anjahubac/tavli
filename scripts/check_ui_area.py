@@ -30,6 +30,12 @@ MIGRATED = (
     'lib/features/planning/meal_entry_detail.dart',
     'lib/features/planning/plan_calendar.dart',
     'lib/features/planning/plan_screen.dart',
+    # Domaćinstvo: pozivnica i pridruživanje (spec 008, FR-005/FR-006).
+    'lib/features/account/household_setup_screen.dart',
+    'lib/features/account/household_share_screen.dart',
+    'lib/features/account/household_widgets.dart',
+    'lib/features/settings/household_edit_dialog.dart',
+    'lib/features/settings/profile_household_section.dart',
     # Card "UI biblioteka 13", first part: Početna, plan steps, the rest of
     # Plan, Profil and Nabavka.
     'lib/features/home/home_notice.dart',

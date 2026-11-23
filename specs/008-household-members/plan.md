@@ -55,7 +55,7 @@ The [flow map](../../docs/flows.md) records the boundary for downstream consumer
 
 ### Proposed server contract
 
-- Retrieve or initialize the stable share token for the current owner. The
+- Retrieve or initialize the stable share token for any current member. The
   server derives identity and household from the authenticated session and
   membership. The client forms the approved link and QR from that token.
 - Preview takes the opaque token and returns the destination household name, the caller's source ID and whether leaving that source requires the deletion warning. Return a generic unavailable result for an invalid token. It grants no access to destination household rows.
@@ -78,7 +78,7 @@ The [flow map](../../docs/flows.md) records the boundary for downstream consumer
   membership, and promote the longest-serving remaining member (ascending
   user UUID breaks ties) or delete the now-empty source with its shared rows. Failures
   roll back the DB changes. Use least-privilege RPC grants, explicit policies
-  and fixed search paths. Keep token lookup and delivery owner-scoped.
+  and fixed search paths. Keep token lookup and delivery scoped to the caller's own membership.
 - PR 94 account deletion uses the same private departure function as join.
   Both lock the account and affected household rows before changing membership.
   The departure function retires an empty household and records any photo
@@ -98,7 +98,8 @@ The initial SQL fixture uses these proposed RPC signatures and response keys:
 
 | RPC | Result |
 | --- | --- |
-| `household_invite_token()` | Stable token as text; SQLSTATE `42501` for non-owners |
+| `household_invite_token()` | Stable token as text for any member; SQLSTATE `42501` without a membership (owner-only until migration `20261123180000`) |
+| `regenerate_household_invite()` | New token as text for the owner; the old token stops resolving; SQLSTATE `42501` for members and unauthenticated callers |
 | `preview_household_join(token text)` | JSON object with `status`, and on success `household_name`, `source_household_id` and `requires_source_deletion_ack` |
 | `confirm_household_join(token text, expected_source_household_id uuid, recipe_choice text, source_deletion_ack boolean, operation_id uuid)` | JSON object with `status` and verified scope on success |
 | `remove_household_member(member_id uuid)` | JSON object with `status`: `removed`, `not_allowed` or `invalid_request` |
@@ -187,8 +188,9 @@ handles the code only in authenticated request bodies.
 Matija (Dev 3) accepted the unverified `tavli://` custom scheme for the
 initial release. Another installed app registered for the scheme may receive
 the invite code, which remains usable by a signed-in bearer. Native delivery
-and browser behavior need platform verification. Profile accepts invite codes directly. The in-app QR scanner remains a separate UI slice. macOS requires registering the scheme and
-routing it into the app. Windows support is planned and will require its own
+and browser behavior need platform verification. Profile accepts invite codes
+directly, and the in-app QR scanner reads the same code (see the UI slice
+below). Windows support is planned and will require its own
 protocol registration when the desktop app becomes available.
 
 The confirmation Edge Function verifies the caller and consults the existing
@@ -204,13 +206,84 @@ Preview permits 60 requests per account per minute and confirmation permits
 old household writes in the rejected queue. Profile, platform links, QR
 generation and scanning, and the manual input screen are consumer work.
 
+### Household UI and first sign-in slice (T010–T015)
+
+Matija (Dev 3) chose the designs on 2026-11-22 from the
+[household proposal canvas](https://claude.ai/artifact/Q7srd9bgd3sd9ZBKiun1L3#page-dcb81aee8d83):
+variant A for Profile, variant C for the first sign-in step. Proposed reviewer
+for the UI and deep-link boundary: Dev 4. Proposed reviewer for SQL ordering and
+the drift change: Dev 1.
+
+- **First sign-in.** After the name step, the new account sees “Tvoje
+  domaćinstvo”. It names its household or joins an existing one. The trigger
+  still provisions a personal household, so the one-membership invariant and
+  the sync scope stay unchanged. `profiles.household_setup_done` records the
+  step on the server. Existing profiles are backfilled to `true`; new profiles
+  start at `false`. `rename_household(name)` completes the step for the
+  owner. A membership insert with the `member` role completes it on join in
+  the same transaction. The app caches the flag in drift v12
+  (`accounts.household_ready`, default `true`) and adds the `NeedsHousehold`
+  auth state with the `/sign-in/household` route. Joining from this step
+  copies no recipes. It acknowledges deletion of the new empty household as
+  part of the explicit “Pridruži se” choice, so it shows neither the
+  recipe question nor the last-member warning.
+- **Profile (variant A).** The “Domaćinstvo” section shows a card that expands
+  to the member list. The owner sees “Izmeni domaćinstvo”. Every member sees
+  “Podeli domaćinstvo” and “Pridruži se novom domaćinstvu”. On a wide
+  window, the left column holds Account and Account deletion. The right column
+  holds Household and Settings, as on the macOS canvas.
+- **Members and rename.** `household_members_overview()` returns user ID,
+  display name, role and join time for the caller's own household only. It
+  never returns email. Profiles stay owner-readable under RLS.
+  `rename_household` is owner-only, trims, accepts 1–40 characters and locks the
+  household row like join and removal. Neither has an offline cache. The UI
+  shows a retry notice. The member list reloads after membership
+  verification.
+- **Sharing and joining.** “Podeli domaćinstvo” shows the QR code (the plain
+  code), the grouped code, “Pošalji pozivnicu” through the system share sheet
+  on phones and “Kopiraj link” on wide windows, plus “Kopiraj kod”. “Pridruži
+  se domaćinstvu” is a bottom sheet on phones and a dialog on wide windows. The
+  phone and tablet variants offer “Skeniraj QR kod”. Desktop uses manual
+  entry or the link only. The scanner accepts the plain code, the app link
+  and the HTTPS share link. The app ignores other content.
+- **Links through sign-in.** `tavli://household/join#CODE` is stored in memory
+  until an account is present. The setup step or the signed-in app then opens
+  the join flow with the code prefilled. After an app restart the user opens
+  the link again. Android registers the `household` host; iOS and macOS
+  already register the scheme.
+
+New dependencies, all maintained Flutter community packages:
+
+- `qr_flutter`: draws the invite QR code offline from the code itself.
+- `mobile_scanner`: in-app camera QR scanning on Android and iOS, with
+  manual entry as fallback.
+- `share_plus`: the native share sheet for “Pošalji pozivnicu”.
+
+Canvas deviations, for Dev 4 review: members do not see “Podeli
+domaćinstvo”. Variant A shows the row to members, but the invite RPC and
+FR-101 are owner-only. The canvas does not draw a confirmation for joining
+from the setup step. It reuses the “Potvrda prelaska” header with “Pridruži
+se” and “Odustani”. The removal message reads “člana {name}” because the app
+cannot decline names. Dialog titles use the library `TavliDialog` style
+(20/700) instead of the canvas 22/800. `TavliDialog` gains an optional
+`header`, and `TavliAvatar` gains `.icon` with the 44 and 48 sizes, each
+with a gallery example. New icons follow the canvas paths.
+
+Privacy and security impact: members of one household see each other's
+display names, which the name step already announces. No email, no other
+household and no new storage path are exposed. Any member can read the invite;
+the server still requires a membership. Only the owner can replace it, which
+ends a leaked or removed person's ability to reuse the old code. The scanner reads codes on the device, and the app neither
+stores camera frames nor sends them anywhere. A shared link still carries
+the bearer code, as accepted above.
+
 ### Verification before rollout
 
 - Dev 3 and Dev 1 review the typed contract, exact shared paths, migration
   ordering, estimates and fixtures before the slice becomes Ready. Dev 4
   reviews the deep-link and platform changes when those consumers are planned.
 - Run local migration reset and pgTAP with synthetic accounts. Cover owner and
-  non-owner share access, unauthenticated requests, invalid tokens, reusable
+  member share access, unauthenticated requests, invalid tokens, reusable
   links, unauthorized data access, throttling, both recipe choices, concurrent
   switches, replay, stale source, successor and empty-source branches, and
   rollback. Verify the account deletion and storage boundaries affected by the

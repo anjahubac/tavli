@@ -11758,6 +11758,21 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _householdReadyMeta = const VerificationMeta(
+    'householdReady',
+  );
+  @override
+  late final GeneratedColumn<bool> householdReady = GeneratedColumn<bool>(
+    'household_ready',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("household_ready" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -11780,6 +11795,7 @@ class $AccountsTable extends Accounts
     initialDownloadDone,
     lastPullAt,
     catalogStatus,
+    householdReady,
     createdAt,
   ];
   @override
@@ -11876,6 +11892,15 @@ class $AccountsTable extends Accounts
         ),
       );
     }
+    if (data.containsKey('household_ready')) {
+      context.handle(
+        _householdReadyMeta,
+        householdReady.isAcceptableOrUnknown(
+          data['household_ready']!,
+          _householdReadyMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -11929,6 +11954,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.string,
         data['${effectivePrefix}catalog_status'],
       ),
+      householdReady: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}household_ready'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -11952,6 +11981,10 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final bool initialDownloadDone;
   final DateTime? lastPullAt;
   final String? catalogStatus;
+
+  /// Da li je nalog prošao korak "Tvoje domaćinstvo" (v12). Postojeći
+  /// nalozi su ga već prošli, pa je podrazumevano true.
+  final bool householdReady;
   final DateTime createdAt;
   const AccountRow({
     required this.userId,
@@ -11963,6 +11996,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.initialDownloadDone,
     this.lastPullAt,
     this.catalogStatus,
+    required this.householdReady,
     required this.createdAt,
   });
   @override
@@ -11983,6 +12017,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     if (!nullToAbsent || catalogStatus != null) {
       map['catalog_status'] = Variable<String>(catalogStatus);
     }
+    map['household_ready'] = Variable<bool>(householdReady);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -12004,6 +12039,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       catalogStatus: catalogStatus == null && nullToAbsent
           ? const Value.absent()
           : Value(catalogStatus),
+      householdReady: Value(householdReady),
       createdAt: Value(createdAt),
     );
   }
@@ -12025,6 +12061,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       ),
       lastPullAt: serializer.fromJson<DateTime?>(json['lastPullAt']),
       catalogStatus: serializer.fromJson<String?>(json['catalogStatus']),
+      householdReady: serializer.fromJson<bool>(json['householdReady']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -12041,6 +12078,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'initialDownloadDone': serializer.toJson<bool>(initialDownloadDone),
       'lastPullAt': serializer.toJson<DateTime?>(lastPullAt),
       'catalogStatus': serializer.toJson<String?>(catalogStatus),
+      'householdReady': serializer.toJson<bool>(householdReady),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -12055,6 +12093,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     bool? initialDownloadDone,
     Value<DateTime?> lastPullAt = const Value.absent(),
     Value<String?> catalogStatus = const Value.absent(),
+    bool? householdReady,
     DateTime? createdAt,
   }) => AccountRow(
     userId: userId ?? this.userId,
@@ -12068,6 +12107,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     catalogStatus: catalogStatus.present
         ? catalogStatus.value
         : this.catalogStatus,
+    householdReady: householdReady ?? this.householdReady,
     createdAt: createdAt ?? this.createdAt,
   );
   AccountRow copyWithCompanion(AccountsCompanion data) {
@@ -12093,6 +12133,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       catalogStatus: data.catalogStatus.present
           ? data.catalogStatus.value
           : this.catalogStatus,
+      householdReady: data.householdReady.present
+          ? data.householdReady.value
+          : this.householdReady,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -12109,6 +12152,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('catalogStatus: $catalogStatus, ')
+          ..write('householdReady: $householdReady, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -12125,6 +12169,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     initialDownloadDone,
     lastPullAt,
     catalogStatus,
+    householdReady,
     createdAt,
   );
   @override
@@ -12140,6 +12185,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.initialDownloadDone == this.initialDownloadDone &&
           other.lastPullAt == this.lastPullAt &&
           other.catalogStatus == this.catalogStatus &&
+          other.householdReady == this.householdReady &&
           other.createdAt == this.createdAt);
 }
 
@@ -12153,6 +12199,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<bool> initialDownloadDone;
   final Value<DateTime?> lastPullAt;
   final Value<String?> catalogStatus;
+  final Value<bool> householdReady;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const AccountsCompanion({
@@ -12165,6 +12212,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
     this.catalogStatus = const Value.absent(),
+    this.householdReady = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -12178,6 +12226,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.initialDownloadDone = const Value.absent(),
     this.lastPullAt = const Value.absent(),
     this.catalogStatus = const Value.absent(),
+    this.householdReady = const Value.absent(),
     required DateTime createdAt,
     this.rowid = const Value.absent(),
   }) : userId = Value(userId),
@@ -12196,6 +12245,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<bool>? initialDownloadDone,
     Expression<DateTime>? lastPullAt,
     Expression<String>? catalogStatus,
+    Expression<bool>? householdReady,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -12210,6 +12260,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
         'initial_download_done': initialDownloadDone,
       if (lastPullAt != null) 'last_pull_at': lastPullAt,
       if (catalogStatus != null) 'catalog_status': catalogStatus,
+      if (householdReady != null) 'household_ready': householdReady,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -12225,6 +12276,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<bool>? initialDownloadDone,
     Value<DateTime?>? lastPullAt,
     Value<String?>? catalogStatus,
+    Value<bool>? householdReady,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -12238,6 +12290,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       initialDownloadDone: initialDownloadDone ?? this.initialDownloadDone,
       lastPullAt: lastPullAt ?? this.lastPullAt,
       catalogStatus: catalogStatus ?? this.catalogStatus,
+      householdReady: householdReady ?? this.householdReady,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -12273,6 +12326,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (catalogStatus.present) {
       map['catalog_status'] = Variable<String>(catalogStatus.value);
     }
+    if (householdReady.present) {
+      map['household_ready'] = Variable<bool>(householdReady.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -12294,6 +12350,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('initialDownloadDone: $initialDownloadDone, ')
           ..write('lastPullAt: $lastPullAt, ')
           ..write('catalogStatus: $catalogStatus, ')
+          ..write('householdReady: $householdReady, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -21829,6 +21886,7 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
   Value<String?> catalogStatus,
+  Value<bool> householdReady,
   required DateTime createdAt,
   Value<int> rowid,
 });
@@ -21842,6 +21900,7 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<bool> initialDownloadDone,
   Value<DateTime?> lastPullAt,
   Value<String?> catalogStatus,
+  Value<bool> householdReady,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -21897,6 +21956,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<String> get catalogStatus => $composableBuilder(
     column: $table.catalogStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get householdReady => $composableBuilder(
+    column: $table.householdReady,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21960,6 +22024,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get householdReady => $composableBuilder(
+    column: $table.householdReady,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -22014,6 +22083,11 @@ class $$AccountsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get householdReady => $composableBuilder(
+    column: $table.householdReady,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -22058,6 +22132,7 @@ class $$AccountsTableTableManager
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 Value<String?> catalogStatus = const Value.absent(),
+                Value<bool> householdReady = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion(
@@ -22070,6 +22145,7 @@ class $$AccountsTableTableManager
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
                 catalogStatus: catalogStatus,
+                householdReady: householdReady,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -22084,6 +22160,7 @@ class $$AccountsTableTableManager
                 Value<bool> initialDownloadDone = const Value.absent(),
                 Value<DateTime?> lastPullAt = const Value.absent(),
                 Value<String?> catalogStatus = const Value.absent(),
+                Value<bool> householdReady = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
               }) => AccountsCompanion.insert(
@@ -22096,6 +22173,7 @@ class $$AccountsTableTableManager
                 initialDownloadDone: initialDownloadDone,
                 lastPullAt: lastPullAt,
                 catalogStatus: catalogStatus,
+                householdReady: householdReady,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

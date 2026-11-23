@@ -59,6 +59,9 @@ dependencies:
   wakelock_plus: ^1.8.2
   win32: ^6.4.0
   app_links: ^7.2.2
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.5.0
+  share_plus: ^13.3.1
   record: ^7.2.0
 
 dev_dependencies:

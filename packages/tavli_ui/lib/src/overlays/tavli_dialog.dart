@@ -55,9 +55,15 @@ class TavliDialog<T> extends StatelessWidget {
     this.message,
     this.content,
     required this.actions,
+    this.header,
   });
 
   final String title;
+
+  /// Zaglavlje umesto naslova na Androidu i Windows-u (npr. ikonica u
+  /// krugu i „Pozvan si u“ iznad naziva). [title] ostaje naslov na Apple
+  /// platformama i za čitač ekrana.
+  final Widget? header;
   final String? message;
 
   /// Polja ili izbor ispod teksta.
@@ -116,15 +122,17 @@ class TavliDialog<T> extends StatelessWidget {
             children: [
               Semantics(
                 header: true,
-                child: Text(
-                  title,
-                  style: t.titleLarge?.copyWith(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    height: 1.3,
-                    color: c.onSurface,
-                  ),
-                ),
+                child:
+                    header ??
+                    Text(
+                      title,
+                      style: t.titleLarge?.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                        color: c.onSurface,
+                      ),
+                    ),
               ),
               if (message != null) ...[
                 const SizedBox(height: TavliSpacing.small),
@@ -141,37 +149,40 @@ class TavliDialog<T> extends StatelessWidget {
                 const SizedBox(height: TavliSpacing.medium),
                 Flexible(child: content),
               ],
-              const SizedBox(height: TavliSpacing.large),
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                // Kad dugmad ne staju u red (uzak ekran, krupan tekst), idu
-                // jedno ispod drugog, poravnata desno.
-                child: OverflowBar(
-                  alignment: MainAxisAlignment.end,
-                  // Isti razmak kao u `TavliButtonRow`.
-                  spacing: 10,
-                  overflowSpacing: TavliSpacing.small,
-                  overflowAlignment: OverflowBarAlignment.end,
-                  children: [
-                    for (final a in actions)
-                      if (a.isDestructive)
-                        TavliButton.destructive(
-                          label: a.label,
-                          onPressed: a.enabled ? () => pop(a.value) : null,
-                        )
-                      else if (a.isDefault)
-                        TavliButton.primary(
-                          label: a.label,
-                          onPressed: a.enabled ? () => pop(a.value) : null,
-                        )
-                      else
-                        TavliButton.text(
-                          label: a.label,
-                          onPressed: a.enabled ? () => pop(a.value) : null,
-                        ),
-                  ],
+              // Bez dugmadi dole kada su radnje u sadržaju.
+              if (actions.isNotEmpty) ...[
+                const SizedBox(height: TavliSpacing.large),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  // Kad dugmad ne staju u red (uzak ekran, krupan tekst), idu
+                  // jedno ispod drugog, poravnata desno.
+                  child: OverflowBar(
+                    alignment: MainAxisAlignment.end,
+                    // Isti razmak kao u `TavliButtonRow`.
+                    spacing: 10,
+                    overflowSpacing: TavliSpacing.small,
+                    overflowAlignment: OverflowBarAlignment.end,
+                    children: [
+                      for (final a in actions)
+                        if (a.isDestructive)
+                          TavliButton.destructive(
+                            label: a.label,
+                            onPressed: a.enabled ? () => pop(a.value) : null,
+                          )
+                        else if (a.isDefault)
+                          TavliButton.primary(
+                            label: a.label,
+                            onPressed: a.enabled ? () => pop(a.value) : null,
+                          )
+                        else
+                          TavliButton.text(
+                            label: a.label,
+                            onPressed: a.enabled ? () => pop(a.value) : null,
+                          ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

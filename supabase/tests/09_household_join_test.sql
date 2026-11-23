@@ -2,7 +2,7 @@
 begin;
 select no_plan();
 
-select has_function('public', 'household_invite_token', array[]::text[], 'postoji RPC za vlasnikov link');
+select has_function('public', 'household_invite_token', array[]::text[], 'postoji RPC za link domaćinstva');
 select has_function('public', 'preview_household_join', array['text'], 'postoji RPC za pregled');
 select has_function('public', 'confirm_household_join',
   array['text', 'uuid', 'text', 'boolean', 'uuid'], 'postoji RPC za potvrdu');
@@ -89,8 +89,8 @@ select is(public.confirm_household_join(:'source_token', :'older_source_id',
   'operation_conflict', 'identitet operacije je vezan za originalni izbor');
 select is((select count(*) from public.households where id = :'source_id'),
   1::bigint, 'posle potvrde član vidi domaćinstvo');
-select throws_ok('select public.household_invite_token()', '42501', null,
-  'član bez uloge vlasnika ne čita token');
+select is(public.household_invite_token(), :'source_token',
+  'član bez uloge vlasnika deli istu pozivnicu domaćinstva');
 select tests.clear_auth();
 
 select is((select count(*) from public.households where id = :'older_source_id'),

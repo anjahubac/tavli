@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:tavli/account/account_api.dart';
 import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli/domain/account.dart' show HouseholdMember;
 import 'package:tavli/sync/sync_remote.dart';
 
 /// Server u memoriji: nalozi sa domaćinstvom, tabele sa upsert-om po id-ju,
@@ -17,11 +18,21 @@ class FakeServer {
   final users = <String, String>{}; // email → userId
   final profiles = <String, Map<String, Object?>>{}; // userId → profil
   final households = <String, String>{}; // userId → householdId
+  final roles = <String, String>{}; // userId → uloga (bez unosa: owner)
   final tables = <String, Map<String, Map<String, Object?>>>{};
   final photos = <String, Uint8List>{};
   final revoked = <String>{}; // userId-jevi kojima je sesija opozvana
+  final removals =
+      <String, String>{}; // userId → domaćinstvo iz kog je uklonjen
 
   bool offline = false;
+
+  /// Novi nalog još nije izabrao domaćinstvo (kao na serveru).
+  bool newAccountNeedsHousehold = false;
+
+  String householdName(String householdId) =>
+      table('households')[householdId]?['name'] as String? ??
+      'Moje domaćinstvo';
 
   /// Sledeći poziv(i) baca(ju) ovu grešku.
   final failures = <SyncError>[];
@@ -77,6 +88,9 @@ class FakeServer {
       'id': uid,
       'email': email,
       'display_name': null,
+      // Postojeći testovi počinju posle koraka „Tvoje domaćinstvo“; novi
+      // nalog ga dobija sa newAccountNeedsHousehold.
+      'household_setup_done': !newAccountNeedsHousehold,
       'updated_at': _now(),
     };
     return uid;
@@ -499,6 +513,10 @@ class FakeAccountApi implements AccountApi {
 
   /// Household names by ID; others are "Moje domaćinstvo".
   final householdNames = <String, String>{};
+
+  /// Pregled traži potvrdu brisanja (osoba je poslednji član izvora).
+  bool joinRequiresAck = true;
+  int? lastJoinAck;
   int joinCalls = 0;
 
   @override
@@ -513,21 +531,103 @@ class FakeAccountApi implements AccountApi {
       displayName: p['display_name'] as String?,
       householdId: server.households[uid]!,
       householdName:
-          householdNames[server.households[uid]] ?? 'Moje domaćinstvo',
-      role: 'owner',
+          householdNames[server.households[uid]] ??
+          server.householdName(server.households[uid]!),
+      role: server.roles[uid] ?? 'owner',
+      householdSetupDone: p['household_setup_done'] as bool? ?? true,
     );
   }
 
+  /// Pozivnica domaćinstva; vidi je svaki član.
+  String? inviteToken = 'K7M4P9RX5TQ8';
+
+  /// Kod koji dobija sledeća zamena pozivnice.
+  String nextInviteToken = 'W2N6-H3JD-8VQC';
+  int regenerateCalls = 0;
+  int renameCalls = 0;
+
   @override
-  Future<String> householdInviteToken() async => throw const Unavailable();
+  Future<RenameHouseholdResult> renameHousehold(String name) async {
+    renameCalls++;
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if ((server.roles[uid] ?? 'owner') != 'owner') {
+      return RenameHouseholdResult.notAllowed;
+    }
+    final clean = name.trim();
+    if (clean.isEmpty || clean.runes.length > 40) {
+      return RenameHouseholdResult.invalidName;
+    }
+    final hid = server.households[uid]!;
+    server.table('households')[hid] = {
+      ...?server.table('households')[hid],
+      'id': hid,
+      'name': clean,
+    };
+    server.profiles[uid]!['household_setup_done'] = true;
+    return RenameHouseholdResult.renamed;
+  }
+
+  @override
+  Future<List<HouseholdMember>> householdMembers() async {
+    if (server.offline) throw const Offline();
+    final home = server.households[auth.current!.userId];
+    return [
+      for (final MapEntry(key: uid, value: hid) in server.households.entries)
+        if (hid == home)
+          HouseholdMember(
+            userId: uid,
+            role: server.roles[uid] ?? 'owner',
+            displayName: server.profiles[uid]?['display_name'] as String?,
+          ),
+    ];
+  }
+
+  @override
+  Future<String> householdInviteToken() async {
+    if (server.offline) throw const Offline();
+    final token = inviteToken;
+    if (token == null) throw const Unavailable();
+    return token;
+  }
+
+  @override
+  Future<String> regenerateHouseholdInvite() async {
+    regenerateCalls++;
+    if (server.offline) throw const Offline();
+    if ((server.roles[auth.current!.userId] ?? 'owner') != 'owner') {
+      throw const Unavailable();
+    }
+    return inviteToken = nextInviteToken.replaceAll('-', '');
+  }
+
+  /// Domaćinstvo koje je napravio `prepareNewHousehold` (kod → naziv).
+  final newHouseholds = <String, String>{};
+  int prepareNewCalls = 0;
+
+  @override
+  Future<String> prepareNewHousehold(String name) async {
+    prepareNewCalls++;
+    if (server.offline) throw const Offline();
+    final token = 'N${(newHouseholds.length + 1).toString().padLeft(11, '0')}';
+    newHouseholds[token] = name.trim();
+    return token;
+  }
 
   @override
   Future<HouseholdPreview> previewHouseholdJoin(String token) async {
+    if (newHouseholds[token] case final name?) {
+      return HouseholdPreview(
+        householdName: name,
+        sourceHouseholdId: server.households[auth.current!.userId]!,
+        requiresSourceDeletionAcknowledgement: joinRequiresAck,
+      );
+    }
     if (joinTargetHousehold == null) throw const Unavailable();
     return HouseholdPreview(
       householdName: 'Zajedničko domaćinstvo',
       sourceHouseholdId: server.households[auth.current!.userId]!,
-      requiresSourceDeletionAcknowledgement: true,
+      requiresSourceDeletionAcknowledgement: joinRequiresAck,
     );
   }
 
@@ -540,8 +640,21 @@ class FakeAccountApi implements AccountApi {
     required String operationId,
   }) async {
     joinCalls++;
+    lastJoinAck = acknowledgeSourceDeletion ? 1 : 0;
     if (joinFailureStatus case final status?) {
       return HouseholdJoinResult(status: status);
+    }
+    if (newHouseholds[token] case final name?) {
+      // Prvi član novog domaćinstva je vlasnik (server: own_new_household).
+      final uid = auth.current!.userId;
+      if (server.households[uid] != expectedSourceHouseholdId) {
+        return const HouseholdJoinResult(status: 'stale_source');
+      }
+      final hid = 'new-$token';
+      server.table('households')[hid] = {'id': hid, 'name': name};
+      server.households[uid] = hid;
+      server.roles[uid] = 'owner';
+      return HouseholdJoinResult(status: 'joined', account: await fetch());
     }
     if (joinTargetHousehold case final destination?) {
       final uid = auth.current!.userId;
@@ -549,6 +662,8 @@ class FakeAccountApi implements AccountApi {
         return const HouseholdJoinResult(status: 'stale_source');
       }
       server.households[uid] = destination;
+      server.roles[uid] = 'member';
+      server.profiles[uid]!['household_setup_done'] = true;
       return HouseholdJoinResult(status: 'joined', account: await fetch());
     }
     throw const Unavailable();
@@ -564,8 +679,19 @@ class FakeAccountApi implements AccountApi {
     if (home == null || server.households[memberId] != home) {
       return 'not_allowed';
     }
+    server.removals[memberId] = home;
     server.households[memberId] = 'home-$memberId';
+    server.roles[memberId] = 'owner';
     return 'removed';
+  }
+
+  @override
+  Future<bool> takeHouseholdRemoval(String previousHouseholdId) async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if (server.removals[uid] != previousHouseholdId) return false;
+    server.removals.remove(uid);
+    return true;
   }
 
   @override
