@@ -33,6 +33,7 @@ export 'src/platform.dart';
 export 'src/shell/tavli_action_bar.dart';
 export 'src/shell/tavli_app_bar.dart';
 export 'src/shell/tavli_floating_button.dart';
+export 'src/shell/tavli_key_scope.dart';
 export 'src/shell/tavli_list_detail.dart';
 export 'src/shell/tavli_menu_bar.dart';
 export 'src/shell/tavli_navigation.dart';
