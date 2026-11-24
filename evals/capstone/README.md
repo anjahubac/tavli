@@ -18,6 +18,15 @@ expected outcome and the reason it exists.
 3. After a prompt or code change, rerun the same inputs and record the new
    result next to the old one. If a case itself had to change, say so.
 
+## Running the live cases through the gateway
+
+`test/evals/live_gateway_cases_test.dart` runs the seven `live` cases through
+the `ai-gateway` function with a signed-in account (real `RecipeAI`, no personal
+key). It is skipped unless `EVAL_GATEWAY_URL`, `EVAL_ANON_KEY` and `EVAL_JWT`
+are set in the process environment (see the header of the file); credentials and
+provider keys never go into this folder. The first run is recorded in
+`results.md` and `gateway-live-run-2026-11-24.md`.
+
 ## Before and after evidence
 
 `trace-ingredient-names.md` records one reasoned change measured on the same
