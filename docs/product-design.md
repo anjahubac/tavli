@@ -5,6 +5,8 @@ accepted target, not a claim that every feature exists. The verified baseline is
 in [architecture](architecture.md); the six-phase sequence is in
 [product plan](product-plan.md). Existing visual design/themes remain.
 The 2026-11-20 UX review adds rules for narrow windows and the cooking journey.
+What is built on `dev` is listed in the [roadmap](roadmap.md) (checked 2026-11-24);
+Home, Ostava, household, cookbooks and voice exist, the nutrition diary does not.
 
 ## Primary journeys
 
