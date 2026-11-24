@@ -54,3 +54,11 @@ three legible ingredient lines. The same inputs were rerun after the change.
   `dev`. The prompt is the only change in the client code under test.
 - Runs are against a local stack with a synthetic user, not the hosted
   project. They do not prove hosted configuration.
+- The runner calls `RecipeAI` and the shopping totals directly. A photo
+  taken through the screens (photo, review with unconfirmed items marked, save,
+  plan, shopping list) and the Serbian message for an unreadable photo in the
+  running app are **not recorded**. The only run of the screens is the Windows
+  run in [app-flow.md](../../docs/capstone/app-flow.md): it covers a recipe by
+  dish name, not a photo, and per its recorder it used the hosted gateway,
+  while this file is local only. A photo run through the app needs to be done
+  and written down as its own case (GW-05) before it can be claimed.
