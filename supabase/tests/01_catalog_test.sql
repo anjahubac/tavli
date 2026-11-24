@@ -90,8 +90,8 @@ select is(
     'public.prepare_new_household', 'public.preview_household_join',
     'public.regenerate_household_invite', 'public.remove_household_member',
     'public.rename_household',
-    'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing', 'public.take_household_removal',
-    'public.store_price_offers_for_food_ids'
+    'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing',
+    'public.store_price_offers_for_food_ids', 'public.take_household_removal'
   ],
   'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );

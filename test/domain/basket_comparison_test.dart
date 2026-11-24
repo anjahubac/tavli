@@ -127,6 +127,13 @@ void main() {
         unit: BasketUnit.gram,
       ),
       BasketLine(
+        id: 'empty-id',
+        name: 'prazna oznaka namirnice',
+        foodId: '',
+        quantityMicros: 1000000,
+        unit: BasketUnit.gram,
+      ),
+      BasketLine(
         id: 'no-quantity',
         name: 'brašno',
         foodId: 'flour',
@@ -138,7 +145,12 @@ void main() {
     ]).single;
 
     expect(result.subtotalInParas, 0);
-    expect(result.uncovered.map((line) => line.id), ['no-quantity', 'unknown']);
+    expect(result.itemCount, 3);
+    expect(result.uncovered.map((line) => line.id), [
+      'no-quantity',
+      'unknown',
+      'empty-id',
+    ]);
     expect(result.complete, isFalse);
   });
 

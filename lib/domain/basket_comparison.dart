@@ -128,23 +128,20 @@ StoreBasketEstimate _estimate(
 ) {
   final first = offers.first;
   final byFood = <(String, BasketUnit), List<BasketLine>>{};
-  final uncovered = <BasketLine>[
-    for (final line in lines)
-      if (line.foodId == null ||
-          line.foodId!.isEmpty ||
-          line.quantityMicros == null ||
-          line.quantityMicros! <= 0 ||
-          line.unit == null)
-        line,
-  ];
+  final uncovered = <BasketLine>[];
   for (final line in lines) {
-    if (line.foodId == null ||
-        line.quantityMicros == null ||
-        line.quantityMicros! <= 0 ||
-        line.unit == null) {
+    final foodId = line.foodId;
+    final quantity = line.quantityMicros;
+    final unit = line.unit;
+    if (foodId == null ||
+        foodId.isEmpty ||
+        quantity == null ||
+        quantity <= 0 ||
+        unit == null) {
+      uncovered.add(line);
       continue;
     }
-    byFood.putIfAbsent((line.foodId!, line.unit!), () => []).add(line);
+    byFood.putIfAbsent((foodId, unit), () => []).add(line);
   }
 
   final covered = <BasketCoveredLine>[];

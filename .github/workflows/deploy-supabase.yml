@@ -59,6 +59,7 @@ jobs:
       - run: supabase functions deploy household-join --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy household-photo-cleanup --project-ref "$SUPABASE_PROJECT_REF"
       - run: supabase functions deploy planning-inputs --project-ref "$SUPABASE_PROJECT_REF"
+      - run: supabase functions deploy store-price-import --project-ref "$SUPABASE_PROJECT_REF"
       # Public bucket with the images used by the Auth emails (config.toml).
       - name: Email images
         run: supabase seed buckets --linked

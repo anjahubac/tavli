@@ -83,8 +83,11 @@ class _StorePriceSummaryState extends ConsumerState<StorePriceSummary> {
               }
               final estimates = snapshot.data ?? const [];
               if (estimates.isEmpty) {
-                return const TavliNotice(
-                  message: 'Nema potvrđenih cena za ove stavke. Nepoznate namirnice ili pakovanja ostaju bez cene.',
+                final missing = widget.items
+                    .where((item) => !item.isBought)
+                    .length;
+                return TavliNotice(
+                  message: 'Broj stavki bez potvrđene cene: $missing.',
                 );
               }
               return Column(
@@ -143,7 +146,7 @@ class _StoreEstimateTile extends StatelessWidget {
             ),
             if (estimate.uncovered.isNotEmpty)
               Text(
-                'Nedostaje cena: ${estimate.uncovered.map((line) => line.name).join(', ')}',
+                'Bez cene (${estimate.uncovered.length}): ${estimate.uncovered.map((line) => line.name).join(', ')}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.error,
                 ),
