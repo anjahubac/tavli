@@ -30,6 +30,7 @@ before this change, `after-N` = prompt after it).
 | GW-02 | Card too blurred to read | Controlled `NotARecipeException`, nothing saved | **Before: fail.** The model invented a six-ingredient recipe and marked quantities "procena" (`before-3`). **After: pass**, `NotARecipeException` in both passes that ran it (`after-1`). |
 | GW-03 | Raw requests: no token, forged token, 1.6 MB body, unknown task, model outside the list, extra field, invalid JSON | Rejected before any model call | Pass, identical in all 3 passes: 401, 401, 413 `too_large`, 400 `bad_request` x4. |
 | GW-04 | Card with one unreadable ingredient line | Recipe kept, that ingredient carries a note | **After: pass** (`after-1-gw04`): recipe kept, "mleko" has the note "nečitko na slici". **Before: not measured**, the provider quota ran out before the baseline pass. |
+| GW-05 | The same three cards through the screens in the running app, signed in, then plan and shopping list ([GW-05](#gw-05-through-the-screens-ios-simulator-local-stack)) | Recipe reviewed and saved; unreadable quantity marked, not invented; unreadable photo gives a controlled error and saves nothing; plan feeds the list | **Pass in one pass** on the iOS Simulator. Readable card: review and save. One unreadable line: "mleko (nečitka količina)" with no quantity. Blurred card: "Na slici nije pronađen recept.", library unchanged. Plan to list: brašno 500 g, and 1 kg after the same recipe is planned twice. Not shown: a total of mixed units such as 200 g + 0,5 kg. |
 
 ## What changed between before and after
 
@@ -54,11 +55,71 @@ three legible ingredient lines. The same inputs were rerun after the change.
   `dev`. The prompt is the only change in the client code under test.
 - Runs are against a local stack with a synthetic user, not the hosted
   project. They do not prove hosted configuration.
-- The runner calls `RecipeAI` and the shopping totals directly. A photo
-  taken through the screens (photo, review with unconfirmed items marked, save,
-  plan, shopping list) and the Serbian message for an unreadable photo in the
-  running app are **not recorded**. The only run of the screens is the Windows
-  run in [app-flow.md](../../docs/capstone/app-flow.md): it covers a recipe by
-  dish name, not a photo, and per its recorder it used the hosted gateway,
-  while this file is local only. A photo run through the app needs to be done
-  and written down as its own case (GW-05) before it can be claimed.
+- The runner (GW-01 to GW-04) calls `RecipeAI` and the shopping totals
+  directly. GW-05 below is the only run through the screens with a photo, and
+  it is one pass on one platform. The Windows run in
+  [app-flow.md](../../docs/capstone/app-flow.md) covers a recipe by dish name
+  and, per its recorder, used the hosted gateway; GW-05 is local only.
+
+## GW-05: through the screens (iOS Simulator, local stack)
+
+Run on 2026-11-24 by hand, in one pass. It shows the path a person takes:
+sign-up, photo, review, save, plan, shopping list, and the error for a photo
+that cannot be read.
+
+- **Build**: `flutter build ios --simulator --debug` on the checkout of branch
+  `docs/capstone-ev-gateway-rerun` at `13721a2`. Its `lib/` and `pubspec.yaml`
+  had no difference from `dev` at `9ba7758` (checked with `git diff`). The
+  anon key of the local stack was passed with `--dart-define-from-file`, from
+  a file outside the repository that was deleted afterwards.
+- **Device**: iPhone 17 Pro simulator, iOS 26.5.
+- **Backend: local, not hosted.** `supabase start`, with
+  `supabase functions serve` run by the owner with the provider key as a
+  function secret. The app held no provider key. A request to the function
+  without a token answered 401 before the run.
+- **Account**: a synthetic address on the local stack, with the code read from
+  the local mail catcher (Mailpit). The hosted project was not used.
+- **Photos**: the three synthetic cards in `fixtures/`, added to the
+  simulator's photo library and picked with **Izaberi iz galerije**. They are
+  not camera shots.
+
+| Step | What the screen showed |
+| --- | --- |
+| Sign-up | **Napravi nalog** → "Proveri mejl" (confirm by link or the six-digit code) → "Kako da te zovemo?" → "Tvoje domaćinstvo" (name, default **Nastavi**) → **Početna** ("Danas", "Post i praznici", no plan yet). On first launch the sign-in screen showed "Sesija je istekla. Prijavi se ponovo."; the simulator may have held an older session, not investigated |
+| Readable card | "Čitam recept sa slike…" for under half a minute, then the review: "Palačinke", 30 min, 4 porcije, ingredients by category (brašno 500 g, jaje 3 kom, mleko 750 ml, kisela voda 200 ml, so prstohvat, ulje 2 kašike), buttons **Odbaci**, **Proveri sastojke**, **Pokušaj ponovo**, **Sačuvaj**. After **Sačuvaj**: "Recept je sačuvan.", the recipe page with **Kuvaj**, **Dodaj u plan**, **Omiljeni**, **Oceni**, and the recipe in the library with the photo as its picture |
+| Card with one unreadable line | The review lists "mleko (nečitka količina)" with no quantity; the other lines are as above. This recipe was discarded with **Odbaci**, not saved |
+| Blurred card | The red message "Na slici nije pronađen recept." with **Izaberi drugu sliku**. Nothing was saved: the library still held one recipe |
+| Plan | **Dodaj u plan**: Tuesday 24 November, Ručak, 4 portions → "Dodato u plan: utorak, ručak. Nabavka je osvežena." The day view shows "Ručak — Palačinke" |
+| Shopping list | **Nabavka → Po planu**: jaje 3 kom, mleko 750 ml, brašno 500 g, so "Proveri količinu", ulje 2 kašike. After the same recipe was also planned for Tuesday's Večera: jaje 6 kom, mleko 1,5 l, brašno 1 kg |
+
+### Gateway log for the run
+
+The owner pasted the output of `supabase functions serve` for the same time
+window (UTC, an hour behind the screens' clock). It has three photo requests,
+at 15:17, 15:18 and 15:19, matching the readable, one-unreadable-line and
+blurred cards. In all three the first model in the chain,
+`gemini/gemini-flash-latest`, answered status 502 and the call went on to
+`groq/qwen/qwen3.8-27b`, which answered status 200. The log lines carry the
+model and status only; they do not show the answer, so that the blurred card
+got "Na slici nije pronađen recept." from a 200 answer is what the screen
+showed, not something the log proves. The same log ends with a wall-clock
+warning for an idle isolate at 15:20, after the last request; it was not
+investigated.
+
+### What GW-05 does not show
+
+- A total of **mixed units** such as 200 g + 0,5 kg = 700 g. The manual field
+  **Dodaj stavku** offered only a name, and the simulator tooling could not
+  type "š" into it. The 500 g + 500 g = 1 kg and 750 ml × 2 = 1,5 l above are
+  the same unit. The mixed-unit case is covered only by EV-04 in
+  `test/evals/capstone_eval_test.dart`.
+- The shopping effect of the unreadable line: the recipe with "mleko
+  (nečitka količina)" was not saved or planned. "so" shows "Proveri količinu"
+  for a quantity-less ingredient of the saved recipe.
+- AI plan generation (**Predloži plan**), recipe by dish name, a second
+  household member, and any platform other than the iOS Simulator.
+- A measured rate: one pass per card.
+- The hosted backend. The run says nothing about hosted configuration.
+
+The screenshots (26) and no recording are kept outside the repository. No link
+to them is recorded here yet.
