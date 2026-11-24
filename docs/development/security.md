@@ -18,6 +18,7 @@ protect every table, object and privileged operation independently.
 | Household recipes/plans/pantry/shopping/photos | Membership RLS, ownership-preserving references, private object paths | Dev 1 + Dev 3 |
 | Personal preferences/favorites/diary/targets | Owner-only rows; narrowly authorized planning aggregate | Dev 3 |
 | AI provider quota/credentials | Built-in keys only as server function secrets; no shared key in an app build; BYOK secure on device and sent only to its provider; bounded authenticated requests | Dev 2 |
+| Recipe semantic search (Cloudflare Workers AI) | Household opt-in recorded server-side before any recipe text is sent; the gateway checks consent before a search query reaches the provider; vectors stay in a private table ranked only for members | Dev 1 |
 | Local cache/photos/outbox | Account/environment separation, safe filesystem paths, backup/retention policy | Dev 1 + Dev 4 |
 | Cycle data | Opt-in secure device-only storage; no raw sync/export/log/AI | Dev 3 + Dev 4 |
 | Release/deployment credentials | Restricted CI permissions/environments, reviewed changes and protected release | Dev 3 + Anja |
