@@ -1,0 +1,172 @@
+candidate_name,category_hint,proposed_codes,confidence,rule,note,decision
+krompir,voće i povrće,,auto,none: no Annex II group,,approved
+crni luk,voće i povrće,,auto,none: no Annex II group,,approved
+beli luk,voće i povrće,,auto,none: no Annex II group,,approved
+mladi luk,voće i povrće,,auto,none: no Annex II group,,approved
+praziluk,voće i povrće,,auto,none: no Annex II group,,approved
+šargarepa,voće i povrće,,auto,none: no Annex II group,,approved
+paradajz,voće i povrće,,auto,none: no Annex II group,,approved
+krastavac,voće i povrće,,auto,none: no Annex II group,,approved
+paprika,voće i povrće,,auto,none: no Annex II group,,approved
+ljuta papričica,voće i povrće,,auto,none: no Annex II group,,approved
+tikvica,voće i povrće,,auto,none: no Annex II group,,approved
+plavi patlidžan,voće i povrće,,auto,none: no Annex II group,,approved
+kupus,voće i povrće,,auto,none: no Annex II group,,approved
+kiseli kupus,konzerve i tegle,,needs_review,none: no Annex II group,May contain sulphites.,
+karfiol,voće i povrće,,auto,none: no Annex II group,,approved
+brokoli,voće i povrće,,auto,none: no Annex II group,,approved
+spanać,voće i povrće,,auto,none: no Annex II group,,approved
+zelena salata,voće i povrće,,auto,none: no Annex II group,,approved
+rukola,voće i povrće,,auto,none: no Annex II group,,approved
+peršun,voće i povrće,,auto,none: no Annex II group,,approved
+mirođija,voće i povrće,,auto,none: no Annex II group,,approved
+celer,voće i povrće,celery,auto,Annex II: celery,,approved
+pečurke,voće i povrće,,auto,none: no Annex II group,,approved
+grašak,voće i povrće,,auto,none: no Annex II group,,approved
+boranija,voće i povrće,,auto,none: no Annex II group,,approved
+kukuruz šećerac,voće i povrće,,auto,none: no Annex II group,,approved
+cvekla,voće i povrće,,auto,none: no Annex II group,,approved
+rotkvica,voće i povrće,,auto,none: no Annex II group,,approved
+bundeva,voće i povrće,,auto,none: no Annex II group,,approved
+đumbir,voće i povrće,,auto,none: no Annex II group,,approved
+limun,voće i povrće,,auto,none: no Annex II group,,approved
+limeta,voće i povrće,,auto,none: no Annex II group,,approved
+pomorandža,voće i povrće,,auto,none: no Annex II group,,approved
+jabuka,voće i povrće,,auto,none: no Annex II group,,approved
+kruška,voće i povrće,,auto,none: no Annex II group,,approved
+banana,voće i povrće,,auto,none: no Annex II group,,approved
+jagode,voće i povrće,,auto,none: no Annex II group,,approved
+maline,voće i povrće,,auto,none: no Annex II group,,approved
+borovnice,voće i povrće,,auto,none: no Annex II group,,approved
+grožđe,voće i povrće,,auto,none: no Annex II group,,approved
+šljive,voće i povrće,,auto,none: no Annex II group,,approved
+breskva,voće i povrće,,auto,none: no Annex II group,,approved
+kajsija,voće i povrće,,auto,none: no Annex II group,,approved
+avokado,voće i povrće,,auto,none: no Annex II group,,approved
+piletina,meso i riba,,auto,none: no Annex II group,,approved
+pileći file,meso i riba,,auto,none: no Annex II group,,approved
+pileći bataci,meso i riba,,auto,none: no Annex II group,,approved
+svinjetina,meso i riba,,auto,none: no Annex II group,,approved
+svinjski vrat,meso i riba,,auto,none: no Annex II group,,approved
+junetina,meso i riba,,auto,none: no Annex II group,,approved
+govedina,meso i riba,,auto,none: no Annex II group,,approved
+jagnjetina,meso i riba,,auto,none: no Annex II group,,approved
+ćuretina,meso i riba,,auto,none: no Annex II group,,approved
+mleveno meso,meso i riba,,auto,none: no Annex II group,,approved
+slanina,meso i riba,,needs_review,none: no Annex II group,Processed meat; check the product label.,
+pršuta,meso i riba,,needs_review,none: no Annex II group,"Cured meat; usually salt only, confirm.",
+šunka,meso i riba,,needs_review,none: no Annex II group,"Processed meat; may contain milk, soy or mustard.",
+kobasica,meso i riba,,needs_review,none: no Annex II group,"May contain gluten, milk, mustard, celery or soy depending on the product.",
+losos,meso i riba,fish,auto,Annex II: fish,,approved
+tuna,meso i riba,fish,auto,Annex II: fish,,approved
+oslić,meso i riba,fish,auto,Annex II: fish,,approved
+skuša,meso i riba,fish,auto,Annex II: fish,,approved
+pastrmka,meso i riba,fish,auto,Annex II: fish,,approved
+sardine,meso i riba,fish,auto,Annex II: fish,,approved
+škampi,meso i riba,crustaceans,auto,Annex II: crustaceans,,approved
+lignje,meso i riba,molluscs,auto,Annex II: molluscs,,approved
+jaje,mlečni proizvodi i jaja,eggs,auto,Annex II: eggs,,approved
+mleko,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+ovseno mleko,mlečni proizvodi i jaja,gluten,needs_review,Annex II: gluten,Oats are listed under Annex II 1 unless certified gluten-free.,
+jogurt,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+kiselo mleko,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+kisela pavlaka,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+slatka pavlaka,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+maslac,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+margarin,mlečni proizvodi i jaja,,needs_review,none: no Annex II group,Some margarines contain milk.,
+beli sir,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+mladi sir,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+kačkavalj,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+mocarela,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+parmezan,mlečni proizvodi i jaja,milk,needs_review,Annex II: milk,Some hard cheeses use egg lysozyme; confirm.,
+krem sir,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+kajmak,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+urda,mlečni proizvodi i jaja,milk,auto,Annex II: milk,,approved
+hleb,pekara,gluten,needs_review,Annex II: gluten,"Wheat bread; may also contain sesame, soy or milk.",
+integralni hleb,pekara,gluten,needs_review,Annex II: gluten,May also contain sesame or soy.,
+tost,pekara,gluten,needs_review,Annex II: gluten,Often contains milk or soy.,
+lepinja,pekara,gluten,auto,Annex II: gluten,,approved
+kifla,pekara,gluten,needs_review,Annex II: gluten,Often contains milk or eggs.,
+kore za pitu,pekara,gluten,auto,Annex II: gluten,,approved
+lisnato testo,pekara,gluten,needs_review,Annex II: gluten,Butter versions contain milk.,
+tortilja,pekara,gluten,needs_review,Annex II: gluten,Wheat tortilla; corn versions differ.,
+prezle,pekara,gluten,auto,Annex II: gluten,,approved
+pšenično brašno,suvi proizvodi,gluten,auto,Annex II: gluten,,approved
+integralno brašno,suvi proizvodi,gluten,auto,Annex II: gluten,,approved
+kukuruzno brašno,suvi proizvodi,,auto,none: no Annex II group,,approved
+griz,suvi proizvodi,gluten,auto,Annex II: gluten,,approved
+pirinač,suvi proizvodi,,auto,none: no Annex II group,,approved
+testenina,suvi proizvodi,gluten,needs_review,Annex II: gluten,Egg pasta also contains eggs.,
+špagete,suvi proizvodi,gluten,auto,Annex II: gluten,,approved
+makarone,suvi proizvodi,gluten,auto,Annex II: gluten,,approved
+rezanci,suvi proizvodi,gluten|eggs,needs_review,"Annex II: gluten, eggs",Egg noodles assumed; confirm.,
+ovsene pahuljice,suvi proizvodi,gluten,needs_review,Annex II: gluten,Unless certified gluten-free.,
+šećer,suvi proizvodi,,auto,none: no Annex II group,,approved
+smeđi šećer,suvi proizvodi,,auto,none: no Annex II group,,approved
+šećer u prahu,suvi proizvodi,,auto,none: no Annex II group,,approved
+vanilin šećer,suvi proizvodi,,auto,none: no Annex II group,,approved
+prašak za pecivo,suvi proizvodi,,needs_review,none: no Annex II group,Some contain wheat starch.,
+soda bikarbona,suvi proizvodi,,auto,none: no Annex II group,,approved
+kvasac,suvi proizvodi,,auto,none: no Annex II group,,approved
+kakao,suvi proizvodi,,auto,none: no Annex II group,,approved
+čokolada,suvi proizvodi,milk|soy,needs_review,"Annex II: milk, soy",Milk chocolate assumed; dark chocolate may have no milk.,
+pasulj,suvi proizvodi,,auto,none: no Annex II group,,approved
+sočivo,suvi proizvodi,,auto,none: no Annex II group,,approved
+leblebija,suvi proizvodi,,auto,none: no Annex II group,,approved
+orasi,suvi proizvodi,nuts,auto,Annex II: nuts,,approved
+lešnici,suvi proizvodi,nuts,auto,Annex II: nuts,,approved
+bademi,suvi proizvodi,nuts,auto,Annex II: nuts,,approved
+kikiriki,suvi proizvodi,peanuts,auto,Annex II: peanuts,,approved
+susam,suvi proizvodi,sesame,auto,Annex II: sesame,,approved
+suvo grožđe,suvi proizvodi,,needs_review,none: no Annex II group,Light raisins may be treated with sulphites.,
+med,suvi proizvodi,,auto,none: no Annex II group,,approved
+kokos,suvi proizvodi,,auto,none: no Annex II group,,approved
+kinoa,suvi proizvodi,,auto,none: no Annex II group,,approved
+heljda,suvi proizvodi,,auto,none: no Annex II group,,approved
+ječam,suvi proizvodi,gluten,auto,Annex II: gluten,,approved
+so,začini i sosovi,,auto,none: no Annex II group,,approved
+biber,začini i sosovi,,auto,none: no Annex II group,,approved
+aleva paprika,začini i sosovi,,auto,none: no Annex II group,,approved
+ljuta aleva paprika,začini i sosovi,,auto,none: no Annex II group,,approved
+origano,začini i sosovi,,auto,none: no Annex II group,,approved
+bosiljak,začini i sosovi,,auto,none: no Annex II group,,approved
+ruzmarin,začini i sosovi,,auto,none: no Annex II group,,approved
+majčina dušica,začini i sosovi,,auto,none: no Annex II group,,approved
+lovorov list,začini i sosovi,,auto,none: no Annex II group,,approved
+cimet,začini i sosovi,,auto,none: no Annex II group,,approved
+muskatni oraščić,začini i sosovi,,auto,none: no Annex II group,,approved
+kim,začini i sosovi,,auto,none: no Annex II group,,approved
+kurkuma,začini i sosovi,,auto,none: no Annex II group,,approved
+začinska mešavina,začini i sosovi,,needs_review,none: no Annex II group,Mixes may contain celery or mustard.,
+senf,začini i sosovi,mustard,auto,Annex II: mustard,,approved
+kečap,začini i sosovi,,needs_review,none: no Annex II group,Check the label; some contain celery.,
+majonez,začini i sosovi,eggs,needs_review,Annex II: eggs,Often also mustard.,
+sirće,začini i sosovi,,needs_review,none: no Annex II group,Wine vinegar may contain sulphites.,
+balzamiko sirće,začini i sosovi,sulphites,auto,Annex II: sulphites,,approved
+soja sos,začini i sosovi,soy|gluten,auto,"Annex II: soy, gluten",Brewed with wheat unless labelled tamari.,approved
+ulje,začini i sosovi,,auto,none: no Annex II group,,approved
+maslinovo ulje,začini i sosovi,,auto,none: no Annex II group,,approved
+ljuti sos,začini i sosovi,,needs_review,none: no Annex II group,Check the label.,
+paradajz pire,konzerve i tegle,,auto,none: no Annex II group,,approved
+pelat,konzerve i tegle,,auto,none: no Annex II group,,approved
+koncentrat paradajza,konzerve i tegle,,auto,none: no Annex II group,,approved
+masline,konzerve i tegle,,needs_review,none: no Annex II group,Check the label.,
+kiseli krastavci,konzerve i tegle,,needs_review,none: no Annex II group,May contain mustard seed or sulphites.,
+ajvar,konzerve i tegle,,needs_review,none: no Annex II group,Check the label.,
+džem,konzerve i tegle,,needs_review,none: no Annex II group,Check the label.,
+kapri,konzerve i tegle,,needs_review,none: no Annex II group,Brined capers; check the label.,
+kokosovo mleko,konzerve i tegle,,auto,none: no Annex II group,Coconut is not an Annex II nut.,approved
+smrznuto povrće,zamrznuto,,needs_review,none: no Annex II group,Mixes may contain celery.,
+sladoled,zamrznuto,milk,needs_review,Annex II: milk,Often also eggs or nuts.,
+voda,pića,,auto,none: no Annex II group,,approved
+mineralna voda,pića,,auto,none: no Annex II group,,approved
+belo vino,pića,sulphites,auto,Annex II: sulphites,,approved
+crno vino,pića,sulphites,auto,Annex II: sulphites,,approved
+pivo,pića,gluten,auto,Annex II: gluten,Barley malt.,approved
+sok od limuna,pića,,needs_review,none: no Annex II group,Bottled juice may contain sulphites.,
+sok od pomorandže,pića,,auto,none: no Annex II group,,approved
+kafa,pića,,auto,none: no Annex II group,,approved
+čaj,pića,,auto,none: no Annex II group,,approved
+želatin,ostalo,,auto,none: no Annex II group,,approved
+kocka za supu,ostalo,celery|gluten,needs_review,"Annex II: celery, gluten",Commonly celery and wheat; may also contain milk or soy.,
+tofu,ostalo,soy,auto,Annex II: soy,,approved

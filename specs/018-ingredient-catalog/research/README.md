@@ -70,8 +70,14 @@ decisions; the approval file is the only source of the decision.
 `scripts/build_food_catalog_seed.py --legacy-approvals` builds an additive seed
 for them with the same deterministic IDs, nutrition only for complete
 owner-approved USDA records, and their historical aliases except the disputed
-pairs in `alias-correction-proposals.csv`. Their allergen status stays
-`unknown` until a named allergen review is recorded.
+pairs in `alias-correction-proposals.csv`.
+
+`legacy-allergen-proposals.csv` holds manual Annex II proposals for the same
+171 foods and is their allergen review record. Uroš Milutinović approved the
+137 rows marked `auto` (plain single ingredients or products with a fixed
+Annex II group) on 2026-11-24; `scripts/food_allergens.py seed-legacy` writes
+only decided rows. The 34 `needs_review` rows depend on the product (for
+example sausage, bread or ketchup) and stay `unknown`.
 
 ## Offline checks
 

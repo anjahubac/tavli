@@ -1,7 +1,8 @@
 begin;
 select plan(5);
 
-select is((select count(*)::int from public.foods where household_id is null and allergen_codes is not null), 159,
+select is((select count(*)::int from public.foods where household_id is null and allergen_codes is not null
+  and source like 'Owner-confirmed manual identity/base-unit review%'), 159,
   '159 seeded shared foods have a reviewed allergen status');
 select is((select count(*)::int from public.foods where household_id is null and allergen_codes is null
   and source like 'Owner-confirmed manual identity/base-unit review%'), 8,

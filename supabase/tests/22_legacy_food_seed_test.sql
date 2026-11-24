@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(12);
 
 select is(
   (select count(*) from public.foods
@@ -44,9 +44,30 @@ select is(
 );
 select is(
   (select count(*) from public.foods
-   where source like 'Uroš Milutinović confirmed%' and allergen_codes is not null),
-  0::bigint,
-  'historical foods keep allergen status unknown until reviewed'
+   where source like 'Uroš Milutinović confirmed%' and allergen_codes is not null
+     and allergen_source_ref like '%(reviewed by Uroš Milutinović)'),
+  137::bigint,
+  'the 137 clear reference foods carry a named allergen review'
+);
+select is(
+  (select count(*) from public.foods
+   where source like 'Uroš Milutinović confirmed%' and allergen_codes is null),
+  34::bigint,
+  'product-dependent reference foods stay unknown'
+);
+select is(
+  (select allergen_codes from public.foods where slug = 'losos'),
+  array['fish'],
+  'salmon is fish'
+);
+select is(
+  (select allergen_codes from public.foods where slug = 'psenicno-brasno'),
+  array['gluten'],
+  'wheat flour contains gluten'
+);
+select ok(
+  (select allergen_codes is null from public.foods where slug = 'kobasica'),
+  'sausage stays unknown without a product-specific review'
 );
 
 select * from finish();
