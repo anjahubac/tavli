@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { withCors } from "../_shared/cors.ts";
 
 const bucket = "recipe-photos";
 const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
@@ -34,7 +35,7 @@ async function readBody(request: Request): Promise<Record<string, unknown> | nul
   }
 }
 
-Deno.serve(async (request: Request) => {
+Deno.serve(withCors(async (request: Request) => {
   if (request.method !== "POST") return response("method_not_allowed", 405);
   const bearer = request.headers.get("Authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   const anonKey = request.headers.get("apikey");
@@ -110,4 +111,4 @@ Deno.serve(async (request: Request) => {
   } catch {
     return response("unavailable", 503);
   }
-});
+}));

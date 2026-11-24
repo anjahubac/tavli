@@ -1,6 +1,7 @@
 import { gateway } from "./gateway.ts";
 import { record } from "./input.ts";
 import type { RankedRecipe } from "./recipe_vectors.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const env = (name: string) => Deno.env.get(name);
 const url = env("SUPABASE_URL");
@@ -32,7 +33,7 @@ async function rpc(name: string, args: Record<string, unknown>) {
   return result;
 }
 
-Deno.serve(gateway({
+Deno.serve(withCors(gateway({
   env,
   send,
   async authenticate(token) {
@@ -167,4 +168,4 @@ Deno.serve(gateway({
     await result.body?.cancel().catch(() => {});
     if (!result.ok) throw new Error("ai_image_store_failed");
   },
-}));
+})));

@@ -6,6 +6,7 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { removeHouseholdCookbooks } from "./cookbook_storage_cleanup.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const BUCKET = "recipe-photos";
 
@@ -50,7 +51,7 @@ async function removeHouseholdPhotos(
   }
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withCors(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
   const token = (req.headers.get("Authorization") ?? "")
@@ -104,4 +105,4 @@ Deno.serve(async (req: Request) => {
   } catch (_) {
     return json(500, { error: "delete_failed" });
   }
-});
+}));
