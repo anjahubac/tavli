@@ -448,16 +448,20 @@ class _WholePlanState extends ConsumerState<_WholePlan> {
           final isReceived =
               bought && ids(t, bought: true).every(received.contains);
           final detail = [
-            if (!bought) amount(t.openMicros, t) ?? 'Proveri količinu',
+            if (!bought) amount(t.openMicros, t) ?? quantityReviewNote,
             if (amount(t.boughtMicros, t) case final b?) 'kupljeno $b',
             if (isReceived) 'U ostavi',
           ].join(' · ');
           return TavliCheckRow(
             title: t.name,
-            subtitle:
-                !bought && widget.unknownPantrySupply.contains(t.ingredient)
-                ? pantryQuantityNote
-                : null,
+            subtitle: bought
+                ? null
+                : shoppingQuantityNote(
+                    t.openMicros > 0 ? t.baseUnit : null,
+                    unknownPantry: widget.unknownPantrySupply.contains(
+                      t.ingredient,
+                    ),
+                  ),
             detail: detail.isEmpty ? null : detail,
             checked: bought,
             onChanged: isReceived
