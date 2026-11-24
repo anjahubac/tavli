@@ -223,6 +223,25 @@ void main() {
       expect(totals.single.hasUnknown, isFalse);
     });
 
+    test('kuhinjske mere se sabiraju u ml i ostaju označene kao približne', () {
+      final totals = shoppingTotalsOf([
+        row('a', 'ulje', 2, 'kašike'),
+        row('b', 'Ulje', 1, 'kašičica'),
+      ]);
+      expect(totals, hasLength(1));
+      expect(totals.single.openMicros, 35 * 1000000);
+      expect(totals.single.baseUnit, 'ml');
+      expect(totals.single.approximate, isTrue);
+      expect(totals.single.hasUnknown, isFalse);
+    });
+
+    test('nepoznata kuhinjska količina ostaje vidljiva za proveru', () {
+      final totals = shoppingTotalsOf([row('a', 'brašno', null, 'šolja')]);
+      expect(totals.single.hasUnknown, isTrue);
+      expect(totals.single.openMicros, 0);
+      expect(totals.single.approximate, isTrue);
+    });
+
     test(
       'EV-16 greška alata: nepoznata količina se označava, bez izuzetka',
       () {

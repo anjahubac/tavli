@@ -7,14 +7,15 @@ import 'shopping_models.dart';
 List<PlanTotal> shoppingTotalsOf(List<ShoppingItemRow> items) {
   final groups = <(String, String), List<ShoppingItemRow>>{};
   for (final item in items) {
-    final unit = normalizeUnit(item.unit);
+    final unit = normalizeUnit(item.unit, kitchenMeasures: true);
     final group = item.quantity == null ? unknownGroup : unit.group;
     groups.putIfAbsent((ingredientKey(item.name), group), () => []).add(item);
   }
 
   int micros(ShoppingItemRow item) => item.quantity == null
       ? 0
-      : toMicros(item.quantity!) * normalizeUnit(item.unit).factor;
+      : toMicros(item.quantity!) *
+            normalizeUnit(item.unit, kitchenMeasures: true).factor;
 
   return [
     for (final MapEntry(key: (ingredient, group), value: rows)
@@ -24,7 +25,7 @@ List<PlanTotal> shoppingTotalsOf(List<ShoppingItemRow> items) {
         unitGroup: group,
         name: rows.first.name,
         category: rows.first.category,
-        baseUnit: normalizeUnit(rows.first.unit).base,
+        baseUnit: normalizeUnit(rows.first.unit, kitchenMeasures: true).base,
         openMicros: rows
             .where((row) => !row.isBought)
             .fold(0, (sum, row) => sum + micros(row)),
@@ -34,6 +35,7 @@ List<PlanTotal> shoppingTotalsOf(List<ShoppingItemRow> items) {
         hasUnknown: rows.any((row) => !row.isBought && row.quantity == null),
         itemIds: [for (final row in rows) row.id],
         listIds: {for (final row in rows) row.listId}.toList(),
+        approximate: rows.any((row) => isApproximateKitchenMeasure(row.unit)),
       ),
   ];
 }

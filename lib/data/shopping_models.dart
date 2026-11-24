@@ -16,6 +16,7 @@ class PlanTotal {
     required this.hasUnknown,
     required this.itemIds,
     required this.listIds,
+    this.approximate = false,
   });
 
   final String ingredient;
@@ -30,6 +31,9 @@ class PlanTotal {
 
   /// Neka otvorena stavka nema poznatu količinu (traži proveru).
   final bool hasUnknown;
+
+  /// Zbir uključuje čašu, šolju, kašiku ili kašičicu po podrazumevanoj meri.
+  final bool approximate;
   final List<String> itemIds;
   final List<String> listIds;
 }

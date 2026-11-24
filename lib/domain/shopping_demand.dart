@@ -44,6 +44,10 @@ const _kitchenVolume = <String, int>{
   'kašičica': 5,
 };
 
+/// Da li je jedinica jedna od približnih kuhinjskih mera iz specifikacije 017.
+bool isApproximateKitchenMeasure(String? unit) =>
+    _kitchenVolume.containsKey(canonicalUnit(unit));
+
 String _unitText(String? unit) =>
     (unit ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 

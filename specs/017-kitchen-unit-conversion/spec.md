@@ -38,6 +38,33 @@ until execution evidence is linked.
 
 Use integer micros and explicit conversion provenance. Phase-1 general measures precede catalog-specific density/piece data in 018.
 
+## Consumer integration contract (pending schema slice)
+
+The current pure conversion and shopping-total APIs can calculate and display
+approximate kitchen measures, but source reconciliation must not persist those
+micros as an unqualified exact amount. The sequential Drift/sync slice needs to
+carry, per approved shopping contribution:
+
+- the original quantity and unit (or an immutable reference to the source
+  snapshot that contains both), alongside the existing converted micros and
+  base unit;
+- `approximate` and a nullable typed review reason, so a missing factor or
+  unsupported conversion remains visible without becoming zero;
+- versioned conversion evidence: strategy/contract version, target base unit,
+  applicable kitchen-measure contract version, and, for food-specific factors,
+  factor kind, source/scope, revision and selected package ID when relevant.
+
+Those fields must be included in Drift, generated code, synced entity
+serialization, outbox payloads, and migrations. Existing rows need a legacy
+version that preserves their stored micros and does not claim new provenance;
+replay must retain original snapshots, allocations, and pending outbox writes.
+`PlanTotal` and shopping UI then propagate the aggregate approximate marker and
+review state, rendering `~` and “Proveri količinu” at the display boundary.
+Kitchen measure defaults are versioned as 200 ml per čaša, 250 ml per šolja,
+15 ml per kašika, and 5 ml per kašičica. Density/piece/package conversion stays
+approximate and is enabled only when trusted, visible food identity and
+applicable evidence are available.
+
 ## Exact UI copy carried forward
 
 “Proveri količinu”, “~”.
