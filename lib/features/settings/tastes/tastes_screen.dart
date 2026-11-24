@@ -41,11 +41,11 @@ class TastesScreen extends ConsumerWidget {
         if (wide)
           const SettingsColumns(
             gap: TavliSpacing.large + TavliSpacing.medium,
-            start: [_AllergensSection(wide: true), _SharingSection()],
+            start: [_AllergensSection(wide: true), _FoodsSection(wide: true)],
             end: [
               _KindsAndCuisinesSection(),
-              _FoodsSection(wide: true),
               _FavoritesSection(wide: true),
+              _SharingSection(),
             ],
           )
         else ...const [

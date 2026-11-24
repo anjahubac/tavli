@@ -25,6 +25,14 @@ import {
   resolveModel,
 } from "./providers.ts";
 
+import {
+  embedRecipeVectors,
+  parseRecipeSearch,
+  type RankedRecipe,
+  recipeVectorProvider,
+  RecipeVectorProviderError,
+} from "./recipe_vectors.ts";
+
 const maxProviderResponseBytes = 256_000;
 
 type QuotaLimit = "daily" | "global" | "minute" | "concurrent";
@@ -55,6 +63,17 @@ interface GatewayDependencies {
     file: string,
     jpeg: Uint8Array,
   ): Promise<void>;
+  enableRecipeIndexing?: (
+    token: string,
+    householdId: string,
+  ) => Promise<boolean>;
+  rankRecipes?: (
+    token: string,
+    embedding: number[],
+    recipeIds: string[],
+  ) => Promise<RankedRecipe[]>;
+  /** True only when the caller belongs to a household that opted in. */
+  canSearchRecipes?: (token: string) => Promise<boolean>;
   send: typeof fetch;
 }
 
@@ -268,8 +287,60 @@ export function gateway(dependencies: GatewayDependencies) {
           ? failure(413, "too_large")
           : failure(400, "bad_request");
       }
-      if (record(raw)?.task === imageTask) {
+      const body = record(raw);
+      if (body?.task === imageTask) {
         return await recipeImage(raw, uid, dependencies);
+      }
+      if (body?.task === "recipe_vector_consent") {
+        const householdId = body.householdId;
+        if (
+          Object.keys(body).length !== 2 || typeof householdId !== "string" ||
+          !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(householdId)
+        ) return failure(400, "bad_request");
+        if (!recipeVectorProvider(env) || !dependencies.enableRecipeIndexing) {
+          return failure(503, "model_unavailable");
+        }
+        if (!await dependencies.enableRecipeIndexing(token, householdId)) {
+          return failure(403, "forbidden");
+        }
+        return response(200, { enabled: true });
+      }
+      if (body?.task === "recipe_similarity_search") {
+        const input = parseRecipeSearch(raw);
+        if (!input) return failure(400, "bad_request");
+        const provider = recipeVectorProvider(env);
+        const rank = dependencies.rankRecipes;
+        const allowed = dependencies.canSearchRecipes;
+        if (!provider || !rank || !allowed) {
+          return failure(503, "model_unavailable");
+        }
+        // Consent is checked before quota or provider work, so a query from a
+        // household that never opted in is not sent to Cloudflare.
+        if (!await allowed(token)) {
+          return failure(403, "forbidden");
+        }
+        const reservation = await reserve(uid, "text", limitsFor(env, "text"));
+        if ("limit" in reservation) return quotaResponse(reservation, "text");
+        try {
+          const [embedding] = await embedRecipeVectors(
+            [input.query],
+            provider,
+            send,
+          );
+          const matches = await rank(token, embedding, input.recipeIds);
+          return response(200, { matches });
+        } catch (error) {
+          if (
+            error instanceof RecipeVectorProviderError && error.status === 429
+          ) {
+            return failure(429, "provider_rate_limited");
+          }
+          return failure(502, "provider_error");
+        } finally {
+          await release(reservation.id).catch(() =>
+            console.warn("ai_gateway_release_failed")
+          );
+        }
       }
       const input: Completion | undefined = parseCompletion(raw);
       if (!input) return failure(400, "bad_request");

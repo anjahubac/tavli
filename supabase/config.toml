@@ -404,6 +404,10 @@ deno_version = 2
 enabled = true
 verify_jwt = true
 
+[functions.recipe-vector-index]
+enabled = true
+verify_jwt = false
+
 [functions.delete-account]
 enabled = true
 verify_jwt = true

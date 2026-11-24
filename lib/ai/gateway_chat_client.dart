@@ -72,6 +72,28 @@ class GatewayChatClient {
     return content;
   }
 
+  Future<void> enableRecipeIndexing(String householdId) async {
+    final data = await _request(
+      HttpMethod.post,
+      const Duration(seconds: 15),
+      body: {'task': 'recipe_vector_consent', 'householdId': householdId},
+    );
+    if (data['enabled'] != true) throw const GatewayRequestRejected();
+  }
+
+  Future<Map<String, Object?>> rankRecipes(
+    String query,
+    List<String> recipeIds,
+  ) => _request(
+    HttpMethod.post,
+    const Duration(seconds: 75),
+    body: {
+      'task': 'recipe_similarity_search',
+      'query': query,
+      'recipeIds': recipeIds,
+    },
+  );
+
   Future<Map<String, Object?>> _request(
     HttpMethod method,
     Duration timeout, {
