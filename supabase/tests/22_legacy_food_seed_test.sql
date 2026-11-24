@@ -3,7 +3,7 @@ select plan(13);
 
 select is(
   (select count(*) from public.foods
-   where household_id is null and source like 'Uroš Milutinović confirmed in chat on 2026-11-24%'),
+   where household_id is null and source like 'Owner-confirmed legacy identity/base-unit review%'),
   171::bigint,
   'all 171 owner-approved historical reference foods are seeded'
 );
@@ -15,7 +15,7 @@ select is(
 select is(
   (select count(*) from public.foods
    where household_id is null and nutrition_source is not null
-     and source like 'Uroš Milutinović confirmed%'),
+     and source like 'Owner-confirmed legacy identity/base-unit review%'),
   166::bigint,
   'only complete owner-approved USDA records carry nutrition'
 );
@@ -44,14 +44,14 @@ select is(
 );
 select is(
   (select count(*) from public.foods
-   where source like 'Uroš Milutinović confirmed%' and allergen_codes is not null
+   where source like 'Owner-confirmed legacy identity/base-unit review%' and allergen_codes is not null
      and allergen_source_ref like '%(reviewed by Uroš Milutinović)'),
   152::bigint,
   'the 152 reviewed reference foods carry a named allergen review'
 );
 select is(
   (select count(*) from public.foods
-   where source like 'Uroš Milutinović confirmed%' and allergen_codes is null),
+   where source like 'Owner-confirmed legacy identity/base-unit review%' and allergen_codes is null),
   19::bigint,
   'products whose allergens depend on the label stay unknown'
 );

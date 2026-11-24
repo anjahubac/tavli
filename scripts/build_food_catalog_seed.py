@@ -16,6 +16,11 @@ REVIEW_SOURCE = (
     "Owner-confirmed manual identity/base-unit review via chat (2026-11-23); "
     "individual reviewer unspecified."
 )
+# `foods.source` syncs to every client, so it carries no reviewer name. The
+# named approval stays in `legacy-food-approvals.csv`.
+LEGACY_REVIEW_SOURCE = (
+    "Owner-confirmed legacy identity/base-unit review via chat (2026-11-24)."
+)
 CONFLICTING_ALIASES = {"brašno t-400", "brašno t-500"}
 
 
@@ -26,6 +31,7 @@ def sql(value: str | None) -> str:
 
 
 def slugify(name: str) -> str:
+    name = name.replace("đ", "dj").replace("Đ", "Dj")
     normalized = unicodedata.normalize("NFKD", name)
     ascii_name = normalized.encode("ascii", "ignore").decode().lower()
     return re.sub(r"[^a-z0-9]+", "-", ascii_name).strip("-")
@@ -283,7 +289,7 @@ def generate_legacy(
             "name": name,
             "category": food["category_hint"],
             "base_unit": unit,
-            "source": approval["identity_source"].strip(),
+            "source": LEGACY_REVIEW_SOURCE,
             "nutrition": {**n, **values} if complete else None,
             "aliases": [
                 a.strip() for a in food["legacy_aliases"].split("|")

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.build_food_catalog_seed import generate_legacy
+from scripts.build_food_catalog_seed import LEGACY_REVIEW_SOURCE, generate_legacy
 
 WORKSHEET_FIELDS = [
     "candidate_name", "category_hint", "proposed_base_unit",
@@ -95,11 +95,25 @@ class BuildLegacyFoodSeedTests(unittest.TestCase):
             sql = output.read_text(encoding="utf-8")
             self.assertEqual((foods, mapped, aliases), (1, 1, 2))
             self.assertIn("'krompir'", sql)
-            self.assertIn("'owner chat review'", sql)
+            self.assertIn(f"'{LEGACY_REVIEW_SOURCE}'", sql)
+            self.assertNotIn("owner chat review", sql)
             self.assertIn("'FDC 170026'", sql)
             self.assertIn("'mladi krompir', 'mladi krompir'", sql)
             self.assertNotIn("'dunja'", sql)
             self.assertNotIn("'cvekla'", sql)
+
+    def test_reviewer_name_stays_out_of_synced_rows(self):
+        with tempfile.TemporaryDirectory() as temp:
+            approval = self.approval("krompir")
+            approval["identity_source"] = (
+                "Uroš Milutinović confirmed in chat that he reviewed this row."
+            )
+            paths = self.write(Path(temp), approvals=[approval])
+            output = Path(temp) / "seed.sql"
+            self.run_generate(paths, output)
+            sql = output.read_text(encoding="utf-8")
+            self.assertNotIn("Milutinović", sql)
+            self.assertNotIn("confirmed in chat that", sql)
 
     def test_disputed_aliases_are_not_seeded(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -144,6 +158,15 @@ class BuildLegacyFoodSeedTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "Ambiguous shared alias"):
                 self.run_generate(paths, Path(temp) / "seed.sql")
+
+
+class SlugTransliterationTest(unittest.TestCase):
+    def test_serbian_dje_slugs_keep_distinct_consonant(self):
+        from scripts.build_food_catalog_seed import slugify
+
+        self.assertEqual(slugify('mirođija'), 'mirodjija')
+        self.assertEqual(slugify('grožđe'), 'grozdje')
+        self.assertEqual(slugify('đumbir'), 'djumbir')
 
 
 if __name__ == "__main__":
