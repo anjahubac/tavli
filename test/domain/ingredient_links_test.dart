@@ -2,60 +2,76 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/domain/ingredient_links.dart';
 import 'package:tavli/domain/recipe.dart';
 
+Ingredient ingredient(String name, String id, LinkSource source) => Ingredient(
+  name: name,
+  link: IngredientLink(foodId: id, matchedKey: 'jaja', linkSource: source),
+);
+
 void main() {
-  const eggs = IngredientLink(
-    foodId: '00000000-0000-4000-8000-000000000001',
-    matchedKey: 'jaja',
-    linkSource: LinkSource.confirmed,
-  );
-  const milk = IngredientLink(
-    foodId: '00000000-0000-4000-8000-000000000002',
-    matchedKey: 'mleko',
-    linkSource: LinkSource.matched,
-  );
+  const matched = 'matched-food';
+  const confirmed = 'confirmed-food';
 
-  test('veza prelazi na sastojak istog naziva', () {
-    final out = carryIngredientLinks(
-      from: const [Ingredient(name: 'jaja', quantity: 3, link: eggs)],
-      to: const [
-        Ingredient(name: ' Jaja ', quantity: 4),
-        Ingredient(name: 'so'),
-      ],
+  test('server confirmed link replaces local matched link', () {
+    final merged = mergeIngredientLinks(
+      local: [ingredient('Jaja', matched, LinkSource.matched)],
+      server: [ingredient('jaja', confirmed, LinkSource.confirmed)],
     );
-    expect(out[0].link, eggs);
-    expect(out[0].quantity, 4);
-    expect(out[1].link, isNull);
+
+    expect(merged.single.name, 'Jaja');
+    expect(merged.single.link?.foodId, confirmed);
+    expect(merged.single.link?.linkSource, LinkSource.confirmed);
   });
 
-  test('preimenovan sastojak i nevažeća stara veza ne dobijaju vezu', () {
-    final out = carryIngredientLinks(
-      from: const [
-        Ingredient(name: 'jaja', link: eggs),
-        // Naziv je već promenjen pa veza više ne važi.
-        Ingredient(name: 'pirinač', link: milk),
-      ],
-      to: const [
-        Ingredient(name: 'jaja od patke'),
-        Ingredient(name: 'pirinač'),
-      ],
+  test('local confirmed link stays over a different server link', () {
+    final merged = mergeIngredientLinks(
+      local: [ingredient('Jaja', confirmed, LinkSource.confirmed)],
+      server: [ingredient('jaja', matched, LinkSource.matched)],
     );
-    expect(out[0].link, isNull);
-    expect(out[1].link, isNull);
+    expect(merged.single.link?.foodId, confirmed);
   });
 
-  test('dva različita izvora za isti naziv: bez veze', () {
-    const otherEggs = IngredientLink(
-      foodId: '00000000-0000-4000-8000-000000000003',
-      matchedKey: 'jaja',
-      linkSource: LinkSource.confirmed,
+  test('explicit unlink suppresses server link', () {
+    final merged = mergeIngredientLinks(
+      local: [const Ingredient(name: 'Jaja').unlink()],
+      server: [ingredient('jaja', confirmed, LinkSource.confirmed)],
     );
-    final out = carryIngredientLinks(
-      from: const [
-        Ingredient(name: 'jaja', link: eggs),
-        Ingredient(name: 'jaja', link: otherEggs),
+    expect(merged.single.link, isNull);
+    expect(merged.single.unlinkedKey, 'jaja');
+  });
+
+  test('renamed ingredient does not inherit a stale server link', () {
+    final merged = mergeIngredientLinks(
+      local: [const Ingredient(name: 'Belance')],
+      server: [ingredient('Jaja', confirmed, LinkSource.confirmed)],
+    );
+    expect(merged.single.name, 'Belance');
+    expect(merged.single.link, isNull);
+  });
+
+  test('ambiguous duplicate server links are not carried', () {
+    final merged = mergeIngredientLinks(
+      local: const [Ingredient(name: 'jaja')],
+      server: [
+        ingredient('Jaja', confirmed, LinkSource.confirmed),
+        ingredient('jaja', matched, LinkSource.matched),
       ],
+    );
+    expect(merged.single.link, isNull);
+  });
+
+  test('ingredient unlink intent survives recipe edit carry-forward', () {
+    final carried = carryIngredientLinks(
+      from: [const Ingredient(name: 'Jaja').unlink()],
       to: const [Ingredient(name: 'jaja')],
     );
-    expect(out.single.link, isNull);
+
+    expect(carried.single.unlinkedKey, 'jaja');
+    expect(
+      mergeIngredientLinks(
+        local: carried,
+        server: [ingredient('Jaja', confirmed, LinkSource.confirmed)],
+      ).single.link,
+      isNull,
+    );
   });
 }

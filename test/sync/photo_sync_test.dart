@@ -104,6 +104,24 @@ void main() {
     },
   );
 
+  // SEC-02: ime slike iz sinhronizovanog recepta je nepouzdan ulaz.
+  test('nebezbedna putanja iz recepta se preskače bez greške', () async {
+    await recipe('ok', 'recipe_photos/ok.jpg');
+    await recipe('zao', 'recipe_photos/../../zao.jpg');
+    backend.server.photos['h1/ok.jpg'] = Uint8List.fromList([1]);
+    backend.server.photos['h1/zao.jpg'] = Uint8List.fromList([2]);
+
+    final n = await PhotoSync(
+      db: db,
+      remote: backend.photos,
+      store: store,
+      scope: scope,
+    ).fetchMissing();
+
+    expect(n, 1);
+    expect(store.saved.keys, ['recipe_photos/ok.jpg']);
+  });
+
   test('neuspela slika ostaje za sledeći put', () async {
     await recipe('a', 'recipe_photos/a.jpg');
     await recipe('b', 'recipe_photos/b.jpg');

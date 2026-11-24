@@ -116,6 +116,20 @@ void main() {
     expect(requests.single.url.queryParameters['deleted_at'], 'gte.$t');
   });
 
+  test('fetchRecipe is scoped by both recipe id and household', () async {
+    handler = (_) => jsonResponse(<Object>[
+      {'id': 'r1', 'household_id': 'h1', 'ingredients': <Object>[]},
+    ]);
+
+    final row = await remote().fetchRecipe('r1', 'h1');
+
+    expect(row?['id'], 'r1');
+    expect(requests.single.method, 'GET');
+    expect(requests.single.url.path, '/rest/v1/recipes');
+    expect(requests.single.url.queryParameters['id'], 'eq.r1');
+    expect(requests.single.url.queryParameters['household_id'], 'eq.h1');
+  });
+
   group('vrste grešaka', () {
     Future<SyncError> errorFor(FutureOr<http.Response> Function() h) async {
       handler = (_) => h();

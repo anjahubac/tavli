@@ -53,6 +53,9 @@ abstract final class TavliWidth {
   /// Dijalog.
   static const double dialog = 420;
 
+  /// Bočni panel uz desnu ivicu na računaru (kanvas „Post i praznici“: 400).
+  static const double sidePanel = 400;
+
   /// Veći dijalog sa listom ili mrežom za izbor (npr. omiljeni recepti na
   /// računaru).
   static const double panel = 680;

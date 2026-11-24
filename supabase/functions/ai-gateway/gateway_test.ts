@@ -1,8 +1,9 @@
+import type { RankedRecipe } from "./recipe_vectors.ts";
 import { gateway, type Reservation } from "./gateway.ts";
 import { maxBodyBytes } from "./input.ts";
 
 const textModel = "gemini/gemini-pro-latest";
-const imageModel = "groq/qwen/qwen3.6-27b";
+const imageModel = "groq/qwen/qwen3.8-27b";
 const typedRequest = {
   task: "recipe_from_name",
   model: textModel,
@@ -24,11 +25,24 @@ function equal(actual: unknown, expected: unknown) {
 function setup({
   env = {},
   reservation = { id: "fake-reservation" },
+  enableRecipeIndexing,
+  rankRecipes,
+  canSearchRecipes = () => Promise.resolve(true),
   upstream = () => Response.json({ choices: [{ message: { content: "{}" } }] }),
 }: {
   env?: Record<string, string>;
   reservation?: Reservation;
   upstream?: () => Response;
+  enableRecipeIndexing?: (
+    token: string,
+    householdId: string,
+  ) => Promise<boolean>;
+  rankRecipes?: (
+    token: string,
+    vector: number[],
+    ids: string[],
+  ) => Promise<RankedRecipe[]>;
+  canSearchRecipes?: (token: string) => Promise<boolean>;
 } = {}) {
   const reserved: unknown[] = [];
   const released: string[] = [];
@@ -50,6 +64,9 @@ function setup({
       released.push(id);
       return Promise.resolve();
     },
+    enableRecipeIndexing,
+    rankRecipes,
+    canSearchRecipes,
     reserveImage: () => Promise.reject(new Error("unexpected")),
     storeImage: () => Promise.reject(new Error("unexpected")),
     send: (url: string | URL | Request, init?: RequestInit) => {
@@ -155,8 +172,37 @@ Deno.test("a provider error returns only a typed error and releases the reservat
   equal(released, ["fake-reservation"]);
 });
 
+const recipe = {
+  title: "Sarma",
+  servings: 6,
+  ingredients: [{ name: "kiseli kupus", quantity: 1, unit: "glavica" }],
+  steps: ["Umotati sarme."],
+};
+
+function modelAnswer(content: unknown) {
+  return () =>
+    Response.json({
+      choices: [{
+        message: {
+          content: typeof content === "string"
+            ? content
+            : JSON.stringify(content),
+        },
+      }],
+    });
+}
+
+function photoRequest() {
+  return post({
+    ...typedRequest,
+    task: "recipe_from_image",
+    model: imageModel,
+    images: [png],
+  });
+}
+
 Deno.test("accepts image input and sends it to the allowlisted Groq vision model", async () => {
-  const { handle, calls, reserved } = setup();
+  const { handle, calls, reserved } = setup({ upstream: modelAnswer(recipe) });
   const result = await handle(post({
     ...typedRequest,
     task: "recipe_from_image",
@@ -166,7 +212,7 @@ Deno.test("accepts image input and sends it to the allowlisted Groq vision model
   equal(result.status, 200);
   equal(calls[0].url, "https://api.groq.com/openai/v1/chat/completions");
   const request = JSON.parse(String(calls[0].init?.body));
-  equal(request.model, "qwen/qwen3.6-27b");
+  equal(request.model, "qwen/qwen3.8-27b");
   equal(request.max_completion_tokens, 4096);
   equal(request.messages[1].content[1].image_url.url, png);
   equal((reserved[0] as { kind: string }).kind, "vision");
@@ -275,4 +321,181 @@ Deno.test("each answered call logs only the model id and status", async () => {
   } finally {
     console.info = info;
   }
+});
+
+const recipeVectorEnv = {
+  AI_RECIPE_VECTORS_ENABLED: "1",
+  AI_RECIPE_VECTOR_ACCOUNT: "0".repeat(32),
+  AI_RECIPE_VECTOR_TOKEN: "fake-workers-ai",
+};
+
+const recipeSearch = {
+  task: "recipe_similarity_search",
+  query: "nešto lagano za večeru",
+  recipeIds: ["own-recipe", "own-recipe"],
+};
+
+Deno.test("server recipe search rejects candidates beyond the SQL limit", async () => {
+  const search = setup({
+    env: recipeVectorEnv,
+    rankRecipes: () => Promise.resolve([]),
+  });
+  const result = await search.handle(post({
+    ...recipeSearch,
+    recipeIds: Array.from({ length: 257 }, (_, i) => `recipe-${i}`),
+  }));
+  equal(result.status, 400);
+  equal(search.calls.length, 0);
+  equal(search.reserved.length, 0);
+});
+
+Deno.test("server recipe search embeds the query and ranks as the caller", async () => {
+  const vector = Array<number>(1024).fill(0.25);
+  const matches = [{ recipe_id: "own-recipe", distance: 0.125 }];
+  const search = setup({
+    env: recipeVectorEnv,
+    upstream: () => Response.json({ data: [{ index: 0, embedding: vector }] }),
+    rankRecipes: (token, embedding, ids) => {
+      equal(token, "test-session");
+      equal(embedding, vector);
+      equal(ids, ["own-recipe"]);
+      return Promise.resolve(matches);
+    },
+  });
+  const result = await search.handle(post(recipeSearch));
+  equal(result.status, 200);
+  equal(await result.json(), { matches });
+  equal(search.calls.length, 1);
+  const body = JSON.parse(String(search.calls[0].init?.body));
+  equal(
+    search.calls[0].url,
+    "https://api.cloudflare.com/client/v4/accounts/" + "0".repeat(32) +
+      "/ai/v1/embeddings",
+  );
+  equal(body, { model: "@cf/baai/bge-m3", input: [recipeSearch.query] });
+  equal(search.reserved.length, 1);
+  equal(search.released, ["fake-reservation"]);
+});
+
+Deno.test("disabled, unauthorized, malformed and quota-denied search skip provider work", async () => {
+  const rankRecipes = () => Promise.reject(new Error("unexpected SQL call"));
+  const disabled = setup({ rankRecipes });
+  equal((await disabled.handle(post(recipeSearch))).status, 503);
+  const denied = setup({
+    rankRecipes,
+    env: recipeVectorEnv,
+    reservation: { limit: "daily", retryAfterSeconds: 60 },
+  });
+  equal((await denied.handle(post(recipeSearch, "invalid"))).status, 401);
+  equal(
+    (await denied.handle(post({ ...recipeSearch, owner: "forged" }))).status,
+    400,
+  );
+  equal((await denied.handle(post(recipeSearch))).status, 429);
+  equal(denied.reserved.length, 1);
+  equal(denied.calls.length, 0);
+  equal(disabled.reserved.length, 0);
+  equal(disabled.calls.length, 0);
+});
+
+Deno.test("search without household consent never reaches the provider", async () => {
+  const checked: string[] = [];
+  const search = setup({
+    env: recipeVectorEnv,
+    canSearchRecipes: (token) => {
+      checked.push(token);
+      return Promise.resolve(false);
+    },
+    rankRecipes: () => Promise.reject(new Error("unexpected SQL call")),
+  });
+  equal((await search.handle(post(recipeSearch))).status, 403);
+  equal(checked, ["test-session"]);
+  equal(search.calls.length, 0);
+  equal(search.reserved.length, 0);
+});
+
+Deno.test("server search rejects a zero-length direction and releases quota", async () => {
+  const search = setup({
+    env: recipeVectorEnv,
+    upstream: () =>
+      Response.json({
+        data: [{ index: 0, embedding: Array<number>(1024).fill(0) }],
+      }),
+    rankRecipes: () => Promise.reject(new Error("unexpected SQL call")),
+  });
+  equal((await search.handle(post(recipeSearch))).status, 502);
+  equal(search.released, ["fake-reservation"]);
+});
+
+Deno.test("recipe indexing records consent as the caller without contacting the provider", async () => {
+  const householdId = "10000000-0000-0000-0000-000000000001";
+  const otherId = "10000000-0000-0000-0000-000000000002";
+  const recorded: [string, string][] = [];
+  const { handle, reserved, calls } = setup({
+    env: recipeVectorEnv,
+    enableRecipeIndexing: (token, id) => {
+      recorded.push([token, id]);
+      return Promise.resolve(id === householdId);
+    },
+  });
+  const consent = { task: "recipe_vector_consent", householdId };
+  equal((await handle(post(consent, "forged"))).status, 401);
+  equal(
+    (await handle(post({ ...consent, householdId: "invalid" }))).status,
+    400,
+  );
+  equal((await handle(post({ ...consent, householdId: otherId }))).status, 403);
+  const accepted = await handle(post(consent));
+  equal(accepted.status, 200);
+  equal(await accepted.json(), { enabled: true });
+  equal(recorded, [["test-session", otherId], ["test-session", householdId]]);
+  equal(reserved, []);
+  equal(calls, []);
+});
+
+Deno.test("a photo import returns a valid recipe, a fenced one and not_a_recipe unchanged", async () => {
+  for (
+    const answer of [
+      recipe,
+      "```json\n" + JSON.stringify(recipe) + "\n```",
+      { error: "not_a_recipe" },
+      { ...recipe, steps: null },
+    ]
+  ) {
+    const { handle } = setup({ upstream: modelAnswer(answer) });
+    const result = await handle(photoRequest());
+    equal(result.status, 200);
+  }
+});
+
+Deno.test("a photo import that is not a valid recipe becomes invalid_model_output and releases quota", async () => {
+  const bad: unknown[] = [
+    "not json at all",
+    "[]",
+    {},
+    { ...recipe, title: "   " },
+    { ...recipe, servings: 0 },
+    { ...recipe, servings: 2.5 },
+    { ...recipe, servings: "4" },
+    { ...recipe, ingredients: "kupus" },
+    { ...recipe, ingredients: [] },
+    { ...recipe, ingredients: [{ quantity: 1 }] },
+    { ...recipe, ingredients: ["kupus"] },
+    { ...recipe, steps: "Umotati." },
+    { ...recipe, steps: [1, 2] },
+    { error: "something_else" },
+  ];
+  for (const answer of bad) {
+    const { handle, released } = setup({ upstream: modelAnswer(answer) });
+    const result = await handle(photoRequest());
+    equal(result.status, 502);
+    equal(await result.json(), { error: "invalid_model_output" });
+    equal(released, ["fake-reservation"]);
+  }
+});
+
+Deno.test("the recipe output check applies only to the photo import", async () => {
+  const { handle } = setup({ upstream: modelAnswer("{}") });
+  const result = await handle(post());
+  equal(result.status, 200);
 });

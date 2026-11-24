@@ -47,7 +47,7 @@ export const chains: Record<Kind, readonly Model[]> = {
   vision: [
     openai,
     geminiFlash,
-    model("groq", "qwen/qwen3.6-27b"),
+    model("groq", "qwen/qwen3.8-27b"),
     geminiPro,
     geminiLite,
     openrouter,

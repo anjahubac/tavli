@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../ai/ai_units.dart' show canonicalUnit;
 import '../../app/animations/all_bought.dart';
 import '../../data/database.dart';
 import '../../domain/meal_plan.dart';
@@ -18,6 +19,16 @@ import 'shopping_providers.dart';
 import 'store_price_summary.dart';
 
 const pantryQuantityNote = 'Imaš u ostavi, proveri';
+const quantityReviewNote = 'Proveri količinu';
+
+/// Prstohvat ostaje u svojoj jedinici, uz oznaku za proveru.
+String? shoppingQuantityNote(String? unit, {required bool unknownPantry}) {
+  final notes = [
+    if (canonicalUnit(unit) == 'prstohvat') quantityReviewNote,
+    if (unknownPantry) pantryQuantityNote,
+  ];
+  return notes.isEmpty ? null : notes.join(' · ');
+}
 
 /// "1,5 kg", "~35 ml", "2 kom"; null kad količina nije poznata.
 String? amountLabel(
@@ -268,7 +279,7 @@ class ShoppingItemTile extends ConsumerWidget {
       if (amount != null)
         amount
       else if (!item.isManual && !item.isBought)
-        'Proveri količinu',
+        quantityReviewNote,
       if (received) 'U ostavi',
     ].join(' · ');
     void toggle() => unawaited(
@@ -311,7 +322,10 @@ class ShoppingItemTile extends ConsumerWidget {
       ],
       child: TavliCheckRow(
         title: item.name,
-        subtitle: hasUnknownPantrySupply ? pantryQuantityNote : null,
+        subtitle: shoppingQuantityNote(
+          amount != null && !item.isManual && !item.isBought ? item.unit : null,
+          unknownPantry: hasUnknownPantrySupply,
+        ),
         detail: detail.isEmpty ? null : detail,
         checked: item.isBought,
         onChanged: received ? null : (_) => toggle(),
