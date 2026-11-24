@@ -65,7 +65,7 @@ function harness(opts: {
 }
 
 function request(
-  audio: Uint8Array<ArrayBuffer> | null,
+  audio: Uint8Array | null,
   init: { token?: string | null; type?: string; method?: string } = {},
 ): Request {
   const headers: Record<string, string> = {
@@ -77,7 +77,7 @@ function request(
   return new Request("http://localhost/voice-transcribe", {
     method,
     headers,
-    body: method === "GET" || audio === null ? undefined : audio,
+    body: method === "GET" || audio === null ? undefined : audio as BodyInit,
   });
 }
 
