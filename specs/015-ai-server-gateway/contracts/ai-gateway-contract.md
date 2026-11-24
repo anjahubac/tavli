@@ -240,6 +240,7 @@ or a provider endpoint (spec 015 SC-001).
 | 429 | `{"error": "busy", "retryAfterSeconds": n}` | `GatewayQuotaError` (too many calls at once): same as `minute` | same as above |
 | 429 | `{"error": "provider_rate_limited", "retryAfterSeconds": n?}` | `RateLimitError` for this model, next model | — |
 | 502 | `{"error": "provider_error"}` | `TransientError`, next model | — |
+| 502 | `{"error": "invalid_model_output"}` (`recipe_from_image` only: the answer is not a JSON recipe with title, 1–99 servings, 1–60 named ingredients and optional steps, or `{"error": "not_a_recipe"}`) | `TransientError`, next model | — |
 | 503 | `{"error": "model_unavailable"}` | `ModelNotFoundError`, next model | — |
 | 503 | `{"error": "gateway_unavailable"}` (proposed for the emergency stop) | Skip gateway models for this request. Direct user-key attempts remain eligible for tasks that support them. | existing AI-unavailable message if no eligible attempt succeeds |
 | 504 | `{"error": "timeout"}` | `TransientError(isTimeout: true)`, next model | — |

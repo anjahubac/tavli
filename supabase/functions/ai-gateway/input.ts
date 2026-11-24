@@ -18,6 +18,7 @@ export const tasks: ReadonlyMap<string, Kind> = new Map([
 ]);
 
 export interface Completion {
+  task: string;
   kind: Kind;
   model: string;
   system: string;
@@ -147,11 +148,19 @@ export function parseCompletion(value: unknown): Completion | undefined {
   ) return;
   if (kind === "text") {
     if (images.length !== 0) return;
-    return { kind, model, system, prompt, temperature };
+    return { task: task as string, kind, model, system, prompt, temperature };
   }
   if (
     images.length !== 1 || typeof images[0] !== "string" ||
     !validImage(images[0])
   ) return;
-  return { kind, model, system, prompt, temperature, image: images[0] };
+  return {
+    task: task as string,
+    kind,
+    model,
+    system,
+    prompt,
+    temperature,
+    image: images[0],
+  };
 }
