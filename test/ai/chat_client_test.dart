@@ -49,6 +49,8 @@ void main() {
     );
     expect(req.headers['Authorization'], 'Bearer k');
     expect((req.data as Map)['response_format'], {'type': 'json_object'});
+    expect(req.data, containsPair('temperature', request.temperature));
+    expect((req.data as Map).containsKey('reasoning_effort'), isFalse);
   });
 
   test('OpenAI: adresa, Bearer ključ i JSON odgovor', () async {
@@ -60,8 +62,9 @@ void main() {
     final req = adapter.requests.single;
     expect(req.uri.toString(), 'https://api.openai.com/v1/chat/completions');
     expect(req.headers['Authorization'], 'Bearer sk-fake');
-    expect(req.data, containsPair('model', 'gpt-4o-mini'));
-    expect(req.data, containsPair('temperature', request.temperature));
+    expect(req.data, containsPair('model', 'gpt-6-luna'));
+    expect((req.data as Map).containsKey('temperature'), isFalse);
+    expect(req.data, containsPair('reasoning_effort', 'none'));
     expect(req.data, containsPair('response_format', {'type': 'json_object'}));
   });
 

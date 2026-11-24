@@ -182,7 +182,7 @@ void main() {
     tester,
   ) async {
     adapter = FakeAdapter([
-      (200, '{"data":[{"id":"gpt-4o-mini"}]}', <String, List<String>>{}),
+      (200, '{"data":[{"id":"gpt-6-luna"}]}', <String, List<String>>{}),
     ]);
     await pumpScreen(tester);
 
@@ -197,7 +197,7 @@ void main() {
       'https://api.openai.com/v1/models',
     );
     expect((await keys.list()).single.provider, AIProvider.openAI);
-    expect(find.text('✓ OpenAI GPT-4o mini'), findsOneWidget);
+    expect(find.text('✓ OpenAI GPT-6 Luna'), findsOneWidget);
     expect(find.textContaining('plaćen · Radi'), findsOneWidget);
   });
 

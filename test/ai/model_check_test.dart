@@ -19,15 +19,15 @@ void main() {
 
   test('OpenAI: model za sopstveni ključ, bez modela sa servera', () {
     for (final (ids, listed) in [
-      (['gpt-4o-mini', 'gpt-4o'], true),
-      (['gpt-4o'], false),
+      (['gpt-6-luna', 'gpt-6-sol'], true),
+      (['gpt-6-sol'], false),
     ]) {
       final result = checkChainModels(
         ChainConfig.defaults,
         AIProvider.openAI,
         ids,
       );
-      expect(result.single.spec.model, 'gpt-4o-mini');
+      expect(result.single.spec.model, 'gpt-6-luna');
       expect(result.single.listed, listed);
     }
   });

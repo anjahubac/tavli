@@ -817,7 +817,7 @@ void main() {
     test('na kraju je oba lanca i čita slike', () {
       for (final kind in TaskKind.values) {
         final last = ChainConfig.defaults.chainFor(kind).last;
-        expect(last.key, 'openAI/gpt-4o-mini');
+        expect(last.key, 'openAI/gpt-6-luna');
         expect(last.supportsVision, isTrue);
       }
     });

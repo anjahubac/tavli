@@ -83,8 +83,8 @@ class ChainConfig {
   /// bira server.
   static const _openAIPersonal = ModelSpec(
     provider: AIProvider.openAI,
-    model: 'gpt-4o-mini',
-    label: 'OpenAI GPT-4o mini',
+    model: 'gpt-6-luna',
+    label: 'OpenAI GPT-6 Luna',
     supportsVision: true,
   );
 

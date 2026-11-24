@@ -96,7 +96,12 @@ class OpenAICompatibleClient implements ChatClient {
 
   static Map<String, dynamic> buildBody(ModelSpec model, AIRequest request) => {
     'model': model.model,
-    'temperature': request.temperature,
+    // OpenAI modeli koji razmišljaju: temperatura se izostavlja (kao u
+    // ai-gateway), a najmanji nivo razmišljanja drži odgovor u roku.
+    if (model.provider == AIProvider.openAI)
+      'reasoning_effort': 'none'
+    else
+      'temperature': request.temperature,
     'response_format': {'type': 'json_object'},
     'messages': [
       {'role': 'system', 'content': request.system},
