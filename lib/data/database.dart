@@ -760,6 +760,11 @@ class AppDatabase extends _$AppDatabase {
       )) {
         await customStatement('DROP TABLE "${foodAliases.actualTableName}"');
         await m.createTable(foodAliases);
+        // Kursor preuzimanja je inkrementalan: bez brisanja se stari aliasi
+        // ne bi vratili.
+        await (delete(
+          syncCursors,
+        )..where((t) => t.entity.equals('food_alias'))).go();
       }
     } else {
       await m.createTable(foodAliases);

@@ -699,12 +699,24 @@ void main() {
       'CREATE TABLE food_aliases (id TEXT NOT NULL PRIMARY KEY, '
       'food_id TEXT NOT NULL, household_id TEXT, alias TEXT NOT NULL)',
     );
+    await first
+        .into(first.syncCursors)
+        .insert(
+          SyncCursorsCompanion.insert(
+            accountId: 'u1',
+            entity: 'food_alias',
+            updatedAt: DateTime.utc(2026, 1, 1),
+            lastId: 'a1',
+          ),
+        );
     await first.customStatement('PRAGMA user_version = 8');
     await first.close();
 
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
     expect(await db.select(db.foodAliases).get(), isEmpty);
+    // Kursor je obrisan, pa sync ponovo preuzima sve aliase.
+    expect(await db.select(db.syncCursors).get(), isEmpty);
     expect(
       await db
           .customSelect(
