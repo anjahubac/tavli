@@ -699,6 +699,10 @@ void main() {
       'CREATE TABLE food_aliases (id TEXT NOT NULL PRIMARY KEY, '
       'food_id TEXT NOT NULL, household_id TEXT, alias TEXT NOT NULL)',
     );
+    await first.customStatement(
+      'CREATE UNIQUE INDEX food_aliases_shared_active ON food_aliases (alias) '
+      'WHERE household_id IS NULL',
+    );
     await first
         .into(first.syncCursors)
         .insert(

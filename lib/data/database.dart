@@ -739,8 +739,8 @@ class AppDatabase extends _$AppDatabase {
     await m.addColumn(table, c);
   }
 
-  /// v9: keš kataloga namirnica (samo dodaje). Ponovljen korak (vraćen
-  /// user_version) ne pada.
+  /// v9: keš kataloga namirnica. Ponovljen korak (vraćen user_version)
+  /// čuva tabele sa aktuelnom šemom.
   Future<void> _migrateToFoodCatalog(Migrator m) async {
     await _addMissingColumn(m, accounts, accounts.catalogStatus);
     final existing = {
@@ -759,6 +759,7 @@ class AppDatabase extends _$AppDatabase {
         (r) => r.read<String>('name') == foodAliases.aliasNormalized.$name,
       )) {
         await customStatement('DROP TABLE "${foodAliases.actualTableName}"');
+        existing.remove(foodAliasesSharedActive.entityName);
         await m.createTable(foodAliases);
         // Kursor preuzimanja je inkrementalan: bez brisanja se stari aliasi
         // ne bi vratili.
