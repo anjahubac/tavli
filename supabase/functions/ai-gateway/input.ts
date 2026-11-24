@@ -1,3 +1,4 @@
+import { decodeBase64 } from "./base64.ts";
 import type { Kind } from "./providers.ts";
 
 export const maxBodyBytes = 1_500_000;
@@ -109,9 +110,7 @@ function validImage(value: string): boolean {
   );
   if (!match) return false;
   try {
-    const raw = Uint8Array.fromBase64(match[2], {
-      lastChunkHandling: "strict",
-    });
+    const raw = decodeBase64(match[2]);
     const bytes = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
     if (match[1] === "jpeg") return jpegDimensions(bytes);
     return bytes.byteLength >= 33 &&
