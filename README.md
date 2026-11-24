@@ -181,7 +181,7 @@ More detail: [architecture](docs/architecture.md) and [flow map](docs/flows.md).
 - The native toolchain for your target platform (check with `flutter doctor`)
 - Python 3 for the repository check scripts
 - Docker and the [Supabase CLI](https://supabase.com/docs/guides/local-development) for the local backend
-- [Deno](https://deno.com/) 2 for Edge Function tests (optional)
+- [Deno](https://deno.com/) 2.1 or newer (CI uses 2.1.x) for Edge Function tests (optional)
 
 ### Run the app
 
@@ -192,7 +192,7 @@ flutter pub get
 git config core.hooksPath .githooks   # enable the pre-commit checks, once per clone
 
 supabase start                        # local backend in Docker
-cp -n secrets.example.json secrets.json  # then fill in the values below
+cp -n secrets.example.json secrets.json  # empty template: fill it in (see Configuration) before running
 flutter run -d macos --dart-define-from-file=secrets.json
 ```
 
