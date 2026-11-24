@@ -44,6 +44,12 @@ calendar, shown in civil (Gregorian) dates.
   period and any later allowance. If a plan cannot represent the time
   restriction, leave its automatic suggestions empty for that date and
   keep manual entries available. Dev 2.
+  The module also answers krsna slava dates in “Post i praznici”: the 55
+  slave listed by both the Danas and Religija.rs slava calendars (they agree
+  on every shared date) plus a few SPC feasts missing from both lists. A
+  fixed slava is answered without a year (“Sveti Nikola (Nikoljdan) je 19.
+  decembra.”); the movable Lazareva subota names its next date. Feast
+  dispensations for individual slave are not part of the daily rule.
 - **FR-002**: Deliver a **fasting and holidays knowledge base**: per-year
   calendar chunks generated from FR-001 for the current and next two years,
   plus team-written explanatory texts, stored with embeddings in Supabase
