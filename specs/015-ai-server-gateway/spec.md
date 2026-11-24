@@ -2,9 +2,10 @@
 
 **ID**: 015-ai-server-gateway | **Feature key**: AI-GATEWAY
 **Created**: 2026-11-14 | **Baseline**: dev 207c94c
-**Status**: Implementation in progress. Quota reservation is merged. The Edge
-Function and Flutter transport are local. Durable client quota pauses and rollout
-are pending.
+**Status**: Implementation in progress. Quota reservation, the Edge Function and
+the Flutter transport are merged to dev ([PR #124](https://github.com/anjahubac/tavli/pull/124),
+[PR #127](https://github.com/anjahubac/tavli/pull/127)). Durable client quota pauses,
+verification on dev and production rollout are pending.
 **Lead**: Dev 2 | **Proposed independent reviewer**: Dev 3
 
 ## Scope and source
@@ -47,7 +48,7 @@ until execution evidence is linked.
 
 - **Privacy**: Recipe prompts and an optional photo go to the selected provider for generation or extraction. The gateway keeps them out of logs and quota records. The local quota pause is device-only and account-scoped.
 - **Abuse**: The gateway validates the authenticated caller, allowlisted task and model, payload size and configured budgets before provider work. Dev 2 owns the kill switch and quota policy.
-- **Credentials**: Shared provider keys live in Edge Function Secrets after cutover. BYOK stays device-secure. Flutter sends the session token to Supabase and sends a personal AI key only to its configured provider.
+- **Credentials**: Shared provider keys live in Edge Function Secrets; app builds have none. BYOK stays device-secure. Flutter sends the session token to Supabase and sends a personal AI key only to its configured provider.
 - **Files**: Photo import sends one bounded image in the request body. Gateway storage writes, image generation, photo paths and new file retention are out of scope. Generated recipe artwork is tracked separately on [Trello 130](https://trello.com/c/te8lAjwG/130-ai-slike-recepata-server-red-%C4%8Dekanja-prikaz-i-zamena).
 - **Deployment**: Deploy the reviewed server to `tavli-dev` before switching builds. Verify a key-free client and an operator rollback before production. Record evidence through [033](../033-release-operations/contracts/release-evidence.md).
 

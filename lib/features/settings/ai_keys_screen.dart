@@ -11,6 +11,7 @@ import '../../ai/model_check.dart';
 import '../../domain/recipe_format.dart';
 import '../../providers.dart';
 import 'ai_error_text.dart';
+import 'own_key_order.dart';
 import 'settings_page.dart';
 
 enum _KeyStatus {
@@ -23,8 +24,9 @@ enum _KeyStatus {
   final String label;
 }
 
-/// Jedno polje za dodavanje bilo kog ključa i lista ključeva koje je
-/// korisnik dodao. Ugrađeni ključevi aplikacije se ovde nikad ne pominju.
+/// Jedno polje za dodavanje ključa bilo kog podržanog servisa (prepoznaje se
+/// po početku ključa) i lista ključeva koje je korisnik dodao. Ključevi koji
+/// dolaze uz aplikaciju se pominju samo kao kraj redosleda, bez prikaza.
 class AiKeysScreen extends ConsumerStatefulWidget {
   const AiKeysScreen({super.key});
 
@@ -36,7 +38,6 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
   final _input = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
-  AIProvider? _chosen;
   String? _message;
   bool _messageIsError = false;
   List<StoredKey>? _keys;
@@ -61,7 +62,7 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
   Future<void> _load() async {
     final List<StoredKey> keys;
     try {
-      keys = await _ownKeys();
+      keys = await ref.read(keyStoreProvider).list();
     } on SecretStorageException {
       if (!mounted) return;
       setState(
@@ -84,32 +85,19 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     });
   }
 
-  /// Samo ključevi koje je korisnik dodao. Ključ koji je isti kao ugrađeni
-  /// (npr. sačuvan ranije ručno) briše se iz liste: on je ugrađeni i radi
-  /// u pozadini.
-  Future<List<StoredKey>> _ownKeys() async {
-    final store = ref.read(keyStoreProvider);
-    final builtIn = ref.read(builtInKeysProvider);
-    final all = await store.list();
-    for (final k in all.where((k) => builtIn.contains(k.value))) {
-      await store.remove(k.id);
-    }
-    return [
-      for (final k in all)
-        if (!builtIn.contains(k.value)) k,
-    ];
-  }
-
   void _show(String message, {bool error = false}) => setState(() {
     _message = message;
     _messageIsError = error;
   });
 
-  AIProvider? get _provider => detectProvider(_input.text) ?? _chosen;
+  static final _supported = [
+    for (final p in AIProvider.values)
+      if (p.supportsPersonalKey) p.label,
+  ].join(', ');
 
   Future<void> _add() async {
     final value = _input.text.trim();
-    final provider = _provider;
+    final provider = detectProvider(value);
     if (value.isEmpty || provider == null) return;
     final store = ref.read(keyStoreProvider);
     setState(() {
@@ -117,8 +105,7 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
       _message = null;
     });
     try {
-      if (ref.read(builtInKeysProvider).contains(value) ||
-          (await store.list()).any((k) => k.value == value)) {
+      if ((await store.list()).any((k) => k.value == value)) {
         return _show('Ovaj ključ je već dodat.', error: true);
       }
       // Provera preko liste modela ne troši limit za generisanje.
@@ -146,7 +133,6 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
       _input.clear();
       _status[key.id] = status;
       _models[key.id] = models;
-      _chosen = null;
       _show(
         checkError == null
             ? 'Ključ je dodat (${provider.label}).'
@@ -231,10 +217,9 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
               'Ključevi se čuvaju samo na ovom uređaju, u sistemskom '
               'sigurnom skladištu.',
           message:
-              'Možeš dodati više ključeva: kad se jednom potroši besplatni '
-              'limit, Tavli koristi sledeći. Ključ praviš na '
-              'aistudio.google.com/apikey, console.groq.com/keys ili '
-              'openrouter.ai/keys.',
+              'Tavli prvo koristi tvoje ključeve, redom. Kad se njihov '
+              'besplatni limit potroši, prelazi na besplatne ključeve koji '
+              'dolaze uz aplikaciju.',
         ),
         TavliCard(
           child: Column(
@@ -260,25 +245,17 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
                   'Prepoznat servis: ${detected.label}',
                   style: _muted(context),
                 ),
-              if (hasText && detected == null) ...[
-                Text('Izaberi servis', style: _muted(context)),
-                TavliChoice<AIProvider?>.chips(
-                  options: [
-                    for (final p in AIProvider.values)
-                      if (p.supportsPersonalKey) TavliOption(p, p.label),
-                  ],
-                  selected: _chosen,
-                  onChanged: (p) => setState(() => _chosen = p),
+              if (hasText && detected == null)
+                Text(
+                  'Servis nije prepoznat. Podržani su: $_supported.',
+                  style: _muted(context),
                 ),
-              ],
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: TavliButton.primary(
                   label: 'Dodaj ključ',
                   icon: Icons.add_rounded,
-                  onPressed: _busy || !hasText || _provider == null
-                      ? null
-                      : _add,
+                  onPressed: _busy || detected == null ? null : _add,
                 ),
               ),
               if (_busy) const TavliLoading(message: 'Proveravam ključ…'),
@@ -335,7 +312,30 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
     if (keys.isEmpty) {
       return [Text('Još nema dodatih ključeva.', style: _muted(context))];
     }
+    final order = ref.watch(ownKeyOrderProvider).value;
+    final mixed =
+        keys.any((k) => k.provider.paid) && keys.any((k) => !k.provider.paid);
     return [
+      if (mixed && order != null) ...[
+        const TavliSectionHeader(
+          'Redosled',
+          style: TavliSectionHeaderStyle.bold,
+        ),
+        TavliChoice<OwnKeyOrder>.segmented(
+          options: const [
+            TavliOption(OwnKeyOrder.paidFirst, 'Prvo plaćeni'),
+            TavliOption(OwnKeyOrder.freeFirst, 'Prvo besplatni'),
+          ],
+          selected: order,
+          onChanged: (o) =>
+              unawaited(ref.read(ownKeyOrderProvider.notifier).set(o)),
+        ),
+        Text(
+          'Važi za tvoje ključeve. Ključevi koji dolaze uz aplikaciju uvek '
+          'idu na kraju.',
+          style: _muted(context),
+        ),
+      ],
       for (final p in AIProvider.values)
         if (p.supportsPersonalKey && keys.any((k) => k.provider == p)) ...[
           TavliSectionHeader(p.label, style: TavliSectionHeaderStyle.bold),
@@ -388,12 +388,32 @@ class _SavedKeyRow extends StatelessWidget {
             ? '✓ ${m.spec.label}'
             : '? ${m.spec.label}: nije na listi (alias ili ukinut model)',
     ];
+    final stacked = isLargeText(context);
+    final actions = Wrap(
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        TavliButton.text(
+          label: 'Proveri',
+          onPressed: checking ? null : onCheck,
+        ),
+        TavliIconButton(
+          icon: Icons.delete_outline_rounded,
+          semanticLabel: 'Obriši ključ',
+          onPressed: onRemove,
+        ),
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TavliListRow(
           title: storedKey.masked,
-          subtitle: ['Dodat $added', if (s != null) s.label].join(' · '),
+          subtitle: [
+            'Dodat $added',
+            storedKey.provider.paid ? 'plaćen' : 'besplatan',
+            if (s != null) s.label,
+          ].join(' · '),
           destructive: s == _KeyStatus.rejected,
           leading: Icon(
             s == _KeyStatus.rejected
@@ -402,21 +422,11 @@ class _SavedKeyRow extends StatelessWidget {
                 ? Icons.check_circle_outline_rounded
                 : Icons.key_outlined,
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TavliButton.text(
-                label: 'Proveri',
-                onPressed: checking ? null : onCheck,
-              ),
-              TavliIconButton(
-                icon: Icons.delete_outline_rounded,
-                semanticLabel: 'Obriši ključ',
-                onPressed: onRemove,
-              ),
-            ],
-          ),
+          trailing: stacked ? null : actions,
         ),
+        // Uz krupan tekst dugmad ne staju pored naziva na uskom ekranu.
+        if (stacked)
+          Align(alignment: AlignmentDirectional.centerEnd, child: actions),
         if (checking) const TavliLoading(message: 'Proveravam ključ…'),
         for (final line in modelLines)
           Padding(

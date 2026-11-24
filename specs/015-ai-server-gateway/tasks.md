@@ -20,7 +20,7 @@ implementation/test/review estimates before Ready.
 - [ ] **T005b** Review and merge the Edge Function, fake tests and deploy wiring. Server is implemented locally. Remaining evidence includes authenticated local Supabase integration and the same-SHA deployment gate in 012.
 - [ ] **T005c** Add Flutter task IDs, discovery and completion transport, and account-safe retry/fallback/repair. Local code and fake transport tests exist. Integration verification on the merged T005b deploy remains pending.
 - [ ] **T005d** Persist the current in-memory scoped quota pause and add migration tests. Coordinate drift schema version with Dev 1. Test restart, account switch and coexistence with BYOK.
-- [ ] **T005e** Remove compiled provider credentials and old settings/test wiring. Verify all three dev flows from a build with only Supabase configuration and record key-free artifact evidence.
+- [ ] **T005e** Remove compiled provider credentials and old settings/test wiring (code: [PR #157](https://github.com/anjahubac/tavli/pull/157)). Verify all three dev flows from a build with only Supabase configuration and record key-free artifact evidence.
 - [ ] **T006a** Record operator disable/rotation, compatible rollback, and dev→production approval evidence. Enabling OpenAI requires a separate model/quality and cost check.
 
 ## Sequencing and effort

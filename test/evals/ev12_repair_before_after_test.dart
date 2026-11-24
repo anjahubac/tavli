@@ -60,9 +60,8 @@ Future<_Run> _run(String scenario, Map<String, List<Object>> scripts) async {
       text: [geminiPro, groqText],
     ),
     client: client,
-    keys: LayeredKeySource(
+    keys: OwnKeySource(
       InMemoryKeyStore({AIProvider.gemini: 'g', AIProvider.groq: 'q'}),
-      const BuiltInKeys(),
     ),
     status: InMemoryModelStatusStore(),
     clock: () => DateTime.utc(2026, 11, 21, 12),

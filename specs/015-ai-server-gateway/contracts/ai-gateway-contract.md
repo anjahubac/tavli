@@ -2,8 +2,8 @@
 
 **Status**: Base contract approved in [PR #47](https://github.com/anjahubac/tavli/pull/47);
 quota reservation merged in [PR #124](https://github.com/anjahubac/tavli/pull/124).
-The local implementation adds authenticated model discovery, OpenAI opt-in and
-the Flutter transport. Persistence of client-side quota pauses and release
+Authenticated model discovery, OpenAI opt-in and the Flutter transport are merged
+to dev in [PR #127](https://github.com/anjahubac/tavli/pull/127). Persistence of client-side quota pauses and release
 verification remain open.
 **Author**: Dev 2 | **Reviewer**: Dev 4 (TRELLO-36: request and error format)
 **Date**: 2026-11-17 | **Builds on**: [spike-photo-timing.md](../spike-photo-timing.md)
@@ -378,8 +378,8 @@ deleted after 2 days.
 - `GatewayQuotaError` and `GatewayAuthError` with the router handling in
   Gateway errors in `AIRouter`, the per-account, per-kind pause store, the
   gateway deadline from Deadlines, and support for `openai/default`.
-- Cutover (FR-104): built-in keys are removed from `BuiltInKeys`,
-  `secrets.example.json` and the build; a check proves the built app contains
+- Cutover (FR-104): `BuiltInKeys` and the key entries of `secrets.example.json`
+  are removed ([PR #157](https://github.com/anjahubac/tavli/pull/157)); still open: a check proves the built app contains
   no provider key.
 
 ## Delivery slices
@@ -410,4 +410,5 @@ returns text.
 | D2 | Limits | Values in Limits above | Dev 2 + Dev 4 |
 | D3 | Paid provider and model | OpenAI as `openai/default`, one model for vision and text, resolved from `OPENAI_MODEL` on the server. Choice: a fast small (mini-class) multimodal model, picked by running the TRELLO-35 photo set, a few dish-name recipes and one plan through 2–3 candidates once the key exists (errors, time, cost per request). Reasoning models only at their lowest effort, because of the 60 s deadline. The app needs no OpenAI client, because only the gateway calls it. | team (2026-11-17), model pick pending the test |
 | D4 | Free keys | Stay available for testing as gateway secrets on `tavli-dev`; removed from the app build at cutover | team (2026-11-17) |
+| D6 | Personal keys (free or paid) | Personal keys never go through the gateway: they stay on the device and are called directly, before the shared gateway path, in the order of spec 004 (paid first by default, a toggle on the key list changes it). The gateway's own paid OpenAI key and its limits apply only to built-in access. A personal OpenAI key needs a model id on the device (the gateway's `openai/default` is server-side): one model id in the chain config, `gpt-6-luna`, at its lowest reasoning effort (`none`) and without `temperature`; a trial with a real key is pending. This changes D3's "the app needs no OpenAI client": personal keys are called by the app's own OpenAI-compatible client. | team (2026-11-23), model by Anja (2026-11-24) |
 | D5 | Sync vs queue | Synchronous, one model attempt per call (spike decision A) | team (Q2) |

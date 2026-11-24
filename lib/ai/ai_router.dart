@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'ai_errors.dart';
@@ -23,12 +24,13 @@ class AIResult<T> {
   final ModelSpec model;
   final List<AttemptLog> attempts;
 
-  /// Ključ koji je dao odgovor (sopstveni ili ugrađeni Tavli AI).
+  /// Pristup koji je dao odgovor (sopstveni ključ ili zajednički Tavli AI).
   final KeyOrigin origin;
 }
 
 /// Prolazi kroz lanac modela dok neki ne vrati ispravan odgovor.
-/// Za svaki model proba ključeve redom iz [KeySource] (sopstveni pa ugrađeni);
+/// Prvo korisnikovi ključevi iz [KeySource], plaćeni ili besplatni servisi
+/// prvi prema [ownKeyOrder], pa zajednički pristup preko [gateway];
 /// pauze, odbijeni ključevi i nedostupni modeli važe posebno po ključu.
 class AIRouter {
   AIRouter({
@@ -37,6 +39,7 @@ class AIRouter {
     required this.keys,
     required this.status,
     this.gateway,
+    this.ownKeyOrder = _paidFirst,
     DateTime Function()? clock,
     this.minuteCooldown = const Duration(seconds: 60),
     this.unknownDailyCooldown = const Duration(hours: 1),
@@ -49,6 +52,10 @@ class AIRouter {
   final KeySource keys;
   final ModelStatusStore status;
   final GatewayChatClient? gateway;
+
+  /// Čeka se pre svakog zahteva: izbor „Prvo besplatni“ mora da važi i za
+  /// prvi zahtev po pokretanju, dok se podešavanje još čita iz baze.
+  final FutureOr<OwnKeyOrder> Function() ownKeyOrder;
   final _gatewayPauses = <(String, TaskKind?), DateTime>{};
   final DateTime Function() _clock;
   final Duration minuteCooldown;
@@ -62,12 +69,24 @@ class AIRouter {
   final _unavailableModels = <String>{};
   final _invalidOutputUntil = <String, DateTime>{};
 
+  static OwnKeyOrder _paidFirst() => OwnKeyOrder.paidFirst;
+
+  /// Plaćeni servisi na početak ili na kraj; redosled unutar grupe ostaje.
+  static List<ModelSpec> _ordered(List<ModelSpec> chain, OwnKeyOrder order) {
+    final paid = chain.where((m) => m.provider.paid);
+    final free = chain.where((m) => !m.provider.paid);
+    return switch (order) {
+      OwnKeyOrder.paidFirst => [...paid, ...free],
+      OwnKeyOrder.freeFirst => [...free, ...paid],
+    };
+  }
+
   static String _keySlot(ApiCredential c) => '${c.provider.name}#${c.slot}';
   static String _modelSlot(ModelSpec m, ApiCredential c) =>
       '${m.key}#${c.slot}';
 
   /// Id-jevi *sopstvenih* ključeva koje je servis odbio; UI ih označava.
-  /// Odbijen ugrađeni ključ se tiho preskače.
+  /// Odbijen zajednički pristup se tiho preskače.
   Set<String> get invalidKeyIds => Set.unmodifiable(_invalidOwnKeyIds);
   final _invalidOwnKeyIds = <String>{};
 
@@ -91,11 +110,12 @@ class AIRouter {
     T Function(Map<String, dynamic> json) parse, {
     AICancellation? cancel,
   }) async {
-    final directChain = config().chainFor(request.kind);
+    final configured = config().chainFor(request.kind);
     final gatewayClient = gateway;
     final session = gatewayClient == null
         ? null
         : _GatewayRun(gatewayClient, cancel);
+    final directChain = _ordered(configured, await ownKeyOrder());
     final attempts = <AttemptLog>[];
     var invalidOutput = false;
     var emptyOutput = false;

@@ -34,6 +34,7 @@ import 'domain/planning_tastes.dart';
 import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_image_queue.dart';
 import 'features/recipes/recipe_providers.dart';
+import 'features/settings/own_key_order.dart';
 import 'sync/downloader.dart';
 import 'sync/legacy_mover.dart';
 import 'sync/photo_sync.dart';
@@ -243,14 +244,8 @@ final syncPhaseProvider = StreamProvider<SyncPhase?>((ref) {
 
 final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
 
-/// Stari izvor postoji za testne zamene. App učitava deljene modele sa servera.
-final builtInKeysProvider = Provider<BuiltInKeys>((ref) => const BuiltInKeys());
-
 final keySourceProvider = Provider<KeySource>(
-  (ref) => LayeredKeySource(
-    ref.watch(keyStoreProvider),
-    ref.watch(builtInKeysProvider),
-  ),
+  (ref) => OwnKeySource(ref.watch(keyStoreProvider)),
 );
 
 class ChainConfigNotifier extends Notifier<ChainConfig> {
@@ -283,6 +278,7 @@ final aiRouterProvider = Provider<AIRouter>(
     keys: ref.watch(keySourceProvider),
     status: DriftModelStatusStore(ref.watch(databaseProvider)),
     gateway: ref.watch(gatewayChatClientProvider),
+    ownKeyOrder: () => ref.read(ownKeyOrderProvider.future),
   ),
 );
 

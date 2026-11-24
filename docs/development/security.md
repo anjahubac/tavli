@@ -17,7 +17,7 @@ protect every table, object and privileged operation independently.
 | Account/session/email OTP | Secure storage, verified identity, expiry/replay handling, rate limits | Dev 3 |
 | Household recipes/plans/pantry/shopping/photos | Membership RLS, ownership-preserving references, private object paths | Dev 1 + Dev 3 |
 | Personal preferences/favorites/diary/targets | Owner-only rows; narrowly authorized planning aggregate | Dev 3 |
-| AI provider quota/credentials | Built-in keys on server; BYOK secure on device; bounded authenticated requests | Dev 2 |
+| AI provider quota/credentials | Built-in keys only as server function secrets; no shared key in an app build; BYOK secure on device and sent only to its provider; bounded authenticated requests | Dev 2 |
 | Local cache/photos/outbox | Account/environment separation, safe filesystem paths, backup/retention policy | Dev 1 + Dev 4 |
 | Cycle data | Opt-in secure device-only storage; no raw sync/export/log/AI | Dev 3 + Dev 4 |
 | Release/deployment credentials | Restricted CI permissions/environments, reviewed changes and protected release | Dev 3 + Anja |
@@ -34,9 +34,13 @@ Evidence means the named source contains the control/gap; runtime effectiveness
 still needs the tests in 012. Priorities describe remediation order, not a CVSS
 score or proof of exploitation. No credential exposure incident is asserted.
 
+SEC-01 (shared provider keys compiled into the client) is removed from the table
+since 2026-11-24: the client no longer reads or carries them. This is source
+evidence only. Key-free artifact proof and rotation of keys from older builds stay
+open under FR-002 of [012](../../specs/012-security-baseline/spec.md).
+
 | ID | Source evidence | Assessment / next step | Priority |
 | --- | --- | --- | --- |
-| SEC-01 | `lib/ai/key_store.dart`: BuiltInKeys.fromEnvironment | Shared provider values can be compiled into distributed clients. `.gitignore` is not binary protection. Complete the authenticated gateway and cut over builds before wider distribution. No real build values were read. | High |
 | SEC-02 | `lib/data/recipe_photo_store.dart`: _resolve; `lib/sync/entities.dart`: photoLocalPath; `lib/sync/photo_sync.dart` | Relative names from synced records/snapshots reach filesystem operations without a containment check in this boundary. Add allowlisted leaf names and normalized root containment for read/write/delete, including traversal/symlink cases. Exploit impact has not been dynamically tested. | High |
 | SEC-03 | `lib/ai/chat_client.dart`: mapDioError; `lib/ai/ai_router.dart`; `lib/features/settings/ai_error_text.dart` | Provider body snippets enter error/attempt strings; BadRequest and fallback UI interpolate raw messages/errors. Replace with stable safe categories and regression fixtures containing synthetic sensitive values. | High |
 | SEC-04 | `lib/account/session_store.dart`: auth_session; `lib/ai/key_store.dart`: api_keys; `lib/data/database.dart`: driftDatabase(name: 'tavli') | Environment-independent storage names and no configured application-level DB encryption here. Validate project/account isolation, OS backup/file protection and retention before adding sensitive diary data. Do not erase retained caches at ordinary sign-out. | Medium; gate for sensitive data |
@@ -132,7 +136,7 @@ stacks. Tool choice/hosting availability must be verified before claiming covera
 
 Release proof includes signed artifacts, intended environment, platform privacy
 permissions, auth/deep-link tests and redacted evidence of no built-in provider
-secrets after gateway cutover. Obfuscation is optional hardening, not a secret
+secrets in the artifact. Obfuscation is optional hardening, not a secret
 store or replacement for authorization. Certificate pinning or device attestation
 needs an explicit threat/rotation/recovery decision; not default complexity.
 

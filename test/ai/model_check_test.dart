@@ -17,6 +17,21 @@ void main() {
     expect(result.length, byModel.length);
   });
 
+  test('OpenAI: model za sopstveni ključ, bez modela sa servera', () {
+    for (final (ids, listed) in [
+      (['gpt-6-luna', 'gpt-6-sol'], true),
+      (['gpt-6-sol'], false),
+    ]) {
+      final result = checkChainModels(
+        ChainConfig.defaults,
+        AIProvider.openAI,
+        ids,
+      );
+      expect(result.single.spec.model, 'gpt-6-luna');
+      expect(result.single.listed, listed);
+    }
+  });
+
   test('vraća samo modele traženog provajdera', () {
     final result = checkChainModels(
       ChainConfig.defaults,
