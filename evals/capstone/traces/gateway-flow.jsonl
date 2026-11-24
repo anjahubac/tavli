@@ -10,3 +10,4 @@
 {"at":"2026-11-24T12:50:52.158277Z","label":"after-1","case":"GW-02","outcome":"NotARecipeException","ingredients":null}
 {"at":"2026-11-24T12:50:54.990957Z","label":"after-1","case":"GW-03","results":{"no_token":"401 null","forged_token":"401 null","too_large":"413 too_large","unknown_task":"400 bad_request","model_not_allowed":"400 bad_request","extra_field":"400 bad_request","bad_json":"400 bad_request"}}
 {"at":"2026-11-24T12:51:14.274571Z","label":"after-1-gw04","case":"GW-04","model":"gemini/gemini-flash-lite-latest","ingredients":["500.0 g pšenično brašno","3.0 jaje","mleko (note: nečitko na slici)","200.0 ml kiseo voda","prstohvat so","2.0 kašika ulje"],"noted":["mleko"]}
+{"at":"2026-11-24T13:07:31.014779Z","label":"ev-after-2","case":"EV-10","servings":2,"ingredients":10,"steps":6,"pass":true}

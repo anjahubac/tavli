@@ -12,7 +12,7 @@
 Evidence links: [implementation and remaining checks](../plan.md), [execution
 breakdown](../tasks.md), [server/client contract](../contracts/ai-gateway-contract.md),
 and [local quota model](../data-model.md). The server fake tests cover part of
-CHK007. The authenticated local Supabase and build evidence are still open.
+CHK007. The authenticated local run is recorded in `evals/capstone/gateway-flow.md`; hosted and build evidence are still open.
 
 ## Evidence status (2026-11-24)
 
@@ -27,5 +27,5 @@ until the gateway owner (Dev 2) records the decision or the run.
 | CHK004 | Open | Dependencies and compatibility have not been re-verified against `dev` |
 | CHK005 | Open | Reviewer per slice is recorded in the PRs, not in `tasks.md` |
 | CHK006 | Partial | Controls and tests are listed in [security.md](../../../docs/development/security.md#gateway-evidence-source-and-fake-provider-tests); UI copy and accessibility are not reviewed here |
-| CHK007 | Partial | `deno test supabase/functions/ai-gateway` and `supabase/tests/13_ai_reservation_test.sql`; no authenticated local-stack run (`supabase start` + `functions serve`) or live-provider run is recorded |
+| CHK007 | Partial | `deno test supabase/functions/ai-gateway` and `supabase/tests/13_ai_reservation_test.sql`; an authenticated local-stack run (`supabase start` + `functions serve`, synthetic user, free-tier provider chain) is recorded in [gateway-flow.md](../../../evals/capstone/gateway-flow.md); a macOS release build from a clean clone with no provider key found in it is recorded in [artifact-check.md](../../../docs/capstone/artifact-check.md); no hosted-project run and no signed distribution artifact is recorded |
 | CHK008 | Open | Rollback and release review not recorded; hosted cutover evidence is required before wider distribution |
