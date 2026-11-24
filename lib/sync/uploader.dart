@@ -3,16 +3,27 @@ import 'package:drift/drift.dart';
 import '../account/auth_controller.dart';
 import '../data/database.dart';
 import '../data/recipe_photo_store.dart';
+import '../domain/ingredient_links.dart';
+import '../domain/recipe.dart';
 import 'entities.dart';
+import 'recipe_link_rollout.dart';
 import 'sync_remote.dart';
 import 'synced_writer.dart';
 
 /// Ishod jednog slanja.
 class UploadResult {
-  const UploadResult({this.sent = 0, this.rejected = 0, this.stoppedBy});
+  const UploadResult({
+    this.sent = 0,
+    this.rejected = 0,
+    this.forbidden = false,
+    this.stoppedBy,
+  });
 
   final int sent;
   final int rejected;
+
+  /// At least one rejection was an access denial ([PermanentSyncError.forbidden]).
+  final bool forbidden;
 
   /// Privremena greška (nema mreže) ili odbijena sesija; null = sve poslato.
   final SyncError? stoppedBy;
@@ -34,6 +45,8 @@ class Uploader {
     required this._photoStore,
     required this._scope,
     required this._refreshSession,
+    this._beforeFavoriteUpload,
+    this._recipeLinkRollout = recipeLinkRollout,
     DateTime Function()? clock,
     this.batchSize = 100,
   }) : _clock = clock ?? DateTime.now;
@@ -46,6 +59,8 @@ class Uploader {
 
   /// Obnavlja sesiju posle 401; false kad je obnova odbijena.
   final Future<bool> Function() _refreshSession;
+  final Future<void> Function()? _beforeFavoriteUpload;
+  final RecipeLinkRollout _recipeLinkRollout;
   final DateTime Function() _clock;
   final int batchSize;
 
@@ -58,6 +73,7 @@ class Uploader {
 
   Future<UploadResult> run() async {
     var sent = 0, rejected = 0;
+    var forbidden = false;
     var refreshed = false;
 
     Future<SyncError?> attempt(List<OutboxRow> batch) async {
@@ -84,7 +100,12 @@ class Uploader {
       final error = await attempt(batch);
       if (error == null) continue;
       if (error is! PermanentSyncError) {
-        return UploadResult(sent: sent, rejected: rejected, stoppedBy: error);
+        return UploadResult(
+          sent: sent,
+          rejected: rejected,
+          forbidden: forbidden,
+          stoppedBy: error,
+        );
       }
       // Jedan loš red ne sme da obori ostale iz grupe: šalju se pojedinačno.
       for (final entry in batch) {
@@ -94,8 +115,14 @@ class Uploader {
         if (e is PermanentSyncError) {
           await _reject(single, e);
           rejected++;
+          forbidden |= e.forbidden;
         } else if (e != null) {
-          return UploadResult(sent: sent, rejected: rejected, stoppedBy: e);
+          return UploadResult(
+            sent: sent,
+            rejected: rejected,
+            forbidden: forbidden,
+            stoppedBy: e,
+          );
         }
       }
     }
@@ -108,12 +135,13 @@ class Uploader {
       } on PermanentSyncError catch (e) {
         await _reject(entry, e);
         rejected++;
+        forbidden |= e.forbidden;
       } on SyncError catch (e) {
         await _postpone(entry, e);
         if (e is TransientSyncError) break;
       }
     }
-    return UploadResult(sent: sent, rejected: rejected);
+    return UploadResult(sent: sent, rejected: rejected, forbidden: forbidden);
   }
 
   SimpleSelectStatement<$SyncOutboxTable, OutboxRow> _pending(
@@ -226,6 +254,7 @@ class Uploader {
       ); // nepoznat entitet (stariji build): nema šta da se pošalje
       return 0;
     }
+    if (entity is FavoriteEntity) await _beforeFavoriteUpload?.call();
     if (first.op == OutboxOp.delete) {
       await _remote.delete(entity.remoteTable, [
         for (final e in batch) e.recordId,
@@ -234,28 +263,147 @@ class Uploader {
       return batch.length;
     }
     final rows = <Map<String, Object?>>[];
+    final weekLists = <Map<String, Object?>>[];
     final gone = <OutboxRow>[];
     for (final e in batch) {
       final row = await entity.read(_db, e.recordId);
       if (row == null) {
         gone.add(e); // zapis je u međuvremenu obrisan: brisanje sledi
       } else {
-        rows.add(entity.toRemote(row));
+        final payload = entity.toRemote(row);
+        if (entity is RecipeEntity && _recipeLinkRollout.enabled) {
+          final server = await _fetchRecipeForLinkMerge(e.recordId);
+          if (server != null) {
+            final rawIngredients = server['ingredients'];
+            if (rawIngredients is! List) {
+              // Retrying cannot repair server data, and a transient error
+              // would hold up every later outbox entry: park this entry only.
+              throw const PermanentSyncError('recipe_ingredients_invalid');
+            }
+            try {
+              final rawLocal = payload['ingredients'];
+              if (rawLocal is! List<Object?>) {
+                throw const FormatException('ingredients');
+              }
+              final rawLocalIngredients = rawLocal;
+              final localIngredients = [
+                for (final item in rawLocalIngredients)
+                  _parseRecipeIngredient(item),
+              ];
+              final serverIngredients = [
+                for (final item in rawIngredients) _parseRecipeIngredient(item),
+              ];
+              payload['ingredients'] = _mergeRecipeIngredientJson(
+                rawLocalIngredients,
+                localIngredients,
+                serverIngredients,
+              );
+            } on FormatException {
+              // Never send a recipe when its server ingredient state cannot be
+              // safely inspected for links to preserve. Unreadable data does
+              // not heal by retrying, so reject this entry instead of
+              // blocking the outbox; the server row stays as it is.
+              throw const PermanentSyncError('recipe_ingredients_invalid');
+            }
+          }
+        }
+        // Nedeljna lista se samo kreira. Ponovljeno slanje ne menja
+        // postojeću listu istog ID-ja ni njen updated_at.
+        if (row is ShoppingListRow &&
+            row.mealPlanId != null &&
+            row.periodStart != null) {
+          weekLists.add(payload);
+        } else {
+          rows.add(payload);
+        }
       }
     }
     if (gone.isNotEmpty) await _done(gone);
+    if (weekLists.isNotEmpty) {
+      await _remote.upsert(
+        entity.remoteTable,
+        weekLists,
+        onConflict: entity.remoteId,
+        ignoreDuplicates: true,
+      );
+    }
     if (rows.isNotEmpty) {
       await _remote.upsert(
         entity.remoteTable,
         rows,
-        onConflict: entity.remoteId,
+        onConflict: entity.remoteConflict,
       );
     }
     await _done([
       for (final e in batch)
         if (!gone.contains(e)) e,
     ]);
-    return rows.length;
+    return rows.length + weekLists.length;
+  }
+
+  Future<Map<String, Object?>?> _fetchRecipeForLinkMerge(String id) async {
+    try {
+      return await _remote.fetchRecipe(id, _scope.householdId);
+    } on UnauthorizedSyncError {
+      rethrow;
+    } on SyncError {
+      // A failed read is never permission to upload without link protection.
+      throw const TransientSyncError('recipe_read');
+    } on Exception catch (_) {
+      throw const TransientSyncError('recipe_read');
+    }
+  }
+
+  List<Map<String, Object?>> _mergeRecipeIngredientJson(
+    List<Object?> rawLocal,
+    List<Ingredient> local,
+    List<Ingredient> server,
+  ) {
+    final merged = mergeIngredientLinks(local: local, server: server);
+    return [
+      for (var i = 0; i < merged.length; i++)
+        _withPersistedLinkFields(
+          Map<String, Object?>.from(_ingredientJson(rawLocal[i])),
+          merged[i],
+        ),
+    ];
+  }
+
+  Ingredient _parseRecipeIngredient(Object? value) {
+    final json = _ingredientJson(value);
+    final name = json['name'];
+    final category = json['category'];
+    if (name is! String || (category != null && category is! String)) {
+      throw const FormatException('ingredient field type');
+    }
+    return Ingredient.fromJson(json);
+  }
+
+  Map<String, dynamic> _ingredientJson(Object? value) {
+    if (value is! Map<Object?, Object?>) {
+      throw const FormatException('ingredient');
+    }
+    final json = <String, dynamic>{};
+    for (final entry in value.entries) {
+      final key = entry.key;
+      if (key is! String) throw const FormatException('ingredient');
+      json[key] = entry.value;
+    }
+    return json;
+  }
+
+  Map<String, Object?> _withPersistedLinkFields(
+    Map<String, Object?> json,
+    Ingredient ingredient,
+  ) {
+    json
+      ..remove('foodId')
+      ..remove('matchedKey')
+      ..remove('linkSource')
+      ..remove('unlinkedKey');
+    if (ingredient.link case final link?) json.addAll(link.toJson());
+    if (ingredient.unlinkedKey case final key?) json['unlinkedKey'] = key;
+    return json;
   }
 
   Future<void> _sendPhoto(OutboxRow e) async {

@@ -1,0 +1,313 @@
+import 'package:drift/drift.dart';
+
+import '../domain/allergen_group.dart';
+import '../domain/food_matcher.dart';
+import '../domain/food_nutrition.dart';
+import '../domain/recipe.dart';
+import '../domain/recipe_allergens.dart';
+import '../domain/recipe_nutrition.dart';
+import '../sync/catalog_status.dart';
+import 'database.dart';
+
+/// Matcher kataloga (018, D1-007) nad lokalnim kešom: deljeni redovi i redovi
+/// traženog domaćinstva. Prazan keš (npr. stariji server bez kataloga) daje
+/// Unresolved za svako ime. Isto važi kad server javi [CatalogStatus.notOnServer]:
+/// ranije preuzet keš se tada ne čita (može biti delimičan, npr. namirnice bez
+/// aliasa).
+class FoodCatalogReader {
+  FoodCatalogReader(this._db);
+
+  final AppDatabase _db;
+
+  Future<FoodMatcher> matcherFor(
+    FoodLookupScope scope, {
+    required CatalogStatus status,
+  }) async {
+    if (status == CatalogStatus.notOnServer) return AliasFoodMatcher(const []);
+    final hid = scope.householdId;
+    final sharedOnly = status == CatalogStatus.accessDenied;
+    final foodRows =
+        await (_db.select(_db.foods)..where(
+              (t) => sharedOnly
+                  ? t.householdId.isNull()
+                  : t.householdId.isNull() | t.householdId.equals(hid),
+            ))
+            .get();
+    final aliasRows =
+        await (_db.select(_db.foodAliases)..where(
+              (t) => sharedOnly
+                  ? t.householdId.isNull()
+                  : t.householdId.isNull() | t.householdId.equals(hid),
+            ))
+            .get();
+
+    // Osnovna jedinica koju ova verzija ne zna: namirnica se preskače, a sa
+    // njom i aliasi (sirova vrednost ostaje u kešu).
+    final foods = <String, CatalogFood>{};
+    for (final r in foodRows) {
+      final unit = FoodBaseUnit.values.asNameMap()[r.baseUnit];
+      if (unit == null) continue;
+      foods[r.id] = CatalogFood(
+        FoodIdentity(
+          id: r.id,
+          slug: r.slug,
+          name: r.name,
+          category: r.category,
+          baseUnit: unit,
+          nutrition: _nutrition(r),
+          allergens: parseAllergens(r),
+        ),
+        householdId: r.householdId,
+        withdrawn: r.withdrawnAt != null,
+      );
+    }
+    return AliasFoodMatcher([
+      for (final a in aliasRows)
+        if (foods[a.foodId] case final f?)
+          AliasEntry(
+            food: f.food,
+            aliasNormalized: a.aliasNormalized,
+            householdId: a.householdId,
+            withdrawn: a.withdrawnAt != null,
+          ),
+    ], foods: foods.values.toList());
+  }
+
+  /// Namirnice kataloga čiji naziv ili alias sadrži [query] (bez obzira na
+  /// velika slova), po nazivu; povučene se preskaču. Prazan upit daje
+  /// prazan spisak. Katalog je lokalni keš, pa radi i bez mreže.
+  Future<List<FoodIdentity>> search(
+    FoodLookupScope scope,
+    String query, {
+    required CatalogStatus status,
+    int limit = 8,
+  }) async {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty || status == CatalogStatus.notOnServer) return const [];
+    final hid = scope.householdId;
+    final sharedOnly = status == CatalogStatus.accessDenied;
+    bool visible(String? household) =>
+        household == null || (!sharedOnly && household == hid);
+
+    final foods = [
+      for (final r in await _db.select(_db.foods).get())
+        if (r.withdrawnAt == null && visible(r.householdId)) r,
+    ];
+    final byId = {for (final f in foods) f.id: f};
+    final matched = <String>{
+      for (final f in foods)
+        if (f.name.toLowerCase().contains(q)) f.id,
+      for (final a in await _db.select(_db.foodAliases).get())
+        if (a.withdrawnAt == null &&
+            visible(a.householdId) &&
+            byId.containsKey(a.foodId) &&
+            a.alias.toLowerCase().contains(q))
+          a.foodId,
+    };
+    final found = [
+      for (final id in matched)
+        if (FoodBaseUnit.values.asNameMap()[byId[id]!.baseUnit]
+            case final unit?)
+          FoodIdentity(
+            id: id,
+            slug: byId[id]!.slug,
+            name: byId[id]!.name,
+            category: byId[id]!.category,
+            baseUnit: unit,
+            nutrition: _nutrition(byId[id]!),
+            allergens: parseAllergens(byId[id]!),
+          ),
+    ];
+    // Prvo one koje počinju upitom, pa po nazivu.
+    found.sort((a, b) {
+      final ap = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+      final bp = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+      if (ap != bp) return ap - bp;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return found.take(limit).toList();
+  }
+
+  /// Returns a catalog identity only for an active row visible in [scope].
+  /// Failed and unavailable server states fail closed; access-denied reads may
+  /// use shared rows only. This lookup is by exact immutable food ID and does
+  /// not attempt name matching.
+  Future<FoodIdentity?> visibleFoodById(
+    FoodLookupScope scope,
+    String foodId, {
+    required CatalogStatus status,
+  }) async {
+    if (foodId.isEmpty ||
+        (status != CatalogStatus.available &&
+            status != CatalogStatus.accessDenied)) {
+      return null;
+    }
+    final row = await (_db.select(
+      _db.foods,
+    )..where((food) => food.id.equals(foodId))).getSingleOrNull();
+    if (row == null || row.withdrawnAt != null) return null;
+    final sharedOnly = status == CatalogStatus.accessDenied;
+    final visible =
+        row.householdId == null ||
+        (!sharedOnly && row.householdId == scope.householdId);
+    if (!visible) return null;
+    final baseUnit = FoodBaseUnit.values.asNameMap()[row.baseUnit];
+    if (baseUnit == null) return null;
+    return FoodIdentity(
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      category: row.category,
+      baseUnit: baseUnit,
+      nutrition: _nutrition(row),
+      allergens: parseAllergens(row),
+    );
+  }
+
+  /// Calories and macros per portion from the recipe's catalog links, or
+  /// null when nothing can be calculated. Only foods visible under [status]
+  /// count; stale links and missing values stay uncovered (never zero).
+  Future<NutritionPerPortion?> nutritionForRecipe(
+    FoodLookupScope scope, {
+    required List<Ingredient> ingredients,
+    required int servings,
+    required CatalogStatus status,
+  }) async {
+    final foodsById = <String, FoodIdentity>{};
+    for (final id in {
+      for (final ingredient in ingredients) ?ingredient.link?.foodId,
+    }) {
+      final food = await visibleFoodById(scope, id, status: status);
+      if (food != null) foodsById[id] = food;
+    }
+    if (foodsById.isEmpty) return null;
+    return recipeNutritionPerPortion(
+      ingredients: ingredients,
+      servings: servings,
+      foodsById: foodsById,
+    );
+  }
+
+  /// Reviewed allergen groups per food ID. A food that is missing, withdrawn,
+  /// unreviewed or has an unreadable value is absent from the map (unknown,
+  /// never safe). An empty set means reviewed with no allergen.
+  Future<Map<String, Set<AllergenGroup>>> reviewedAllergens(
+    Iterable<String> foodIds,
+  ) async {
+    final ids = foodIds.toSet();
+    if (ids.isEmpty) return const {};
+    final rows = await (_db.select(
+      _db.foods,
+    )..where((t) => t.id.isIn(ids) & t.withdrawnAt.isNull())).get();
+    return {for (final r in rows) r.id: ?parseAllergens(r)};
+  }
+
+  /// Allergens of a recipe from its ingredients' catalog links (null =
+  /// unresolved ingredient). Unreviewed or unresolved parts are flagged on the
+  /// result instead of being treated as allergen-free.
+  Future<RecipeAllergens> allergensForRecipe(
+    Iterable<String?> ingredientFoodIds,
+  ) async {
+    final ids = ingredientFoodIds.toList();
+    return RecipeAllergens.resolve(
+      ids,
+      await reviewedAllergens([
+        for (final id in ids)
+          if (id != null && id.trim().isNotEmpty) id,
+      ]),
+    );
+  }
+
+  /// Cache text -> groups. null (unknown) for a missing review or any code
+  /// this version does not know, so a bad value fails closed.
+  static Set<AllergenGroup>? parseAllergens(FoodRow row) {
+    final raw = row.allergenCodes;
+    if (raw == null || row.allergenReviewedAt == null) return null;
+    final byCode = {for (final g in AllergenGroup.values) g.code: g};
+    final groups = <AllergenGroup>{};
+    for (final code in raw.split(',')) {
+      if (code.isEmpty) continue;
+      final group = byCode[code];
+      if (group == null) return null;
+      groups.add(group);
+    }
+    return Set.unmodifiable(groups);
+  }
+
+  FoodNutrition? _nutrition(FoodRow row) {
+    final hasValues =
+        row.kcalPer100g != null ||
+        row.proteinGramsPer100g != null ||
+        row.fatGramsPer100g != null ||
+        row.carbsGramsPer100g != null;
+    if (!hasValues) return null;
+    final source = row.nutritionSource;
+    final version = row.nutritionSourceVersion;
+    final ref = row.nutritionSourceRef;
+    if (source == null ||
+        source.trim().isEmpty ||
+        version == null ||
+        version.trim().isEmpty ||
+        ref == null ||
+        ref.trim().isEmpty) {
+      return null;
+    }
+    final values = [
+      row.kcalPer100g,
+      row.proteinGramsPer100g,
+      row.fatGramsPer100g,
+      row.carbsGramsPer100g,
+    ];
+    if (values.any(
+      (value) => value != null && (!value.isFinite || value < 0),
+    )) {
+      return null;
+    }
+    return FoodNutrition(
+      kcalPer100g: row.kcalPer100g,
+      proteinGramsPer100g: row.proteinGramsPer100g,
+      fatGramsPer100g: row.fatGramsPer100g,
+      carbsGramsPer100g: row.carbsGramsPer100g,
+      source: source,
+      sourceVersion: version,
+      sourceRef: ref,
+    );
+  }
+}
+
+/// Namirnica iz kataloga za izbor u ukusima (Volim, Ne volim).
+class CatalogFoodEntry {
+  const CatalogFoodEntry({
+    required this.id,
+    required this.name,
+    required this.category,
+  });
+
+  final String id;
+  final String name;
+  final String category;
+}
+
+/// Namirnice koje korisnik može da izabere u ukusima: deljene i namirnice
+/// njegovog domaćinstva iz lokalnog keša, bez povučenih, po nazivu.
+class CatalogFoodList {
+  CatalogFoodList(this._db);
+
+  final AppDatabase _db;
+
+  Stream<List<CatalogFoodEntry>> watchVisible(String householdId) =>
+      (_db.select(_db.foods)
+            ..where(
+              (t) =>
+                  t.withdrawnAt.isNull() &
+                  (t.householdId.isNull() | t.householdId.equals(householdId)),
+            )
+            ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+          .watch()
+          .map(
+            (rows) => List.unmodifiable([
+              for (final r in rows)
+                CatalogFoodEntry(id: r.id, name: r.name, category: r.category),
+            ]),
+          );
+}

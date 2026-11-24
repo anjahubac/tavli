@@ -1,113 +1,145 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../account/auth_controller.dart';
+import '../../ai/ai_errors.dart';
+import '../../ai/recipe_semantic_search.dart';
+import '../../app/animations/empty_tabs.dart';
 import '../../app/animations/spoon_refresh.dart';
+import '../../app/app_menu.dart';
+import '../../app/home_shell.dart' show wideLayoutWidth;
 import '../../app/tab_app_bar.dart';
-import '../../app/theme/tavli_colors.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
+import '../../domain/recipe_labels.dart';
+import '../../domain/recipe_search.dart';
 import 'add_recipe_sheet.dart';
+import 'cook_from_pantry_screen.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_photo.dart';
 import 'recipe_providers.dart';
+import 'recipe_rating_section.dart';
 
-/// Od ove širine sadržaja lista i recept stoje jedno pored drugog.
-const splitViewMinWidth = 840.0;
+/// Od ove širine sadržaja recepti su mreža u tri kolone sa zaglavljem
+/// (platno, macOS i Windows · Recepti); uže je lista kartica kao na telefonu.
+const _gridMinWidth = 840.0;
 
-/// Tab "Recepti": lista sa pretragom; na širokom ekranu i izabrani recept.
-class RecipesScreen extends StatelessWidget {
-  const RecipesScreen({super.key, this.selectedId});
+/// Polje za pretragu u zaglavlju, kao na platnu.
+const _searchWidth = 300.0;
 
-  final String? selectedId;
+/// Kolone mreže recepata na računaru, kao na platnu; kolone su jednake i
+/// rastu sa prozorom.
+const _gridColumns = 3;
+
+/// Prazan prostor ispod liste na telefonu, da plutajuće dugme ne pokrije
+/// poslednji recept.
+const _floatingButtonClearance = 88.0;
+
+/// Tab "Recepti", po platnu. Telefon: pretraga, lista kartica u jednoj
+/// koloni i plutajuće „Dodaj recept“. Računar: zaglavlje sa pretragom i
+/// „Dodaj recept“ i mreža u tri kolone. Recept se otvara kao ceo ekran.
+class RecipesScreen extends ConsumerWidget {
+  const RecipesScreen({this.fastingOnly = false, super.key});
+
+  final bool fastingOnly;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // ⌘N iz trake menija na macOS-u.
+    ref.listen(menuRequestsProvider, (_, next) {
+      if (next?.command == MenuCommand.newRecipe &&
+          ModalRoute.isCurrentOf(context) == true) {
+        unawaited(showAddRecipeSheet(context));
+      }
+    });
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= splitViewMinWidth;
-        final selected = selectedId;
+        final wide = constraints.maxWidth >= _gridMinWidth;
+        // Uz bočnu navigaciju (računar) „Dodaj recept“ je u zaglavlju, kao
+        // na platnu, i kad je prozor uzak za mrežu.
+        final header =
+            wide || MediaQuery.sizeOf(context).width >= wideLayoutWidth;
         return Scaffold(
           appBar: const TabAppBar(),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => showAddRecipeSheet(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Dodaj recept'),
+          floatingActionButton: header
+              ? null
+              : TavliFloatingButton(
+                  icon: Icons.add,
+                  label: 'Dodaj recept',
+                  onPressed: () => showAddRecipeSheet(context),
+                ),
+          body: _RecipesBody(
+            wide: wide,
+            header: header,
+            fastingOnly: fastingOnly,
           ),
-          body: wide
-              ? Row(
-                  children: [
-                    SizedBox(
-                      width: 360,
-                      child: _RecipeList(selectedId: selected),
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(
-                      child: selected == null
-                          ? const _NothingSelected()
-                          : RecipeDetailScreen(id: selected, embedded: true),
-                    ),
-                  ],
-                )
-              : _RecipeList(selectedId: selected),
         );
       },
     );
   }
 }
 
-/// Ruta `/recipes/:id`: podeljen prikaz na širokom ekranu, inače ceo ekran.
+/// Ruta `/recipes/:id`: recept kao ceo ekran na svim platformama (platno
+/// nema listu i detalj u Receptima).
 class RecipeRoute extends StatelessWidget {
   const RecipeRoute({super.key, required this.id});
 
   final String id;
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) =>
-          constraints.maxWidth >= splitViewMinWidth
-          ? RecipesScreen(selectedId: id)
-          : RecipeDetailScreen(id: id),
-    );
-  }
+  Widget build(BuildContext context) => RecipeDetailScreen(id: id);
 }
 
-class _NothingSelected extends StatelessWidget {
-  const _NothingSelected();
+class _RecipesBody extends ConsumerStatefulWidget {
+  const _RecipesBody({
+    required this.wide,
+    required this.header,
+    required this.fastingOnly,
+  });
+
+  final bool fastingOnly;
+
+  /// Mreža kartica umesto liste.
+  final bool wide;
+
+  /// Zaglavlje „Recepti“ sa pretragom i „Dodaj recept“ (računar).
+  final bool header;
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Izaberi recept',
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-    );
-  }
+  ConsumerState<_RecipesBody> createState() => _RecipesBodyState();
 }
 
-class _RecipeList extends ConsumerStatefulWidget {
-  const _RecipeList({this.selectedId});
-
-  final String? selectedId;
-
-  @override
-  ConsumerState<_RecipeList> createState() => _RecipeListState();
-}
-
-class _RecipeListState extends ConsumerState<_RecipeList> {
+class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   late final TextEditingController _search;
+
+  // Pretraga prelazi iz liste u zaglavlje kad se prozor raširi; ključ čuva
+  // isto polje, pa tekst i fokus ostaju.
+  final _searchKey = GlobalKey();
+  final _searchFocus = FocusNode(debugLabel: 'Pretraži recepte');
+  Timer? _semanticSearchTimer;
+  List<Recipe>? _semanticResults;
+  Object? _semanticError;
+  bool _semanticLoading = false;
+  bool _semanticSearch = false;
+  bool _semanticOptInPending = false;
+  bool _showOfflineSearchNotice = false;
+  int _semanticGeneration = 0;
 
   @override
   void initState() {
     super.initState();
-    _search = TextEditingController(text: ref.read(recipeSearchProvider));
+    _search = TextEditingController(text: ref.read(recipeSearchProvider).query);
   }
 
   @override
   void dispose() {
+    _semanticSearchTimer?.cancel();
     _search.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -117,156 +149,666 @@ class _RecipeListState extends ConsumerState<_RecipeList> {
     await ref.read(recipesProvider.future);
   }
 
+  Widget _searchField() => TavliSearchField(
+    key: _searchKey,
+    hint: 'Pretraži recepte',
+    controller: _search,
+    focusNode: _searchFocus,
+    onChanged: ref.read(recipeSearchProvider.notifier).setQuery,
+  );
+
+  /// „Šta da skuvam?“ (TRELLO-103): recepti od onoga što je u ostavi.
+  Widget _pantryButton() => TavliIconButton(
+    glyph: TavliIcons.cook,
+    semanticLabel: 'Šta da skuvam?',
+    onPressed: () => context.push(cookFromPantryPath),
+  );
+
+  Future<void> _toggleSemanticSearch(bool enabled) async {
+    if (!enabled) {
+      _semanticGeneration++;
+      setState(() {
+        _semanticSearch = false;
+        _semanticResults = null;
+        _semanticError = null;
+      });
+      _semanticSearchTimer?.cancel();
+      return;
+    }
+    if (_semanticOptInPending) return;
+    final scope = ref.read(accountScopeProvider);
+    _semanticOptInPending = true;
+    try {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Pretraga preko Cloudflare-a'),
+          content: const Text(
+            'Cloudflare obrađuje tvoj upit za pretragu. Ako dozvoliš '
+            'indeksiranje za domaćinstvo, obrađivaće i nazive, sastojke, '
+            'oznake i vreme pripreme postojećih i novih recepata. '
+            'Indeksiranje se nastavlja i kada isključiš pretragu na uređaju.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Otkaži'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Dozvoli indeksiranje'),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true ||
+          !mounted ||
+          scope == null ||
+          scope != ref.read(accountScopeProvider)) {
+        return;
+      }
+      final service = ref.read(recipeSemanticSearchServiceProvider);
+      if (service == null) throw const EmbeddingServiceUnavailableException();
+      await service.enableIndexing(scope.householdId);
+    } on Object {
+      if (mounted && scope == ref.read(accountScopeProvider)) {
+        setState(() => _showOfflineSearchNotice = true);
+      }
+      return;
+    } finally {
+      _semanticOptInPending = false;
+    }
+    if (!mounted || scope != ref.read(accountScopeProvider)) return;
+    setState(() {
+      _semanticSearch = true;
+      _showOfflineSearchNotice = false;
+      _semanticResults = null;
+      _semanticError = null;
+    });
+    _queueSemanticSearch(ref.read(recipeSearchProvider));
+  }
+
+  void _queueSemanticSearch(RecipeFilter filter) {
+    final generation = ++_semanticGeneration;
+    _semanticSearchTimer?.cancel();
+    if (!_semanticSearch || filter.query.trim().isEmpty) {
+      setState(() {
+        _semanticLoading = false;
+        _semanticResults = null;
+        _semanticError = null;
+      });
+      return;
+    }
+    setState(() {
+      _semanticLoading = true;
+      _semanticError = null;
+    });
+    _semanticSearchTimer = Timer(const Duration(milliseconds: 450), () {
+      unawaited(_runSemanticSearch(filter, generation));
+    });
+  }
+
+  Future<void> _runSemanticSearch(RecipeFilter filter, int generation) async {
+    try {
+      final all = await ref.read(recipesProvider.future);
+      if (!mounted || !_semanticSearch || generation != _semanticGeneration) {
+        return;
+      }
+      final service = ref.read(recipeSemanticSearchServiceProvider);
+      if (service == null) throw const EmbeddingServiceUnavailableException();
+      final results = await service.search(
+        query: filter.query,
+        recipes: _eligibleRecipes(all),
+        filter: filter,
+      );
+      if (!mounted ||
+          !_semanticSearch ||
+          generation != _semanticGeneration ||
+          ref.read(recipeSearchProvider) != filter) {
+        return;
+      }
+      setState(() {
+        _semanticLoading = false;
+        _semanticResults = results;
+        _semanticError = null;
+      });
+    } on Object catch (error) {
+      if (!mounted ||
+          !_semanticSearch ||
+          generation != _semanticGeneration ||
+          ref.read(recipeSearchProvider) != filter) {
+        return;
+      }
+      setState(() {
+        _semanticLoading = false;
+        if (error is EmbeddingConnectionException ||
+            error is ModelNotFoundError ||
+            error is GatewayUnavailableError) {
+          _semanticSearch = false;
+          _showOfflineSearchNotice = true;
+          _semanticResults = null;
+          _semanticError = null;
+        } else {
+          _semanticError = error;
+        }
+      });
+    }
+  }
+
+  Widget _semanticButton() => TavliIconButton(
+    glyph: TavliIcons.sparkle,
+    semanticLabel: _semanticSearch
+        ? 'Isključi pretragu po smislu'
+        : 'Pretraži po smislu',
+    selected: _semanticSearch,
+    onPressed: () => _toggleSemanticSearch(!_semanticSearch),
+  );
+
+  List<Recipe> _eligibleRecipes(List<Recipe> all) {
+    if (!widget.fastingOnly) return all;
+    return all.where((recipe) {
+      final markedFasting = RegExp(r'\bposn\w*\b')
+          .hasMatch(normalizeForSearch(recipe.title));
+      final hasIngredients = recipe.ingredients.isNotEmpty;
+      final hasMeatOrDairy = recipe.ingredients.any(
+        (item) =>
+            item.category == 'meso i riba' ||
+            item.category == 'mlečni proizvodi i jaja',
+      );
+      return markedFasting && hasIngredients && !hasMeatOrDairy;
+    }).toList();
+  }
+
+  Widget _filterButton(RecipeFilter filter) => TavliIconButton(
+    glyph: TavliIcons.filter,
+    semanticLabel: filter.hasFilters
+        ? 'Filteri (${filter.activeFilters})'
+        : 'Filteri',
+    selected: filter.hasFilters,
+    onPressed: () => showTavliSheet<void>(
+      context,
+      title: 'Filteri',
+      builder: (_) => const _RecipeFilterSheet(),
+    ),
+  );
+
+  Widget _fastingFilter() => InputChip(
+    label: const Text('Posni recepti'),
+    onDeleted: () => context.go('/recipes'),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final query = ref.watch(recipeSearchProvider);
-    return ref
+    // ⌘F iz trake menija na macOS-u.
+    ref.listen(menuRequestsProvider, (_, next) {
+      if (next?.command == MenuCommand.searchRecipes) {
+        _searchFocus.requestFocus();
+      }
+    });
+    ref.listen(accountScopeProvider, (previous, next) {
+      if (_semanticSearch && previous != next) {
+        unawaited(_toggleSemanticSearch(false));
+      }
+    });
+    final filter = ref.watch(recipeSearchProvider);
+    ref.listen(recipeSearchProvider, (previous, next) {
+      if (_semanticSearch && previous != next) _queueSemanticSearch(next);
+    });
+    ref.listen(recipesProvider, (previous, next) {
+      if (_semanticSearch && previous?.value != next.value) {
+        _queueSemanticSearch(ref.read(recipeSearchProvider));
+      }
+    });
+    final resultsContent = ref
         .watch(recipesProvider)
         .when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => const _Message(
-            icon: Icons.error_outline,
-            title: 'Recepti nisu učitani.',
+          loading: () => const TavliLoading(),
+          error: (_, _) => const _ScrollableMessage(
+            TavliEmptyState(
+              glyph: TavliIcons.info,
+              title: 'Recepti nisu učitani.',
+            ),
           ),
           data: (all) {
             if (all.isEmpty) {
-              return const _Message(
-                icon: Icons.menu_book_outlined,
-                title: 'Još nema recepata',
-                body: 'Dodaj prvi recept iz slike, po nazivu jela ili ručno.',
+              return const TavliEmptyArea(
+                child: TavliEmptyState(
+                  art: EmptyCookbook(),
+                  title: 'Još nema recepata',
+                  message:
+                      'Dodaj prvi recept sa slike, po nazivu jela ili ručno.',
+                ),
               );
             }
-            final recipes = filterRecipes(all, query);
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: SearchBar(
-                    controller: _search,
-                    hintText: 'Pretraži recepte',
-                    leading: const Icon(Icons.search),
-                    onChanged: ref.read(recipeSearchProvider.notifier).set,
-                    trailing: [
-                      if (query.isNotEmpty)
-                        IconButton(
-                          tooltip: 'Obriši pretragu',
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            _search.clear();
-                            ref.read(recipeSearchProvider.notifier).set('');
-                          },
-                        ),
-                    ],
-                  ),
+            final candidates = _eligibleRecipes(all);
+            if (widget.fastingOnly && candidates.isEmpty) {
+              return const _ScrollableMessage(
+                TavliEmptyState(
+                  glyph: TavliIcons.search,
+                  title: 'Nema sačuvanih recepata označenih kao posni.',
                 ),
-                Expanded(
-                  child: recipes.isEmpty
-                      ? _Message(
-                          icon: Icons.search_off,
-                          title: 'Nema recepata za „${query.trim()}“.',
-                        )
-                      : SpoonRefresh(
-                          onRefresh: _refresh,
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
-                            itemCount: recipes.length,
-                            itemBuilder: (context, i) => _RecipeTile(
-                              recipes[i],
-                              index: i,
-                              selected: recipes[i].id == widget.selectedId,
-                            ),
-                          ),
+              );
+            }
+            final recipes = _semanticSearch && filter.query.trim().isNotEmpty
+                ? _semanticResults ?? const <Recipe>[]
+                : searchRecipes(candidates, filter);
+            if (_semanticSearch && filter.query.trim().isNotEmpty) {
+              if (_semanticLoading) return const TavliLoading();
+              if (_semanticError != null) {
+                final message = switch (_semanticError) {
+                  EmbeddingServiceUnavailableException() =>
+                    'Pretraga preko AI-ja trenutno nije dostupna.',
+                  GatewayQuotaError() =>
+                    'AI limit je dostignut. Pokušaj kasnije.',
+                  RateLimitError() => 'Cloudflare je trenutno ograničio broj zahteva. Pokušaj kasnije.',
+                  GatewayAuthError() => 'Sesija je istekla. Prijavi se ponovo.',
+                  GatewayUnavailableError() =>
+                    'Pretraga preko AI-ja trenutno nije dostupna.',
+                  _ => 'Semantička pretraga trenutno nije uspela.',
+                };
+                return _ScrollableMessage(
+                  TavliEmptyState(glyph: TavliIcons.info, title: message),
+                );
+              }
+            }
+            if (recipes.isEmpty) {
+              return _ScrollableMessage(
+                _semanticSearch && filter.query.trim().isNotEmpty
+                    ? const TavliEmptyState(
+                        glyph: TavliIcons.search,
+                        title: 'Nema sličnih recepata.',
+                      )
+                    : filter.hasFilters
+                    ? TavliEmptyState(
+                        glyph: TavliIcons.search,
+                        title: 'Nema recepata za izabrane filtere.',
+                        action: TavliButton.secondary(
+                          label: 'Očisti filtere',
+                          onPressed: ref
+                              .read(recipeSearchProvider.notifier)
+                              .clearFilters,
                         ),
-                ),
-              ],
-            );
+                      )
+                    : TavliEmptyState(
+                        glyph: TavliIcons.search,
+                        title: 'Nema recepata za „${filter.query.trim()}“.',
+                      ),
+              );
+            }
+            if (!widget.wide) {
+              return _RecipeList(recipes, onRefresh: _refresh);
+            }
+            return _RecipeGrid(recipes);
           },
         );
+
+    final content = _showOfflineSearchNotice
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                liveRegion: true,
+                child: const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    TavliSpacing.large,
+                    0,
+                    TavliSpacing.large,
+                    TavliSpacing.small,
+                  ),
+                  child: TavliNotice(
+                    message: 'Veza sa AI pretragom nije dostupna. Pretražujemo po nazivu.',
+                  ),
+                ),
+              ),
+              Expanded(child: resultsContent),
+            ],
+          )
+        : resultsContent;
+
+    if (!widget.header) {
+      final hasRecipes = ref.watch(recipesProvider).value?.isNotEmpty ?? false;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.fastingOnly)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: TavliSpacing.large,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _fastingFilter(),
+              ),
+            ),
+          if (hasRecipes)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                TavliSpacing.large,
+                TavliSpacing.small,
+                TavliSpacing.large,
+                TavliSpacing.medium,
+              ),
+              child: Row(
+                children: [
+                  Expanded(child: _searchField()),
+                  const SizedBox(width: TavliSpacing.small),
+                  _semanticButton(),
+                  const SizedBox(width: TavliSpacing.small),
+                  _filterButton(filter),
+                  const SizedBox(width: TavliSpacing.small),
+                  _pantryButton(),
+                ],
+              ),
+            ),
+          Expanded(child: content),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            TavliSpacing.large,
+            TavliSpacing.large,
+            TavliSpacing.large,
+            TavliSpacing.medium,
+          ),
+          child: TavliPageHeader(
+            title: 'Recepti',
+            actions: [
+              if (widget.fastingOnly) _fastingFilter(),
+              SizedBox(
+                width: _searchWidth,
+                child: Row(
+                  children: [
+                    Expanded(child: _searchField()),
+                    const SizedBox(width: TavliSpacing.small),
+                    _semanticButton(),
+                  ],
+                ),
+              ),
+              _filterButton(filter),
+              _pantryButton(),
+              TavliButton.primary(
+                label: 'Dodaj recept',
+                icon: Icons.add,
+                onPressed: () => showAddRecipeSheet(context),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: content),
+      ],
+    );
   }
 }
 
-/// Kartica recepta: sličica (ili boja teme) i naziv sa porcijama i vremenom.
-class _RecipeTile extends StatelessWidget {
-  const _RecipeTile(this.recipe, {required this.index, required this.selected});
+/// Vreme pa porcije, kao na platnu („75 min · 4 porcije“).
+String _recipeFacts(Recipe recipe) => [
+  if (recipe.prepMinutes != null) '${recipe.prepMinutes} min',
+  servingsLabel(recipe.servings),
+].join(' · ');
+
+/// Naziv i vreme sa porcijama, kao na kartici recepta.
+class _RecipeTitle extends ConsumerWidget {
+  const _RecipeTitle(this.recipe);
 
   final Recipe recipe;
-  final int index;
-  final bool selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = Theme.of(context).textTheme;
+    final summary = ref.watch(
+      recipeRatingSummariesProvider.select((s) => s.value?[recipe.id]),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(recipe.title, style: t.titleMedium),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: _recipeFacts(recipe)),
+              if (summary != null) ...[
+                const TextSpan(text: '  '),
+                const WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: TavliIcon(
+                    TavliIcons.star,
+                    size: 14,
+                    color: ratingStarColor,
+                    filled: true,
+                  ),
+                ),
+                TextSpan(
+                  text:
+                      ' ${ratingAverageLabel(summary.averageStars)}'
+                      ' (${summary.ratingCount})',
+                ),
+              ],
+            ],
+          ),
+          style: t.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Lista kartica sa sličicom u jednoj koloni (telefon, platno · Recepti).
+class _RecipeList extends StatelessWidget {
+  const _RecipeList(this.recipes, {required this.onRefresh});
+
+  final List<Recipe> recipes;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final path = recipe.imagePath;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          selected: selected,
-          shape: const RoundedRectangleBorder(),
-          contentPadding: const EdgeInsets.fromLTRB(10, 6, 16, 6),
-          minTileHeight: 84,
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: SizedBox.square(
-              dimension: 64,
-              child: path == null
-                  ? ColoredBox(
-                      color: TavliColors.of(context).tint(index),
-                      child: Icon(
-                        Icons.soup_kitchen_outlined,
-                        size: 30,
-                        color: colors.onPrimaryContainer,
-                      ),
-                    )
-                  : RecipePhoto(path, size: 64),
-            ),
-          ),
-          titleTextStyle: Theme.of(context).textTheme.titleMedium,
-          title: Text(recipe.title),
-          subtitle: Text(
-            [
-              servingsLabel(recipe.servings),
-              if (recipe.prepMinutes != null) '${recipe.prepMinutes} min',
-            ].join(' · '),
-          ),
-          onTap: () => context.go('/recipes/${recipe.id}'),
+    return SpoonRefresh(
+      onRefresh: onRefresh,
+      child: TavliCardGrid(
+        // Položaj liste se pamti i kad se prozor na kratko raširi u mrežu.
+        key: const PageStorageKey('recipes-list'),
+        physics: const AlwaysScrollableScrollPhysics(),
+        spacing: TavliSpacing.small,
+        padding: const EdgeInsets.fromLTRB(
+          TavliSpacing.large,
+          0,
+          TavliSpacing.large,
+          _floatingButtonClearance,
         ),
+        itemCount: recipes.length,
+        itemBuilder: (context, i) {
+          final recipe = recipes[i];
+          final path = recipe.imagePath;
+          return _RecipeMenu(
+            recipe,
+            child: TavliCard(
+              padding: const EdgeInsets.all(TavliSpacing.small),
+              onTap: () => context.go('/recipes/${recipe.id}'),
+              child: Row(
+                children: [
+                  TavliThumbnail.row(
+                    tintIndex: i,
+                    photo: path == null ? null : RecipePhoto(path),
+                  ),
+                  const SizedBox(width: TavliSpacing.medium),
+                  Expanded(child: _RecipeTitle(recipe)),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class _Message extends StatelessWidget {
-  const _Message({required this.icon, required this.title, this.body});
+/// Mreža recepata u tri kolone na širokom ekranu.
+class _RecipeGrid extends StatelessWidget {
+  const _RecipeGrid(this.recipes);
 
-  final IconData icon;
-  final String title;
-  final String? body;
+  final List<Recipe> recipes;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: theme.colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
+    return TavliCardGrid(
+      key: const PageStorageKey('recipes-grid'),
+      columns: _gridColumns,
+      padding: const EdgeInsets.fromLTRB(
+        TavliSpacing.large,
+        0,
+        TavliSpacing.large,
+        TavliSpacing.large,
+      ),
+      itemCount: recipes.length,
+      itemBuilder: (context, i) {
+        final recipe = recipes[i];
+        final path = recipe.imagePath;
+        return _RecipeMenu(
+          recipe,
+          child: TavliCard(
+            padding: EdgeInsets.zero,
+            onTap: () => context.go('/recipes/${recipe.id}'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TavliThumbnail.cardTop(
+                  tintIndex: i,
+                  photo: path == null ? null : RecipePhoto(path),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(TavliSpacing.medium),
+                  child: _RecipeTitle(recipe),
+                ),
+              ],
             ),
-            if (body != null) ...[
-              const SizedBox(height: 4),
-              Text(body!, textAlign: TextAlign.center),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Donji list sa filterima. Izbor se primenjuje odmah; „Sve“ isključuje
+/// filter.
+class _RecipeFilterSheet extends ConsumerWidget {
+  const _RecipeFilterSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(recipeSearchProvider);
+    final search = ref.read(recipeSearchProvider.notifier);
+
+    Widget section<T>(
+      String title,
+      List<TavliOption<T?>> options,
+      T? selected,
+      RecipeFilter Function(T?) apply,
+    ) => Padding(
+      padding: const EdgeInsets.only(bottom: TavliSpacing.medium),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TavliSectionHeader(title),
+          const SizedBox(height: TavliSpacing.small),
+          TavliChoice<T?>.chips(
+            options: [TavliOption<T?>(null, 'Sve'), ...options],
+            selected: selected,
+            onChanged: (v) => search.set(apply(v)),
+          ),
+        ],
+      ),
+    );
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          section<MealSuitability>(
+            'Obrok',
+            [for (final m in MealSuitability.values) TavliOption(m, m.label)],
+            filter.meal,
+            (v) => filter.copyWith(meal: () => v),
+          ),
+          section<DishWeight>(
+            'Težina',
+            [for (final w in DishWeight.values) TavliOption(w, w.label)],
+            filter.weight,
+            (v) => filter.copyWith(weight: () => v),
+          ),
+          section<DishKind>(
+            'Vrsta jela',
+            [for (final k in DishKind.values) TavliOption(k, k.label)],
+            filter.dishKind,
+            (v) => filter.copyWith(dishKind: () => v),
+          ),
+          section<int>(
+            'Vreme pripreme',
+            [for (final m in prepTimeLimits) TavliOption(m, 'Do $m min')],
+            filter.maxPrepMinutes,
+            (v) => filter.copyWith(maxPrepMinutes: () => v),
+          ),
+          TavliButtonRow(
+            expand: true,
+            children: [
+              TavliButton.secondary(
+                label: 'Očisti filtere',
+                onPressed: filter.hasFilters ? search.clearFilters : null,
+              ),
+              TavliButton.primary(
+                label: 'Prikaži recepte',
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Desni klik na recept (računar): iste radnje kao na ekranu recepta.
+class _RecipeMenu extends StatelessWidget {
+  const _RecipeMenu(this.recipe, {required this.child});
+
+  final Recipe recipe;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TavliContextMenu(
+    actions: [
+      TavliMenuAction(
+        'Otvori',
+        onSelected: () => context.go('/recipes/${recipe.id}'),
+      ),
+      TavliMenuAction(
+        'Izmeni',
+        icon: Icons.edit_outlined,
+        onSelected: () => context.go('/recipes/${recipe.id}/edit'),
+      ),
+    ],
+    child: child,
+  );
+}
+
+/// Prazno stanje koje se pomera kad uz veći tekst i navigaciju nema mesta.
+class _ScrollableMessage extends StatelessWidget {
+  const _ScrollableMessage(this.child);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(child: child),
         ),
       ),
     );

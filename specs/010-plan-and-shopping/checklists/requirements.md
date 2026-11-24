@@ -1,5 +1,10 @@
 # Specification Quality Checklist: Meal plans and linked shopping
 
+> Direction review, 2026-11-13: read the [current direction overlay](../current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 **Purpose:** check specification completeness before implementation.
 **Created:** 2026-11-02
 **Feature:** [spec.md](../spec.md)

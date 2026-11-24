@@ -4,6 +4,9 @@ import 'package:drift/drift.dart';
 
 import '../account/auth_controller.dart';
 import '../data/database.dart';
+import '../data/food_catalog_reader.dart';
+import '../domain/food_matcher.dart';
+import 'catalog_status.dart';
 import 'downloader.dart';
 import 'legacy_mover.dart';
 import 'photo_sync.dart';
@@ -40,6 +43,9 @@ class Rejected extends SyncStatus {
 /// Duži posao posle prijave: prebacivanje starih podataka, preuzimanje.
 enum SyncPhase { moving, downloading }
 
+/// Whether a pull needs another attempt after a transient sync error.
+enum PullOutcome { settled, retryableFailure }
+
 typedef TimerFactory = Timer Function(Duration, void Function());
 
 /// Raspored slanja i preuzimanja za jedan prijavljen nalog (research R13).
@@ -56,7 +62,9 @@ class SyncEngine {
     this._photoSync,
     this._legacyMover,
     this.onUnauthorized,
+    this.onForbidden,
     this.refreshSession,
+    this.afterPull,
     TimerFactory? timer,
     DateTime Function()? clock,
     this.debounce = const Duration(seconds: 1),
@@ -80,6 +88,15 @@ class SyncEngine {
 
   /// Sesija je odbijena i posle obnove: nazad na prijavu.
   final Future<void> Function()? onUnauthorized;
+
+  /// The server denied a write by RLS or Storage policy: the account may have
+  /// lost access (e.g. removed from the household), so membership is checked
+  /// again. Called at most once at a time and never during a membership check.
+  final Future<void> Function()? onForbidden;
+
+  /// Posle svakog uspešnog preuzimanja: lokalne projekcije koje zavise od
+  /// više tabela (npr. oznaka „skuvano“ iz zapisa kuvanja).
+  final Future<void> Function()? afterPull;
 
   static const backoff = [
     Duration(seconds: 5),
@@ -129,7 +146,10 @@ class SyncEngine {
   }
 
   /// Posle prijave ili pokretanja aplikacije: slanje pa preuzimanje.
-  Future<void> onStart() async {
+  Future<void> onStart() => _startup = _start();
+  Future<void>? _startup;
+
+  Future<void> _start() async {
     // Slanje prekinuto gašenjem aplikacije: te izmene opet čekaju.
     await (_db.update(_db.syncOutbox)..where(
           (t) =>
@@ -166,23 +186,95 @@ class SyncEngine {
     _db.accounts,
   )..where((t) => t.userId.equals(_scope.userId))).getSingleOrNull();
 
-  var _pulling = false;
+  Completer<void>? _pullFinished;
+  var _pullDeferred = 0;
+
+  /// Broj redova koje poslednje preuzimanje nije moglo da primeni (0 = sve
+  /// je primenjeno). Odvojeno od `lastPullAt`, koji beleži da je preuzimanje
+  /// prošlo do kraja.
+  int get pullDeferred => _pullDeferred;
+
+  Completer<void>? _membershipCheck;
+
+  /// Waits for old-scope work and suspends sync during server reconciliation.
+  Future<T> reconcileMembership<T>(Future<T> Function() action) async {
+    if (_membershipCheck != null) {
+      throw StateError('Membership check in progress');
+    }
+    final finished = _membershipCheck = Completer<void>();
+    try {
+      await _inFlight;
+      await _pullFinished?.future;
+      return await action();
+    } finally {
+      _membershipCheck = null;
+      finished.complete();
+      kick();
+    }
+  }
+
+  /// Matcher za aktivni nalog koristi poslednji sačuvani ishod i bez mreže.
+  Future<FoodMatcher> catalogMatcher() => _db.transaction(() async {
+    final account = await _account();
+    if (_stopped ||
+        account?.householdId != _scope.householdId ||
+        account?.initialDownloadDone != true) {
+      return AliasFoodMatcher(const []);
+    }
+    final status = CatalogStatus.values.asNameMap()[account?.catalogStatus];
+    if (status == null) return AliasFoodMatcher(const []);
+    return FoodCatalogReader(_db).matcherFor(
+      FoodLookupScope(householdId: _scope.householdId),
+      status: status,
+    );
+  });
+
+  /// A Realtime check may arrive after an ongoing pull read the changed table.
+  Future<PullOutcome> pullAfterCurrent() async {
+    await _startup;
+    while (!_stopped) {
+      final underway = _membershipCheck?.future ?? _pullFinished?.future;
+      if (underway == null) return pull();
+      await underway;
+    }
+    return PullOutcome.settled;
+  }
 
   /// Preuzima izmene sa servera (prvi put sve, uz traku "Preuzimam…").
-  Future<void> pull() async {
+  Future<PullOutcome> pull() async {
     final downloader = _downloader;
-    if (_stopped || downloader == null || _pulling) return;
-    _pulling = true;
+    if (_stopped ||
+        _membershipCheck != null ||
+        downloader == null ||
+        _pullFinished != null) {
+      return PullOutcome.settled;
+    }
+    final finished = _pullFinished = Completer<void>();
+    var adoptedWeek = false;
+    var outcome = PullOutcome.settled;
     try {
+      // Prevezivanje lokalnih redova i slanje njihovog starog ID-ja ne smeju
+      // da teku istovremeno.
+      if (_running) await _inFlight;
+      if (_stopped) return PullOutcome.settled;
       final first = !((await _account())?.initialDownloadDone ?? false);
       if (first) setPhase(SyncPhase.downloading);
-      try {
-        await downloader.run();
-      } on UnauthorizedSyncError {
-        if (!(await refreshSession?.call() ?? false)) rethrow;
-        await downloader.run();
-      }
-      if (_stopped) return;
+      final result = await _download(downloader);
+      adoptedWeek = result.adoptedWeek;
+      if (_stopped) return PullOutcome.settled;
+      await (_db.update(_db.accounts)..where(
+            (t) =>
+                t.userId.equals(_scope.userId) &
+                t.householdId.equals(_scope.householdId),
+          ))
+          .write(AccountsCompanion(catalogStatus: Value(result.catalog.name)));
+      if (_stopped) return PullOutcome.settled;
+      await afterPull?.call();
+      // Preuzimanje je stiglo do kraja i kad je neki red odložen: taj red
+      // ostaje ispred sačuvane pozicije i ponovo se pokušava pri sledećem
+      // preuzimanju, bez trake "Preuzimam…" i bez preuzimanja pri svakom
+      // povratku u aplikaciju.
+      _pullDeferred = result.deferred;
       await (_db.update(
         _db.accounts,
       )..where((t) => t.userId.equals(_scope.userId))).write(
@@ -197,12 +289,29 @@ class SyncEngine {
     } on UnauthorizedSyncError {
       setPhase(null);
       if (!_stopped) await onUnauthorized?.call();
-    } on SyncError {
-      // Bez mreže: nastavlja se sledeći put od sačuvane pozicije.
+    } on TransientSyncError {
+      // Nastavlja se od sačuvane pozicije.
+      setPhase(null);
+      outcome = PullOutcome.retryableFailure;
+    } on PermanentSyncError {
       setPhase(null);
     } finally {
-      _pulling = false;
+      _pullFinished = null;
+      finished.complete();
       if (!_stopped) await refreshStatus();
+    }
+    if (adoptedWeek && !_stopped) await push();
+    return _stopped ? PullOutcome.settled : outcome;
+  }
+
+  Future<({int deferred, bool adoptedWeek, CatalogStatus catalog})> _download(
+    Downloader downloader,
+  ) async {
+    try {
+      return await downloader.run();
+    } on UnauthorizedSyncError {
+      if (!(await refreshSession?.call() ?? false)) rethrow;
+      return downloader.run();
     }
   }
 
@@ -220,7 +329,9 @@ class SyncEngine {
 
   /// Šalje sve što čeka. Ako slanje već traje, ponavlja se posle njega.
   Future<void> push() {
-    if (_stopped) return Future.value();
+    if (_stopped || _membershipCheck != null) return Future.value();
+    final pullFinished = _pullFinished;
+    if (pullFinished != null) return pullFinished.future.then((_) => push());
     if (_running) {
       _again = true;
       return _inFlight ?? Future.value();
@@ -231,12 +342,15 @@ class SyncEngine {
   Future<void> _push() async {
     _running = true;
     _retryTimer?.cancel();
+    var refreshRatings = false;
     try {
       do {
         _again = false;
+        final ratingChanges = await _hasRatingChanges();
         if (await _waitingCount() > 0) _emit(const Sending());
         final result = await _uploader.run();
         if (_stopped) return;
+        if (result.forbidden) _checkAccess();
         if (result.unauthorized) {
           await onUnauthorized?.call();
           return;
@@ -245,6 +359,7 @@ class SyncEngine {
           _scheduleRetry();
           return;
         }
+        refreshRatings |= ratingChanges;
         _failures = 0;
         if (await _hasPostponedPhotos()) _scheduleRetry();
         if (_movedWaiting > 0 && await _waitingCount() == 0) {
@@ -257,6 +372,43 @@ class SyncEngine {
       _running = false;
       if (!_stopped) await refreshStatus();
     }
+    // Pull waits for an active upload, so release the upload slot first.
+    if (refreshRatings) await pull();
+  }
+
+  var _accessCheck = false;
+  var _accessCheckPending = false;
+
+  /// Runs [onForbidden] outside the upload: the membership check waits for the
+  /// active upload, so awaiting it here would deadlock.
+  void _checkAccess() {
+    final check = onForbidden;
+    if (check == null || _stopped) return;
+    if (_accessCheck) {
+      _accessCheckPending = true;
+      return;
+    }
+    _accessCheck = true;
+    _zone.run(
+      () => unawaited(
+        Future(() async {
+          try {
+            // An upload can be denied while reconciliation waits for it.
+            await _membershipCheck?.future;
+            // The engine may have stopped (sign-out, household switch)
+            // between the denial and this callback.
+            if (!_stopped) await check();
+          } on Object {
+            // Nothing is logged: the error may carry account details.
+          } finally {
+            _accessCheck = false;
+            final recheck = _accessCheckPending;
+            _accessCheckPending = false;
+            if (recheck && !_stopped) _checkAccess();
+          }
+        }),
+      ),
+    );
   }
 
   void _scheduleRetry() {
@@ -279,6 +431,18 @@ class SyncEngine {
 
   Future<int> _waitingCount() async =>
       await _count(OutboxState.pending) + await _count(OutboxState.sending);
+
+  Future<bool> _hasRatingChanges() async =>
+      await (_db.select(_db.syncOutbox)
+            ..where(
+              (t) =>
+                  t.accountId.equals(_scope.userId) &
+                  t.entity.equals('rating') &
+                  t.state.isIn([OutboxState.pending, OutboxState.sending]),
+            )
+            ..limit(1))
+          .getSingleOrNull() !=
+      null;
 
   Future<bool> _hasPostponedPhotos() async =>
       await (_db.select(_db.syncOutbox)

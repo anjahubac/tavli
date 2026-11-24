@@ -223,3 +223,51 @@ Findings and fixes (no CRITICAL):
   migration + test; RLS + explicit grants + pgTAP with two accounts; backend
   faked in Flutter tests). Terminology: "waiting change" (spec) = outbox entry
   (plan), defined in the spec's Key Entities.
+
+## Correction slice — 2026-11-20: first-email OTP (US1 / FR-003)
+
+Owner/coordinator: Dev 3 (Matija). Independent human reviewer: Anja (pending).
+Branch `fix/signup-email-code` starts from latest `origin/dev`. No new feature
+number, shared pointer, migration or dependency. Paths and security impact are
+recorded in the correction section of [plan.md](plan.md).
+
+- [x] T070 Use one `supabase/templates/magic_link.html` for both Supabase
+  confirmation and OTP sign-in settings; remove the duplicate confirmation HTML.
+  Keep a shared code-only subject, `{{ .Token }}` body, and existing verification
+  and OTP limits.
+- [x] T071 Validate both template/config contracts with
+  `scripts/test_auth_email_templates.py`, existing fake account/sign-in tests,
+  `scripts/check.sh`, docs and diff checks. Evidence: template regression,
+  script regressions, docs checks and static analysis pass; `test/account/auth_gateway_test.dart` passes.
+  Broader account/widget run was interrupted during cleanup; it is not recorded as green.
+- [ ] T072 Review the deployment workflow extension with Anja and merge into
+  `dev`. Verify new/unconfirmed/existing-account delivery and OTP rejection with
+  synthetic local accounts. Record a successful template deployment and hosted
+  configuration verification from each environment before claiming rollout.
+
+No historical completed task is reinterpreted as evidence for this correction.
+
+## Correction slice — 2026-11-21: separate sign-up with a confirmation email
+
+Owner: Dev 4 (Anja). Independent human reviewer: Uroš (Dev 1). Branch
+`feat/auth-sign-up-confirm` (PR #115) into `dev`. Supersedes T070's single
+template; T070–T072 stay as history. New dependency `app_links` is justified in
+[plan.md](plan.md). No migration.
+
+- [x] T073 Split "Prijava" (`shouldCreateUser: false`, "Ne postoji nalog") and
+  "Registracija" (sign-up, "Već postoji nalog"), with "Proveri mejl", code
+  entry, "Pošalji mejl ponovo", "Pošalji mi kod" and the name asked once.
+- [x] T074 Deliver `tavli://auth-callback` on Android, iOS and macOS
+  (`app_links`) and exchange the PKCE code; used or expired links show the
+  Serbian message from the slice.
+- [x] T075 Add the "Uspešna registracija" page (`site/potvrda/`) and
+  `AUTH_CONFIRM_PAGE_URL` as `emailRedirectTo`; keep `tavli://auth-callback` as
+  the default.
+- [x] T076 Confirmation email with button and code, sign-in email with code only;
+  green header with the cream logo from `email-assets`; contract checks in
+  `scripts/test_auth_email_templates.py`.
+- [x] T077 Center the auth screens and use the white card on wide windows, as on
+  the design canvas; widget tests for width and centering.
+- [ ] T078 Before merge: one manual sign-up on the local stack (Mailpit), green
+  CI and Uroš's review. After merge: the five checks in the slice's acceptance
+  on a phone. Record the run evidence in the PR, not on the branch.

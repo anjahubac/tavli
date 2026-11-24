@@ -1,22 +1,40 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../account/auth_controller.dart';
+import '../account/household_invite_code.dart';
 import '../domain/theme_choice.dart';
+import '../features/account/household_join_dialog.dart';
+import '../features/account/household_providers.dart';
+import '../features/account/household_removed_dialog.dart';
 import '../features/account/sync_banner.dart';
 import '../providers.dart';
+import '../sync/realtime_sync.dart';
 import 'animations/intro_overlay.dart';
+import 'app_menu.dart';
 import 'router.dart';
-import 'theme/app_theme.dart';
-import 'theme/theme_controller.dart';
+import 'theme_controller.dart';
+
+const _macosWindow = MethodChannel('tavli/macos_window');
+const _windowsWindow = MethodChannel('tavli/windows_window');
+
+/// Realtime radi dok korisnik vidi prozor. `inactive` je na desktopu (i u
+/// podeljenom ekranu na Androidu) vidljiv prozor bez fokusa, pa se pauzira
+/// tek na `hidden` i `paused`.
+@visibleForTesting
+bool isVisibleLifecycle(AppLifecycleState? state) =>
+    state != AppLifecycleState.hidden && state != AppLifecycleState.paused;
 
 class TavliApp extends ConsumerStatefulWidget {
   const TavliApp({
     super.key,
-    this.initialLocation = '/plan',
+    this.initialLocation = homeLocation,
     this.intro = true,
   });
 
@@ -32,9 +50,16 @@ class TavliApp extends ConsumerStatefulWidget {
 
 class _TavliAppState extends ConsumerState<TavliApp> {
   final _authChanges = _Refresh();
+  final _menuPopups = MenuPopupTracker();
   late final GoRouter _router;
   late final AppLifecycleListener _lifecycle;
   final _messenger = GlobalKey<ScaffoldMessengerState>();
+  late final bool _observesMacosWindow;
+  bool? _macosFullScreen;
+  late final bool _observesWindowsWindow;
+  bool _windowsMaximized = false;
+  bool _foreground = true;
+  RealtimeSync? _realtime;
 
   @override
   void initState() {
@@ -43,10 +68,51 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       initialLocation: widget.initialLocation,
       auth: () => ref.read(authControllerProvider),
       refresh: _authChanges,
+      menuPopups: _menuPopups,
     );
-    ref.listenManual(authControllerProvider, (_, _) => _authChanges.ping());
+    _observesMacosWindow = defaultTargetPlatform == TargetPlatform.macOS;
+    if (_observesMacosWindow) {
+      _macosWindow.setMethodCallHandler((call) async {
+        if (call.arguments case final bool fullScreen
+            when mounted && call.method == 'fullScreenChanged') {
+          setState(() => _macosFullScreen = fullScreen);
+        }
+        return null;
+      });
+      unawaited(_readMacosFullScreen());
+    }
+    _observesWindowsWindow = defaultTargetPlatform == TargetPlatform.windows;
+    if (_observesWindowsWindow) {
+      _windowsWindow.setMethodCallHandler((call) async {
+        if (call.arguments case final bool maximized
+            when mounted && call.method == 'maximizedChanged') {
+          setState(() => _windowsMaximized = maximized);
+        }
+        return null;
+      });
+      unawaited(_readWindowsMaximized());
+    }
+    ref.listenManual(authControllerProvider, (_, _) {
+      _authChanges.ping();
+      _openPendingInvite();
+      _showRemovalNotice();
+    });
+    ref.listenManual(
+      householdRemovalNoticeProvider,
+      (_, _) => _showRemovalNotice(),
+    );
+    ref.listenManual(
+      pendingHouseholdInviteProvider,
+      (_, _) => _openPendingInvite(),
+    );
     // Drži engine za slanje živim dok je nalog prijavljen.
     ref.listenManual(syncEngineProvider, (_, _) {}, fireImmediately: true);
+    // AI slike za AI recepte rade u pozadini dok je nalog prijavljen.
+    ref.listenManual(
+      recipeImageQueueProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
     ref.listenManual(movedSavedProvider, (_, next) {
       if (next.value case final n? when n > 0) {
         // Posle sledećeg okvira: aplikacija možda još prelazi sa ekrana
@@ -58,19 +124,137 @@ class _TavliAppState extends ConsumerState<TavliApp> {
         );
       }
     });
-    _lifecycle = AppLifecycleListener(onResume: _onResume);
-    unawaited(
-      Future.microtask(ref.read(authControllerProvider.notifier).start),
+    _foreground = isVisibleLifecycle(WidgetsBinding.instance.lifecycleState);
+    ref.listenManual(realtimeSyncProvider, (_, next) {
+      _realtime = next;
+      next?.setForeground(_foreground);
+    }, fireImmediately: true);
+    _lifecycle = AppLifecycleListener(
+      onResume: _onResume,
+      onStateChange: (state) {
+        _foreground = isVisibleLifecycle(state);
+        _realtime?.setForeground(_foreground);
+      },
     );
+    unawaited(Future.microtask(_start));
   }
 
-  void _onResume() {
-    unawaited(ref.read(authControllerProvider.notifier).restoreSession());
-    unawaited(ref.read(syncEngineProvider)?.onResume());
+  StreamSubscription<Uri>? _links;
+
+  /// Prvo sačuvana sesija, pa tek onda linkovi iz mejla (i onaj kojim je
+  /// aplikacija pokrenuta), da link ne bi naišao na stanje "Starting".
+  Future<void> _start() async {
+    final auth = ref.read(authControllerProvider.notifier);
+    await auth.start();
+    if (!mounted) return;
+    _links = ref.read(appLinksProvider).listen((uri) {
+      unawaited(_bringToFront());
+      // Pozivnica čeka prijavu i ime; korak „Tvoje domaćinstvo“ ili
+      // prijavljena aplikacija je otvara sa već upisanim kodom.
+      if (HouseholdInviteCode.fromAppLink(uri) case final code?) {
+        ref.read(pendingHouseholdInviteProvider.notifier).set(code);
+      } else {
+        unawaited(auth.openLink(uri));
+      }
+    }, onError: (_) {});
+  }
+
+  /// Prijavljen nalog otvara pozivnicu iz linka (pregled i potvrda).
+  void _openPendingInvite() {
+    if (ref.read(authControllerProvider) is! SignedIn) return;
+    if (ref.read(pendingHouseholdInviteProvider) == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _router.routerDelegate.navigatorKey.currentContext;
+      if (!mounted || context == null) return;
+      if (ref.read(authControllerProvider) is! SignedIn) return;
+      final code = ref.read(pendingHouseholdInviteProvider.notifier).take();
+      if (code != null) unawaited(showHouseholdJoinDialog(context, code: code));
+    });
+  }
+
+  /// Obaveštenje da je osoba uklonjena iz domaćinstva, kad je router spreman.
+  void _showRemovalNotice() {
+    if (ref.read(authControllerProvider) is! SignedIn) return;
+    if (ref.read(householdRemovalNoticeProvider) == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _router.routerDelegate.navigatorKey.currentContext;
+      if (!mounted || context == null) return;
+      if (ref.read(authControllerProvider) is! SignedIn) return;
+      final notice = ref.read(householdRemovalNoticeProvider.notifier).take();
+      if (notice != null) {
+        unawaited(showHouseholdRemovedDialog(context, notice));
+      }
+    });
+  }
+
+  /// macOS ne izbacuje aplikaciju ispred pregledača kad primi link iz mejla
+  /// („Otvori Tavli“), pa bi prijava ostala skrivena iza Chrome-a.
+  Future<void> _bringToFront() async {
+    if (!_observesMacosWindow) return;
+    try {
+      await _macosWindow.invokeMethod<void>('activate');
+    } on MissingPluginException {
+      // Testovi bez macOS runnera.
+    }
+  }
+
+  Future<void> _readMacosFullScreen() async {
+    try {
+      final fullScreen = await _macosWindow.invokeMethod<bool>('isFullScreen');
+      if (mounted && _macosFullScreen == null && fullScreen != null) {
+        setState(() => _macosFullScreen = fullScreen);
+      }
+    } on MissingPluginException {
+      // Testovi bez macOS runnera koriste okvir običnog prozora.
+    }
+  }
+
+  /// Radnje prozora na Windows-u idu u runner; u testovima bez njega ne rade
+  /// ništa.
+  Future<void> _windowCall(String method) async {
+    try {
+      await _windowsWindow.invokeMethod<void>(method);
+    } on MissingPluginException {
+      // Testovi bez Windows runnera.
+    }
+  }
+
+  Future<void> _readWindowsMaximized() async {
+    try {
+      final maximized = await _windowsWindow.invokeMethod<bool>('isMaximized');
+      if (mounted && maximized != null) {
+        setState(() => _windowsMaximized = maximized);
+      }
+    } on MissingPluginException {
+      // Testovi bez Windows runnera.
+    }
+  }
+
+  TavliWindowControls get _windowControls => TavliWindowControls(
+    maximized: _windowsMaximized,
+    onMinimize: () => unawaited(_windowCall('minimize')),
+    onToggleMaximize: () => unawaited(_windowCall('toggleMaximize')),
+    onClose: () => unawaited(_windowCall('close')),
+    onStartDrag: () => unawaited(_windowCall('startDrag')),
+    onStartResizeTop: () => unawaited(_windowCall('startResizeTop')),
+    onShowSystemMenu: () => unawaited(_windowCall('showSystemMenu')),
+  );
+
+  void _onResume() => unawaited(_resumeSync());
+
+  Future<void> _resumeSync() async {
+    await ref
+        .read(authControllerProvider.notifier)
+        .restoreSession(sync: ref.read(syncEngineProvider));
+    if (mounted) await ref.read(syncEngineProvider)?.onResume();
+    if (mounted) await ref.read(recipeImageQueueProvider)?.onResume();
   }
 
   @override
   void dispose() {
+    unawaited(_links?.cancel());
+    if (_observesMacosWindow) _macosWindow.setMethodCallHandler(null);
+    if (_observesWindowsWindow) _windowsWindow.setMethodCallHandler(null);
     _lifecycle.dispose();
     _router.dispose();
     _authChanges.dispose();
@@ -82,9 +266,12 @@ class _TavliAppState extends ConsumerState<TavliApp> {
     final starting = ref.watch(
       authControllerProvider.select((s) => s is Starting),
     );
+    final signedIn = ref.watch(
+      authControllerProvider.select((s) => s is SignedIn),
+    );
     final choice = ref.watch(themeControllerProvider);
-    final theme = buildTavliTheme(choice.theme, Brightness.light);
-    final darkTheme = buildTavliTheme(choice.theme, Brightness.dark);
+    final theme = buildTavliTheme(choice.theme.motif, Brightness.light);
+    final darkTheme = buildTavliTheme(choice.theme.motif, Brightness.dark);
     final mode = switch (choice.mode) {
       AppThemeMode.light => ThemeMode.light,
       AppThemeMode.dark => ThemeMode.dark,
@@ -98,6 +285,7 @@ class _TavliAppState extends ConsumerState<TavliApp> {
         theme: theme,
         darkTheme: darkTheme,
         themeMode: mode,
+        builder: _textScaling,
         home: Scaffold(
           body: widget.intro ? const IntroScreen() : const SizedBox.expand(),
         ),
@@ -111,8 +299,28 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       darkTheme: darkTheme,
       themeMode: mode,
       routerConfig: _router,
+      builder: (context, child) => appMenuBar(
+        _router,
+        ref,
+        _menuPopups,
+        _textScaling(context, child),
+        windowsMenus: signedIn,
+        onQuit: () => unawaited(_windowCall('close')),
+      ),
       scaffoldMessengerKey: _messenger,
     );
+  }
+
+  /// Sporije skalira velike naslove i ostavlja mesto za semafore na macOS-u i naslovnu traku na Windows-u.
+  Widget _textScaling(BuildContext context, Widget? child) {
+    final scaled = TavliTextScaling(child: child ?? const SizedBox.shrink());
+    return TavliPlatform.of(context).isDesktop
+        ? TavliWindowFrame(
+            macosFullScreen: _macosFullScreen ?? false,
+            windowControls: _windowControls,
+            child: scaled,
+          )
+        : scaled;
   }
 }
 

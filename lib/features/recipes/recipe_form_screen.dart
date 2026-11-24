@@ -1,21 +1,40 @@
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../domain/ids.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
+import '../../domain/recipe_labels.dart';
 import '../../domain/recipe_version.dart';
+import '../../domain/voice_draft.dart';
+import 'recipe_labels_sheet.dart';
 import 'recipe_providers.dart';
+
+/// Unapred popunjena polja novog recepta (npr. odgovor iz kuvarske knjige).
+/// Osoba ih pregleda i dopuni; sastojke unosi sama.
+class RecipeDraft {
+  const RecipeDraft({this.title = '', this.steps = const []});
+
+  final String title;
+  final List<String> steps;
+}
 
 /// Ručni unos novog recepta ([id] == null) ili izmena postojećeg.
 class RecipeFormScreen extends ConsumerStatefulWidget {
-  const RecipeFormScreen({super.key, this.id});
+  const RecipeFormScreen({super.key, this.id, this.draft, this.voiceDraft});
 
   final String? id;
 
+  /// Samo za novi recept: početne vrednosti polja.
+  final RecipeDraft? draft;
+
+  /// Nacrt iz „Recept glasom“, koji osoba pregleda pre čuvanja.
+  final VoiceDraft? voiceDraft;
   @override
   ConsumerState<RecipeFormScreen> createState() => _RecipeFormScreenState();
 }
@@ -26,6 +45,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   final _prep = TextEditingController();
   final _steps = TextEditingController();
   List<Ingredient> _ingredients = [];
+  LabelChoice _labels = labelChoiceOf(RecipeLabels.none);
   Recipe? _original;
   bool _loading = false;
   bool _dirty = false;
@@ -40,6 +60,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     if (id != null) {
       _loading = true;
       unawaited(_load(id));
+    } else if (widget.draft case final draft?) {
+      _title.text = draft.title;
+      _steps.text = draft.steps.join('\n');
+      _dirty = true;
+    } else if (widget.voiceDraft case final draft?) {
+      _title.text = draft.title ?? '';
+      if (draft.servings case final n?) _servings.text = '$n';
+      _steps.text = draft.steps.join('\n');
+      _ingredients = [...draft.ingredients];
+      // Nesačuvan nacrt: izlazak traži potvrdu.
+      _dirty = !draft.isEmpty;
     }
   }
 
@@ -55,6 +86,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _prep.text = recipe.prepMinutes?.toString() ?? '';
         _steps.text = recipe.steps.join('\n');
         _ingredients = [...recipe.ingredients];
+        _labels = labelChoiceOf(recipe.labels);
       }
     });
   }
@@ -123,6 +155,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         steps: steps,
         source: RecipeSource.manual,
         createdAt: now,
+        labels: isEmptyChoice(_labels)
+            ? RecipeLabels.none
+            : labelsByUser(_labels),
       );
       await repo.create(recipe);
     } else {
@@ -134,7 +169,16 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         ingredients: _ingredients,
         steps: steps,
       );
-      await repo.update(recipe, kind: ChangeKind.manual);
+      // Nova verzija samo kad se sadržaj promenio; izmena samo oznaka ne
+      // pravi praznu verziju koju bi „Poništi“ prvo potrošio.
+      if (jsonEncode(recipe.toAiJson()) != jsonEncode(original.toAiJson())) {
+        await repo.update(recipe, kind: ChangeKind.manual);
+      }
+      // Oznake nisu deo verzije recepta; menjaju se samo ako ih je korisnik
+      // promenio, da AI oznake koje nije dirao ostanu AI.
+      if (!sameChoice(_labels, labelChoiceOf(original.labels))) {
+        await repo.setLabels(recipe.id, labelsByUser(_labels));
+      }
     }
     if (!mounted) return;
     setState(() => _dirty = false);
@@ -198,45 +242,36 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          TextField(
+                          TavliTextField(
+                            label: 'Naziv',
+                            hint: 'npr. Sarma',
                             controller: _title,
                             onChanged: (_) => _changed(),
-                            decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              labelText: 'Naziv',
-                              errorText: _titleError,
+                            errorText: _titleError,
+                          ),
+                          const SizedBox(height: TavliSpacing.medium),
+                          _NumberFields(
+                            servings: TavliTextField(
+                              label: 'Broj porcija',
+                              controller: _servings,
+                              onChanged: (_) => _changed(),
+                              keyboardType: TextInputType.number,
+                            ),
+                            prep: TavliTextField(
+                              label: 'Vreme pripreme (min)',
+                              controller: _prep,
+                              onChanged: (_) => _changed(),
+                              keyboardType: TextInputType.number,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              SizedBox(
-                                width: 160,
-                                child: TextField(
-                                  controller: _servings,
-                                  onChanged: (_) => _changed(),
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    labelText: 'Broj porcija',
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 200,
-                                child: TextField(
-                                  controller: _prep,
-                                  onChanged: (_) => _changed(),
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    labelText: 'Vreme pripreme (min)',
-                                  ),
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: TavliSpacing.medium),
+                          Text('Oznake', style: theme.textTheme.titleMedium),
+                          RecipeLabelsPicker(
+                            value: _labels,
+                            onChanged: (update) => setState(() {
+                              _labels = update(_labels);
+                              _dirty = true;
+                            }),
                           ),
                           const SizedBox(height: 20),
                           Text('Sastojci', style: theme.textTheme.titleMedium),
@@ -274,16 +309,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          TextField(
+                          TavliTextField(
+                            label: 'Koraci pripreme (jedan po redu)',
                             controller: _steps,
                             onChanged: (_) => _changed(),
+                            keyboardType: TextInputType.multiline,
                             minLines: 4,
-                            maxLines: null,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              labelText: 'Koraci pripreme (jedan po redu)',
-                              alignLabelWithHint: true,
-                            ),
+                            maxLines: 16,
                           ),
                         ],
                       ),
@@ -292,6 +324,42 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// Porcije i minuti jedno pored drugog; uz krupan tekst ili na uskom ekranu
+/// jedno ispod drugog, da se nazivi ne seku.
+class _NumberFields extends StatelessWidget {
+  const _NumberFields({required this.servings, required this.prep});
+
+  final Widget servings;
+  final Widget prep;
+
+  @override
+  Widget build(BuildContext context) {
+    final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (largeText || constraints.maxWidth < 320) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              servings,
+              const SizedBox(height: TavliSpacing.medium),
+              prep,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: servings),
+            const SizedBox(width: TavliSpacing.medium),
+            Expanded(child: prep),
+          ],
+        );
+      },
     );
   }
 }
@@ -341,6 +409,9 @@ class _IngredientDialogState extends State<_IngredientDialog> {
         'unit': _unit.text,
         'category': _category,
         'note': _note.text,
+        // Veza sa katalogom ostaje; ako se naziv promeni, prestaje da važi
+        // sama (matchedKey se više ne poklapa, ugovor #30).
+        ...?widget.initial?.link?.toJson(),
       }),
     );
   }
@@ -350,8 +421,11 @@ class _IngredientDialogState extends State<_IngredientDialog> {
     return AlertDialog(
       title: const Text('Sastojak'),
       content: SingleChildScrollView(
+        // Razmak mora biti eksplicitan: polja ga nemaju sama od sebe, pa bi se
+        // uokvirena polja i plutajuće oznake dodirivali i preklapali.
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          spacing: TavliSpacing.medium,
           children: [
             TextField(
               controller: _name,
@@ -359,6 +433,7 @@ class _IngredientDialogState extends State<_IngredientDialog> {
               decoration: const InputDecoration(labelText: 'Naziv'),
             ),
             Row(
+              spacing: TavliSpacing.medium,
               children: [
                 Expanded(
                   child: TextField(
@@ -369,7 +444,6 @@ class _IngredientDialogState extends State<_IngredientDialog> {
                     decoration: const InputDecoration(labelText: 'Količina'),
                   ),
                 ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _unit,

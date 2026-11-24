@@ -6,6 +6,7 @@ import '../../account/auth_controller.dart';
 import '../../ai/meal_plan_ai.dart';
 import '../../data/meal_plan_repository.dart';
 import '../../domain/meal_plan.dart';
+import '../../domain/meal_rules.dart';
 import '../../domain/plan_calendar.dart';
 import '../../domain/recipe.dart';
 import '../../domain/shopping_source.dart';
@@ -22,7 +23,7 @@ class PlanSetup {
     required this.period,
     required this.anchor,
     this.mealTypes = const {MealType.lunch},
-    this.servings = 2,
+    this.servings = defaultPlanServings,
     this.usePantry = true,
     this.wishes = '',
   });
@@ -46,14 +47,9 @@ class PlanSetup {
   /// Susedna nedelja ili mesec.
   PlanSetup shifted(int by) => copyWith(
     anchor: period == PlanPeriod.week
-        ? anchor.addDays(7 * by)
-        : _addMonths(anchor, by),
+        ? addWeeks(anchor, by)
+        : firstOfMonthAfter(anchor, by),
   );
-
-  static CivilDate _addMonths(CivilDate d, int by) {
-    final m = d.month - 1 + by;
-    return CivilDate(d.year + (m / 12).floor(), m % 12 + 1, 1);
-  }
 
   PlanSetup copyWith({
     PlanPeriod? period,
@@ -146,12 +142,17 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
   }
 
   /// Nov predlog za trenutne izbore, ili nastavak otvorenog nacrta.
-  Future<void> generate() async {
+  Future<void> generate({bool fastingDraft = false}) async {
     if (state.busy) return;
     final range = state.setup.range(_today);
     if (range == null || state.setup.mealTypes.isEmpty) return;
     final previous = state.draft;
     final resume = previous != null && !previous.isComplete ? previous : null;
+    final wishes = [
+      if (state.setup.wishes.trim().isNotEmpty) state.setup.wishes.trim(),
+      if (fastingDraft)
+        'Predloži posna jela bez mesa, mlečnih proizvoda i jaja.',
+    ];
     final request =
         resume?.request ??
         PlanRequest(
@@ -159,9 +160,7 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
           mealTypes: state.setup.mealTypes,
           servings: state.setup.servings,
           usePantry: state.setup.usePantry,
-          wishes: state.setup.wishes.trim().isEmpty
-              ? null
-              : state.setup.wishes.trim(),
+          wishes: wishes.isEmpty ? null : wishes.join('\n'),
           pantryNames: state.setup.usePantry
               ? await ref
                     .read(mealPlanRepositoryProvider)
@@ -230,6 +229,7 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
       planId: plan.id,
       fingerprint: await repo.fingerprint(plan.id),
     );
+    final library = await ref.read(recipeRepositoryProvider).getAll();
     final request = PlanRequest(
       range: plan.range,
       mealTypes: plan.mealTypes,
@@ -239,6 +239,10 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
           ? await repo.confirmedPantryNames()
           : const [],
       only: slots,
+      // Zaključana, skuvana i prošla jela ostaju; pravila ih gledaju.
+      kept: plannedMealFacts(meals.where((m) => !slots.contains(m.slot)), {
+        for (final r in library) r.id: r.labels,
+      }),
     );
     _run++;
     state = PlanGenerationState(
@@ -270,6 +274,9 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
       wishes: wishes,
       pantryNames: base.pantryNames,
       only: {slot},
+      // Jela koja ostaju iz sačuvanog plana (ponovni predlog): pravila ih
+      // gledaju i pri zameni jednog jela.
+      kept: base.kept,
     );
     // Ostala jela idu kao već planirana, da se ne ponavljaju.
     final resume = PlanDraft(

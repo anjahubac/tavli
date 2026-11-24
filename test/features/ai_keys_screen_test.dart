@@ -2,15 +2,16 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/features/settings/ai_keys_screen.dart';
 import 'package:tavli/providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/fake_adapter.dart';
 
@@ -18,22 +19,24 @@ void main() {
   late KeyStore keys;
   late FakeAdapter adapter;
 
-  Future<void> pumpScreen(
+  Future<AppDatabase> pumpScreen(
     WidgetTester tester, {
-    BuiltInKeys builtIn = const BuiltInKeys(),
     Size size = const Size(800, 3000),
+    double textScale = 1,
+    AppDatabase? database,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final db = AppDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
+    final db = database ?? AppDatabase(NativeDatabase.memory());
+    if (database == null) addTearDown(db.close);
+    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           keyStoreProvider.overrideWithValue(keys),
-          builtInKeysProvider.overrideWithValue(builtIn),
           databaseProvider.overrideWithValue(db),
           chatClientProvider.overrideWithValue(
             OpenAICompatibleClient(
@@ -42,13 +45,20 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: AiKeysScreen()),
+        child: MaterialApp(
+          theme: buildTavliTheme(TavliMotif.bosiljak, Brightness.light),
+          home: const AiKeysScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
+    return db;
   }
 
-  Finder keyField() => find.widgetWithText(TextField, 'API ključ');
+  Finder keyField() => find.descendant(
+    of: find.widgetWithText(TavliTextField, 'API ključ'),
+    matching: find.byType(TextField),
+  );
   Finder button(String text) => find.ancestor(
     of: find.text(text),
     matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
@@ -81,6 +91,26 @@ void main() {
       isFalse,
     );
   });
+
+  testWidgets('Android: polje za API ključ nema predloge ni kad je vidljivo', (
+    tester,
+  ) async {
+    adapter = FakeAdapter([]);
+    await pumpScreen(tester);
+
+    TextField field() => tester.widget<TextField>(keyField());
+    expect(field().obscureText, isTrue);
+
+    await tester.tap(find.bySemanticsLabel('Prikaži'));
+    await tester.pumpAndSettle();
+    expect(field().obscureText, isFalse);
+    expect(field().enableSuggestions, isFalse);
+
+    await tester.tap(find.bySemanticsLabel('Sakrij'));
+    await tester.pumpAndSettle();
+    expect(field().obscureText, isTrue);
+    expect(field().enableSuggestions, isFalse);
+  }, variant: const TargetPlatformVariant({TargetPlatform.android}));
 
   testWidgets('prepoznaje servis, proverava i dodaje ključ', (tester) async {
     adapter = FakeAdapter([modelsOk]);
@@ -127,26 +157,146 @@ void main() {
     expect(await keys.list(), hasLength(2));
   });
 
-  testWidgets('nepoznat format: bira se servis', (tester) async {
-    adapter = FakeAdapter([modelsOk]);
+  testWidgets('nepoznat servis: poruka, dugme isključeno, ništa se ne šalje', (
+    tester,
+  ) async {
+    adapter = FakeAdapter([]);
     await pumpScreen(tester);
 
-    await tester.enterText(keyField(), 'nepoznat-kljuc-9999');
-    await tester.pump();
-    expect(find.text('Izaberi servis'), findsOneWidget);
-    expect(
-      tester.widget<ButtonStyleButton>(button('Dodaj ključ')).enabled,
-      isFalse,
-    );
+    for (final key in ['nepoznat-kljuc-9999', 'sk-ant-fake-9999']) {
+      await tester.enterText(keyField(), key);
+      await tester.pump();
+      expect(
+        find.text(
+          'Servis nije prepoznat. Podržani su: '
+          'Gemini, Groq, OpenRouter, OpenAI.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Prepoznat servis'), findsNothing);
+      expect(
+        tester.widget<ButtonStyleButton>(button('Dodaj ključ')).enabled,
+        isFalse,
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Izaberi servis'), findsNothing);
+    expect(adapter.requests, isEmpty);
+    expect(await keys.list(), isEmpty);
+  });
 
-    await tester.tap(find.text('Izaberi servis'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OpenRouter').last);
-    await tester.pumpAndSettle();
+  testWidgets('poruka o servisu se gubi kad je polje prazno', (tester) async {
+    adapter = FakeAdapter([]);
+    await pumpScreen(tester);
+
+    await tester.enterText(keyField(), 'x');
+    await tester.pump();
+    await tester.enterText(keyField(), '  ');
+    await tester.pump();
+
+    expect(find.textContaining('Servis nije prepoznat'), findsNothing);
+  });
+
+  testWidgets('OpenAI ključ: prepoznat, proveren i označen kao plaćen', (
+    tester,
+  ) async {
+    adapter = FakeAdapter([
+      (200, '{"data":[{"id":"gpt-6-luna"}]}', <String, List<String>>{}),
+    ]);
+    await pumpScreen(tester);
+
+    await tester.enterText(keyField(), 'sk-proj-fake-1234');
+    await tester.pump();
+    expect(find.text('Prepoznat servis: OpenAI'), findsOneWidget);
     await tester.tap(button('Dodaj ključ'));
     await tester.pumpAndSettle();
 
-    expect((await keys.list()).single.provider, AIProvider.openRouter);
+    expect(
+      adapter.requests.single.uri.toString(),
+      'https://api.openai.com/v1/models',
+    );
+    expect((await keys.list()).single.provider, AIProvider.openAI);
+    expect(find.text('✓ OpenAI GPT-6 Luna'), findsOneWidget);
+    expect(find.textContaining('plaćen · Radi'), findsOneWidget);
+  });
+
+  group('redosled', () {
+    final toggle = find.byType(TavliChoice<OwnKeyOrder>);
+
+    testWidgets('vidi se samo uz plaćen i besplatan ključ', (tester) async {
+      adapter = FakeAdapter([modelsOk]);
+      await keys.add(AIProvider.gemini, 'AIza-fake-1111');
+      await keys.add(AIProvider.groq, 'gsk_fake-2222');
+      await pumpScreen(tester);
+      expect(toggle, findsNothing);
+      expect(find.text('Redosled'), findsNothing);
+
+      await addKey(tester, 'sk-proj-fake-3333');
+      expect(toggle, findsOneWidget);
+      expect(find.text('Redosled'), findsOneWidget);
+      expect(
+        find.text(
+          'Važi za tvoje ključeve. Ključevi koji dolaze uz aplikaciju uvek '
+          'idu na kraju.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('samo plaćeni ključevi: nema izbora', (tester) async {
+      adapter = FakeAdapter([]);
+      await keys.add(AIProvider.openAI, 'sk-fake-1111');
+      await pumpScreen(tester);
+
+      expect(toggle, findsNothing);
+    });
+
+    testWidgets('izbor ostaje sačuvan', (tester) async {
+      adapter = FakeAdapter([]);
+      await keys.add(AIProvider.gemini, 'AIza-fake-1111');
+      await keys.add(AIProvider.openAI, 'sk-fake-3333');
+      final db = await pumpScreen(tester);
+      expect(
+        tester.widget<TavliChoice<OwnKeyOrder>>(toggle).selected,
+        OwnKeyOrder.paidFirst,
+      );
+
+      await tester.tap(find.text('Prvo besplatni'));
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const SizedBox());
+      await pumpScreen(tester, database: db);
+      expect(
+        tester.widget<TavliChoice<OwnKeyOrder>>(toggle).selected,
+        OwnKeyOrder.freeFirst,
+      );
+    });
+
+    for (final (size, scale) in [
+      (const Size(320, 4000), 1.0),
+      (const Size(320, 4000), 2.0),
+      (const Size(1200, 2000), 1.0),
+      (const Size(1200, 2000), 2.0),
+    ]) {
+      testWidgets('staje na ${size.width.round()}, tekst $scale×', (
+        tester,
+      ) async {
+        adapter = FakeAdapter([]);
+        await keys.add(AIProvider.gemini, 'AIza-fake-1111');
+        await keys.add(AIProvider.openAI, 'sk-fake-3333');
+        await pumpScreen(tester, size: size, textScale: scale);
+        await tester.enterText(keyField(), 'nepoznat');
+        await tester.pump();
+
+        expect(toggle, findsOneWidget);
+        expect(tester.takeException(), isNull);
+        final page = tester.getRect(find.byType(AiKeysScreen));
+        final box = tester.getRect(toggle);
+        expect(box.left, greaterThanOrEqualTo(page.left));
+        expect(box.right, lessThanOrEqualTo(page.right));
+      });
+    }
   });
 
   testWidgets('odbijen ključ se ne čuva', (tester) async {
@@ -201,7 +351,11 @@ void main() {
     await pumpScreen(tester);
     expect(find.text('••••7777'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Obriši ključ'));
+    await tester.tap(
+      find.byWidgetPredicate(
+        (w) => w is TavliIconButton && w.semanticLabel == 'Obriši ključ',
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Obrisati ključ ••••7777?'), findsOneWidget);
     await tester.tap(button('Obriši'));
@@ -212,61 +366,32 @@ void main() {
     expect(find.text('Još nema dodatih ključeva.'), findsOneWidget);
   });
 
-  group('ugrađeni Tavli AI', () {
-    const builtIn = BuiltInKeys({AIProvider.gemini: 'b-key'});
+  testWidgets('bez ključeva nema pomena ugrađenih ni sekcije „Probaj AI“', (
+    tester,
+  ) async {
+    adapter = FakeAdapter([]);
+    await pumpScreen(tester);
 
-    testWidgets('sačuvan ugrađeni ključ se uklanja iz liste i skladišta', (
-      tester,
-    ) async {
-      adapter = FakeAdapter([]);
-      await keys.add(AIProvider.gemini, 'b-key');
-      await keys.add(AIProvider.groq, 'gsk_mine-4321');
-      await pumpScreen(tester, builtIn: builtIn);
+    expect(find.text('Još nema dodatih ključeva.'), findsOneWidget);
+    expect(find.textContaining('ugrađen'), findsNothing);
+    expect(find.textContaining('••••'), findsNothing);
+    expect(find.text('Probaj AI'), findsNothing);
+    expect(find.text('Napravi probni recept'), findsNothing);
+  });
 
-      expect(find.text('••••4321'), findsOneWidget);
-      expect(find.text('••••-key'), findsNothing);
-      expect((await keys.list()).map((k) => k.value), ['gsk_mine-4321']);
-    });
+  testWidgets('obaveštenje o redosledu ključeva', (tester) async {
+    adapter = FakeAdapter([]);
+    await pumpScreen(tester);
 
-    testWidgets('ugrađeni ključ se ne može dodati kao korisnički', (
-      tester,
-    ) async {
-      adapter = FakeAdapter([]);
-      await pumpScreen(tester, builtIn: builtIn);
-
-      await tester.enterText(keyField(), 'b-key');
-      await tester.pump();
-      await tester.tap(find.text('Izaberi servis'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Gemini').last);
-      await tester.pumpAndSettle();
-      await tester.tap(button('Dodaj ključ'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Ovaj ključ je već dodat.'), findsOneWidget);
-      expect(await keys.list(), isEmpty);
-      expect(adapter.requests, isEmpty);
-    });
-
-    testWidgets('ugrađeni ključevi se ne prikazuju na stranici', (
-      tester,
-    ) async {
-      adapter = FakeAdapter([]);
-      await pumpScreen(tester, builtIn: builtIn);
-
-      expect(find.text('Još nema dodatih ključeva.'), findsOneWidget);
-      expect(find.textContaining('ugrađen'), findsNothing);
-      expect(find.textContaining('b-key'), findsNothing);
-      expect(find.textContaining('••••'), findsNothing);
-    });
-
-    testWidgets('stranica nema sekciju „Probaj AI“', (tester) async {
-      adapter = FakeAdapter([]);
-      await pumpScreen(tester, builtIn: builtIn);
-
-      expect(find.text('Probaj AI'), findsNothing);
-      expect(find.text('Napravi probni recept'), findsNothing);
-    });
+    expect(
+      find.textContaining(
+        'Tavli prvo koristi tvoje ključeve, redom. Kad se njihov besplatni '
+        'limit potroši, prelazi na besplatne ključeve koji dolaze uz '
+        'aplikaciju.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('aistudio.google.com'), findsNothing);
   });
 }
 

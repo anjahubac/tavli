@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/domain/recipe.dart';
 
+// Blagi čitač sačuvanih recepata; stroga provera AI odgovora je u
+// test/ai/ai_response_validator_test.dart.
 Recipe parse(Map<String, dynamic> json) => Recipe.fromAiJson(
   json,
   id: 'r1',
@@ -149,6 +151,82 @@ void main() {
       expect(c.imagePath, 'recipe_photos/r1.jpg');
       expect(c.servings, 6);
       expect(original.copyWith(clearPrepMinutes: true).prepMinutes, isNull);
+    });
+  });
+  group('veza sastojka sa katalogom (#30)', () {
+    const stored = {
+      'name': 'Jaja',
+      'quantity': 2,
+      'unit': 'kom',
+      'category': 'mlečni proizvodi i jaja',
+      'note': null,
+      'foodId': '00000000-0000-4000-8000-000000000001',
+      'matchedKey': 'jaja',
+      'linkSource': 'confirmed',
+    };
+
+    test('čitanje pa čuvanje bez gubitka', () {
+      final i = Ingredient.fromJson(Map.of(stored));
+      expect(i.link?.foodId, '00000000-0000-4000-8000-000000000001');
+      expect(i.link?.matchedKey, 'jaja');
+      expect(i.link?.linkSource, LinkSource.confirmed);
+      final json = i.toJson();
+      expect(json['foodId'], '00000000-0000-4000-8000-000000000001');
+      expect(json['matchedKey'], 'jaja');
+      expect(json['linkSource'], 'confirmed');
+      expect(Ingredient.fromJson(json).link, i.link);
+    });
+
+    test('sastojak bez veze se čuva kao do sada', () {
+      final i = Ingredient.fromJson({'name': 'So'});
+      expect(i.link, isNull);
+      expect(i.toJson().keys.toSet(), {
+        'name',
+        'quantity',
+        'unit',
+        'category',
+        'note',
+      });
+    });
+
+    test('neispravna veza se odbacuje, sastojak ostaje', () {
+      for (final broken in <Map<String, dynamic>>[
+        {...stored, 'foodId': 5},
+        {...stored, 'matchedKey': '  '},
+        {...stored, 'linkSource': 'ai'},
+        Map.of(stored)..remove('linkSource'),
+        Map.of(stored)..remove('foodId'),
+      ]) {
+        final i = Ingredient.fromJson(broken);
+        expect(i.link, isNull, reason: broken.toString());
+        expect(i.name, 'Jaja');
+      }
+    });
+
+    test('razmaci oko vrednosti veze se skidaju', () {
+      final i = Ingredient.fromJson({
+        ...stored,
+        'foodId': ' 00000000-0000-4000-8000-000000000001 ',
+        'matchedKey': 'jaja ',
+      });
+      expect(i.link?.foodId, '00000000-0000-4000-8000-000000000001');
+      expect(i.link?.matchedKey, 'jaja');
+    });
+
+    test('copyWith čuva vezu', () {
+      final i = Ingredient.fromJson(Map.of(stored));
+      final changed = i.copyWith(quantity: 3);
+      expect(changed.quantity, 3);
+      expect(changed.name, 'Jaja');
+      expect(changed.link, i.link);
+    });
+
+    test('namerno uklanjanje veze čuva ključ kroz serijalizaciju', () {
+      final unlinked = Ingredient.fromJson(Map.of(stored)).unlink();
+      expect(unlinked.link, isNull);
+      expect(unlinked.unlinkedKey, 'jaja');
+      expect(Ingredient.fromJson(unlinked.toJson()).unlinkedKey, 'jaja');
+      expect(unlinked.copyWith(quantity: 3).unlinkedKey, 'jaja');
     });
   });
 }

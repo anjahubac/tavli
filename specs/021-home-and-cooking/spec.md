@@ -1,0 +1,276 @@
+# Specification: Home, adaptive navigation and cooking
+
+**ID**: 021-home-and-cooking | **Feature key**: EVERYDAY-UX
+**Created**: 2026-11-14 | **Baseline**: dev 207c94c
+**Status**: Draft implementation specification; decisions below gate dependent tasks.
+**Lead**: Dev 4 | **Proposed independent reviewer**: Dev 2 and Dev 1
+
+## Scope and source
+
+Implements the EVERYDAY-UX portion of the [accepted product plan](../../docs/product-plan.md).
+Existing behavior is documented in [architecture](../../docs/architecture.md);
+this spec does not claim the target is shipped. Preserve inherited 010 quantity,
+snapshot, offline and account invariants. No new framework or folder reorganization.
+Source tickets below retain original assignments/phases; the lead coordinates,
+not reassigns them. No additional feature is authorized merely by a technical seam.
+
+## Verified baseline — 2026-11-20
+
+At `origin/dev` `28fa253`, the five destinations, default `/home`, profile
+placement and responsive shell exist. Home is a placeholder. The local
+`tavli_ui` gallery contains shell components that the app has yet to adopt.
+Plan already has week/month views and a wide list/detail layout. The current
+Plan meal detail can change the cooked flag. The shared event producer is
+work in progress on `021-cooked-meal-operation`. Home's meal cards, dedicated
+cooking mode and the end-to-end mark/undo journey remain open.
+
+## Requirements and source traceability
+
+- **FR-001**: Deliver **Standardize components in the current repository**. Source D4-002; Dev 4; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-002**: Deliver **Introduce five-tab navigation with central Home**. Source D4-003; Dev 4; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-003**: Deliver **Use camera/gallery on phone and file selection on desktop**. Source D4-005; Dev 4; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-004**: Deliver **Provide the monthly plan view**. Source D4-006; Dev 4; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-005**: Deliver **Keep mobile primary actions above navigation**. Source D4-007; Dev 4; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-006**: Deliver **Align meal cards and show accessible cooked status**. Source D4-008; Dev 4; phase 1. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-007**: Deliver **Provide the shared cooked/undo operation**. Source D4-009; Dev 4; phase 2. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-008**: Deliver **Show today's meals on Home**. Source D4-010; Dev 4; phase 2. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-009**: Deliver **Show one prioritized notice on Home**. Source D4-011; Dev 4; phase 2. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-010**: Deliver **Provide a readable cooking mode**. Source D4-012; Dev 4; phase 2. Completion must satisfy the behavior and evidence below, not only code presence.
+- **FR-011**: Deliver **Add a recipe to a selected plan slot**. Source D4-013; Dev 4; phase 2. Completion must satisfy the behavior and evidence below, not only code presence.
+
+## Behavioral requirements
+
+- **FR-101**: Preserve default `/home` after auth/name gates and existing deep links. Bottom order is Plan, Nabavka, Početna, Recepti, Ostava, with the profile avatar above. Side order is Početna, Plan, Nabavka, Recepti, Ostava, with Profil at the bottom. Verify narrow-window navigation against the [UI standard](../../docs/development/ui-standard.md) before adopting the gallery shell.
+- **FR-102**: Today shows next uncooked meal, Kuvaj/Skuvano, tomorrow titles and at most one notice: allergen, missing shopping, plan ending; without plan show one make-plan action. The notice slot never announces fasts; the “Post i praznici” status card of [035](../035-fasting-holidays/spec.md) FR-101/FR-102 is the only fasting entry on Home. On desktop, “Na umu” and “Sutra” carry their labels inside the cards so the right column starts level with the meal cards (decision 2026-11-20).
+- **FR-103**: Week/month switches and primary actions retain location and size. Keep mobile actions above navigation and safe areas. Support a six-week month, selected-day meals and a day-list alternative when the compact grid cannot fit readable labels and 48×48 targets. Wide layouts can place calendar and details beside each other.
+- **FR-104**: Existing visual language stays. Equal-height ordinary cards adapt at 2× text; cooked state uses green circular check plus text/semantics and muted surface.
+- **FR-105**: Cooking has readable step navigation, ingredients and existing wake-lock choice; add-to-plan picks date/slot and confirms replacement.
+- **FR-106**: Phone camera/gallery and desktop file picker retain cancellation/error paths; source recipe image remains distinct from dish photo.
+- **FR-107**: Give “Kuvaj” priority for the next uncooked meal and reach saved steps in at most two actions from Home. For planned meals, “Skuvano” and “Poništi” use the shared operation from Home, Plan and cooking mode. Offer immediate undo and keep it available in the meal detail after the message expires. Keep recipes without saved steps usable for ingredients and shopping.
+- **FR-109** (FR-011, design approved 2026-11-22): The recipe screen offers
+  “Dodaj u plan” beside “Kuvaj” and “Proveri sastojke”, all the same height.
+  It opens a bottom sheet on phones and a dialog on wide windows with the
+  week of today, a day strip, the five meal types of the selected day with
+  what each already holds, servings (default: the recipe's servings, 1–20),
+  “Odustani” and “Dodaj u plan”. Today and the first free meal (lunch,
+  dinner, breakfast, then snacks) are preselected. Past days, earlier weeks,
+  and cooked or locked meals cannot be chosen. Choosing an occupied meal asks
+  “Zadrži” or “Zameni” before anything is written. The meal goes into the
+  newest plan that contains the day. Without one, a plan is created for the
+  free days of that Monday–Sunday week from today onward, without
+  overlapping another plan. A meal type the plan lacks is added to it. The
+  write, the outbox entries and the shopping reconciliation happen in one
+  local transaction, offline included. A message confirms the meal and the
+  refreshed shopping list, with “Prikaži” opening that day in Plan.
+- **FR-108**: Distinguish no plan from a planned day with all meals cooked and from a read failure. Show “Napravi plan” in the no-plan state. Show the all-cooked message when applicable and preserve the one-notice priority in FR-102. Allow retry on failure and show cached meals offline.
+
+## User scenarios and acceptance
+
+- **US1 / SC-001**: After sign-in, Home highlights the next meal; Cooked removes only that meal's shopping demand and Undo restores it once.
+- **US2 / SC-002**: At phone width and 2× text, the last ingredient and fixed action remain reachable above navigation/keyboard.
+- **US3 / SC-003**: Opening an existing recipe deep link still reaches the correct recipe after five-tab migration.
+- **US4 / SC-004**: At 320 logical pixels and 2× text all five destinations are identifiable and reachable. Resize a window across 720 and 1000 while viewing a selected plan day or recipe. The route, selection and scroll context survive. Keyboard focus moves to the equivalent control or to a logical fallback.
+- **US5 / SC-005**: On Home, open saved steps via “Kuvaj”, finish the meal, and select “Skuvano”. Observe cooked status in Home and Plan, the changed demand for that meal and any applicable pantry consumption. After the immediate undo message expires, reopen the meal detail and select “Poništi”. Repeat offline, then reconnect and verify the same final state, with no duplicate consumption or reversal. Preserve unrelated meals, manual shopping entries and later pantry counts. A failed local mark or undo leaves the prior state visible and provides a retry.
+- **US6 / SC-006**: On a narrow screen at 2× text, select a date in a six-week month through the accessible day list. The correct meals appear and the last meal and fixed actions remain reachable.
+- **US7 / SC-007**: With an all-cooked day, show the completion message and retain undo. With both an applicable allergen warning and a shopping notice, show the allergen warning in the single notice slot. With a failed read, show retry instead of the no-plan state.
+
+- **US8 / SC-008**: From a recipe, add it to today's first free meal and see
+  the confirmation and the recipe's ingredients in shopping. Choose an
+  occupied lunch: “Zadrži” returns to the choice with nothing changed,
+  “Zameni” keeps the meal's identity and replaces its recipe, servings and
+  demand. A cooked or locked meal, a past day and servings outside 1–20 are
+  refused without a write. With no plan for the day, the new plan covers only
+  free, non-past days of that week. Phone, wide, 2× text: the three recipe
+  buttons keep one height and single-line labels.
+
+Include empty/error/offline/cancel/retry, repeated action and ownership transitions
+where applicable. Use deterministic fixtures and observable state assertions;
+security denials require allowed-case controls as well. Acceptance is unverified
+until execution evidence is linked.
+
+## Data and privacy
+
+Home is a projection of approved plan data, not another store. Shared cooked/undo operation stays in existing domain/repository boundaries; pantry and intake extend its versioned contract in 022/023.
+
+## Exact UI copy carried forward
+
+“Početna”, “Napravi plan”, “Kuvaj”, “Skuvano”, “Poništi”, “Dodaj u plan”,
+“Prethodni”, “Sledeći”, “Izaberi dan”, “Svi današnji obroci su skuvani.”,
+“Pokušaj ponovo”.
+Add to plan (FR-109): “Dodaj u plan”, “Odustani”, “Porcije”, “Manje porcija”,
+“Više porcija”, “Slobodno”, “Zameniće: {jelo}”, “{jelo} · skuvano”,
+“{jelo} · zaključano”, “Danas”, “Prethodna nedelja”, “Sledeća nedelja”,
+“{Obrok} je već u planu”, “{Dan, datum}, za {obrok} je „{jelo}“. Da ga zamenim
+receptom „{recept}“?”, “Zadrži”, “Zameni”, “Dodato u plan: {dan}, {obrok}.
+Nabavka je osvežena.”, “Prikaži”, “Taj obrok se više ne može menjati.”,
+“Recept nije dodat u plan. Pokušaj ponovo.”, “Plan nije učitan.”.
+Additional screen/error/consent copy must be finalized in Serbian Latin before
+that UI task becomes Ready. English is used for engineering documents only.
+
+## Dependencies and open decisions
+
+Producer specs: Existing baseline; no new producer feature required for the first slice.
+
+- **Q1** (Dev 4 with reviewers): Keep the implemented `/home` route. Confirm
+  consumer behavior against the shared cooked-operation contract before
+  integration and resolve the manual pantry edit interaction under 022.
+
+- **Q1 decision (cooked operation, 2026-11-19, Dev 4)**: accepted the
+  [cooked meal contract](contracts/cooked-meal-contract.md): one
+  `CookingRepository` mark/undo operation with a recorded event (meal, actor,
+  servings, snapshot), pantry consumption as a replay-safe ledger, manual pantry
+  count wins over earlier cooking, intake through an actor-only effect. Dev 1 and
+  Dev 3 confirm their parts in the implementing PR. Home route remains as in
+  FR-101; the manual pantry edit sheet copy stays with 022.
+
+Unresolved questions block their dependent code, not independent research/tests.
+Do not invent answers to linked proposals that were not provided. Before Ready,
+record decision owner/date, precise typed contract and reviewed acceptance fixtures.
+
+## Cooking mode design — 2026-11-21
+
+Owner: Dev 4. Design approved by Anja on 2026-11-21 (iPhone), drawn on the
+[design canvas](https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7) in the row
+“Predlog: režim kuvanja” for iOS, Android, macOS and Windows. This refines
+FR-010, FR-105 and FR-107.
+
+- **Entry and exit**: “Kuvaj” opens cooking mode for the recipe. The top bar
+  goes back to the recipe. Cooking mode hides the main navigation.
+- **Step view**: recipe name and servings, “Korak N od M”, the step text in a
+  large card, and the ingredients that step uses. A line says the screen stays
+  on. The wake lock follows 007 and is released on exit.
+- **Navigation**: “Prethodni” (secondary) and “Sledeći” (primary) share one
+  row, the same height (48) and the same width. On the last step, a planned
+  meal shows “Skuvano”, which calls the shared cooked operation once for its
+  plan entry and closes the session on success. A library recipe shows
+  “Gotovo”, which closes the session without recording a cooked event.
+- **Ingredients**: on phones “Sastojci” in the top bar opens a sheet with all
+  ingredients and checkboxes. On macOS and Windows the ingredients are always
+  visible in a side panel with the same checkboxes. Checks are local to the
+  cooking session and are not saved.
+- **Servings are fixed** (Anja, 2026-11-21): cooking mode shows the planned or
+  recipe servings and does not offer a servings control.
+- **Recipe without steps**: show “Koraci pripreme nisu uneti.”, the ingredient
+  list and a “Dodaj korake” link when the session has a library recipe to edit.
+  Show one completion button with the same behavior as the last step:
+  “Skuvano” for a planned meal or “Gotovo” for a library recipe.
+
+Additional UI copy: “Kuvanje”, “Recept”, “Sastojci”, “Gotovo”, “Korak N od M”,
+“U ovom koraku”, “Ekran ostaje upaljen dok kuvaš.”, “Koraci pripreme nisu
+uneti.”, “Dodaj korake”, “Štikliraj ono što je već spremno. Važi samo dok
+kuvaš.”
+
+## Cooking mode timer — 2026-11-23
+
+Owner: Dev 4. Decided by Anja on 2026-11-23; the design is a proposal and is
+not on the design canvas yet. Extends the cooking mode design above.
+
+- **Time from the step text**: a step that mentions a time (“kuvaj 8 minuta”,
+  “1 sat i 30 minuta”, “10-15 min”, “30 sekundi”, “1/2 sata”, “pola sata”)
+  shows a timer block under
+  the step text with “Pokreni tajmer · 8:00”. A range uses the larger value.
+  Steps without a time show no block. The user does not set the time by hand.
+- **One timer**: only one timer runs at a time. Starting a timer in another
+  step replaces the running one (the block says so).
+- **Running**: the egg-in-pot animation with the circle behind it and a ring
+  that shrinks with the remaining time, the remaining time, and “Pauziraj” /
+  “Nastavi”, “+1 min” and “Otkaži”. Reduced motion shows the still picture.
+- **Other steps**: while the timer runs in another step, a strip above the
+  step shows “Tajmer · 4:58 · korak N”; tapping it returns to that step.
+- **Finished**: the sound plays three times; on phones (Android, iOS) each is
+  paired with a short vibration, on desktop only the sound. Android uses the
+  system click and iOS uses the system tick, subject to device sound settings.
+  The strip or card shows “Vreme je isteklo” and stays on every step until the
+  user taps “Zatvori”. “Otkaži” removes a timer right away.
+- **Scope**: the timer lives while the cooking screen is open; leaving the
+  screen ends it. Notifications while the app is in the background are not
+  part of this slice (they need a local notifications dependency and
+  permissions; planned as a follow-up).
+
+Additional UI copy: “Tajmer za ovaj korak”, “Korak pominje vreme.”,
+“Pokretanje zamenjuje tajmer iz drugog koraka.”, “Pokreni tajmer · M:SS”,
+“Preostalo”, “Pauzirano”, “Pauziraj”, “Nastavi”, “+1 min”, “Otkaži”,
+“Zatvori”, “Vreme je isteklo”, “Tajmer · M:SS · korak N”. The animation
+gallery describes the timer as “U režimu kuvanja, dok tajmer za korak odbrojava
+vreme.”
+
+## Narrow navigation slice — 2026-11-20
+
+Owner: Dev 4. Proposed independent reviewer: Dev 2. This covers the compact
+navigation follow-up to FR-101 (D4-002/D4-003, T002–T005). The shared app
+shell is coordinated by Dev 4. Dev 2 reviews changes to the Plan and Recipes
+layouts. In the app, test `lib/app/home_shell.dart`,
+`lib/features/planning/plan_screen.dart` and
+`lib/features/recipes/recipes_screen.dart` with the matching widget tests.
+
+- At 320 logical pixels and 2× text, all five labels are visible at system
+  scale and each destination has its own at least 48×48 target. Početna stays
+  centered. Existing Serbian labels are reused. The accessibility group is
+  named “Glavna navigacija” and exposes the active destination.
+- Keep the bottom bar below 720, the rail from 720 and the extended rail
+  from 1000. Keep the rail scrollable when height is limited. Across those
+  widths, preserve the tab, Plan day and scroll position, and the recipe list's
+  search, focus and scroll. If focused navigation is replaced, return focus
+  to the active content.
+- Existing post-auth routes, private repository access and data stay unchanged.
+  No dependency, schema, migration, file access, credentials, abuse surface or
+  deployment change. Validate using synthetic fixtures.
+
+Device-level keyboard and assistive technology validation follows the
+[UI standard](../../docs/development/ui-standard.md). Runtime acceptance needs
+independent review and a merged PR.
+
+## Home today's meals slice — 2026-11-21
+
+Owner and Home UI coordinator: Anja (Dev 4). Proposed independent reviewer:
+Ceviz (Dev 2). Covers FR-008 (D4-010, T016/T017) and the matching parts of
+FR-102, FR-107 and FR-108, following the canvas Početna boards (phone and
+wide). The cooking operation is provided by the
+[merged producer PR](https://github.com/anjahubac/tavli/pull/83).
+
+- Home reads approved plan data only (`lib/features/home/home_today.dart`,
+  `homeDayProvider`); no new store, schema, migration or dependency. For each
+  day it uses the newest plan containing that day.
+- Today's meals are listed in day order. Cooked meals use the muted cooked
+  card with the green check and “· skuvano” in text. The first uncooked meal
+  is the highlighted card “Sledeće · <obrok>” with “Kuvaj”, which opens the
+  planned meal with its saved steps on the existing meal detail route.
+  Other meals use the plain card. Tomorrow's titles follow under
+  “Sutra” (phone: one line; wide: card on the right, at most a third of the
+  content width).
+- States: no plan at all shows “Napravi plan”; a plan without meals today
+  shows “Otvori plan”; all cooked shows “Svi današnji obroci su skuvani.”; a
+  read failure shows retry, never the no-plan state.
+- “Skuvano” next to “Kuvaj” (same height) marks the next meal through the
+  shared `CookingRepository` operation and shows “Skuvano: <jelo>” with
+  “Poništi”; undo also stays in the meal detail.
+- Not in this slice: the single “Na umu” notice (FR-009) and cooking mode.
+
+New UI copy: “Danas”, “Skuvano: <jelo>”, “Sledeće”, “Sutra”, “· skuvano”, “Još nema plana
+obroka”, “Napravi plan i ovde ćeš videti šta se danas kuva.”, “Za danas nema
+obroka u planu”, “Pogledaj plan ili napravi nov za ove dane.”, “Otvori plan”,
+“Današnji obroci trenutno ne mogu da se prikažu.”, “Pokušaj ponovo”.
+
+Privacy: Home reads existing account-scoped plan data and writes cooked/undo
+through the existing repository and outbox. Abuse, credentials, file access and
+deployment: N/A. `test/features/home/home_screen_test.dart` covers the display
+states, phone and wide navigation, 2× text, reduced motion, and cook/undo replay
+with a fake backend.
+
+## Home notice first slice — 2026-11-22
+
+- Show one notice for the first uncooked displayed meal with outstanding
+  shopping demand, today before tomorrow and in meal order. Count a meal only
+  when a contribution is attached to an open plan-derived shopping item.
+  Purchasing or covering that contribution clears its warning. The link opens
+  plan shopping for that meal's plan and week.
+- When no shopping notice applies, show the plan reminder exactly two civil
+  days before the end of the plan selected for today. Show no notice when
+  neither rule applies. Shopping loading or failure never hides Home meals.
+- Use the existing gallery warning and notice patterns. The wide layout puts
+  the notice above “Sutra”, with “Na umu” inside the notice. Allergen priority
+  remains a follow-up to the household and reviewed catalog inputs.
+
+UI copy: “Na umu”, “Za današnje jelo „{title}“ nedostaju namirnice.”,
+“Za sutrašnje jelo „{title}“ nedostaju namirnice.”, “Nabavka”,
+“Plan se završava za dva dana.”

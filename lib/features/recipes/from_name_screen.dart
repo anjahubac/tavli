@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../ai/ai_models.dart';
 import '../../domain/recipe.dart';
 import '../../providers.dart';
 import '../settings/ai_error_text.dart';
@@ -29,6 +31,9 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
   /// Raste sa svakim zahtevom; odgovor prekinutog zahteva se odbacuje.
   int _request = 0;
 
+  /// Prekid tekućeg zahteva: router posle njega ne zove model ni popravku.
+  AICancellation? _cancelToken;
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +42,7 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
 
   @override
   void dispose() {
+    _cancelToken?.cancel();
     _name.dispose();
     _wishes.dispose();
     super.dispose();
@@ -46,6 +52,8 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
     final name = _name.text.trim();
     if (name.isEmpty || _busy) return;
     final request = ++_request;
+    _cancelToken?.cancel();
+    final cancel = _cancelToken = AICancellation();
     setState(() {
       _busy = true;
       _error = null;
@@ -54,7 +62,12 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
     try {
       final r = await ref
           .read(recipeAIProvider)
-          .fromDishName(name, servings: _servings, notes: _wishes.text.trim());
+          .fromDishName(
+            name,
+            servings: _servings,
+            notes: _wishes.text.trim(),
+            cancel: cancel,
+          );
       if (!mounted || request != _request) return;
       setState(() => _result = r.value);
     } on Exception catch (e) {
@@ -66,6 +79,7 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
   }
 
   void _cancel() => setState(() {
+    _cancelToken?.cancel();
     _request++;
     _busy = false;
   });
@@ -96,50 +110,50 @@ class _FromNameScreenState extends ConsumerState<FromNameScreen> {
             )
           : ReadableScroll(
               children: [
-                TextField(
+                TavliTextField(
+                  label: 'Naziv jela',
+                  hint: 'npr. sarma, musaka, palačinke',
                   controller: _name,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Naziv jela',
-                    hintText: 'npr. sarma, musaka, palačinke',
-                  ),
                 ),
                 const SizedBox(height: 16),
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Expanded(child: Text('Broj porcija')),
-                    IconButton(
-                      tooltip: 'Manje porcija',
-                      onPressed: _servings > 1
-                          ? () => setState(() => _servings--)
-                          : null,
-                      icon: const Icon(Icons.remove),
-                    ),
-                    Text(
-                      '$_servings',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    IconButton(
-                      tooltip: 'Više porcija',
-                      onPressed: _servings < 20
-                          ? () => setState(() => _servings++)
-                          : null,
-                      icon: const Icon(Icons.add),
+                    const Text('Broj porcija'),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Manje porcija',
+                          onPressed: _servings > 1
+                              ? () => setState(() => _servings--)
+                              : null,
+                          icon: const Icon(Icons.remove),
+                        ),
+                        Text(
+                          '$_servings',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        IconButton(
+                          tooltip: 'Više porcija',
+                          onPressed: _servings < 20
+                              ? () => setState(() => _servings++)
+                              : null,
+                          icon: const Icon(Icons.add),
+                        ),
+                      ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                TavliTextField(
+                  label: 'Želje (nije obavezno)',
+                  hint: 'npr. bez luka, posno',
                   controller: _wishes,
-                  minLines: 1,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Želje (nije obavezno)',
-                    hintText: 'npr. bez luka, posno',
-                  ),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(

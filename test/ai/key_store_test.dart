@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/key_store.dart';
+import 'package:win32/win32.dart' as win32;
 
 class MapSecretStorage implements SecretStorage {
   final data = <String, String>{};
@@ -10,6 +13,9 @@ class MapSecretStorage implements SecretStorage {
 
   /// Zapisi kojima sistem odbija pristup.
   final denied = <String>{};
+
+  /// Upis i brisanje padaju.
+  bool readOnly = false;
 
   @override
   Future<String?> read(String key) async {
@@ -19,19 +25,96 @@ class MapSecretStorage implements SecretStorage {
   }
 
   @override
-  Future<void> write(String key, String value) async => data[key] = value;
+  Future<void> write(String key, String value) async {
+    if (readOnly) throw const SecretStorageException('-25308');
+    data[key] = value;
+  }
 
   @override
-  Future<void> delete(String key) async => data.remove(key);
+  Future<void> delete(String key) async {
+    if (readOnly) throw const SecretStorageException('-25308');
+    data.remove(key);
+  }
 }
 
 void main() {
+  group('KeychainSecretStorage.guard', () {
+    Future<SecretStorageException> failure(Exception error) async {
+      try {
+        await KeychainSecretStorage.guard<void>(() async => throw error);
+      } on SecretStorageException catch (e) {
+        return e;
+      }
+      fail('greška nije pretvorena u SecretStorageException');
+    }
+
+    test('PlatformException (Keychain, Keystore, libsecret)', () async {
+      final e = await failure(PlatformException(code: '-25293'));
+      expect(e.code, '-25293');
+    });
+
+    test('WindowsException iz CryptProtectData', () async {
+      final e = await failure(
+        win32.WindowsException(
+          win32.ERROR_ACCESS_DENIED.toHRESULT(),
+          message: 'C:\\Users\\ana',
+        ),
+      );
+      expect(e.code, 'windows:0x80070005');
+      expect(e.toString(), isNot(contains('ana')));
+    });
+
+    test('FileSystemException pri pisanju fajla', () async {
+      final e = await failure(
+        const FileSystemException(
+          'Cannot create file',
+          'C:\\Users\\ana\\flutter_secure_storage.dat',
+          OSError('Access is denied.', 5),
+        ),
+      );
+      expect(e.code, 'fs:5');
+      expect(e.toString(), isNot(contains('ana')));
+    });
+
+    test('ostale greške prolaze neizmenjene', () async {
+      await expectLater(
+        KeychainSecretStorage.guard<void>(
+          () async => throw const FormatException('x'),
+        ),
+        throwsFormatException,
+      );
+    });
+  });
+
   test('servis se prepoznaje po početku ključa', () {
     expect(detectProvider('AIzaSyFAKE'), AIProvider.gemini);
+    expect(detectProvider(' AQ.fake-key'), AIProvider.gemini);
     expect(detectProvider('  gsk_fake'), AIProvider.groq);
     expect(detectProvider('sk-or-v1-fake'), AIProvider.openRouter);
-    expect(detectProvider('sk-proj-fake'), isNull);
-    expect(detectProvider(''), isNull);
+    expect(detectProvider('sk-fake'), AIProvider.openAI);
+    expect(detectProvider('sk-proj-fake'), AIProvider.openAI);
+    // `sk-or-` je duži početak od `sk-`.
+    expect(detectProvider('sk-or-'), AIProvider.openRouter);
+    expect(detectProvider('sk-org-fake'), AIProvider.openAI);
+  });
+
+  test('nepoznat ili nepodržan ključ nema servis', () {
+    for (final key in [
+      'sk-ant-api03-fake',
+      'AQfake',
+      'nepoznat',
+      'sk',
+      '',
+      '   ',
+    ]) {
+      expect(detectProvider(key), isNull, reason: key);
+    }
+  });
+
+  test('samo OpenAI je plaćen, svi servisi primaju sopstveni ključ', () {
+    expect(AIProvider.values.where((p) => p.paid), [AIProvider.openAI]);
+    expect(AIProvider.values.every((p) => p.supportsPersonalKey), isTrue);
+    expect(AIProvider.openAI.baseUrl, 'https://api.openai.com/v1/');
   });
 
   test('prikaz ključa: samo poslednja 4 znaka', () {
@@ -106,13 +189,77 @@ void main() {
       expect(storage.data.containsKey('api_keys'), isTrue);
     });
 
-    test('posle prvog čitanja čita se samo lista (jedan zapis)', () async {
-      await store.list();
-      storage.reads.clear();
+    test('postojeća lista: jedno čitanje, bez starih zapisa', () async {
+      storage.data['api_keys'] = '[]';
 
       await store.list();
 
       expect(storage.reads, ['api_keys']);
+    });
+
+    group('pamćenje u memoriji', () {
+      test('drugo čitanje ne dira skladište', () async {
+        final first = await store.list();
+        storage.reads.clear();
+
+        expect(await store.list(), first);
+        expect(storage.reads, isEmpty);
+      });
+
+      test('dodavanje, brisanje i clear osvežavaju zapamćenu listu', () async {
+        await store.list();
+        storage.reads.clear();
+
+        final a = await store.add(AIProvider.openAI, 'sk-one');
+        await store.add(AIProvider.groq, 'gsk_two');
+        expect((await store.list()).map((k) => k.value), ['sk-one', 'gsk_two']);
+
+        await store.remove(a.id);
+        expect((await store.list()).single.value, 'gsk_two');
+
+        await store.clear();
+        expect(await store.list(), isEmpty);
+        expect(storage.reads, isEmpty);
+      });
+
+      test('zapamćena lista je ista kao sačuvana', () async {
+        await store.add(AIProvider.openAI, 'sk-one');
+
+        final fresh = SecureKeyStore(storage: storage);
+
+        expect((await fresh.list()).single.value, 'sk-one');
+      });
+
+      test('odbijeno čitanje se ne pamti', () async {
+        await store.add(AIProvider.groq, 'gsk_one');
+        final fresh = SecureKeyStore(storage: storage);
+        storage.denied.add('api_keys');
+        await expectLater(fresh.list(), throwsA(isA<SecretStorageException>()));
+
+        storage.denied.clear();
+
+        expect((await fresh.list()).single.value, 'gsk_one');
+      });
+
+      test('neuspeo upis ne menja listu, sledeći put se čita', () async {
+        await store.add(AIProvider.groq, 'gsk_one');
+        storage
+          ..readOnly = true
+          ..reads.clear();
+        await expectLater(
+          store.add(AIProvider.groq, 'gsk_two'),
+          throwsA(isA<SecretStorageException>()),
+        );
+
+        expect((await store.list()).single.value, 'gsk_one');
+        expect(storage.reads, ['api_keys']);
+      });
+
+      test('spolja se ne može menjati', () async {
+        await store.add(AIProvider.groq, 'gsk_one');
+        final keys = await store.list();
+        expect(keys.clear, throwsUnsupportedError);
+      });
     });
 
     test('clear briše sve sopstvene ključeve, a sesiju ostavlja', () async {

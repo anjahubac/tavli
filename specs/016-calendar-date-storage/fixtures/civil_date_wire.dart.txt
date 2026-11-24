@@ -1,0 +1,68 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/domain/plan_calendar.dart';
+import 'package:tavli/sync/entities.dart';
+
+void main() {
+  for (final (wire, expected) in [
+    ('2026-12-31', CivilDate(2026, 12, 31)),
+    ('2026-12-31T00:00:00.000Z', CivilDate(2026, 12, 31)),
+    ('2027-01-01T01:00:00+01:00', CivilDate(2027, 1, 1)),
+    ('2027-01-01T00:00:00+01:00', CivilDate(2026, 12, 31)),
+    ('2027-01-01', CivilDate(2027, 1, 1)),
+    ('2026-03-29', CivilDate(2026, 3, 29)),
+    ('2026-10-25', CivilDate(2026, 10, 25)),
+  ]) {
+    test('datumi plana i nabavke zadržavaju dan za $wire', () {
+      final plan = const MealPlanEntity().fromRemote({
+        'id': 'plan',
+        'start_date': wire,
+        'end_date': wire,
+        'meal_types': ['lunch'],
+        'created_at': '2026-12-30T23:00:00Z',
+      });
+      final meal = const MealPlanEntryEntity().fromRemote({
+        'id': 'meal',
+        'plan_id': 'plan',
+        'date': wire,
+        'meal_type': 'lunch',
+      });
+      final list = const ShoppingListEntity().fromRemote({
+        'id': 'list',
+        'name': 'Nabavka',
+        'period_start': wire,
+        'period_end': wire,
+        'created_at': '2026-12-30T23:00:00Z',
+      });
+      expect(CivilDate.fromWire(plan.startDate.value), expected);
+      expect(CivilDate.fromWire(plan.endDate.value), expected);
+      expect(CivilDate.fromWire(meal.date.value), expected);
+      expect(CivilDate.fromWire(list.periodStart.value!), expected);
+      expect(CivilDate.fromWire(list.periodEnd.value!), expected);
+      expect(plan.createdAt.value.toUtc(), DateTime.utc(2026, 12, 30, 23));
+    });
+  }
+
+  test('nepoznate granice perioda ostaju prazne', () {
+    final list = const ShoppingListEntity().fromRemote({
+      'id': 'list',
+      'name': 'Nabavka',
+      'period_start': null,
+      'period_end': null,
+      'created_at': '2026-12-30T23:00:00Z',
+    });
+    expect(list.periodStart.value, isNull);
+    expect(list.periodEnd.value, isNull);
+  });
+
+  test('nepostojeći kalendarski datum se ne normalizuje u drugi dan', () {
+    expect(
+      () => const MealPlanEntryEntity().fromRemote({
+        'id': 'meal',
+        'plan_id': 'plan',
+        'date': '2026-02-29',
+        'meal_type': 'lunch',
+      }),
+      throwsFormatException,
+    );
+  });
+}

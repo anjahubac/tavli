@@ -1,0 +1,45 @@
+{
+  "_comment": "Shared by Dart (ingredientKey) and the ai-gateway (TS) tests: [input, expected key].",
+  "cases": [
+    [
+      "Crni luk",
+      "crni luk"
+    ],
+    [
+      "  Crni   luk  ",
+      "crni luk"
+    ],
+    [
+      "ŠARGAREPA",
+      "šargarepa"
+    ],
+    [
+      "Đumbir",
+      "đumbir"
+    ],
+    [
+      "Čokolada  za\tkuvanje",
+      "čokolada za kuvanje"
+    ],
+    [
+      "Ćevapi",
+      "ćevapi"
+    ],
+    [
+      "Žumance",
+      "žumance"
+    ],
+    [
+      "mleko 3,2%",
+      "mleko 3,2%"
+    ],
+    [
+      "jaja\n",
+      "jaja"
+    ],
+    [
+      "",
+      ""
+    ]
+  ]
+}

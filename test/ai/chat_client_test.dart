@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/ai/ai_errors.dart';
 import 'package:tavli/ai/ai_models.dart';
+import 'package:tavli/ai/chain_config.dart';
 import 'package:tavli/ai/chat_client.dart';
 
 import '../helpers/fake_adapter.dart';
@@ -48,6 +49,23 @@ void main() {
     );
     expect(req.headers['Authorization'], 'Bearer k');
     expect((req.data as Map)['response_format'], {'type': 'json_object'});
+    expect(req.data, containsPair('temperature', request.temperature));
+    expect((req.data as Map).containsKey('reasoning_effort'), isFalse);
+  });
+
+  test('OpenAI: adresa, Bearer ključ i JSON odgovor', () async {
+    final (client, adapter) = clientWith([(200, completion('{"a":1}'), {})]);
+    final openAI = ChainConfig.defaults.text.last;
+
+    await client.complete(openAI, request, apiKey: 'sk-fake');
+
+    final req = adapter.requests.single;
+    expect(req.uri.toString(), 'https://api.openai.com/v1/chat/completions');
+    expect(req.headers['Authorization'], 'Bearer sk-fake');
+    expect(req.data, containsPair('model', 'gpt-6-luna'));
+    expect((req.data as Map).containsKey('temperature'), isFalse);
+    expect(req.data, containsPair('reasoning_effort', 'none'));
+    expect(req.data, containsPair('response_format', {'type': 'json_object'}));
   });
 
   test('429 sa Retry-After i dnevnim limitom', () async {
@@ -96,10 +114,46 @@ void main() {
       isA<AuthError>(),
     );
     expect(await statusError(404, '{}'), isA<ModelNotFoundError>());
+    expect(await statusError(403, '{}'), isA<AuthError>());
+    // OpenAI: ključ je ispravan, projekat nema pristup modelu.
+    expect(
+      await statusError(403, '{"error":{"code":"model_not_found"}}'),
+      isA<ModelNotFoundError>(),
+    );
     expect(
       await statusError(400, '{"error":"bad param"}'),
       isA<BadRequestError>(),
     );
+  });
+
+  // SEC-03: telo odgovora provajdera može da nosi deo prompta, ključa ili
+  // naloga; poruka greške ide u UI i u zapis pokušaja, pa sadrži samo status.
+  test('poruka greške ne sadrži telo odgovora provajdera', () async {
+    const sentinel = 'SENTINEL-sk-test-0123456789';
+    Future<AIError> statusError(int status, String body) async {
+      final (client, _) = clientWith([(status, body, {}), (status, body, {})]);
+      return client
+          .complete(model, request, apiKey: 'k')
+          .then<AIError>(
+            (_) => throw StateError('expected an error'),
+            onError: (Object e) => e as AIError,
+          );
+    }
+
+    for (final (status, body) in [
+      (400, '{"error":"bad param $sentinel"}'),
+      (400, '{"error":"API key not valid $sentinel"}'),
+      (401, '{"error":"$sentinel"}'),
+      (403, '{"error":{"code":"model_not_found","m":"$sentinel"}}'),
+      (404, '{"error":"$sentinel"}'),
+      (429, '{"error":"$sentinel"}'),
+      (500, '{"error":"$sentinel"}'),
+    ]) {
+      final error = await statusError(status, body);
+      expect(error.message, isNot(contains(sentinel)), reason: '$status');
+      expect(error.toString(), isNot(contains(sentinel)), reason: '$status');
+      expect(error.message, contains('HTTP $status'), reason: '$status');
+    }
   });
 
   test('5xx: jedan ponovni pokušaj pa uspeh', () async {

@@ -76,11 +76,15 @@ class CivilDate implements Comparable<CivilDate> {
   @override
   int get hashCode => Object.hash(year, month, day);
 
-  @override
-  String toString() =>
+  /// ISO 8601 datum (`yyyy-MM-dd`). Format je deo trajnih ID-jeva i zapisa
+  /// na serveru, pa se ne menja.
+  String get isoDate =>
       '${year.toString().padLeft(4, '0')}-'
       '${month.toString().padLeft(2, '0')}-'
       '${day.toString().padLeft(2, '0')}';
+
+  @override
+  String toString() => isoDate;
 }
 
 /// Raspon datuma, oba kraja uključena.
@@ -117,6 +121,20 @@ class DateRange {
 DateRange weekOf(CivilDate date) {
   final monday = date.addDays(1 - date.weekday);
   return DateRange(monday, monday.addDays(6));
+}
+
+/// Dan [weeks] nedelja posle [date] (pre, za negativan broj).
+CivilDate addWeeks(CivilDate date, int weeks) =>
+    date.addDays(DateTime.daysPerWeek * weeks);
+
+/// Prvi dan meseca [months] meseci posle meseca u kome je [date].
+CivilDate firstOfMonthAfter(CivilDate date, int months) {
+  final m = date.month - 1 + months;
+  return CivilDate(
+    date.year + (m / DateTime.monthsPerYear).floor(),
+    m % DateTime.monthsPerYear + 1,
+    1,
+  );
 }
 
 /// Ceo kalendarski mesec u kome je [date].

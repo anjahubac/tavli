@@ -41,28 +41,41 @@ String normalizeForSearch(String s) => s
     .replaceAll('đ', 'dj')
     .trim();
 
-List<Recipe> filterRecipes(List<Recipe> recipes, String query) {
-  final q = normalizeForSearch(query);
-  if (q.isEmpty) return recipes;
-  return [
-    for (final r in recipes)
-      if (normalizeForSearch(r.title).contains(q)) r,
-  ];
+/// "1 ocena", "2 ocene", "5 ocena" (11–14 su "ocena").
+String ratingCountLabel(int n) {
+  final lastTwo = n % 100;
+  final last = n % 10;
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return '$n ocene';
+  }
+  return '$n ocena';
+}
+
+/// Prosek ocena sa jednom decimalom i zarezom: "4,3".
+String ratingAverageLabel(double average) =>
+    average.toStringAsFixed(1).replaceAll('.', ',');
+
+/// Broj sa imenicom u pravom obliku: [one] za 1, 21, 31… (ali ne 11),
+/// [few] za 2–4, 22–24… (ali ne 12–14), [many] za ostale.
+/// `countLabel(3, 'stavka', 'stavke', 'stavki')` je "3 stavke".
+String countLabel(int n, String one, String few, String many) {
+  final lastTwo = n % 100;
+  final last = n % 10;
+  if (last == 1 && lastTwo != 11) return '$n $one';
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+    return '$n $few';
+  }
+  return '$n $many';
 }
 
 /// "1 porcija", "2 porcije", "5 porcija" (11–14 su "porcija").
-String servingsLabel(int n) {
-  final lastTwo = n % 100;
-  final last = n % 10;
-  if (last == 1 && lastTwo != 11) return '$n porcija';
-  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
-    return '$n porcije';
-  }
-  return '$n porcija';
-}
+String servingsLabel(int n) => countLabel(n, 'porcija', 'porcije', 'porcija');
 
 /// "07.03.2026. 09:05"
 String formatDateTime(DateTime t) =>
     '${_two(t.day)}.${_two(t.month)}.${t.year}. ${_two(t.hour)}:${_two(t.minute)}';
+
+/// "09:05"
+String formatTime(DateTime t) => '${_two(t.hour)}:${_two(t.minute)}';
 
 String _two(int n) => n.toString().padLeft(2, '0');

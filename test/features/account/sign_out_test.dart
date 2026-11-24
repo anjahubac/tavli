@@ -1,31 +1,38 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/session_store.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/test_app.dart';
 
 void main() {
-  const signOutText = 'Odjaviti se? Tvoji podaci ostaju sačuvani u nalogu.';
+  const signOutText = 'Tvoji podaci ostaju sačuvani u nalogu.';
   const waitingText =
       'Neke izmene još nisu poslate. Poslaćemo ih kada se ponovo prijaviš '
       'na ovom uređaju.';
 
   Finder tab(String label) => find.descendant(
-    of: find.byType(NavigationBar),
+    of: find.byType(TavliNavigation),
     matching: find.text(label),
   );
 
-  // Profil je iznad tabova: nazad vodi na Plan, avatar ga ponovo otvara.
+  // Profil je iznad tabova: nazad vodi na Početnu, avatar ga ponovo otvara.
+  // Lonac na Početnoj krčka u petlji, pa bez pumpAndSettle.
   Future<void> leaveProfile(WidgetTester tester) async {
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
+    await tester.tap(iconButton('Nazad'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
   }
 
   Future<void> openProfile(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('Profil i podešavanja'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(TavliAppBar),
+        matching: find.bySemanticsLabel('Profil'),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -35,22 +42,20 @@ void main() {
   }
 
   Future<void> signInWithCode(WidgetTester tester, String email) async {
-    await tester.enterText(find.widgetWithText(TextField, 'E-pošta'), email);
+    await tester.enterText(textField('E-pošta'), email);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Kod iz poruke'),
-      FakeServer.code,
-    );
+    await tester.enterText(textField('Kod iz poruke'), FakeServer.code);
     await tester.pumpAndSettle();
   }
 
   testTavli('dijalog: "Odustani" ne menja ništa', (tester) async {
     final app = await pumpTavli(tester, location: '/profile');
     await openSignOut(tester);
+    expect(find.text('Odjaviti se?'), findsOneWidget);
     expect(find.text(signOutText), findsOneWidget);
-    expect(find.text(waitingText), findsNothing);
+    expect(find.textContaining(waitingText), findsNothing);
     await tester.tap(button('Odustani'));
     await tester.pumpAndSettle();
     expect(find.text('Ana Petrović'), findsOneWidget);
@@ -66,7 +71,7 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
     await openSignOut(tester);
-    expect(find.text(waitingText), findsOneWidget);
+    expect(find.textContaining(waitingText), findsOneWidget);
   });
 
   testTavli('odjava: samo sesija se briše; drugi nalog ne vidi ništa; '
@@ -88,13 +93,7 @@ void main() {
     app.backend.server.offline = true;
     await tester.tap(find.text('Izmeni ime'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(TextField),
-      ),
-      'Ana P.',
-    );
+    await tester.enterText(textField('Ime'), 'Ana P.');
     await tester.tap(button('Sačuvaj'));
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
@@ -112,8 +111,10 @@ void main() {
 
     // Drugi nalog na istom uređaju.
     app.backend.server.offline = false;
+    // Bojan već ima nalog (bez imena), napravljen na drugom uređaju.
+    app.backend.server.userFor('bojan@mail.com');
     await signInWithCode(tester, 'bojan@mail.com');
-    await tester.enterText(find.widgetWithText(TextField, 'Ime'), 'Bojan');
+    await tester.enterText(textField('Ime'), 'Bojan');
     await tester.pump();
     await tester.tap(button('Nastavi'));
     await tester.pumpAndSettle();

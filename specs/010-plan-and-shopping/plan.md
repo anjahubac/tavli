@@ -1,5 +1,10 @@
 # Implementation Plan: Meal plans and linked shopping
 
+> Direction review, 2026-11-13: read the [current direction overlay](current-direction.md)
+> before new work. This document retains the original 010 scope and acceptance
+> history; implemented code and unchecked acceptance must be assessed separately.
+
+
 **Branch**: `010-plan-and-shopping` (from latest `main`)
 **Date**: 2026-11-02
 **Spec**: [spec.md](spec.md)
@@ -167,3 +172,36 @@ No constitution exception. Three normalized child tables are justified by
 preparation identity, per-source demand and stock allocation; JSON snapshots remain suitable for
 approved recipe content. Standalone recipe shopping is in scope. Partial purchase UI, semantic ingredient aliases,
 nutrition/budgeting and a full inventory ledger are outside this feature.
+
+### Weekly-list sync repair
+
+[Trello bug #125](https://trello.com/c/ZAX8jsvd) tracks the concurrent creation
+case under the canonical weekly-list contract, 010 T014 and 006 FR-017. Matija
+(Dev 3) handles implementation. Dev 1 coordinates the shopping and sync paths
+and is the proposed independent reviewer. Dev 4 coordinates the dependency
+declaration in `pubspec.yaml` and `pubspec.lock`, and reviews the shopping UI
+write entry point. Shared paths are `lib/sync/downloader.dart`,
+`lib/sync/entities.dart`, `lib/sync/sync_engine.dart`, `lib/sync/sync_remote.dart`,
+`lib/sync/shopping_week_recovery.dart`, `lib/sync/uploader.dart`,
+`lib/data/shopping_items.dart`, `lib/data/shopping_repository.dart`,
+`lib/features/shopping/shopping_list_view.dart`, and
+`lib/features/shopping/shopping_screen.dart`.
+
+The existing transitive `crypto` package becomes a direct dependency to hash the
+canonical plan ID and civil date into a deterministic ID within the server's
+64-character limit. Existing server IDs remain valid. Downloads adopt the
+server identity for a conflicting unsent week, reparent local shopping items
+and sources, and requeue dependent foreign-key rejections. A repeated weekly
+list creation does not overwrite the existing server row: weekly lists are
+immutable after creation, so the uploader sends them with `ignoreDuplicates`.
+A future edit to a weekly list (name, archive flag, `period_end`) must send only
+the creating entry that way. The ID is SHA-256 of
+`["shopping-week", planId, "yyyy-MM-dd"]` and is pinned by a test; changing it
+would split the same week between app versions. Mutable user-data
+writes still use the existing last-server-write rule. Exactly-once delivery of
+mutable operations needs server-side operation identity and acknowledgement.
+
+Test both reconnect orders, replay, an existing random ID, and an unrelated
+download after a constraint conflict. The repair stays in the existing
+household scope and adds no endpoint, grant, credential, file transfer or
+deployment step. Tests use synthetic data.

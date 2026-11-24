@@ -1,0 +1,45 @@
+{
+  "contract": "plan-outline.v1",
+  "expect": "accept",
+  "rule": "P1-P5",
+  "why": "Every requested slot filled once; a library recipe (model title ignored) and a new dish.",
+  "request": {
+    "slots": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner"
+      }
+    ],
+    "library": [
+      {
+        "id": "r-123",
+        "title": "Sarma"
+      }
+    ]
+  },
+  "response": {
+    "meals": [
+      {
+        "date": "2026-11-17",
+        "meal": "lunch",
+        "recipeId": "r-123",
+        "title": "Sarmica"
+      },
+      {
+        "date": "2026-11-17",
+        "meal": "dinner",
+        "recipeId": null,
+        "title": "Pasulj"
+      }
+    ]
+  },
+  "expected": {
+    "2026-11-17/lunch.title": "Sarma",
+    "2026-11-17/lunch.libraryRecipeId": "r-123",
+    "2026-11-17/dinner.title": "Pasulj"
+  }
+}

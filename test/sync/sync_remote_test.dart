@@ -10,6 +10,7 @@ import 'package:tavli/account/supabase_client.dart';
 import 'package:tavli/account/supabase_config.dart';
 import 'package:tavli/sync/sync_remote.dart';
 
+import '../helpers/fake_secret_storage.dart';
 import '../helpers/fake_supabase.dart';
 
 void main() {
@@ -22,6 +23,7 @@ void main() {
     handler = (_) => jsonResponse(<Object>[]);
     client = createSupabaseClient(
       const SupabaseConfig(url: fakeUrl, anonKey: fakeAnonKey),
+      secrets: MapSecretStorage(),
       httpClient: mockHttp((r) {
         requests.add(r);
         return handler(r);
@@ -44,6 +46,17 @@ void main() {
     expect(r.url.queryParameters['on_conflict'], 'id');
     expect(r.headers['Prefer'], contains('resolution=merge-duplicates'));
     expect(jsonDecode(r.body), hasLength(2));
+  });
+
+  test('nedeljna lista može da preskoči ponovljeno kreiranje', () async {
+    handler = (_) => http.Response('', 201);
+    await remote().upsert('shopping_lists', [
+      {'id': 'week'},
+    ], ignoreDuplicates: true);
+    expect(
+      requests.single.headers['Prefer'],
+      contains('resolution=ignore-duplicates'),
+    );
   });
 
   test('profil ukusa: upsert po user_id', () async {
@@ -103,6 +116,20 @@ void main() {
     expect(requests.single.url.queryParameters['deleted_at'], 'gte.$t');
   });
 
+  test('fetchRecipe is scoped by both recipe id and household', () async {
+    handler = (_) => jsonResponse(<Object>[
+      {'id': 'r1', 'household_id': 'h1', 'ingredients': <Object>[]},
+    ]);
+
+    final row = await remote().fetchRecipe('r1', 'h1');
+
+    expect(row?['id'], 'r1');
+    expect(requests.single.method, 'GET');
+    expect(requests.single.url.path, '/rest/v1/recipes');
+    expect(requests.single.url.queryParameters['id'], 'eq.r1');
+    expect(requests.single.url.queryParameters['household_id'], 'eq.h1');
+  });
+
   group('vrste grešaka', () {
     Future<SyncError> errorFor(FutureOr<http.Response> Function() h) async {
       handler = (_) => h();
@@ -159,6 +186,7 @@ void main() {
         final e = await errorFor(() => pg(code, status));
         expect(e, isA<PermanentSyncError>());
         expect(e.code, code);
+        expect((e as PermanentSyncError).forbidden, code == '42501');
         expect(e.toString(), isNot(contains('sadržaj')));
       }
       expect(
@@ -187,6 +215,23 @@ void main() {
       expect(await photos.download('h1/a.jpg'), [7, 8]);
       await photos.remove(['h1/a.jpg']);
       expect(requests.last.method, 'DELETE');
+    });
+
+    test('Storage RLS odbijanje (400 sa statusCode 403) → forbidden', () async {
+      // The shape the local Storage API returns for a policy denial.
+      handler = (_) => jsonResponse({
+        'statusCode': '403',
+        'error': 'Unauthorized',
+        'message': 'new row violates row-level security policy',
+      }, 400);
+      try {
+        await SupabasePhotoRemote(client)
+            .upload('h1/a.jpg', Uint8List.fromList([1]));
+        fail('očekivana greška');
+      } on PermanentSyncError catch (e) {
+        expect(e.code, '403');
+        expect(e.forbidden, isTrue);
+      }
     });
 
     test('nema slike → trajna greška; 5xx → privremena', () async {

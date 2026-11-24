@@ -1,4 +1,17 @@
+import 'recipe_labels.dart';
+import 'shopping_sync.dart';
+
 enum RecipeSource { photo, ai, manual }
+
+/// Ko je postavio sliku recepta. AI slika nikad ne zamenjuje sliku
+/// korisnika; `null` = nepoznato (stari recepti).
+enum RecipeImageSource {
+  ai,
+  user;
+
+  static RecipeImageSource? tryParse(Object? value) =>
+      value is String ? values.asNameMap()[value] : null;
+}
 
 /// `summary` = naziv i sastojci (dovoljno za plan i listu za kupovinu),
 /// `full` = i koraci pripreme.
@@ -18,6 +31,56 @@ const ingredientCategories = [
   'ostalo',
 ];
 
+/// Ko je postavio vezu sastojka sa namirnicom (ugovor #30).
+enum LinkSource { matched, confirmed }
+
+/// Veza sastojka sa namirnicom kataloga (ugovor #30). Važi dok je
+/// `ingredientKey(name)` jednak [matchedKey] i namirnica nije povučena; to
+/// proverava potrošač. Ovaj build vezu samo čuva, ništa je još ne upisuje.
+final class IngredientLink {
+  const IngredientLink({
+    required this.foodId,
+    required this.matchedKey,
+    required this.linkSource,
+  });
+
+  final String foodId;
+  final String matchedKey;
+  final LinkSource linkSource;
+
+  /// Blago čitanje sačuvanog sastojka: nepotpuna ili neispravna veza je
+  /// `null`, a sastojak ostaje čitljiv.
+  static IngredientLink? fromJson(Map<String, dynamic> json) {
+    final foodId = json['foodId'];
+    final matchedKey = json['matchedKey'];
+    final source = LinkSource.values.asNameMap()[json['linkSource']];
+    if (foodId is! String || foodId.trim().isEmpty) return null;
+    if (matchedKey is! String || matchedKey.trim().isEmpty) return null;
+    if (source == null) return null;
+    return IngredientLink(
+      foodId: foodId.trim(),
+      matchedKey: matchedKey.trim(),
+      linkSource: source,
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'foodId': foodId,
+    'matchedKey': matchedKey,
+    'linkSource': linkSource.name,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is IngredientLink &&
+      other.foodId == foodId &&
+      other.matchedKey == matchedKey &&
+      other.linkSource == linkSource;
+
+  @override
+  int get hashCode => Object.hash(foodId, matchedKey, linkSource);
+}
+
 class Ingredient {
   const Ingredient({
     required this.name,
@@ -25,6 +88,8 @@ class Ingredient {
     this.unit,
     this.category = 'ostalo',
     this.note,
+    this.link,
+    this.unlinkedKey,
   });
 
   final String name;
@@ -32,6 +97,43 @@ class Ingredient {
   final String? unit;
   final String category;
   final String? note;
+
+  /// Veza sa katalogom; `null` = nepovezan sastojak (važeće stanje).
+  final IngredientLink? link;
+
+  /// Ingredient key for which the user explicitly removed a catalog link.
+  /// This prevents a later sync merge from restoring that same link.
+  final String? unlinkedKey;
+
+  /// Izmena koja zadržava vezu. Ako se promeni naziv, veza prestaje da važi
+  /// sama ([IngredientLink.matchedKey] se više ne poklapa).
+  Ingredient copyWith({
+    String? name,
+    double? quantity,
+    String? unit,
+    String? category,
+    String? note,
+    bool clearLink = false,
+    String? unlinkedKey,
+  }) => Ingredient(
+    name: name ?? this.name,
+    quantity: quantity ?? this.quantity,
+    unit: unit ?? this.unit,
+    category: category ?? this.category,
+    note: note ?? this.note,
+    link: clearLink ? null : link,
+    unlinkedKey: unlinkedKey ?? this.unlinkedKey,
+  );
+
+  /// Records an intentional unlink against the ingredient's current identity.
+  Ingredient unlink() => Ingredient(
+    name: name,
+    quantity: quantity,
+    unit: unit,
+    category: category,
+    note: note,
+    unlinkedKey: ingredientKey(name),
+  );
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     final name = (json['name'] as String?)?.trim() ?? '';
@@ -43,6 +145,8 @@ class Ingredient {
       unit: _blankToNull(json['unit']),
       category: ingredientCategories.contains(category) ? category! : 'ostalo',
       note: _blankToNull(json['note']),
+      link: IngredientLink.fromJson(json),
+      unlinkedKey: _blankToNull(json['unlinkedKey']),
     );
   }
 
@@ -52,6 +156,8 @@ class Ingredient {
     'unit': unit,
     'category': category,
     'note': note,
+    ...?link?.toJson(),
+    if (unlinkedKey != null) 'unlinkedKey': unlinkedKey,
   };
 }
 
@@ -67,6 +173,9 @@ class Recipe {
     this.prepMinutes,
     this.imagePath,
     this.answeredBy,
+    this.labels = RecipeLabels.none,
+    this.imageDescription,
+    this.imageSource,
   });
 
   final String id;
@@ -82,11 +191,28 @@ class Recipe {
   final String? answeredBy;
   final DateTime createdAt;
 
+  /// Obrok, težina i vrsta jela. Nisu deo istorije verzija.
+  final RecipeLabels labels;
+
+  /// Kratak opis gotovog jela na engleskom, za AI sliku (TRELLO-130).
+  final String? imageDescription;
+
+  /// Ko je postavio [imagePath].
+  final RecipeImageSource? imageSource;
+
+  /// AI recept bez slike za koji AI sme da napravi sliku.
+  bool get wantsAiImage =>
+      source == RecipeSource.ai &&
+      imagePath == null &&
+      imageSource != RecipeImageSource.user;
+
   DetailLevel get detailLevel =>
       steps.isEmpty ? DetailLevel.summary : DetailLevel.full;
 
-  /// Pravi recept iz AI odgovora. Baca [FormatException] kad odgovor
-  /// ne odgovara šemi, pa router može da pita ponovo.
+  /// Blago čita recept u obliku [toAiJson]: sačuvane verzije ([Recipe.fromJson])
+  /// i stare zapise (prihvata "0,5" i "1/2", porcije podrazumevano 2).
+  /// Baca [FormatException] samo bez naziva ili sastojaka. Novi AI
+  /// odgovori idu kroz strogu proveru (`lib/ai/ai_response_validator.dart`).
   factory Recipe.fromAiJson(
     Map<String, dynamic> json, {
     required String id,
@@ -133,6 +259,9 @@ class Recipe {
     List<String>? steps,
     String? imagePath,
     String? answeredBy,
+    RecipeLabels? labels,
+    String? imageDescription,
+    RecipeImageSource? imageSource,
   }) => Recipe(
     id: id,
     title: title ?? this.title,
@@ -144,6 +273,9 @@ class Recipe {
     imagePath: imagePath ?? this.imagePath,
     answeredBy: answeredBy ?? this.answeredBy,
     createdAt: createdAt,
+    labels: labels ?? this.labels,
+    imageDescription: imageDescription ?? this.imageDescription,
+    imageSource: imageSource ?? this.imageSource,
   );
 
   /// Ceo recept za čuvanje (npr. prethodne verzije u bazi).
@@ -154,6 +286,8 @@ class Recipe {
     'imagePath': imagePath,
     'answeredBy': answeredBy,
     'createdAt': createdAt.toUtc().toIso8601String(),
+    'imageDescription': imageDescription,
+    'imageSource': imageSource?.name,
   };
 
   /// Čita oblik iz [toJson]. Baca [FormatException] na pokvaren zapis.
@@ -164,6 +298,7 @@ class Recipe {
     if (id is! String || source == null || createdAt == null) {
       throw const FormatException('Pokvaren zapis recepta');
     }
+    final description = json['imageDescription'];
     return Recipe.fromAiJson(
       json,
       id: id,
@@ -171,6 +306,11 @@ class Recipe {
       createdAt: createdAt,
       answeredBy: json['answeredBy'] as String?,
       imagePath: json['imagePath'] as String?,
+    ).copyWith(
+      imageDescription: description is String && description.trim().isNotEmpty
+          ? description.trim()
+          : null,
+      imageSource: RecipeImageSource.tryParse(json['imageSource']),
     );
   }
 

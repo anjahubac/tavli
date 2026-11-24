@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tavli/app/theme/tavli_palette.dart';
-import 'package:tavli/app/theme/theme_controller.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli/app/theme_controller.dart';
 import 'package:tavli/data/settings_repository.dart';
-import 'package:tavli/domain/theme_choice.dart';
 import 'package:tavli/providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/controlled_settings.dart';
 import '../helpers/test_app.dart';
@@ -26,6 +25,8 @@ void main() {
     tester,
   ) async {
     final app = await pumpTavli(tester, location: '/profile');
+    await tester.ensureVisible(find.text('Izgled'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Izgled'));
     await tester.pumpAndSettle();
 
@@ -63,11 +64,17 @@ void main() {
     expect(t.colorScheme.primary, TavliPalette.borovnicaDark.primary);
   });
 
-  testTavli('Kao sistem prati tamni sistem', (tester) async {
+  testTavli('Sistem prati tamni sistem', (tester) async {
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
     await pumpTavli(tester, settings: {'theme_mode': 'system'});
     expect(appTheme(tester).brightness, Brightness.dark);
+  });
+
+  testTavli('telefon: natpisi režima staju u jedan red', (tester) async {
+    await pumpTavli(tester, location: '/profile/appearance');
+    final line = tester.getSize(find.text('Svetla')).height;
+    expect(tester.getSize(find.text('Kao sistem')).height, line);
   });
 
   testTavli('širok ekran: sve tri teme i režimi su vidljivi', (tester) async {
@@ -150,7 +157,7 @@ void main() {
         recipes: [sampleRecipe('large', 'Sarma')],
         settings: {'theme_mode': mode},
       );
-      await tester.enterText(find.byType(SearchBar), 'Sarma');
+      await tester.enterText(find.byType(TavliSearchField), 'Sarma');
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
@@ -173,19 +180,19 @@ void main() {
         expect(
           t.colorScheme.primary,
           TavliPalette.of(
-            TavliTheme.values.byName(palette),
+            TavliMotif.values.byName(palette),
             t.brightness,
           ).primary,
         );
-        expect(t.textTheme.bodyMedium?.fontFamily, 'PlusJakartaSans');
+        expect(t.textTheme.bodyMedium?.fontFamily, tavliFontFamily);
         expect(tester.takeException(), isNull);
       });
     }
   }
 
-  testTavli('Profil u debug verziji ima Animacije', (tester) async {
+  testTavli('Profil nema ulaz u Animacije', (tester) async {
     await pumpTavli(tester, location: '/profile');
-    expect(find.text('Animacije'), findsOneWidget);
+    expect(find.text('Animacije'), findsNothing);
     expect(find.text('Izgled'), findsOneWidget);
   });
 }

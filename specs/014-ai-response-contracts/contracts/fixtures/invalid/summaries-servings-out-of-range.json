@@ -1,0 +1,28 @@
+{
+  "contract": "recipe-summary.v1",
+  "expect": "reject",
+  "rule": "S2",
+  "why": "Summary servings must be an integer 1-20.",
+  "request": {
+    "titles": [
+      "Pasulj"
+    ]
+  },
+  "response": {
+    "recipes": [
+      {
+        "title": "Pasulj",
+        "servings": 21,
+        "ingredients": [
+          {
+            "name": "brašno",
+            "quantity": 500,
+            "unit": "g",
+            "category": "suvi proizvodi"
+          }
+        ],
+        "steps": ["Zamesi testo."]
+      }
+    ]
+  }
+}

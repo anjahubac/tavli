@@ -70,6 +70,85 @@ void main() {
     expect(row.updatedAt.toUtc(), DateTime.utc(2026, 10, 30, 12));
   });
 
+  test(
+    'oznake recepta idu tamo i nazad; neoznačen recept šalje null',
+    () async {
+      await roundTrip(
+        const RecipeEntity(),
+        RecipesCompanion.insert(
+          id: 'r2',
+          title: 'Pasulj',
+          servings: 4,
+          source: 'ai',
+          ingredientsJson: '[]',
+          stepsJson: '[]',
+          createdAt: t,
+          updatedAt: t,
+          householdId: const Value('h1'),
+          mealTypesJson: const Value('["lunch","dinner"]'),
+          weight: const Value('hearty'),
+          dishKind: const Value('cooked'),
+          labelsSource: const Value('user'),
+        ),
+        'r2',
+        (r) {
+          expect(r['meal_types'], ['lunch', 'dinner']);
+          expect(r['weight'], 'hearty');
+          expect(r['dish_kind'], 'cooked');
+          expect(r['labels_source'], 'user');
+        },
+      );
+      await roundTrip(
+        const RecipeEntity(),
+        RecipesCompanion.insert(
+          id: 'r3',
+          title: 'Stari recept',
+          servings: 2,
+          source: 'manual',
+          ingredientsJson: '[]',
+          stepsJson: '[]',
+          createdAt: t,
+          updatedAt: t,
+          householdId: const Value('h1'),
+        ),
+        'r3',
+        (r) {
+          expect(r['meal_types'], isNull);
+          expect(r['weight'], isNull);
+          expect(r['dish_kind'], isNull);
+          expect(r['labels_source'], isNull);
+        },
+      );
+    },
+  );
+
+  test('nepoznata vrsta jela sa novijeg servera se čuva i vraća '
+      'nepromenjena', () async {
+    const entity = RecipeEntity();
+    await entity.write(db, {
+      'id': 'r4',
+      'household_id': 'h1',
+      'title': 'Brunch tanjir',
+      'servings': 2,
+      'prep_minutes': null,
+      'source': 'ai',
+      'ingredients': <Object?>[],
+      'steps': <Object?>[],
+      'image_path': null,
+      'answered_by': null,
+      'created_at': '2026-12-01T10:00:00Z',
+      'meal_types': ['brunch'],
+      'dish_kind': 'bowl',
+      'weight': null,
+      'labels_source': 'ai',
+    });
+
+    final row = (await entity.read(db, 'r4'))!;
+    final remote = entity.toRemote(row);
+    expect(remote['meal_types'], ['brunch']);
+    expect(remote['dish_kind'], 'bowl');
+  });
+
   test('verzija recepta', () async {
     await roundTrip(
       const RecipeVersionEntity(),
@@ -166,6 +245,133 @@ void main() {
     );
   });
 
+  test('datum bez vremena sa servera čuva isti kalendarski dan', () async {
+    const entity = MealPlanEntity();
+    await entity.write(db, {
+      'id': 'date-only',
+      'start_date': '2026-12-31',
+      'end_date': '2027-01-06',
+      'meal_types': ['lunch'],
+      'created_at': '2026-12-01T10:00:00Z',
+      'household_id': 'h1',
+    });
+
+    final row = await db.select(db.mealPlans).getSingle();
+    expect(row.startDate.toUtc(), DateTime.utc(2026, 12, 31));
+    expect(row.endDate.toUtc(), DateTime.utc(2027, 1, 6));
+  });
+
+  test(
+    'datumi perioda nedeljnog spiska čuvaju granice kalendarskog dana',
+    () async {
+      const entity = ShoppingListEntity();
+      await entity.write(db, {
+        'id': 'week-date-only',
+        'name': 'Nedelja 53',
+        'meal_plan_id': null,
+        'week': 53,
+        'period_start': '2026-12-28',
+        'period_end': '2027-01-03',
+        'created_at': '2026-12-01T10:00:00Z',
+      });
+
+      final row = await db.select(db.shoppingLists).getSingle();
+      expect(row.periodStart!.toUtc(), DateTime.utc(2026, 12, 28));
+      expect(row.periodEnd!.toUtc(), DateTime.utc(2027, 1, 3));
+    },
+  );
+
+  test('kalendarski datumi idu na server kao YYYY-MM-DD', () async {
+    await db
+        .into(db.mealPlans)
+        .insert(
+          MealPlansCompanion.insert(
+            id: 'p-wire',
+            startDate: DateTime.utc(2026, 12, 31),
+            endDate: DateTime.utc(2027, 1, 6),
+            mealTypesJson: '["lunch"]',
+            createdAt: DateTime.utc(2026, 12, 1, 10),
+            householdId: const Value('h1'),
+          ),
+        );
+    final plan = await const MealPlanEntity().read(db, 'p-wire');
+    final remotePlan = const MealPlanEntity().toRemote(plan!);
+    expect(remotePlan['start_date'], '2026-12-31');
+    expect(remotePlan['end_date'], '2027-01-06');
+    expect(remotePlan['created_at'], '2026-12-01T10:00:00.000Z');
+
+    await db
+        .into(db.mealPlanEntries)
+        .insert(
+          MealPlanEntriesCompanion.insert(
+            id: 'e-wire',
+            planId: 'p-wire',
+            date: DateTime.utc(2027, 1, 2),
+            mealType: 'lunch',
+            householdId: const Value('h1'),
+          ),
+        );
+    final entry = await const MealPlanEntryEntity().read(db, 'e-wire');
+    expect(const MealPlanEntryEntity().toRemote(entry!)['date'], '2027-01-02');
+
+    await db
+        .into(db.shoppingLists)
+        .insert(
+          ShoppingListsCompanion.insert(
+            id: 'l-wire',
+            name: 'Nedelja 1',
+            createdAt: DateTime.utc(2026, 12, 1, 10),
+            periodStart: Value(DateTime.utc(2026, 12, 28)),
+            periodEnd: Value(DateTime.utc(2027, 1, 3)),
+            householdId: const Value('h1'),
+          ),
+        );
+    final list = await const ShoppingListEntity().read(db, 'l-wire');
+    final remoteList = const ShoppingListEntity().toRemote(list!);
+    expect(remoteList['period_start'], '2026-12-28');
+    expect(remoteList['period_end'], '2027-01-03');
+  });
+
+  test('lista bez perioda šalje null za oba datuma', () async {
+    await db
+        .into(db.shoppingLists)
+        .insert(
+          ShoppingListsCompanion.insert(
+            id: 'l-none',
+            name: 'Recepti',
+            createdAt: DateTime.utc(2026, 12, 1, 10),
+            householdId: const Value('h1'),
+          ),
+        );
+    final list = await const ShoppingListEntity().read(db, 'l-none');
+    final remote = const ShoppingListEntity().toRemote(list!);
+    expect(remote['period_start'], isNull);
+    expect(remote['period_end'], isNull);
+  });
+
+  test('vremenska oznaka sa vremenskom zonom ostaje isti trenutak', () async {
+    const entity = RecipeEntity();
+    await entity.write(db, {
+      'id': 'offset-time',
+      'household_id': 'h1',
+      'title': 'Sarma',
+      'servings': 2,
+      'prep_minutes': null,
+      'source': 'manual',
+      'ingredients': [],
+      'steps': [],
+      'image_path': null,
+      'answered_by': null,
+      'created_at': '2026-12-31T01:30:00+02:00',
+    });
+
+    final row = await entity.read(db, 'offset-time');
+    expect(
+      entity.toRemote(row as RecipeRow)['created_at'],
+      '2026-12-30T23:30:00.000Z',
+    );
+  });
+
   test('ocena i profil ukusa pripadaju osobi', () async {
     await roundTrip(
       const RatingEntity(),
@@ -193,6 +399,63 @@ void main() {
     );
   });
 
+  test('v7: zapis kuvanja, potrošnja iz ostave i ručno brojanje', () async {
+    await roundTrip(
+      const CookedEventEntity(),
+      CookedEventsCompanion.insert(
+        id: 'k1',
+        householdId: const Value('h1'),
+        planEntryId: 'e1',
+        mealDate: DateTime.utc(2026, 11, 20),
+        mealType: 'lunch',
+        actorUserId: 'u1',
+        servings: 4,
+        cookedAt: t,
+        undoneAt: Value(t.add(const Duration(hours: 1))),
+        undoReason: const Value('user'),
+      ),
+      'k1',
+      (r) {
+        expect(r['meal_date'], '2026-11-20');
+        expect(r['actor_user_id'], 'u1');
+        expect(r['undone_at'], '2026-10-30T11:05:07.000Z');
+        expect(r['undo_reason'], 'user');
+      },
+    );
+    await roundTrip(
+      const PantryConsumptionEntity(),
+      PantryConsumptionsCompanion.insert(
+        id: 'c1',
+        householdId: const Value('h1'),
+        eventId: 'k1',
+        pantryItemId: 'o1',
+        baseUnit: 'g',
+        micros: 250000000,
+        createdAt: t,
+      ),
+      'c1',
+      (r) {
+        expect(r['event_id'], 'k1');
+        expect(r['micros'], 250000000);
+      },
+    );
+    await roundTrip(
+      const PantryItemEntity(),
+      PantryItemsCompanion.insert(
+        id: 'o9',
+        name: 'brašno',
+        quantity: const Value(600),
+        unit: const Value('g'),
+        category: 'ostalo',
+        addedAt: t,
+        quantitySetAt: Value(t),
+        householdId: const Value('h1'),
+      ),
+      'o9',
+      (r) => expect(r['quantity_set_at'], '2026-10-30T10:05:07.000Z'),
+    );
+  });
+
   test('registar: svi roditelji uvek pre deteta', () {
     final names = [for (final e in syncEntities) e.name];
     for (final e in syncEntities) {
@@ -205,7 +468,12 @@ void main() {
         );
       }
     }
-    expect(names, hasLength(12));
+    expect(names, hasLength(16));
+    expect(const CookedEventEntity().parents, ['meal_plan_entry']);
+    expect(const PantryConsumptionEntity().parents, [
+      'cooked_event',
+      'pantry_item',
+    ]);
     expect(const SupplyAllocationEntity().parents, [
       'shopping_contribution',
       'pantry_item',
@@ -270,7 +538,7 @@ void main() {
         ),
         'l1',
         (r) {
-          expect(r['period_start'], '2026-11-30T00:00:00.000Z');
+          expect(r['period_start'], '2026-11-30');
           expect(r['week'], 6);
         },
       );
@@ -380,4 +648,78 @@ void main() {
     );
     expect((await db.select(db.supplyAllocations).get()).single.supplyId, 'i1');
   });
+  test('namirnica i alias: server → lokalno → server bez gubitka', () async {
+    await roundTrip(
+      const FoodEntity(),
+      FoodsCompanion.insert(
+        id: 'f1',
+        slug: 'jaje',
+        name: 'jaje',
+        category: 'Mlečni proizvodi i jaja',
+        baseUnit: 'piece',
+        source: const Value('pregled'),
+        kcalPer100g: const Value(143),
+        proteinGramsPer100g: const Value(12),
+        fatGramsPer100g: const Value(9.5),
+        carbsGramsPer100g: const Value(0.7),
+        nutritionSource: const Value('USDA FoodData Central'),
+        nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+        nutritionSourceRef: const Value('FDC 172184'),
+        allergenCodes: const Value('eggs'),
+        allergenSource: const Value('EU 1169/2011 Annex II'),
+        allergenSourceRef: const Value('eggs'),
+        allergenReviewedAt: Value(t),
+        reviewedAt: Value(t),
+        withdrawnAt: Value(t),
+        createdAt: t,
+        updatedAt: t,
+      ),
+      'f1',
+      (r) {
+        expect(r['household_id'], isNull);
+        expect(r['base_unit'], 'piece');
+        expect(r['kcal_per_100g'], 143);
+        expect(r['protein_grams_per_100g'], 12);
+        expect(r['fat_grams_per_100g'], 9.5);
+        expect(r['carbs_grams_per_100g'], 0.7);
+        expect(r['nutrition_source'], 'USDA FoodData Central');
+        expect(r['nutrition_source_version'], 'SR Legacy 2018-04');
+        expect(r['nutrition_source_ref'], 'FDC 172184');
+        expect(r['allergen_codes'], ['eggs']);
+        expect(r['allergen_source'], 'EU 1169/2011 Annex II');
+        expect(r['allergen_reviewed_at'], '2026-10-30T10:05:07.000Z');
+        expect(r['withdrawn_at'], '2026-10-30T10:05:07.000Z');
+      },
+    );
+    await roundTrip(
+      const FoodAliasEntity(),
+      FoodAliasesCompanion.insert(
+        id: 'a1',
+        foodId: 'f1',
+        householdId: const Value('h1'),
+        alias: 'Jaja',
+        aliasNormalized: 'jaja',
+        createdAt: t,
+        updatedAt: t,
+      ),
+      'a1',
+      (r) {
+        expect(r['food_id'], 'f1');
+        expect(r['household_id'], 'h1');
+        expect(r['alias_normalized'], 'jaja');
+        expect(r['withdrawn_at'], isNull);
+      },
+    );
+  });
+
+  test(
+    'entityByName nalazi entitete kataloga, a syncEntities ih ne sadrži',
+    () {
+      expect(entityByName('food'), isA<FoodEntity>());
+      expect(entityByName('food_alias'), isA<FoodAliasEntity>());
+      expect(syncEntities.map((e) => e.name), isNot(contains('food')));
+      expect(syncEntities.map((e) => e.name), isNot(contains('food_alias')));
+      expect(catalogEntities.map((e) => e.name), ['food', 'food_alias']);
+    },
+  );
 }

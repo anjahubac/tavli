@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show File;
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/account/auth_gateway.dart';
 import 'package:tavli/account/session_store.dart';
@@ -23,14 +26,33 @@ import 'package:tavli/data/recipe_repository.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/keep_screen_on.dart';
 import 'package:tavli/features/recipes/photo_picker.dart';
+import 'package:tavli/features/recipes/recipe_detail_screen.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import 'fake_adapter.dart';
 import 'fake_backend.dart';
 import 'fake_photo_store.dart';
 import 'fake_secret_storage.dart';
+
+/// Pravi font aplikacije, za testove koji mere raspored: test font je mnogo
+/// širi. Zvati kroz `tester.runAsync`, jer čitanje ne radi po lažnom satu.
+Future<void> loadTavliFont() async {
+  final font = FontLoader('packages/tavli_ui/PlusJakartaSans');
+  for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+    font.addFont(
+      Future.value(
+        ByteData.sublistView(
+          File('packages/tavli_ui/assets/fonts/PlusJakartaSans-$weight.ttf')
+              .readAsBytesSync(),
+        ),
+      ),
+    );
+  }
+  await font.load();
+}
 
 /// Naziv izabranog taba (gornja traka pokazuje samo naziv aplikacije).
 String currentTab(WidgetTester tester) =>
@@ -43,6 +65,10 @@ String currentTab(WidgetTester tester) =>
 
 /// E-pošta naloga pod kojim testovi rade (prijavljen po difoltu).
 const testEmail = 'ana@tavli.test';
+
+/// Poruka kad ni popravljen AI odgovor ne prođe proveru (FR-003).
+const invalidAnswer =
+    'AI nije vratio ispravan odgovor ni posle ispravke. Pokušaj ponovo.';
 
 const phone = Size(400, 800);
 const wide = Size(1200, 800);
@@ -58,11 +84,13 @@ class FakePhotoPicker implements PhotoPicker {
 
   /// Šta sledeći izbor vraća (null = korisnik je odustao).
   Uint8List? next;
+  Exception? failure;
   final calls = <bool>[];
 
   @override
   Future<Uint8List?> pick({required bool camera}) async {
     calls.add(camera);
+    if (failure case final error?) throw error;
     return next;
   }
 }
@@ -125,6 +153,7 @@ Recipe sampleRecipe(
 class FakeWakeLock implements ScreenWakeLock {
   bool on = false;
   bool fail = false;
+  bool failDisable = false;
 
   @override
   Future<void> enable() async {
@@ -133,7 +162,10 @@ class FakeWakeLock implements ScreenWakeLock {
   }
 
   @override
-  Future<void> disable() async => on = false;
+  Future<void> disable() async {
+    if (failDisable) throw Exception('nije podržano');
+    on = false;
+  }
 }
 
 class TestApp {
@@ -149,6 +181,11 @@ class TestApp {
   final FakeBackend backend;
   final secrets = MapSecretStorage();
   final keys = InMemoryKeyStore();
+
+  /// Linkovi kojima se aplikacija otvara (tavli://auth-callback iz mejla).
+  final links = StreamController<Uri>.broadcast();
+
+  Future<void> dispose() => links.close();
 
   /// Sat za prijavu (odbrojavanje "Pošalji ponovo"); test ga pomera.
   DateTime now = DateTime(2026, 10, 30, 12);
@@ -193,7 +230,7 @@ class TestApp {
   ];
 }
 
-/// Cela aplikacija sa bazom u memoriji, lažnim AI-jem (ugrađeni test ključ)
+/// Cela aplikacija sa bazom u memoriji, lažnim AI-jem (test ključ)
 /// i lažnim izborom slike.
 Future<TestApp> pumpTavli(
   WidgetTester tester, {
@@ -223,6 +260,7 @@ Future<TestApp> pumpTavli(
     FakeAdapter([...ai]),
     backend ?? FakeBackend(),
   );
+  addTearDown(app.dispose);
   if (signedIn) await app.signIn(name: name);
   for (final r in recipes) {
     await app.repo.create(r);
@@ -245,8 +283,8 @@ Future<TestApp> pumpTavli(
         syncRemoteProvider.overrideWithValue(app.backend.sync),
         photoRemoteProvider.overrideWithValue(app.backend.photos),
         keyStoreProvider.overrideWithValue(app.keys),
-        builtInKeysProvider.overrideWithValue(
-          const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),
+        keySourceProvider.overrideWithValue(
+          OwnKeySource(InMemoryKeyStore({AIProvider.gemini: 'fake-test-key'})),
         ),
         chatClientProvider.overrideWithValue(
           OpenAICompatibleClient(
@@ -257,6 +295,7 @@ Future<TestApp> pumpTavli(
         recipePhotoStoreProvider.overrideWithValue(app.photos),
         photoPickerProvider.overrideWithValue(app.picker),
         photoResizerProvider.overrideWithValue((bytes) async => bytes),
+        appLinksProvider.overrideWithValue(app.links.stream),
         ...overrides,
         screenWakeLockProvider.overrideWithValue(app.wakeLock),
       ],
@@ -277,6 +316,28 @@ Future<void> tapButton(WidgetTester tester, String text) async {
   await tester.tap(button(text));
   await tester.pumpAndSettle();
 }
+
+/// Polje za unos sa datim nazivom: Material `labelText` ili naziv iznad
+/// `TavliTextField` ili `TavliCodeField`.
+Finder textField(String label) => find.byElementPredicate((e) {
+  final widget = e.widget;
+  if (widget is! TextField) return false;
+  if (widget.decoration?.labelText == label) return true;
+  return e.findAncestorWidgetOfExactType<TavliTextField>()?.label == label ||
+      e.findAncestorWidgetOfExactType<TavliCodeField>()?.label == label;
+});
+
+/// Naslov otvorenog recepta (veliki naslov na ekranu recepta).
+Finder recipeHeading(String title) => find.descendant(
+  of: find.byType(RecipeDetailScreen),
+  matching: find.text(title),
+);
+
+/// `TavliIconButton` po opisu. Njegov oblačić je iz material_ui, pa ga
+/// `find.byTooltip` ne vidi.
+Finder iconButton(String label) => find.byWidgetPredicate(
+  (w) => w is TavliIconButton && w.semanticLabel == label,
+);
 
 /// Dugme (bilo koje Material dugme) sa datim tekstom.
 Finder button(String text) => find.ancestor(

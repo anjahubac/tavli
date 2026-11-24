@@ -56,3 +56,13 @@ secrets.*.json
 *.env
 !.env.example
 !secrets.example.json
+
+# Per-developer Xcode signing (Team ID)
+macos/Runner/Configs/Local.xcconfig
+/packages/*/build/
+
+# Razlike iz testova izgleda (flutter test pravi ih kada slika ne odgovara).
+**/test/failures/
+
+# Lokalni Android build output
+/android/build/

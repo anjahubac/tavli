@@ -1,6 +1,8 @@
 import '../domain/ids.dart';
+import '../domain/ingredient_links.dart';
 import '../domain/recipe.dart';
 import 'ai_models.dart';
+import 'ai_response_validator.dart';
 import 'ai_router.dart';
 import 'prompts.dart';
 
@@ -19,10 +21,15 @@ class RecipeAI {
   final AIRouter _router;
   final DateTime Function() _clock;
 
-  Future<AIResult<Recipe>> fromImage(AIImage image, {String? imagePath}) {
+  Future<AIResult<Recipe>> fromImage(
+    AIImage image, {
+    String? imagePath,
+    AICancellation? cancel,
+  }) {
     return _router
         .run(
           AIRequest(
+            task: AITask.recipeFromImage,
             system: recipeSystemPrompt,
             prompt: recipeFromImagePrompt(),
             images: [image],
@@ -34,6 +41,7 @@ class RecipeAI {
             }
             return _build(json, RecipeSource.photo, imagePath: imagePath);
           },
+          cancel: cancel,
         )
         .then(_stampModel);
   }
@@ -42,10 +50,12 @@ class RecipeAI {
     String dishName, {
     int servings = 2,
     String? notes,
+    AICancellation? cancel,
   }) {
     return _router
         .run(
           AIRequest(
+            task: AITask.recipeFromName,
             system: recipeSystemPrompt,
             prompt: recipeFromNamePrompt(
               dishName,
@@ -55,34 +65,85 @@ class RecipeAI {
             temperature: 0.7,
           ),
           (json) => _build(json, RecipeSource.ai),
+          cancel: cancel,
         )
         .then(_stampModel);
   }
 
   /// Vraća novu verziju recepta; id, izvor i slika ostaju isti.
-  Future<AIResult<Recipe>> refine(Recipe current, String instruction) {
+  Future<AIResult<Recipe>> refine(
+    Recipe current,
+    String instruction, {
+    AICancellation? cancel,
+  }) {
     return _router
         .run(
           AIRequest(
+            task: AITask.recipeRefine,
             system: recipeSystemPrompt,
             prompt: refineRecipePrompt(current, instruction),
           ),
-          (json) => Recipe.fromAiJson(
-            json,
-            id: current.id,
-            source: current.source,
-            createdAt: current.createdAt,
-            imagePath: current.imagePath,
-          ),
+          (json) {
+            final parsed = recipeFromAiResponse(
+              json,
+              id: current.id,
+              source: current.source,
+              createdAt: current.createdAt,
+              imagePath: current.imagePath,
+            );
+            // AI ne vraća veze sa katalogom; nepromenjeni sastojci ih
+            // zadržavaju iz sačuvanog recepta (ugovor #30).
+            final refined = parsed.copyWith(
+              ingredients: carryIngredientLinks(
+                from: current.ingredients,
+                to: parsed.ingredients,
+              ),
+            );
+            // R10: izmena ne sme tiho da obriše korake recepta koji ih ima;
+            // router tada pita ponovo.
+            if (current.steps.isNotEmpty && refined.steps.isEmpty) {
+              throw const FormatException('R10');
+            }
+            // Opis slike i izvor slike ostaju; nov opis samo kad ga nije bilo.
+            final kept = refined.copyWith(
+              imageDescription: current.imageDescription,
+              imageSource: current.imageSource,
+            );
+            // AI ne menja oznake koje je postavio korisnik, a bez novih
+            // oznaka zadržava postojeće.
+            if (current.labels.isUserSet || kept.labels.isEmpty) {
+              return kept.copyWith(labels: current.labels);
+            }
+            return kept;
+          },
+          cancel: cancel,
         )
         .then(_stampModel);
   }
+
+  /// Rezervni poziv (TRELLO-130): opis gotovog jela za AI sliku kad ga
+  /// recept nema (npr. recepti iz plana). Vraća očišćen opis.
+  Future<String> describeImage(Recipe recipe, {AICancellation? cancel}) =>
+      _router
+          .run(
+            AIRequest(
+              task: AITask.recipeImageDescription,
+              system: imageDescriptionSystemPrompt,
+              prompt: imageDescriptionPrompt(recipe),
+              temperature: 0.3,
+            ),
+            (json) =>
+                aiImageDescription(json['image_description']) ??
+                (throw const FormatException('I1')),
+            cancel: cancel,
+          )
+          .then((r) => r.value);
 
   Recipe _build(
     Map<String, dynamic> json,
     RecipeSource source, {
     String? imagePath,
-  }) => Recipe.fromAiJson(
+  }) => recipeFromAiResponse(
     json,
     id: newId(),
     source: source,
@@ -104,6 +165,9 @@ class RecipeAI {
         imagePath: v.imagePath,
         createdAt: v.createdAt,
         answeredBy: r.model.label,
+        labels: v.labels,
+        imageDescription: v.imageDescription,
+        imageSource: v.imageSource,
       ),
       r.model,
       r.attempts,

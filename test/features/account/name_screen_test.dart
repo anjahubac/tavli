@@ -1,18 +1,20 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
 void main() {
-  Finder nameField() => find.widgetWithText(TextField, 'Ime');
+  Finder nameField() => textField('Ime');
   VoidCallback? next(WidgetTester tester) =>
       tester.widget<FilledButton>(button('Nastavi')).onPressed;
 
   testTavli('nalog bez imena: korak sa imenom pre aplikacije', (tester) async {
     await pumpTavli(tester, name: null);
     expect(find.text('Kako da te zovemo?'), findsOneWidget);
+    expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
     expect(nameField(), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(TavliNavigation), findsNothing);
     expect(find.byType(BackButton), findsNothing);
     expect(find.text('Preskoči'), findsNothing);
   });
@@ -58,7 +60,7 @@ void main() {
     testTavli('raspored na ${size.width.toInt()} px', (tester) async {
       await pumpTavli(tester, name: null, size: size);
       expect(tester.takeException(), isNull);
-      expect(tester.getSize(nameField()).width, lessThanOrEqualTo(420));
+      expect(tester.getSize(nameField()).width, lessThanOrEqualTo(440));
     });
   }
 }

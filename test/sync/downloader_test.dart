@@ -3,7 +3,9 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/data/recipe_rating_repository.dart';
 import 'package:tavli/sync/downloader.dart';
+import 'package:tavli/sync/entities.dart';
 import 'package:tavli/sync/sync_remote.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
@@ -197,8 +199,62 @@ void main() {
         'profile': {'ljuto': true},
       },
     ], 'user_id');
+    s.upsert('user_allergen_selections', [
+      {
+        'user_id': scope.userId,
+        'group_codes': ['milk'],
+      },
+    ], 'user_id');
     s.profiles[scope.userId]!['display_name'] = 'Ana Petrović';
   }
+
+  test('server ID replaces a second device ID after rating sync', () async {
+    seedAll();
+    final repo = RecipeRatingRepository(
+      db,
+      writer: SyncedWriter(db, accountId: scope.userId),
+      scope: scope,
+    );
+    await downloader().run();
+    await db.delete(db.ratings).go();
+    await repo.save(recipeId: 'r1', stars: 2, personalNote: 'private');
+    await repo.save(recipeId: 'r1', stars: 3);
+    final local = (await db.select(db.ratings).get()).single;
+    expect(local.id, isNot('g1'));
+    expect(local.comment, 'private');
+    expect(local.stars, 3);
+    await downloader().run();
+    expect((await db.select(db.ratings).get()).single.id, local.id);
+    await backend.sync.upsert('ratings', [
+      const RatingEntity().toRemote(local),
+    ], onConflict: const RatingEntity().remoteConflict);
+    await db.delete(db.syncOutbox).go();
+    await downloader().run();
+    expect((await db.select(db.ratings).get()).single.id, 'g1');
+    expect((await repo.getMyRating('r1'))?.stars, 3);
+    final summary = await repo.watchHouseholdSummary('r1').first;
+    expect(summary?.averageStars, 3);
+    expect(summary?.ratingCount, 1);
+  });
+
+  test(
+    'failed rating summary refresh preserves the cache and recipe pulls',
+    () async {
+      seedAll();
+      await downloader().run();
+      final cached = (await db.select(db.ratingSummaries).get()).single;
+      serverRecipe('during-failed-summary');
+      backend.server.ratingSummaryFailure = const TransientSyncError('503');
+
+      await downloader().run();
+
+      expect(await db.select(db.ratingSummaries).get(), [cached]);
+      expect(
+        (await db.select(db.recipes).get()).map((recipe) => recipe.id),
+        contains('during-failed-summary'),
+      );
+    },
+  );
 
   test('prvo preuzimanje: svi entiteti, roditelj pre deteta', () async {
     seedAll();
@@ -217,10 +273,22 @@ void main() {
       'fetch:shopping_sources',
       'fetch:shopping_contributions',
       'fetch:supply_allocations',
+      'fetch:cooked_events',
+      'fetch:pantry_consumptions',
       'fetch:ratings',
       'fetch:taste_profiles',
+      'fetch:user_allergen_selections',
+      'fetch:user_favorites',
+      'fetch:households',
+      'fetch:foods',
+      'fetch:food_aliases',
+      'fetch:households',
       'fetch:deletions',
+      'rating_summaries',
     ]);
+    final selection = await db.select(db.userAllergenSelections).getSingle();
+    expect(selection.userId, scope.userId);
+    expect(selection.groupCodesJson, '["milk"]');
     final recipe = (await db.select(db.recipes).get()).single;
     expect(recipe.householdId, hid);
     expect(recipe.imagePath, 'recipe_photos/slika-r1.jpg');
@@ -248,6 +316,41 @@ void main() {
     );
     expect(await db.select(db.syncOutbox).get(), isEmpty);
   });
+
+  test(
+    'daily rewind recovers a late row and a late deletion after restart',
+    () async {
+      var now = DateTime.utc(2026, 11, 23);
+      Future<void> pull() async {
+        await Downloader(
+          db: db,
+          remote: backend.sync,
+          scope: scope,
+          clock: () => now,
+        ).run();
+      }
+
+      serverRecipe('keep');
+      serverRecipe('removed');
+      serverRecipe('early-delete');
+      backend.server.delete('recipes', ['early-delete'], 'id');
+      await pull();
+
+      const old = '2001-01-01T00:00:00.000Z';
+      serverRecipe('late');
+      backend.server.table('recipes')['late']!['updated_at'] = old;
+      backend.server.delete('recipes', ['removed'], 'id');
+      backend.server.table('deletions')['recipe/removed']!['deleted_at'] = old;
+      Future<List<String>> ids() async => [
+        for (final row in await db.select(db.recipes).get()) row.id,
+      ];
+      await pull();
+      expect(await ids(), unorderedEquals(['keep', 'removed']));
+      now = now.add(const Duration(days: 1));
+      await pull();
+      expect(await ids(), unorderedEquals(['keep', 'late']));
+    },
+  );
 
   test('strane od 500 sa sačuvanom pozicijom posle svake', () async {
     for (var i = 0; i < 1200; i++) {
@@ -349,15 +452,24 @@ void main() {
   test('trag brisanja briše lokalni red i izmene koje čekaju', () async {
     seedAll();
     await downloader().run();
-    await SyncedWriter(db, accountId: scope.userId).upsert('pantry_item', 'o1');
+    final writer = SyncedWriter(db, accountId: scope.userId);
+    await writer.upsert('pantry_item', 'o1');
+    await db.delete(db.ratings).go();
+    await RecipeRatingRepository(
+      db,
+      writer: writer,
+      scope: scope,
+    ).save(recipeId: 'r1', stars: 3);
     backend.server.delete('pantry_items', ['o1'], 'id');
     backend.server.delete('recipes', ['r1'], 'id');
+    backend.server.ratingSummaryFailure = const TransientSyncError('503');
 
     await downloader().run();
     expect(await db.select(db.pantryItems).get(), isEmpty);
     expect(await db.select(db.recipes).get(), isEmpty);
     expect(await db.select(db.recipeVersions).get(), isEmpty);
     expect(await db.select(db.ratings).get(), isEmpty);
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
     // Stavka plana ostaje, bez recepta.
     expect((await db.select(db.mealPlanEntries).get()).single.recipeId, isNull);
     expect(await db.select(db.syncOutbox).get(), isEmpty);

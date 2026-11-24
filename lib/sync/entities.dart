@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../data/database.dart';
+import '../domain/allergen_group.dart';
+import '../domain/plan_calendar.dart';
 
 /// Pripada li zapis domaćinstvu ili osobi.
 enum EntityScope { household, user }
@@ -20,14 +22,15 @@ abstract class SyncEntity<T extends Table, R> {
   /// Kolona sa id-jem na serveru (`user_id` za profil ukusa).
   String get remoteId => 'id';
 
-  /// Roditelj (zbog redosleda i brisanja), npr. recipe za recipe_version.
-  String? get parent => null;
+  /// Unique remote conflict target. Most tables use [remoteId]; personal
+  /// ratings use their account/recipe pair to converge across devices.
+  String get remoteConflict => remoteId;
 
-  /// Ostali roditelji po stranim ključevima (npr. obrok za izvor nabavke).
-  List<String> get extraParents => const [];
+  /// Entitet i kolona svakog stranog ključa u serverskom zapisu.
+  List<(String, String)> get parentKeys => const [];
 
-  /// Svi roditelji: registar ih drži pre ovog entiteta.
-  List<String> get parents => [?parent, ...extraParents];
+  /// Registar drži roditelje pre deteta.
+  Iterable<String> get parents => parentKeys.map((key) => key.$1);
 
   TableInfo<T, R> table(AppDatabase db);
   Expression<String> idColumn(T t);
@@ -50,8 +53,19 @@ abstract class SyncEntity<T extends Table, R> {
 }
 
 String _ts(DateTime d) => d.toUtc().toIso8601String();
-DateTime _date(Object? v) => DateTime.parse(v! as String).toLocal();
+DateTime _date(Object? v) {
+  final text = v! as String;
+  if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text)) {
+    return CivilDate.parse(text).toWire();
+  }
+  return DateTime.parse(text).toLocal();
+}
+
 DateTime? _dateOrNull(Object? v) => v == null ? null : _date(v);
+
+/// Kalendarski dan za `date` kolonu na serveru: `YYYY-MM-DD`.
+String _day(DateTime d) => CivilDate.fromWire(d).isoDate;
+String? _dayOrNull(DateTime? d) => d == null ? null : _day(d);
 String? _tsOrNull(DateTime? d) => d == null ? null : _ts(d);
 String _json(Object? v) => jsonEncode(v);
 String? _jsonOrNull(Object? v) => v == null ? null : jsonEncode(v);
@@ -79,6 +93,15 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
   GeneratedColumn<String> scopeColumn($RecipesTable t) => t.householdId;
 
   @override
+  Future<void> deleteLocal(AppDatabase db, String id) =>
+      db.transaction(() async {
+        await (db.delete(
+          db.userFavorites,
+        )..where((row) => row.recipeId.equals(id))).go();
+        await super.deleteLocal(db, id);
+      });
+
+  @override
   Map<String, Object?> toRemote(RecipeRow r) => {
     'id': r.id,
     'household_id': r.householdId,
@@ -91,6 +114,12 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
     'image_path': photoFileName(r.imagePath),
     'answered_by': r.answeredBy,
     'created_at': _ts(r.createdAt),
+    'meal_types': r.mealTypesJson == null ? null : jsonDecode(r.mealTypesJson!),
+    'weight': r.weight,
+    'dish_kind': r.dishKind,
+    'labels_source': r.labelsSource,
+    'image_description': r.imageDescription,
+    'image_source': r.imageSource,
   };
 
   @override
@@ -107,6 +136,15 @@ class RecipeEntity extends SyncEntity<$RecipesTable, RecipeRow> {
     answeredBy: Value(j['answered_by'] as String?),
     createdAt: Value(_date(j['created_at'])),
     updatedAt: Value(_date(j['updated_at'] ?? j['created_at'])),
+    // Oznake se čuvaju sirove; vrednost koju ova verzija ne zna ostaje.
+    mealTypesJson: Value(
+      j['meal_types'] is List ? _json(j['meal_types']) : null,
+    ),
+    weight: Value(j['weight'] as String?),
+    dishKind: Value(j['dish_kind'] as String?),
+    labelsSource: Value(j['labels_source'] as String?),
+    imageDescription: Value(j['image_description'] as String?),
+    imageSource: Value(j['image_source'] as String?),
   );
 }
 
@@ -120,7 +158,7 @@ class RecipeVersionEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'recipe';
+  List<(String, String)> get parentKeys => const [('recipe', 'recipe_id')];
   @override
   $RecipeVersionsTable table(AppDatabase db) => db.recipeVersions;
   @override
@@ -154,6 +192,12 @@ class RecipeVersionEntity
       );
 }
 
+/// Nedeljna lista plana (`meal_plan_id` i `period_start` postavljeni) se
+/// posle kreiranja ne menja: ID je izveden iz plana i dana
+/// (`weekListId`), a uploader je šalje sa `ignoreDuplicates`, pa server
+/// tiho odbacuje svaki kasniji upsert istog ID-ja. Izmena takve liste
+/// (naziv, arhiviranje, `period_end`) traži da se sa `ignoreDuplicates`
+/// šalje samo kreiranje.
 class ShoppingListEntity
     extends SyncEntity<$ShoppingListsTable, ShoppingListRow> {
   const ShoppingListEntity();
@@ -164,7 +208,9 @@ class ShoppingListEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'meal_plan';
+  List<(String, String)> get parentKeys => const [
+    ('meal_plan', 'meal_plan_id'),
+  ];
   @override
   $ShoppingListsTable table(AppDatabase db) => db.shoppingLists;
   @override
@@ -179,8 +225,8 @@ class ShoppingListEntity
     'name': r.name,
     'meal_plan_id': r.mealPlanId,
     'week': r.week,
-    'period_start': _tsOrNull(r.periodStart),
-    'period_end': _tsOrNull(r.periodEnd),
+    'period_start': _dayOrNull(r.periodStart),
+    'period_end': _dayOrNull(r.periodEnd),
     'created_at': _ts(r.createdAt),
   };
 
@@ -208,7 +254,7 @@ class ShoppingItemEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_list';
+  List<(String, String)> get parentKeys => const [('shopping_list', 'list_id')];
   @override
   $ShoppingItemsTable table(AppDatabase db) => db.shoppingItems;
   @override
@@ -259,7 +305,9 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
 
   /// Prijem kupljene stavke ide posle te kupovine.
   @override
-  List<String> get extraParents => const ['shopping_item'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_item', 'source_shopping_item_id'),
+  ];
   @override
   $PantryItemsTable table(AppDatabase db) => db.pantryItems;
   @override
@@ -279,6 +327,7 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
     'expires_at': r.expiresAt == null ? null : _ts(r.expiresAt!),
     'confirmed_at': _tsOrNull(r.confirmedAt),
     'source_shopping_item_id': r.sourceShoppingItemId,
+    'quantity_set_at': _tsOrNull(r.quantitySetAt),
   };
 
   @override
@@ -294,6 +343,7 @@ class PantryItemEntity extends SyncEntity<$PantryItemsTable, PantryItemRow> {
         expiresAt: Value(_dateOrNull(j['expires_at'])),
         confirmedAt: Value(_dateOrNull(j['confirmed_at'])),
         sourceShoppingItemId: Value(j['source_shopping_item_id'] as String?),
+        quantitySetAt: Value(_dateOrNull(j['quantity_set_at'])),
       );
 }
 
@@ -316,8 +366,8 @@ class MealPlanEntity extends SyncEntity<$MealPlansTable, MealPlanRow> {
   Map<String, Object?> toRemote(MealPlanRow r) => {
     'id': r.id,
     'household_id': r.householdId,
-    'start_date': _ts(r.startDate),
-    'end_date': _ts(r.endDate),
+    'start_date': _day(r.startDate),
+    'end_date': _day(r.endDate),
     'meal_types': jsonDecode(r.mealTypesJson),
     'use_pantry': r.usePantry,
     'default_servings': r.defaultServings,
@@ -347,7 +397,10 @@ class MealPlanEntryEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'meal_plan';
+  List<(String, String)> get parentKeys => const [
+    ('meal_plan', 'plan_id'),
+    ('recipe', 'recipe_id'),
+  ];
   @override
   $MealPlanEntriesTable table(AppDatabase db) => db.mealPlanEntries;
   @override
@@ -360,7 +413,7 @@ class MealPlanEntryEntity
     'id': r.id,
     'household_id': r.householdId,
     'plan_id': r.planId,
-    'date': _ts(r.date),
+    'date': _day(r.date),
     'meal_type': r.mealType,
     'recipe_id': r.recipeId,
     'is_locked': r.isLocked,
@@ -392,9 +445,11 @@ class RatingEntity extends SyncEntity<$RatingsTable, RatingRow> {
   @override
   String get remoteTable => 'ratings';
   @override
+  String get remoteConflict => 'user_id,recipe_id';
+  @override
   EntityScope get scope => EntityScope.user;
   @override
-  String get parent => 'recipe';
+  List<(String, String)> get parentKeys => const [('recipe', 'recipe_id')];
   @override
   $RatingsTable table(AppDatabase db) => db.ratings;
   @override
@@ -436,9 +491,11 @@ class ShoppingSourceEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_list';
-  @override
-  List<String> get extraParents => const ['meal_plan_entry', 'recipe'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_list', 'list_id'),
+    ('meal_plan_entry', 'plan_entry_id'),
+    ('recipe', 'recipe_id'),
+  ];
   @override
   $ShoppingSourcesTable table(AppDatabase db) => db.shoppingSources;
   @override
@@ -491,9 +548,10 @@ class ShoppingContributionEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_source';
-  @override
-  List<String> get extraParents => const ['shopping_item'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_source', 'source_id'),
+    ('shopping_item', 'shopping_item_id'),
+  ];
   @override
   $ShoppingContributionsTable table(AppDatabase db) => db.shoppingContributions;
   @override
@@ -546,9 +604,11 @@ class SupplyAllocationEntity
   @override
   EntityScope get scope => EntityScope.household;
   @override
-  String get parent => 'shopping_contribution';
-  @override
-  List<String> get extraParents => const ['pantry_item', 'shopping_item'];
+  List<(String, String)> get parentKeys => const [
+    ('shopping_contribution', 'contribution_id'),
+    ('pantry_item', 'pantry_item_id'),
+    ('shopping_item', 'purchased_shopping_item_id'),
+  ];
   @override
   $SupplyAllocationsTable table(AppDatabase db) => db.supplyAllocations;
   @override
@@ -618,6 +678,306 @@ class TasteProfileEntity
       );
 }
 
+class FavoriteEntity extends SyncEntity<$UserFavoritesTable, UserFavoriteRow> {
+  const FavoriteEntity();
+
+  @override
+  String get name => 'favorite';
+  @override
+  String get remoteTable => 'user_favorites';
+  @override
+  EntityScope get scope => EntityScope.user;
+  @override
+  List<(String, String)> get parentKeys => const [('recipe', 'recipe_id')];
+  @override
+  $UserFavoritesTable table(AppDatabase db) => db.userFavorites;
+  @override
+  Expression<String> idColumn($UserFavoritesTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($UserFavoritesTable t) => t.userId;
+
+  @override
+  Map<String, Object?> toRemote(UserFavoriteRow row) => {
+    'id': row.id,
+    'user_id': row.userId,
+    'recipe_id': row.recipeId,
+    'recipe_household_id': row.recipeHouseholdId,
+    'is_favorite': row.isFavorite,
+  };
+
+  @override
+  UserFavoritesCompanion fromRemote(Map<String, Object?> json) =>
+      UserFavoritesCompanion.insert(
+        id: json['id']! as String,
+        userId: json['user_id']! as String,
+        recipeId: json['recipe_id']! as String,
+        recipeHouseholdId: json['recipe_household_id']! as String,
+        isFavorite: json['is_favorite']! as bool,
+      );
+}
+
+/// Owner-only allergen settings, synced as one replaceable selection.
+class AllergenSelectionEntity
+    extends SyncEntity<$UserAllergenSelectionsTable, UserAllergenSelectionRow> {
+  const AllergenSelectionEntity();
+
+  @override
+  String get name => 'allergen_selection';
+  @override
+  String get remoteTable => 'user_allergen_selections';
+  @override
+  String get remoteId => 'user_id';
+  @override
+  EntityScope get scope => EntityScope.user;
+  @override
+  $UserAllergenSelectionsTable table(AppDatabase db) =>
+      db.userAllergenSelections;
+  @override
+  Expression<String> idColumn($UserAllergenSelectionsTable t) => t.userId;
+  @override
+  GeneratedColumn<String> scopeColumn($UserAllergenSelectionsTable t) =>
+      t.userId;
+
+  @override
+  Map<String, Object?> toRemote(UserAllergenSelectionRow row) => {
+    'user_id': row.userId,
+    'group_codes': jsonDecode(row.groupCodesJson),
+  };
+
+  @override
+  UserAllergenSelectionsCompanion fromRemote(Map<String, Object?> json) {
+    final selection = AllergenGroup.parseSelection(json['group_codes']);
+    return UserAllergenSelectionsCompanion.insert(
+      userId: json['user_id']! as String,
+      groupCodesJson: jsonEncode([
+        for (final group in AllergenGroup.values)
+          if (selection.contains(group)) group.code,
+      ]),
+    );
+  }
+}
+
+/// Obrok označen kao skuvan (zapis operacije; poništavanje ga ne briše).
+class CookedEventEntity extends SyncEntity<$CookedEventsTable, CookedEventRow> {
+  const CookedEventEntity();
+  @override
+  String get name => 'cooked_event';
+  @override
+  String get remoteTable => 'cooked_events';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  List<(String, String)> get parentKeys => const [
+    ('meal_plan_entry', 'plan_entry_id'),
+  ];
+  @override
+  $CookedEventsTable table(AppDatabase db) => db.cookedEvents;
+  @override
+  Expression<String> idColumn($CookedEventsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($CookedEventsTable t) => t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(CookedEventRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'plan_entry_id': r.planEntryId,
+    'meal_date': CivilDate.fromWire(r.mealDate).toString(),
+    'meal_type': r.mealType,
+    'actor_user_id': r.actorUserId,
+    'servings': r.servings,
+    'cooked_at': _ts(r.cookedAt),
+    'undone_at': _tsOrNull(r.undoneAt),
+    'undo_reason': r.undoReason,
+  };
+
+  @override
+  CookedEventsCompanion fromRemote(Map<String, Object?> j) =>
+      CookedEventsCompanion(
+        id: Value(j['id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        planEntryId: Value(j['plan_entry_id']! as String),
+        mealDate: Value(_date(j['meal_date'])),
+        mealType: Value(j['meal_type']! as String),
+        actorUserId: Value(j['actor_user_id']! as String),
+        servings: Value(j['servings']! as int),
+        cookedAt: Value(_date(j['cooked_at'])),
+        undoneAt: Value(_dateOrNull(j['undone_at'])),
+        undoReason: Value(j['undo_reason'] as String?),
+      );
+}
+
+/// Koliko je jedno kuvanje uzelo iz jedne stavke ostave.
+class PantryConsumptionEntity
+    extends SyncEntity<$PantryConsumptionsTable, PantryConsumptionRow> {
+  const PantryConsumptionEntity();
+  @override
+  String get name => 'pantry_consumption';
+  @override
+  String get remoteTable => 'pantry_consumptions';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  List<(String, String)> get parentKeys => const [
+    ('cooked_event', 'event_id'),
+    ('pantry_item', 'pantry_item_id'),
+  ];
+  @override
+  $PantryConsumptionsTable table(AppDatabase db) => db.pantryConsumptions;
+  @override
+  Expression<String> idColumn($PantryConsumptionsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($PantryConsumptionsTable t) =>
+      t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(PantryConsumptionRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'event_id': r.eventId,
+    'pantry_item_id': r.pantryItemId,
+    'base_unit': r.baseUnit,
+    'micros': r.micros,
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  PantryConsumptionsCompanion fromRemote(Map<String, Object?> j) =>
+      PantryConsumptionsCompanion(
+        id: Value(j['id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        eventId: Value(j['event_id']! as String),
+        pantryItemId: Value(j['pantry_item_id']! as String),
+        baseUnit: Value(j['base_unit']! as String),
+        micros: Value(j['micros']! as int),
+        createdAt: Value(_date(j['created_at'])),
+      );
+}
+
+/// Namirnica kataloga (018). Samo se preuzima: deljene redove piše
+/// migracija, a kućni upis dolazi u kasnijem koraku.
+class FoodEntity extends SyncEntity<$FoodsTable, FoodRow> {
+  const FoodEntity();
+  @override
+  String get name => 'food';
+  @override
+  String get remoteTable => 'foods';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  $FoodsTable table(AppDatabase db) => db.foods;
+  @override
+  Expression<String> idColumn($FoodsTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($FoodsTable t) => t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(FoodRow r) => {
+    'id': r.id,
+    'household_id': r.householdId,
+    'slug': r.slug,
+    'name': r.name,
+    'category': r.category,
+    'base_unit': r.baseUnit,
+    'source': r.source,
+    'kcal_per_100g': r.kcalPer100g,
+    'protein_grams_per_100g': r.proteinGramsPer100g,
+    'fat_grams_per_100g': r.fatGramsPer100g,
+    'carbs_grams_per_100g': r.carbsGramsPer100g,
+    'nutrition_source': r.nutritionSource,
+    'nutrition_source_version': r.nutritionSourceVersion,
+    'nutrition_source_ref': r.nutritionSourceRef,
+    'allergen_codes': r.allergenCodes == null
+        ? null
+        : [
+            for (final c in r.allergenCodes!.split(','))
+              if (c.isNotEmpty) c,
+          ],
+    'allergen_source': r.allergenSource,
+    'allergen_source_ref': r.allergenSourceRef,
+    'allergen_reviewed_at': _tsOrNull(r.allergenReviewedAt),
+    'reviewed_at': _tsOrNull(r.reviewedAt),
+    'withdrawn_at': _tsOrNull(r.withdrawnAt),
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  FoodsCompanion fromRemote(Map<String, Object?> j) => FoodsCompanion(
+    id: Value(j['id']! as String),
+    householdId: Value(j['household_id'] as String?),
+    slug: Value(j['slug']! as String),
+    name: Value(j['name']! as String),
+    category: Value(j['category']! as String),
+    baseUnit: Value(j['base_unit']! as String),
+    source: Value(j['source'] as String?),
+    kcalPer100g: Value((j['kcal_per_100g'] as num?)?.toDouble()),
+    proteinGramsPer100g: Value(
+      (j['protein_grams_per_100g'] as num?)?.toDouble(),
+    ),
+    fatGramsPer100g: Value((j['fat_grams_per_100g'] as num?)?.toDouble()),
+    carbsGramsPer100g: Value((j['carbs_grams_per_100g'] as num?)?.toDouble()),
+    nutritionSource: Value(j['nutrition_source'] as String?),
+    nutritionSourceVersion: Value(j['nutrition_source_version'] as String?),
+    nutritionSourceRef: Value(j['nutrition_source_ref'] as String?),
+    allergenCodes: Value(_allergenCodes(j['allergen_codes'])),
+    allergenSource: Value(j['allergen_source'] as String?),
+    allergenSourceRef: Value(j['allergen_source_ref'] as String?),
+    allergenReviewedAt: Value(_dateOrNull(j['allergen_reviewed_at'])),
+    reviewedAt: Value(_dateOrNull(j['reviewed_at'])),
+    withdrawnAt: Value(_dateOrNull(j['withdrawn_at'])),
+    createdAt: Value(_date(j['created_at'])),
+    updatedAt: Value(_date(j['updated_at'] ?? j['created_at'])),
+  );
+}
+
+/// Server array -> cache text. null stays unknown; an empty array is a
+/// reviewed "no allergen" and is stored as ''.
+String? _allergenCodes(Object? raw) =>
+    raw is List<Object?> ? raw.whereType<String>().join(',') : null;
+
+/// Alias namirnice (018). Samo se preuzima, kao i [FoodEntity].
+class FoodAliasEntity extends SyncEntity<$FoodAliasesTable, FoodAliasRow> {
+  const FoodAliasEntity();
+  @override
+  String get name => 'food_alias';
+  @override
+  String get remoteTable => 'food_aliases';
+  @override
+  EntityScope get scope => EntityScope.household;
+  @override
+  List<(String, String)> get parentKeys => const [('food', 'food_id')];
+  @override
+  $FoodAliasesTable table(AppDatabase db) => db.foodAliases;
+  @override
+  Expression<String> idColumn($FoodAliasesTable t) => t.id;
+  @override
+  GeneratedColumn<String> scopeColumn($FoodAliasesTable t) => t.householdId;
+
+  @override
+  Map<String, Object?> toRemote(FoodAliasRow r) => {
+    'id': r.id,
+    'food_id': r.foodId,
+    'household_id': r.householdId,
+    'alias': r.alias,
+    'alias_normalized': r.aliasNormalized,
+    'withdrawn_at': _tsOrNull(r.withdrawnAt),
+    'created_at': _ts(r.createdAt),
+  };
+
+  @override
+  FoodAliasesCompanion fromRemote(Map<String, Object?> j) =>
+      FoodAliasesCompanion(
+        id: Value(j['id']! as String),
+        foodId: Value(j['food_id']! as String),
+        householdId: Value(j['household_id'] as String?),
+        alias: Value(j['alias']! as String),
+        aliasNormalized: Value(j['alias_normalized']! as String),
+        withdrawnAt: Value(_dateOrNull(j['withdrawn_at'])),
+        createdAt: Value(_date(j['created_at'])),
+        updatedAt: Value(_date(j['updated_at'] ?? j['created_at'])),
+      );
+}
+
 /// Ime u profilu (lokalno u `Accounts`). Šalje se kao izmena imena, ne upsert.
 const profileEntity = 'profile';
 
@@ -636,12 +996,23 @@ const List<SyncEntity<Table, Object?>> syncEntities = [
   ShoppingSourceEntity(),
   ShoppingContributionEntity(),
   SupplyAllocationEntity(),
+  CookedEventEntity(),
+  PantryConsumptionEntity(),
   RatingEntity(),
   TasteProfileEntity(),
+  AllergenSelectionEntity(),
+  FavoriteEntity(),
+];
+
+/// Katalog namirnica: van [syncEntities], jer se preuzima posebno (server
+/// bez tabela nije greška) i ne šalje se. Namirnica pre aliasa.
+const List<SyncEntity<Table, Object?>> catalogEntities = [
+  FoodEntity(),
+  FoodAliasEntity(),
 ];
 
 SyncEntity<Table, Object?>? entityByName(String name) {
-  for (final e in syncEntities) {
+  for (final e in [...syncEntities, ...catalogEntities]) {
     if (e.name == name) return e;
   }
   return null;

@@ -30,6 +30,10 @@ class UnauthorizedSyncError extends SyncError {
 /// ponovo, ali ne blokira ostale izmene.
 class PermanentSyncError extends SyncError {
   const PermanentSyncError(super.code);
+
+  /// RLS (Postgres 42501) or Storage policy (HTTP 403) denial: the account
+  /// may have lost access, e.g. after removal from the household.
+  bool get forbidden => code == pgInsufficientPrivilege || code == '403';
 }
 
 /// Tabele na serveru (PostgREST). Baca [SyncError].
@@ -39,11 +43,18 @@ abstract interface class SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   });
 
   Future<void> delete(String table, List<String> ids, {String idColumn = 'id'});
 
   Future<void> updateProfileName(String userId, String name);
+
+  /// Read only the household-visible recipe rating aggregates.
+  Future<List<Map<String, Object?>>> fetchHouseholdRecipeRatingSummaries();
+
+  /// Read one household-visible recipe before a guarded recipe upload.
+  Future<Map<String, Object?>?> fetchRecipe(String id, String householdId);
 
   /// Redovi posle (since, afterId), redom po ([timeColumn], [idColumn]).
   Future<List<Map<String, Object?>>> fetchSince(
@@ -65,6 +76,14 @@ abstract interface class PhotoRemote {
 
   Future<void> remove(List<String> objectKeys);
 }
+
+/// Postgres SQLSTATE za prekršen strani ključ. [classifySyncError] ga
+/// prosleđuje kao [SyncError.code], a uploader ga čuva u
+/// `sync_outbox.last_error` odbijenog upisa.
+const pgForeignKeyViolation = '23503';
+
+/// Postgres SQLSTATE for a row-level security denial.
+const pgInsufficientPrivilege = '42501';
 
 /// Kod Postgres/PostgREST/HTTP greške → vrsta greške (research R7).
 SyncError classifySyncError(String code) {
@@ -117,8 +136,11 @@ class SupabaseSyncRemote implements SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   }) => _guard(() async {
-    await _from(table).upsert(rows, onConflict: onConflict);
+    await _from(
+      table,
+    ).upsert(rows, onConflict: onConflict, ignoreDuplicates: ignoreDuplicates);
   });
 
   @override
@@ -134,6 +156,33 @@ class SupabaseSyncRemote implements SyncRemote {
   Future<void> updateProfileName(String userId, String name) =>
       _guard(() async {
         await _from('profiles').update({'display_name': name}).eq('id', userId);
+      });
+
+  @override
+  Future<List<Map<String, Object?>>> fetchHouseholdRecipeRatingSummaries() =>
+      _guard(() async {
+        const pageSize = 500;
+        final results = <Map<String, Object?>>[];
+        for (var offset = 0; ; offset += pageSize) {
+          final rows = await _client
+              .rpc<List<dynamic>>('get_household_recipe_rating_summaries')
+              .order('household_id', ascending: true)
+              .order('recipe_id', ascending: true)
+              .range(offset, offset + pageSize - 1);
+          results.addAll(rows.cast<Map<String, Object?>>());
+          if (rows.length < pageSize) return results;
+        }
+      });
+
+  @override
+  Future<Map<String, Object?>?> fetchRecipe(String id, String householdId) =>
+      _guard(() async {
+        final row = await _from('recipes')
+            .select()
+            .eq('id', id)
+            .eq('household_id', householdId)
+            .maybeSingle();
+        return row == null ? null : Map<String, Object?>.of(row);
       });
 
   @override

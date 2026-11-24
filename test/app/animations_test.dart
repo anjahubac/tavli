@@ -1,24 +1,22 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli/app/animations/all_bought.dart';
 import 'package:tavli/app/animations/egg_timer.dart';
+import 'package:tavli/app/animations/empty_basket.dart';
 import 'package:tavli/app/animations/empty_fridge.dart';
-import 'package:tavli/app/animations/ingredient_check.dart';
-import 'package:tavli/app/animations/intro_motif.dart';
+import 'package:tavli/app/animations/empty_tabs.dart';
 import 'package:tavli/app/animations/intro_overlay.dart';
 import 'package:tavli/app/animations/photo_scan.dart';
-import 'package:tavli/app/animations/plate_drop.dart';
-import 'package:tavli/app/animations/shopping_bag.dart';
 import 'package:tavli/app/animations/simmering_pot.dart';
 import 'package:tavli/app/animations/spoon_refresh.dart';
-import 'package:tavli/app/theme/app_theme.dart';
-import 'package:tavli/domain/theme_choice.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 /// Widget u aplikaciji sa temom; [still] = sistem traži smanjeno kretanje.
 Future<void> pumpArt(
   WidgetTester tester,
   Widget child, {
   bool still = false,
-  TavliTheme theme = TavliTheme.bosiljak,
+  TavliMotif theme = TavliMotif.bosiljak,
   Brightness brightness = Brightness.light,
 }) => tester.pumpWidget(
   MaterialApp(
@@ -35,14 +33,14 @@ Future<void> pumpArt(
 
 void main() {
   final pieces = <String, Widget>{
-    'Grančica bosiljka': const IntroMotif(motif: TavliTheme.bosiljak),
-    'Cvet šafrana': const IntroMotif(motif: TavliTheme.safran),
-    'Borovnice padaju u činiju': const IntroMotif(motif: TavliTheme.borovnica),
     'Lonac koji krčka': const SimmeringPot(),
-    'Puna kesa za kupovinu': const ShoppingBagFull(),
+    'Sve je kupljeno': const AllBoughtArt(),
     'Prazan frižider': const EmptyFridge(),
+    'Postavljen sto': const EmptyTable(),
+    'Obrok u nedelji': const EmptyWeek(),
+    'Prazna kuvarica': const EmptyCookbook(),
+    'Prazna korpa za nabavku': const EmptyBasket(),
     'Varjača u loncu': const SpoonPot(),
-    'Recept na tanjiru': const PlatePlanDrop(),
     'Jaje se kuva': const EggTimer(),
     'Skeniranje fotografije': const PhotoScan(
       photo: SizedBox.expand(),
@@ -67,7 +65,7 @@ void main() {
       });
 
       testWidgets('$label: iscrtava se u svih 6 tema', (tester) async {
-        for (final theme in TavliTheme.values) {
+        for (final theme in TavliMotif.values) {
           for (final b in Brightness.values) {
             await pumpArt(tester, widget, theme: theme, brightness: b);
             await tester.pump(const Duration(milliseconds: 500));
@@ -79,7 +77,14 @@ void main() {
   });
 
   testWidgets('jednokratne animacije stanu na završnoj slici', (tester) async {
-    for (final w in const [ShoppingBagFull(), EmptyFridge(), PlatePlanDrop()]) {
+    for (final w in const [
+      AllBoughtArt(),
+      EmptyFridge(),
+      EmptyTable(),
+      EmptyWeek(),
+      EmptyCookbook(),
+      EmptyBasket(),
+    ]) {
       await pumpArt(tester, w);
       await tester.pumpAndSettle();
       expect(tester.hasRunningAnimations, isFalse);
@@ -103,13 +108,13 @@ void main() {
     expect(find.text('Seckam luk…'), findsOneWidget);
   });
 
-  testWidgets('skeniranje: čip "Tražim sastojke…", pa sastojci jedan po '
+  testWidgets('skeniranje: bez čipa ispod slike, pa sastojci jedan po '
       'jedan', (tester) async {
     await pumpArt(
       tester,
       const PhotoScan(photo: SizedBox.expand(), scanning: true),
     );
-    expect(find.text('Tražim sastojke…'), findsOneWidget);
+    expect(find.text('Tražim sastojke…'), findsNothing);
 
     await pumpArt(
       tester,
@@ -134,166 +139,69 @@ void main() {
     expect(find.text('Tražim sastojke…'), findsNothing);
   });
 
-  testWidgets('kvačica se iscrtava do kraja', (tester) async {
-    double progress() =>
-        (tester
-                    .widget<CustomPaint>(
-                      find.descendant(
-                        of: find.byType(AnimatedCheckmark),
-                        matching: find.byType(CustomPaint),
-                      ),
-                    )
-                    .painter!
-                as CheckPainter)
-            .t;
-
-    await pumpArt(tester, const AnimatedCheckmark(checked: false));
-    expect(progress(), 0);
-    await pumpArt(tester, const AnimatedCheckmark(checked: true));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(progress(), inExclusiveRange(0, 1));
-    await tester.pumpAndSettle();
-    expect(progress(), 1);
-  });
-
-  testWidgets('kvačica sa smanjenim kretanjem odmah gotova', (tester) async {
-    await pumpArt(tester, const AnimatedCheckmark(checked: false), still: true);
-    await pumpArt(tester, const AnimatedCheckmark(checked: true), still: true);
-    await tester.pump();
-    final painter =
-        tester
-                .widget<CustomPaint>(
-                  find.descendant(
-                    of: find.byType(AnimatedCheckmark),
-                    matching: find.byType(CustomPaint),
-                  ),
-                )
-                .painter!
-            as CheckPainter;
-    expect(painter.t, 1);
-  });
-
-  testWidgets('smanjeno kretanje završava aktivnu kvačicu odmah', (
-    tester,
-  ) async {
-    await pumpArt(tester, const AnimatedCheckmark(checked: false));
-    await pumpArt(tester, const AnimatedCheckmark(checked: true));
-    await tester.pump(const Duration(milliseconds: 50));
-    await pumpArt(tester, const AnimatedCheckmark(checked: true), still: true);
-    await tester.pump();
-    final painter =
-        tester
-                .widget<CustomPaint>(
-                  find.descendant(
-                    of: find.byType(AnimatedCheckmark),
-                    matching: find.byType(CustomPaint),
-                  ),
-                )
-                .painter!
-            as CheckPainter;
-    expect(painter.t, 1);
-    expect(tester.hasRunningAnimations, isFalse);
-  });
-
-  testWidgets('bedž poskoči kad broj poraste, a ne kad padne', (tester) async {
-    Widget badge(int n) => BumpBadge(count: n, child: const Icon(Icons.abc));
-    double scale(int n) => tester
-        .widget<Transform>(
-          find
-              .ancestor(of: find.text('$n'), matching: find.byType(Transform))
-              .first,
-        )
-        .transform
-        .getMaxScaleOnAxis();
-
-    await pumpArt(tester, badge(1));
-    await pumpArt(tester, badge(2));
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(scale(2), inExclusiveRange(1, 1.081));
-    await tester.pumpAndSettle();
-    expect(scale(2), closeTo(1, 0.001));
-
-    await pumpArt(tester, badge(1));
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(scale(1), closeTo(1, 0.001));
-
-    await pumpArt(tester, badge(1), still: true);
-    await pumpArt(tester, badge(3), still: true);
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(scale(3), closeTo(1, 0.001));
-  });
-
-  testWidgets('čip leti do ikone Kupovine i nestane', (tester) async {
-    final from = GlobalKey();
-    final to = GlobalKey();
-    await pumpArt(
-      tester,
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(key: from, width: 20, height: 20),
-          const SizedBox(height: 200),
-          Icon(Icons.shopping_basket, key: to),
-        ],
-      ),
-    );
-    final done = flyChipToTarget(
-      context: tester.element(find.byKey(from)),
-      from: from,
-      to: to,
-      label: 'Mleveno meso',
-    );
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Mleveno meso'), findsOneWidget);
-    await tester.pumpAndSettle();
-    await done;
-    expect(find.text('Mleveno meso'), findsNothing);
-  });
-
-  testWidgets('smanjeno kretanje prekida i uklanja aktivan let čipa', (
-    tester,
-  ) async {
-    final from = GlobalKey();
-    final to = GlobalKey();
-    await pumpArt(
-      tester,
-      Column(
-        children: [
-          SizedBox(key: from, width: 20, height: 20),
-          const SizedBox(height: 200),
-          Icon(Icons.shopping_basket, key: to),
-        ],
-      ),
-    );
-    var completed = false;
-    final flight = flyChipToTarget(
-      context: tester.element(find.byKey(from)),
-      from: from,
-      to: to,
-      label: 'Luk',
-    ).then((_) => completed = true);
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('Luk'), findsOneWidget);
-    tester.platformDispatcher.accessibilityFeaturesTestValue =
-        const FakeAccessibilityFeatures(disableAnimations: true);
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pump();
-    await tester.pump();
-    expect(completed, isTrue);
-    expect(find.text('Luk'), findsNothing);
-    await flight;
-  });
-
   group('uvodni motiv tokom učitavanja', () {
-    for (final theme in TavliTheme.values) {
-      testWidgets('${theme.label}: prikazuje aktivan motiv', (tester) async {
-        await pumpArt(tester, const IntroScreen(), theme: theme, still: true);
-        expect(find.text('Tavli'), findsOneWidget);
-        expect(
-          find.bySemanticsLabel(IntroMotif.labelFor(theme)),
-          findsOneWidget,
+    final logo = find.byWidgetPredicate(
+      (widget) => widget is Image && widget.semanticLabel == 'Tavli',
+    );
+
+    for (final motif in TavliMotif.values) {
+      for (final brightness in Brightness.values) {
+        testWidgets('${motif.name} ${brightness.name}: motiv i logotip', (
+          tester,
+        ) async {
+          await pumpArt(
+            tester,
+            const IntroScreen(),
+            theme: motif,
+            brightness: brightness,
+            still: true,
+          );
+          expect(find.bySemanticsLabel('Tavli'), findsOneWidget);
+          expect(
+            tester.widget<Image>(logo).color,
+            Theme.of(tester.element(logo)).colorScheme.onSurface,
+          );
+          expect(tester.hasRunningAnimations, isFalse);
+          expect(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is Image &&
+                  widget.image is AssetImage &&
+                  (widget.image as AssetImage).assetName.contains(
+                    'assets/branding/intro/${motif.name}-',
+                  ),
+            ),
+            findsNothing,
+          );
+        });
+      }
+    }
+    for (final size in [const Size(320, 568), const Size(1200, 760)]) {
+      testWidgets('logotip na širini ${size.width} i sa 2× tekstom', (
+        tester,
+      ) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        PaintingBinding.instance.imageCache
+          ..clear()
+          ..clearLiveImages();
+
+        await pumpArt(tester, const IntroScreen(), still: true);
+
+        expect(logo, findsOneWidget);
+        final image = find.descendant(
+          of: logo,
+          matching: find.byType(RawImage),
         );
-        expect(tester.hasRunningAnimations, isFalse);
+        expect(tester.widget<RawImage>(image).image, isNull);
+        final bounds = tester.getRect(logo);
+        expect(bounds.right, lessThanOrEqualTo(size.width));
+        expect(bounds.height, closeTo(bounds.width * 250 / 629, 0.01));
+        expect(tester.takeException(), isNull);
       });
     }
   });
@@ -326,21 +234,6 @@ void main() {
     // na prvom otkucaju posle tačne granice trajanja (Flutter isDone koristi >).
     await tester.pump(const Duration(milliseconds: 1));
     expect(tester.hasRunningAnimations, isFalse);
-  });
-
-  testWidgets('smanjeno kretanje zaustavlja već pokrenut bedž', (tester) async {
-    Widget badge(int n) => BumpBadge(count: n, child: const Icon(Icons.abc));
-    await pumpArt(tester, badge(1));
-    await pumpArt(tester, badge(2));
-    await tester.pump(const Duration(milliseconds: 80));
-    expect(tester.hasRunningAnimations, isTrue);
-    await pumpArt(tester, badge(2), still: true);
-    await tester.pump();
-    expect(tester.hasRunningAnimations, isFalse);
-    final transform = tester.widget<Transform>(
-      find.ancestor(of: find.text('2'), matching: find.byType(Transform)).first,
-    );
-    expect(transform.transform.getMaxScaleOnAxis(), 1);
   });
 
   testWidgets('poruke lonca se ne menjaju u neaktivnom tabu', (tester) async {
@@ -400,5 +293,21 @@ void main() {
     }
     expect(fridgeLight(0), 0);
     expect(fridgeLight(1), 1);
+  });
+
+  testWidgets('prazni ekrani: crtež raste sa širinom, najviše 200', (
+    tester,
+  ) async {
+    Future<double> widthIn(double box) async {
+      await pumpArt(
+        tester,
+        SizedBox(width: box, child: const EmptyTable()),
+        still: true,
+      );
+      return tester.getSize(find.byType(MotionCanvas)).width;
+    }
+
+    expect(await widthIn(250), closeTo(150, 0.01));
+    expect(await widthIn(900), 200);
   });
 }

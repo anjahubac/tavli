@@ -1,4 +1,5 @@
 import '../../domain/plan_calendar.dart';
+import '../../domain/recipe_format.dart';
 
 const _weekdays = [
   'Ponedeljak',
@@ -45,5 +46,35 @@ String rangeLabel(DateRange r) {
 }
 
 /// "1 obrok", "3 obroka", "21 obrok".
-String mealsCount(int n) =>
-    '$n ${n % 10 == 1 && n % 100 != 11 ? 'obrok' : 'obroka'}';
+String mealsCount(int n) => countLabel(n, 'obrok', 'obroka', 'obroka');
+
+const _weekdaysShort = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
+const _weekdaysInitial = ['P', 'U', 'S', 'Č', 'P', 'S', 'N'];
+
+/// „Pon“ … „Ned“, od ponedeljka.
+List<String> get weekdaysShort => _weekdaysShort;
+
+/// „P“ … „N“, od ponedeljka (zaglavlje meseca na telefonu).
+List<String> get weekdaysInitial => _weekdaysInitial;
+
+/// „Pon“
+String weekdayShort(CivilDate d) => _weekdaysShort[d.weekday - 1];
+
+/// Nedelja kao na platnu: „9. – 15. novembar“, „28. oktobar – 3. novembar“,
+/// a preko nove godine i sa godinom.
+String weekLabel(DateRange r) {
+  final s = r.start;
+  final e = r.end;
+  if (s.year != e.year) {
+    return '${s.day}. ${monthName(s.month)} ${s.year}. – '
+        '${e.day}. ${monthName(e.month)} ${e.year}.';
+  }
+  if (s.month == e.month) return '${s.day}. – ${e.day}. ${monthName(e.month)}';
+  return '${s.day}. ${monthName(s.month)} – ${e.day}. ${monthName(e.month)}';
+}
+
+/// „Novembar 2026“
+String monthLabel(CivilDate d) {
+  final name = monthName(d.month);
+  return '${name[0].toUpperCase()}${name.substring(1)} ${d.year}';
+}

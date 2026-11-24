@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'meal_plan.dart' show MealType;
 import 'plan_calendar.dart';
 import 'recipe.dart';
 import 'shopping_demand.dart';
@@ -13,8 +14,8 @@ enum ShoppingSourceKind {
   recipePreparation,
 }
 
-/// Recept kakav je odobren za obrok ili pripremu. Izmena recepta u
-/// biblioteci ga ne menja; sažetak može biti bez koraka.
+/// Sačuvan recept za obrok ili pripremu. Vezan neskuvan obrok se
+/// osvežava pri izmeni recepta u biblioteci; stari sažeci mogu biti bez koraka.
 class RecipeSnapshot {
   const RecipeSnapshot({
     required this.title,
@@ -78,6 +79,13 @@ class RecipeSnapshot {
         imagePath: imagePath,
       );
 
+  /// Da li recept iz biblioteke ima druge sastojke ili osnovne porcije od
+  /// ovog snimka. Koraci ne utiču na ponudu za osvežavanje sastojaka.
+  bool ingredientsDifferFrom(Recipe recipe) =>
+      baseServings != recipe.servings ||
+      jsonEncode([for (final i in ingredients) i.toJson()]) !=
+          jsonEncode([for (final i in recipe.ingredients) i.toJson()]);
+
   /// Isti ključevi kao recept u bazi (`Recipe.toAiJson`) i kao zapis koji
   /// migracija v5 pravi od postojećih obroka.
   Map<String, dynamic> toJson() => {
@@ -90,13 +98,13 @@ class RecipeSnapshot {
   };
 }
 
-/// Redosled vrsta obroka u danu (za raspodelu zalihe).
-int mealOrder(String mealType) => switch (mealType) {
-  'breakfast' => 0,
-  'lunch' => 1,
-  'dinner' => 2,
-  _ => 3,
-};
+/// Redosled samostalne pripreme i nepoznate vrste obroka: posle svih obroka
+/// u danu.
+final unplannedMealOrder = MealType.values.length;
+
+/// Redosled vrsta obroka u danu (za raspodelu zalihe), isti kao [MealType].
+int mealOrder(String mealType) =>
+    MealType.tryParse(mealType)?.index ?? unplannedMealOrder;
 
 /// Obrok ili priprema za koju je stavka nabavke: prikazuje se uz stavku, a
 /// pri kupovini se zamrzava u poreklu kupovine.

@@ -1,11 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../ai/meal_plan_ai.dart';
 import '../../data/meal_plan_repository.dart';
 import '../../domain/meal_plan.dart';
+import '../../domain/meal_rules.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/shopping_source.dart';
@@ -16,9 +18,7 @@ import 'planning_providers.dart';
 
 void _say(BuildContext context, String text) {
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(text)));
+  showTavliMessage(context, text);
 }
 
 /// Poruka za grešku izmene obroka.
@@ -52,26 +52,22 @@ enum ReplacementSource { ai, library }
 
 /// Pita da li AI predlaže drugo jelo ili osoba bira svoj recept.
 Future<ReplacementSource?> pickReplacementSource(BuildContext context) =>
-    showModalBottomSheet<ReplacementSource>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.auto_awesome),
-              title: const Text('Predloži drugo'),
-              subtitle: const Text('AI predlaže novo jelo za ovaj obrok'),
-              onTap: () => Navigator.pop(context, ReplacementSource.ai),
-            ),
-            ListTile(
-              leading: const Icon(Icons.menu_book_outlined),
-              title: const Text('Iz mojih recepata'),
-              onTap: () => Navigator.pop(context, ReplacementSource.library),
-            ),
-          ],
-        ),
+    showTavliSheet<ReplacementSource>(
+      context,
+      builder: (context) => TavliListGroup(
+        children: [
+          TavliListRow(
+            leading: const TavliIcon(TavliIcons.sparkle),
+            title: 'Predloži drugo',
+            subtitle: 'AI predlaže novo jelo za ovaj obrok',
+            onTap: () => Navigator.pop(context, ReplacementSource.ai),
+          ),
+          TavliListRow(
+            leading: const TavliIcon(TavliIcons.recipes),
+            title: 'Iz mojih recepata',
+            onTap: () => Navigator.pop(context, ReplacementSource.library),
+          ),
+        ],
       ),
     );
 
@@ -83,27 +79,19 @@ Future<Recipe?> pickLibraryRecipe(BuildContext context, WidgetRef ref) async {
     _say(context, 'Još nemaš sačuvanih recepata.');
     return null;
   }
-  return showModalBottomSheet<Recipe>(
-    context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder: (context) => SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
-        ),
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const ListTile(title: Text('Izaberi recept')),
-            for (final r in recipes)
-              ListTile(
-                title: Text(r.title),
-                subtitle: Text(servingsLabel(r.servings)),
-                onTap: () => Navigator.pop(context, r),
-              ),
-          ],
-        ),
+  return showTavliSheet<Recipe>(
+    context,
+    title: 'Izaberi recept',
+    builder: (context) => SingleChildScrollView(
+      child: TavliListGroup(
+        children: [
+          for (final r in recipes)
+            TavliListRow(
+              title: r.title,
+              subtitle: servingsLabel(r.servings),
+              onTap: () => Navigator.pop(context, r),
+            ),
+        ],
       ),
     ),
   );
@@ -124,6 +112,8 @@ Future<void> replaceMeal(
     planId: plan.id,
     fingerprint: await repo.fingerprint(plan.id),
   );
+  final others = await repo.meals(plan.id);
+  final library = await ref.read(recipeRepositoryProvider).getAll();
   final request = PlanRequest(
     range: plan.range,
     mealTypes: plan.mealTypes,
@@ -133,6 +123,11 @@ Future<void> replaceMeal(
         ? null
         : 'Nešto drugačije od: ${meal.snapshot!.title}',
     only: {meal.slot},
+    // Ostala jela iz plana ostaju; pravila ih gledaju (jak obrok u danu,
+    // ponavljanje).
+    kept: plannedMealFacts(others.where((m) => m.slot != meal.slot), {
+      for (final r in library) r.id: r.labels,
+    }),
   );
   if (!context.mounted) return;
   final draft = choice == ReplacementSource.ai
@@ -141,38 +136,32 @@ Future<void> replaceMeal(
   if (draft == null || !context.mounted) return;
   final next = draft.snapshotFor(meal.slot);
   if (next == null) return;
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Pregled izmena'),
-      content: SingleChildScrollView(
-        child: Column(
+  final ok = await showTavliDialog<bool>(
+    context,
+    title: 'Pregled izmena',
+    content: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      spacing: TavliSpacing.small,
+      children: [
+        Text(
+          '${meal.snapshot?.title ?? 'Obrok'} → ${next.title}',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${meal.snapshot?.title ?? 'Obrok'} → ${next.title}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
             Text('Sastojci za ${servingsLabel(next.baseServings)}:'),
             for (final i in next.ingredients) Text('• ${ingredientLine(i)}'),
-            const SizedBox(height: 8),
-            Text('Obrok zadržava ${servingsLabel(meal.servings)}.'),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Otkaži'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Prihvati'),
-        ),
+        Text('Obrok zadržava ${servingsLabel(meal.servings)}.'),
       ],
     ),
+    actions: const [
+      TavliDialogAction('Otkaži', false),
+      TavliDialogAction('Prihvati', true, isDefault: true),
+    ],
   );
   if (ok != true || !context.mounted) return;
   await runMealEdit(
@@ -200,7 +189,7 @@ Future<PlanDraft?> _proposeOne(
         cancel: cancel,
       );
   unawaited(
-    showDialog<void>(
+    showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialog) {
@@ -209,29 +198,15 @@ Future<PlanDraft?> _proposeOne(
             if (dialog.mounted) Navigator.pop(dialog);
           }),
         );
-        return AlertDialog(
-          content: const Row(
-            children: [
-              SizedBox.square(
-                dimension: 24,
-                child: CircularProgressIndicator(strokeWidth: 3),
-              ),
-              SizedBox(width: 16),
-              Expanded(child: Text('Tražim drugo jelo…')),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                cancel.cancel();
-                Navigator.pop(dialog);
-              },
-              child: const Text('Prekini'),
-            ),
-          ],
+        return const TavliDialog<bool>(
+          title: 'Tražim drugo jelo…',
+          content: TavliLoading(),
+          actions: [TavliDialogAction('Prekini', true)],
         );
       },
-    ),
+    ).then((stopped) {
+      if (stopped ?? false) cancel.cancel();
+    }),
   );
   try {
     final draft = await work;

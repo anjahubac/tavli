@@ -5,10 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../account/auth_controller.dart';
+import '../../ai/recipe_semantic_search.dart';
 import '../../data/photo_resize.dart';
 import '../../data/recipe_photo_store.dart';
+import '../../data/recipe_rating_repository.dart';
 import '../../data/recipe_repository.dart';
 import '../../domain/recipe.dart';
+import '../../domain/recipe_rating.dart';
+import '../../domain/recipe_search.dart';
 import '../../domain/recipe_version.dart';
 import '../../providers.dart';
 import 'photo_picker.dart';
@@ -25,6 +29,22 @@ final recipeRepositoryProvider = Provider<RecipeRepository>(
   (ref) => RecipeRepository(
     ref.watch(databaseProvider),
     ref.watch(recipePhotoStoreProvider),
+    writer: ref.watch(syncedWriterProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    clock: ref.watch(clockProvider),
+  ),
+);
+
+final recipeSemanticSearchServiceProvider =
+    Provider<IndexedRecipeSearchService?>((ref) {
+      final gateway = ref.watch(gatewayChatClientProvider);
+      if (gateway == null) return null;
+      return IndexedRecipeSearchService(gateway);
+    });
+
+final recipeRatingRepositoryProvider = Provider<RecipeRatingRepository>(
+  (ref) => RecipeRatingRepository(
+    ref.watch(databaseProvider),
     writer: ref.watch(syncedWriterProvider),
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     clock: ref.watch(clockProvider),
@@ -52,19 +72,43 @@ final recipeVersionsProvider = StreamProvider.autoDispose
       (ref, id) => ref.watch(recipeRepositoryProvider).watchVersions(id),
     );
 
+final recipeMyRatingProvider = StreamProvider.autoDispose
+    .family<RecipeRating?, String>(
+      (ref, recipeId) =>
+          ref.watch(recipeRatingRepositoryProvider).watchMyRating(recipeId),
+    );
+
+final recipeRatingSummaryProvider = StreamProvider.autoDispose
+    .family<RecipeRatingSummary?, String>(
+      (ref, recipeId) => ref
+          .watch(recipeRatingRepositoryProvider)
+          .watchHouseholdSummary(recipeId),
+    );
+
+/// Prosek ocena svih recepata domaćinstva za listu, po id-u recepta.
+final recipeRatingSummariesProvider =
+    StreamProvider.autoDispose<Map<String, RecipeRatingSummary>>(
+      (ref) =>
+          ref.watch(recipeRatingRepositoryProvider).watchHouseholdSummaries(),
+    );
+
 final recipePhotoFileProvider = FutureProvider.autoDispose
     .family<File?, String>(
       (ref, path) => ref.watch(recipePhotoStoreProvider).file(path),
     );
 
-/// Upit za pretragu; deli se između liste i podeljenog prikaza.
-class RecipeSearch extends Notifier<String> {
+/// Naziv i filteri za listu recepata; ostaju i kad se prozor raširi.
+class RecipeSearch extends Notifier<RecipeFilter> {
   @override
-  String build() => '';
+  RecipeFilter build() => RecipeFilter.none;
 
-  void set(String query) => state = query;
+  void setQuery(String query) => state = state.copyWith(query: query);
+
+  void set(RecipeFilter filter) => state = filter;
+
+  void clearFilters() => state = state.cleared();
 }
 
-final recipeSearchProvider = NotifierProvider<RecipeSearch, String>(
+final recipeSearchProvider = NotifierProvider<RecipeSearch, RecipeFilter>(
   RecipeSearch.new,
 );

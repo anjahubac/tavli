@@ -1,20 +1,61 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-/// AI provajderi koji govore OpenAI-kompatibilan API.
+/// AI provajderi koji govore OpenAI-kompatibilan API. Jedini spisak servisa
+/// u aplikaciji: nov servis je nov red ovde.
 enum AIProvider {
-  gemini('Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai/'),
-  groq('Groq', 'https://api.groq.com/openai/v1/'),
-  openRouter('OpenRouter', 'https://openrouter.ai/api/v1/');
+  gemini(
+    'Gemini',
+    'https://generativelanguage.googleapis.com/v1beta/openai/',
+    // `AQ.` imaju noviji ključevi iz Google AI Studio.
+    prefixes: ['AIza', 'AQ.'],
+  ),
+  groq('Groq', 'https://api.groq.com/openai/v1/', prefixes: ['gsk_']),
+  openRouter(
+    'OpenRouter',
+    'https://openrouter.ai/api/v1/',
+    prefixes: ['sk-or-'],
+  ),
+  openAI('OpenAI', 'https://api.openai.com/v1/', prefixes: ['sk-'], paid: true);
 
-  const AIProvider(this.label, this.baseUrl);
+  const AIProvider(
+    this.label,
+    this.baseUrl, {
+    required this.prefixes,
+    this.paid = false,
+  });
 
   final String label;
   final String baseUrl;
+
+  /// Počeci ključeva po kojima se servis prepoznaje.
+  final List<String> prefixes;
+
+  /// Da li servis naplaćuje zahteve (važi za ceo servis, ne za plan naloga).
+  final bool paid;
+
+  bool get supportsPersonalKey => baseUrl.isNotEmpty;
 }
 
 /// Vrsta zadatka određuje koji lanac modela se koristi.
 enum TaskKind { vision, text }
+
+enum AITask {
+  recipeFromImage('recipe_from_image'),
+  recipeFromName('recipe_from_name'),
+  recipeRefine('recipe_refine'),
+  planOutline('plan_outline'),
+  recipeSummaries('recipe_summaries'),
+  recipeImageDescription('recipe_image_description'),
+  pantryFromPhoto('pantry_from_photo'),
+
+  /// Glasovni nacrt recepta: prepis + nacrt → dozvoljene radnje (spec 027).
+  voiceDraftActions('voice_draft_actions');
+
+  const AITask(this.wireName);
+
+  final String wireName;
+}
 
 class ModelSpec {
   const ModelSpec({
@@ -91,14 +132,35 @@ class AIRequest {
   const AIRequest({
     required this.system,
     required this.prompt,
+    this.task,
     this.images = const [],
     this.temperature = 0.4,
   });
 
   final String system;
   final String prompt;
+  final AITask? task;
   final List<AIImage> images;
   final double temperature;
 
   TaskKind get kind => images.isEmpty ? TaskKind.text : TaskKind.vision;
+}
+
+/// Prekid AI zahteva koji je osoba tražila („Prekini“, napušten ekran).
+/// Router ga proverava pre svakog poziva modela, pa posle prekida ne kreće
+/// ni sledeći model ni popravka odgovora.
+class AICancellation {
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  void cancel() => _cancelled = true;
+}
+
+/// Router je stao jer je zahtev prekinut; odgovor se ne prikazuje.
+class AICancelled implements Exception {
+  const AICancelled();
+
+  @override
+  String toString() => 'AICancelled';
 }

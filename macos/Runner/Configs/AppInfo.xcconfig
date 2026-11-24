@@ -12,3 +12,6 @@ PRODUCT_BUNDLE_IDENTIFIER = com.tavli.tavli
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.tavli. All rights reserved.
+
+// Per-developer signing (DEVELOPMENT_TEAM); gitignored, see Local.xcconfig.example.
+#include? "Local.xcconfig"

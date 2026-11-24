@@ -1,0 +1,8 @@
+// Lično potpisivanje debug build-a na macOS-u.
+// Kopiraj u Local.xcconfig (gitignored) i upiši svoj Team ID
+// (Xcode → Settings → Accounts, ili developer.apple.com → Membership).
+// Sa stalnim potpisom Keychain pamti „Always Allow“ i ne traži lozinku
+// posle svakog `flutter run`. Bez ovog fajla build ostaje ad-hoc potpisan.
+DEVELOPMENT_TEAM = ABCDE12345
+CODE_SIGN_IDENTITY = Apple Development
+CODE_SIGN_STYLE = Automatic

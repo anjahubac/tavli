@@ -7,10 +7,12 @@ import '../domain/ids.dart';
 import '../domain/meal_plan.dart';
 import '../domain/plan_calendar.dart';
 import '../domain/recipe.dart';
+import '../domain/recipe_labels.dart';
 import '../domain/shopping_demand.dart' show maxServings, minServings;
 import '../domain/shopping_source.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
+import 'recipe_image_jobs.dart';
 import 'shopping_repository.dart';
 
 /// Nacrt nije potpun, a nepotpuno čuvanje nije izričito izabrano (ili
@@ -29,10 +31,35 @@ class MealNotFoundException implements Exception {
   const MealNotFoundException();
 }
 
+/// Mesto u planu je u međuvremenu zauzeto; dodavanje traži izričitu zamenu.
+class SlotTakenException implements Exception {
+  const SlotTakenException();
+}
+
 /// Plan se promenio otkako je nacrt počeo (ili ga više nema): nacrt se ne
 /// čuva, stari plan ostaje kakav je bio.
 class StaleDraftException implements Exception {
   const StaleDraftException();
+}
+
+/// Raspon novog plana za [day] kad ga nijedan plan ne sadrži: susedni
+/// dani iste nedelje (ponedeljak–nedelja) koji nisu prošli i nisu ni u
+/// jednom planu, pa se planovi ne preklapaju.
+DateRange freeWeekAround(CivilDate day, CivilDate today, List<MealPlan> plans) {
+  final week = weekOf(day);
+  bool free(CivilDate d) =>
+      week.contains(d) &&
+      !d.isBefore(today) &&
+      !plans.any((p) => p.range.contains(d));
+  var start = day;
+  while (free(start.addDays(-1))) {
+    start = start.addDays(-1);
+  }
+  var end = day;
+  while (free(end.addDays(1))) {
+    end = end.addDays(1);
+  }
+  return DateRange(start, end);
 }
 
 /// Planovi obroka domaćinstva. Odobrenje upisuje plan, nove recepte, obroke i nabavku u
@@ -72,10 +99,14 @@ class MealPlanRepository {
           .map((r) => r == null ? null : _planFromRow(r));
 
   /// Obroci plana, hronološki.
-  Stream<List<PlannedMeal>> watchMeals(String planId) =>
-      _entriesQuery(planId)
-          .watch()
-          .map((rows) => rows.map(_mealFromRow).toList()..sort(_bySlot));
+  Stream<List<PlannedMeal>> watchMeals(String planId) => _entriesQuery(planId)
+      .watch()
+      .map((rows) => [for (final r in rows) ?_mealFromRow(r)]..sort(_bySlot));
+
+  /// Obroci plana jednom, hronološki (npr. ostala jela kod zamene jednog).
+  Future<List<PlannedMeal>> meals(String planId) async =>
+      [for (final r in await _entriesQuery(planId).get()) ?_mealFromRow(r)]
+        ..sort(_bySlot);
 
   /// Nazivi potvrđene zalihe domaćinstva (za predlog plana; samo čitanje).
   Future<List<String>> confirmedPantryNames() async => [
@@ -123,7 +154,7 @@ class MealPlanRepository {
         }
         planId = base.planId;
         for (final e in await _entriesQuery(planId).get()) {
-          existing[_slotOf(e)] = e;
+          if (_slotOf(e) case final slot?) existing[slot] = e;
         }
       }
 
@@ -133,13 +164,18 @@ class MealPlanRepository {
         )..where((t) => t.householdId.equals(_scope.householdId))).get())
           r.id,
       };
-      // Novi recepti iz predloga idu i u Recepte (sažetak, bez koraka);
+      // Novi recepti iz predloga idu i u Recepte, sa koracima;
       // isti recept na više mesta je jedan recept.
+      // AI oznake (TRELLO-39) idu uz recept sa izvorom `ai`, pa ih sledeći
+      // plan zna, a korisnik ih može ispraviti.
       final created = <String, String>{};
       for (final slot in ready) {
         final key = draft.proposals[slot]!.draftRecipeKey;
         if (key == null || created.containsKey(key)) continue;
-        created[key] = await _insertRecipe(draft.newRecipes[key]!);
+        created[key] = await _insertRecipe(
+          draft.newRecipes[key]!,
+          labels: _aiLabels(draft, ready, key),
+        );
       }
       final today = CivilDate.today(_clock);
       for (final slot in ready) {
@@ -190,6 +226,160 @@ class MealPlanRepository {
     });
   }
 
+  /// Obroci po mestu za dane iz [range], iz plana koji važi za taj dan
+  /// (najnoviji koji ga sadrži, kao Početna). Za izbor mesta pri dodavanju
+  /// recepta iz Recepata.
+  Future<Map<MealSlot, PlannedMeal>> mealsIn(DateRange range) async {
+    final plans = await _householdPlans();
+    final result = <MealSlot, PlannedMeal>{};
+    final byPlan = <String, List<PlannedMeal>>{};
+    for (final day in range.days) {
+      final plan = _planFor(plans, day);
+      if (plan == null) continue;
+      final planMeals = byPlan[plan.id] ??= await meals(plan.id);
+      for (final m in planMeals) {
+        if (m.slot.date == day) result.putIfAbsent(m.slot, () => m);
+      }
+    }
+    return result;
+  }
+
+  /// Dodaje recept iz biblioteke na [slot] sa [servings] porcija i vraća id
+  /// plana. Mesto ide u plan koji važi za taj dan; ako ga nema, pravi se
+  /// plan za slobodne dane te nedelje (od danas). Zauzeto mesto se menja
+  /// samo uz [replace]; zaključan, skuvan ili prošao obrok se ne menja.
+  /// Nabavka se usklađuje u istoj transakciji.
+  Future<String> addRecipe({
+    required Recipe recipe,
+    required MealSlot slot,
+    required int servings,
+    bool replace = false,
+  }) {
+    if (servings < minServings || servings > maxServings) {
+      throw ArgumentError.value(servings, 'servings');
+    }
+    final today = CivilDate.today(_clock);
+    if (slot.date.isBefore(today)) {
+      return Future.error(const ProtectedMealException());
+    }
+    return _db.transaction(() async {
+      final plans = await _householdPlans();
+      final plan = _planFor(plans, slot.date);
+      final String planId;
+      if (plan == null) {
+        planId = newId();
+        await _insertSinglePlan(
+          planId,
+          range: freeWeekAround(slot.date, today, plans),
+          type: slot.type,
+          servings: servings,
+        );
+      } else {
+        planId = plan.id;
+        if (!plan.mealTypes.contains(slot.type)) {
+          await _addMealType(plan, slot.type);
+        }
+      }
+      final snapshot = jsonEncode(RecipeSnapshot.fromRecipe(recipe).toJson());
+      MealPlanEntryRow? current;
+      for (final e in await _entriesQuery(planId).get()) {
+        if (_slotOf(e) == slot) current = e;
+      }
+      if (current == null) {
+        final id = newId();
+        await _db
+            .into(_db.mealPlanEntries)
+            .insert(
+              MealPlanEntriesCompanion.insert(
+                id: id,
+                planId: planId,
+                date: slot.date.toWire(),
+                mealType: slot.type.name,
+                recipeId: Value(recipe.id),
+                servings: Value(servings),
+                recipeSnapshotJson: Value(snapshot),
+                householdId: Value(_scope.householdId),
+              ),
+            );
+        await _writer.upsert(_entry, id);
+      } else {
+        if (current.isLocked || current.isCooked) {
+          throw const ProtectedMealException();
+        }
+        if (!replace) throw const SlotTakenException();
+        await (_db.update(
+          _db.mealPlanEntries,
+        )..where((t) => t.id.equals(current!.id))).write(
+          MealPlanEntriesCompanion(
+            recipeId: Value(recipe.id),
+            servings: Value(servings),
+            recipeSnapshotJson: Value(snapshot),
+          ),
+        );
+        await _writer.upsert(_entry, current.id);
+      }
+      await _shopping.reconcilePlan(planId);
+      return planId;
+    });
+  }
+
+  Future<List<MealPlan>> _householdPlans() async => [
+    for (final r
+        in await (_db.select(_db.mealPlans)
+              ..where((t) => t.householdId.equals(_scope.householdId))
+              ..orderBy([
+                (t) => OrderingTerm.desc(t.createdAt),
+                (t) => OrderingTerm.asc(t.id),
+              ]))
+            .get())
+      _planFromRow(r),
+  ];
+
+  /// Najnoviji plan koji sadrži [day] (isto pravilo kao Početna).
+  static MealPlan? _planFor(List<MealPlan> plans, CivilDate day) {
+    for (final p in plans) {
+      if (p.range.contains(day)) return p;
+    }
+    return null;
+  }
+
+  Future<void> _insertSinglePlan(
+    String id, {
+    required DateRange range,
+    required MealType type,
+    required int servings,
+  }) async {
+    await _db
+        .into(_db.mealPlans)
+        .insert(
+          MealPlansCompanion.insert(
+            id: id,
+            startDate: range.start.toWire(),
+            endDate: range.end.toWire(),
+            mealTypesJson: jsonEncode([type.name]),
+            defaultServings: Value(servings),
+            createdAt: _clock().toUtc(),
+            householdId: Value(_scope.householdId),
+          ),
+        );
+    await _writer.upsert(_plan, id);
+  }
+
+  Future<void> _addMealType(MealPlan plan, MealType type) async {
+    final types = {...plan.mealTypes, type};
+    await (_db.update(_db.mealPlans)..where((t) => t.id.equals(plan.id))).write(
+      MealPlansCompanion(
+        mealTypesJson: Value(
+          jsonEncode([
+            for (final t in MealType.values)
+              if (types.contains(t)) t.name,
+          ]),
+        ),
+      ),
+    );
+    await _writer.upsert(_plan, plan.id);
+  }
+
   /// Porcije jednog obroka (1–20); nabavka se usklađuje.
   Future<void> changeServings(String entryId, int servings) {
     if (servings < minServings || servings > maxServings) {
@@ -201,13 +391,31 @@ class MealPlanRepository {
     });
   }
 
+  /// Uzima sastojke iz recepta u biblioteci kad ih je osoba izmenila
+  /// posle planiranja („Osveži iz recepta“). Porcije obroka ostaju iste,
+  /// a nabavka se usklađuje. Skuvan obrok se ne menja.
+  Future<void> refreshFromRecipe(String entryId, Recipe recipe) =>
+      _edit(entryId, (e) async {
+        if (e.isCooked) throw const ProtectedMealException();
+        if (e.recipeId != recipe.id) throw const MealNotFoundException();
+        final servings = _mealFromRow(e)?.servings ?? recipe.servings;
+        return MealPlanEntriesCompanion(
+          recipeSnapshotJson: Value(
+            jsonEncode(RecipeSnapshot.fromRecipe(recipe).toJson()),
+          ),
+          servings: Value(servings),
+        );
+      });
+
   /// Zaključan obrok ponovni predlog ne menja.
   Future<void> setLocked(String entryId, {required bool locked}) => _edit(
     entryId,
     (_) async => MealPlanEntriesCompanion(isLocked: Value(locked)),
   );
 
-  /// Skuvan obrok više ne traži kupovinu; kupljeno i zaliha ostaju.
+  /// Skuvan obrok više ne traži kupovinu; kupljeno i zaliha ostaju. Samo
+  /// oznaka obroka: ekrani idu kroz `CookingRepository`, koji uz nju beleži
+  /// zapis kuvanja i potrošnju iz ostave.
   Future<void> setCooked(String entryId, {required bool cooked}) => _edit(
     entryId,
     (_) async => MealPlanEntriesCompanion(isCooked: Value(cooked)),
@@ -258,7 +466,34 @@ class MealPlanRepository {
     await _shopping.reconcilePlan(e.planId);
   });
 
-  Future<String> _insertRecipe(RecipeSnapshot r) async {
+  /// Oznake novog recepta iz plana: obroci na kojima je predložen i
+  /// težina/vrsta koje je AI dao (null kad ih AI nije dao).
+  static RecipeLabels _aiLabels(
+    PlanDraft draft,
+    List<MealSlot> ready,
+    String key,
+  ) {
+    final slots = [
+      for (final s in ready)
+        if (draft.proposals[s]!.draftRecipeKey == key) s,
+    ];
+    final first = draft.proposals[slots.first]!;
+    final meals = {for (final s in slots) suitabilityFor(s.type)};
+    return RecipeLabels(
+      meals: [
+        for (final m in MealSuitability.values)
+          if (meals.contains(m)) m.wire,
+      ],
+      weight: first.weight?.wire,
+      dishKind: first.dishKind?.wire,
+      source: LabelsSource.ai.name,
+    );
+  }
+
+  Future<String> _insertRecipe(
+    RecipeSnapshot r, {
+    RecipeLabels labels = RecipeLabels.none,
+  }) async {
     final id = newId();
     final now = _clock().toUtc();
     await _db
@@ -274,12 +509,20 @@ class MealPlanRepository {
               for (final i in r.ingredients) i.toJson(),
             ]),
             stepsJson: jsonEncode(r.steps),
+            mealTypesJson: Value(
+              labels.meals == null ? null : jsonEncode(labels.meals),
+            ),
+            weight: Value(labels.weight),
+            dishKind: Value(labels.dishKind),
+            labelsSource: Value(labels.source),
             createdAt: now,
             updatedAt: now,
             householdId: Value(_scope.householdId),
           ),
         );
     await _writer.upsert(_recipe, id);
+    // AI recept iz plana dobija AI sliku u pozadini (TRELLO-130).
+    await queueAiImage(_db, _scope, id, now);
     return id;
   }
 
@@ -318,10 +561,14 @@ class MealPlanRepository {
       (t) => t.planId.equals(planId) & t.householdId.equals(_scope.householdId),
     );
 
-  static MealSlot _slotOf(MealPlanEntryRow e) => MealSlot(
-    CivilDate.fromWire(e.date),
-    MealType.tryParse(e.mealType) ?? MealType.lunch,
-  );
+  /// Mesto obroka; null za vrstu obroka koju ova verzija ne zna (npr. iz
+  /// novije aplikacije). Takav obrok se ne prikazuje i ne menja, umesto da
+  /// se pogrešno pokaže kao ručak. Nabavka ga namerno i dalje računa: obrok
+  /// postoji u domaćinstvu, samo ga ova verzija ne ume da prikaže.
+  static MealSlot? _slotOf(MealPlanEntryRow e) {
+    final type = MealType.tryParse(e.mealType);
+    return type == null ? null : MealSlot(CivilDate.fromWire(e.date), type);
+  }
 
   static int _bySlot(PlannedMeal a, PlannedMeal b) {
     final s = a.slot.compareTo(b.slot);
@@ -347,7 +594,9 @@ class MealPlanRepository {
     return end.isBefore(start) ? start : end;
   }
 
-  static PlannedMeal _mealFromRow(MealPlanEntryRow e) {
+  static PlannedMeal? _mealFromRow(MealPlanEntryRow e) {
+    final slot = _slotOf(e);
+    if (slot == null) return null;
     RecipeSnapshot? snapshot;
     final json = e.recipeSnapshotJson;
     if (json != null) {
@@ -362,7 +611,7 @@ class MealPlanRepository {
     return PlannedMeal(
       id: e.id,
       planId: e.planId,
-      slot: _slotOf(e),
+      slot: slot,
       servings: e.servings ?? snapshot?.baseServings ?? 2,
       snapshot: snapshot,
       recipeId: e.recipeId,

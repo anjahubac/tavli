@@ -1,0 +1,63 @@
+# 010 current direction and remaining scope
+
+Amendment: 2026-11-13. Original spec/tasks/checkmarks remain historical evidence.
+This overlay resolves new product decisions without claiming they already ship.
+
+At `dev` `207c94c`, generation/review/calendar/plan edits and plan/recipe shopping
+have code, tests and schema v5. The original “implementation not started” header
+is stale; full acceptance, pantry/preferences/cooking/UI evaluation remain open.
+
+| Earlier 010 direction | Current accepted direction | Handoff |
+| --- | --- | --- |
+| Four tabs, Plan opens, Today inside Plan | Five tabs: Plan, Nabavka, Početna, Recepti, Ostava; Home opens | Dev 4, route compatibility tests |
+| Pantry expiry/use-in-plan and no automatic consumption | No expiry UX; optional quantity; consume known stock on cooking, undo restores once | Dev 4 + Dev 1 supply contract |
+| Creator-only private planning preferences | Consent-filtered tastes, notes and favorites from explicitly selected members (all by default); member allergen selections stay within the server planner; see the [008 contract](../008-household-members/contracts/member-planning-inputs.md) | Dev 3 producer, Dev 2 consumer |
+| Three fixed meal kinds | List-based slots with morning/afternoon snacks; lock/import compatibility | Dev 2; Dev 4 rendering |
+| Text ingredient identity | UUID/slug catalog with original text and unresolved fallback | Dev 1; Dev 2/3/4 consumers |
+| Existing local built-in provider keys | Planned authenticated Supabase Edge gateway, own keys still device-only | Dev 2 |
+| FR-009: approved meal keeps recipe content independent of later library edits | Plan detail and cooking mode show live steps for uncooked meals with an existing library recipe. Cooked meals and meals whose recipe was deleted show the approved snapshot steps. Ingredients and servings come from the plan. An uncooked meal with changed library ingredients offers “Osveži iz recepta”, which refreshes the recipe snapshot and preserves planned servings (decided 2026-11-21). | Dev 4 |
+| Legacy original plan tasks describe all work in one spec | Completed slices retained; new behavior gets focused spec/contracts and linked tasks | All owners |
+
+## 2026-11-22: complete generated recipes and linked recipe edits
+
+- **T016a (Dev 2)**: Weekly and monthly generation, including AI
+  replacements, must produce ingredients and preparation steps for each new
+  recipe in the same bounded batch. A response without usable steps triggers
+  the existing router repair and fallback. If the batch still fails, the
+  draft keeps completed batches and the existing retry/partial-save flow.
+  Automatic selection only offers library recipes with usable steps. Manually
+  chosen recipes and legacy saved plans can still contain summaries.
+- **T023a (Dev 2 with Dev 1 and Dev 4 review)**: Saving, undoing or restoring a
+  library recipe refreshes the snapshot for every linked uncooked plan entry,
+  including locked entries. Slot, lock and planned servings stay as selected.
+  Reconcile the affected shopping demand in the same local transaction and
+  sync through the existing outbox. Cooked entries, deleted-recipe snapshots,
+  and standalone preparations retain their history.
+
+Generation requires connectivity and uses the current request and retry limits.
+Saved steps and recipe edits work offline. No new UI text, private data inputs,
+credentials, filesystem access, server schema, or deployment steps are introduced.
+The existing household scope and outbox also apply to refreshed entries.
+
+The approved snapshot steps may differ from the live steps shown before cooking.
+For acceptance, mark a planned meal cooked, then edit its library recipe's steps
+and ingredients. Verify that plan detail and the meal's cooking route show the
+approved snapshot steps and ingredients at the planned servings. Plan detail
+offers no “Osveži iz recepta” action while the meal is cooked.
+
+Still binding: reviewed drafts, snapshots/servings, delta-only repeat Add,
+canonical week/month shopping, six-week months, bought/manual preservation,
+one allocation of supply across plan and recipe, idempotent receipt, offline
+outbox, account isolation and original recipe-photo access.
+
+Before implementing remaining tasks T035–T046, rewrite their **future execution
+plan** against these changes in the owning feature. Do not implement obsolete
+expiry tests, four-tab assertions or no-consumption rules just because their old
+checkbox is still open. Retain their original text/IDs and record replacement
+tasks/requirements, not a fabricated completed acceptance history.
+
+The full plan is in [product plan](../../docs/product-plan.md), with
+[shared contracts](../011-team-development/contracts/shared-boundaries.md).
+Architecture describes actual existing paths; this overlay adds no tables,
+routes or providers by itself. Old personal-data grants are not loosened by
+this amendment: agree purpose/consent/RLS before exposing planning aggregates.

@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../../app/animations/motion.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 
@@ -71,7 +71,16 @@ class KeepScreenOnScope extends ConsumerStatefulWidget {
 
 class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   late final ScreenWakeLock _lock = ref.read(screenWakeLockProvider);
-  bool _held = false;
+
+  /// Šta korisnik traži (opcija uključena).
+  bool _wanted = false;
+
+  /// Šta je platforma potvrdila. Razlikuje se od [_wanted] kad zahtev propadne,
+  /// pa zatvaranje recepta može da ponovi neuspelo otpuštanje.
+  bool _confirmed = false;
+
+  /// Zahtevi idu jedan za drugim da potvrđeno stanje ne bude u trci.
+  Future<void> _queue = Future.value();
 
   @override
   void initState() {
@@ -84,23 +93,46 @@ class _KeepScreenOnScopeState extends ConsumerState<KeepScreenOnScope> {
   }
 
   void _apply(bool on) {
-    if (on == _held) return;
-    _held = on;
-    unawaited(_call(on ? _lock.enable : _lock.disable));
+    if (on == _wanted) return;
+    _wanted = on;
+    _enqueue(on);
+  }
+
+  void _enqueue(bool on) {
+    _queue = _queue.then((_) => _run(on));
+    unawaited(_queue);
   }
 
   /// Ako platforma ne podrži zahtev, aplikacija radi dalje.
-  static Future<void> _call(Future<void> Function() action) async {
+  Future<void> _run(bool on) async {
+    if (on == _confirmed) return;
     try {
-      await action();
-    } on Exception catch (e) {
-      if (kDebugMode) debugPrint('Ekran: zahtev nije uspeo ($e)');
+      await (on ? _lock.enable() : _lock.disable());
+      _confirmed = on;
+    } on Exception {
+      if (kDebugMode) debugPrint('Ekran: zahtev nije uspeo.');
+      if (mounted) {
+        final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              on
+                  ? 'Sistem nije uspeo da spreči gašenje ekrana. Proveri da li okruženje podržava ovu funkciju.'
+                  : 'Nije uspelo isključivanje zadržavanja ekrana. Ekran može ostati uključen dok se recept ne zatvori.',
+            ),
+          ),
+        );
+      }
     }
   }
 
   @override
   void dispose() {
-    if (_held) unawaited(_call(_lock.disable));
+    // Otpuštanje se pokušava i kad je ranije propalo (_confirmed je i dalje true).
+    if (_wanted || _confirmed) {
+      _wanted = false;
+      _enqueue(false);
+    }
     super.dispose();
   }
 
@@ -124,9 +156,31 @@ class KeepScreenOnButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final on = ref.watch(keepScreenOnProvider).value ?? false;
+    return KeepScreenOnToggle(
+      on: on,
+      onPressed: () async {
+        await ref.read(keepScreenOnProvider.notifier).set(!on);
+      },
+    );
+  }
+}
+
+/// Izgled i animacija dugmeta „Ne gasi ekran“ (i u galeriji animacija).
+class KeepScreenOnToggle extends StatelessWidget {
+  const KeepScreenOnToggle({
+    super.key,
+    required this.on,
+    required this.onPressed,
+  });
+
+  final bool on;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return IconButton(
-      tooltip: tooltipFor(on: on),
+      tooltip: KeepScreenOnButton.tooltipFor(on: on),
       isSelected: on,
       style: IconButton.styleFrom(
         backgroundColor: on ? scheme.primaryContainer : Colors.transparent,
@@ -146,23 +200,12 @@ class KeepScreenOnButton extends ConsumerWidget {
           turns: Tween<double>(begin: -0.25, end: 0).animate(animation),
           child: ScaleTransition(scale: animation, child: child),
         ),
-        child: Icon(on ? onIcon : offIcon, key: ValueKey(on)),
+        child: Icon(
+          on ? KeepScreenOnButton.onIcon : KeepScreenOnButton.offIcon,
+          key: ValueKey(on),
+        ),
       ),
-      onPressed: () async {
-        final messenger = ScaffoldMessenger.of(context);
-        await ref.read(keepScreenOnProvider.notifier).set(!on);
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                on
-                    ? 'Ekran se gasi kao i obično.'
-                    : 'Ekran se neće gasiti dok je recept otvoren.',
-              ),
-            ),
-          );
-      },
+      onPressed: onPressed,
     );
   }
 }

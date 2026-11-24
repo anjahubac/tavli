@@ -26,8 +26,36 @@ class Recipes extends Table {
   DateTimeColumn get updatedAt => dateTime()();
   TextColumn get householdId => text().nullable()();
 
+  /// Oznake recepta (v6). Sirove vrednosti sa servera: JSON lista obroka,
+  /// težina, vrsta jela i ko ih je postavio (`ai`/`user`); null = nepoznato.
+  TextColumn get mealTypesJson => text().nullable()();
+  TextColumn get weight => text().nullable()();
+  TextColumn get dishKind => text().nullable()();
+  TextColumn get labelsSource => text().nullable()();
+
+  /// Opis gotovog jela za AI sliku (v11, engleski) i ko je postavio sliku
+  /// (`ai`/`user`); null = nepoznato.
+  TextColumn get imageDescription => text().nullable()();
+  TextColumn get imageSource => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// AI recepti koji čekaju AI sliku na ovom uređaju (v11). Samo lokalno:
+/// nije deo podataka naloga i ne ide u red za slanje.
+@DataClassName('RecipeImageJobRow')
+class RecipeImageJobs extends Table {
+  TextColumn get accountId => text()();
+  TextColumn get recipeId => text()();
+
+  /// Ne pre ovog vremena (limit, greška provajdera); null = odmah.
+  DateTimeColumn get retryAt => dateTime().nullable()();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {accountId, recipeId};
 }
 
 /// Prethodne verzije recepta, za vraćanje posle AI izmene.
@@ -71,6 +99,10 @@ class PantryItems extends Table {
 
   /// Prijem kupljene stavke: ista zaliha kao ta kupovina, ne nova (v5).
   TextColumn get sourceShoppingItemId => text().nullable()();
+
+  /// Poslednje ručno brojanje količine (v7): kuvanje pre ovog trenutka se
+  /// više ne oduzima, jer upisana količina već pokazuje stanje.
+  DateTimeColumn get quantitySetAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -261,7 +293,119 @@ class SupplyAllocations extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Obrok označen kao skuvan (v7). Poništavanje upisuje [undoneAt] i ne briše
+/// zapis; ponovno kuvanje je novi zapis. Važeći je najraniji neponišten.
+@DataClassName('CookedEventRow')
+class CookedEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get planEntryId => text().references(MealPlanEntries, #id)();
+
+  /// Datum obroka (kalendarski, kao `meal_plan_entries.date`) i vrsta.
+  DateTimeColumn get mealDate => dateTime()();
+  TextColumn get mealType => text()();
+  TextColumn get actorUserId => text()();
+  IntColumn get servings => integer()();
+  DateTimeColumn get cookedAt => dateTime()();
+  DateTimeColumn get undoneAt => dateTime().nullable()();
+
+  /// `user` (jedina vrednost koju server prihvata).
+  TextColumn get undoReason => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Koliko je jedno kuvanje uzelo iz jedne stavke ostave (v7), u milionitim
+/// delovima osnovne jedinice stavke. Količina u ostavi se ne prepisuje, pa
+/// dva uređaja ne gube umanjenje; ponovljen upis istog para je isti red.
+@DataClassName('PantryConsumptionRow')
+@TableIndex(
+  name: 'pantry_consumptions_identity',
+  columns: {#eventId, #pantryItemId},
+  unique: true,
+)
+class PantryConsumptions extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get eventId => text().references(CookedEvents, #id)();
+  TextColumn get pantryItemId => text()();
+  TextColumn get baseUnit => text()();
+  IntColumn get micros => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Namirnica kataloga (v8, 018). `householdId == null` = deljeni pregledani
+/// katalog, inače kućna namirnica. Sirove vrednosti sa servera; tumačenje
+/// (osnovna jedinica, povučenost) je u domenu. Samo za čitanje u ovom koraku.
+@DataClassName('FoodRow')
+class Foods extends Table {
+  TextColumn get id => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get slug => text()();
+  TextColumn get name => text()();
+  TextColumn get category => text()();
+
+  /// `piece`, `gram` ili `milliliter` (čuva se kako je stiglo).
+  TextColumn get baseUnit => text()();
+  TextColumn get source => text().nullable()();
+  RealColumn get kcalPer100g => real().nullable()();
+  RealColumn get proteinGramsPer100g => real().nullable()();
+  RealColumn get fatGramsPer100g => real().nullable()();
+  RealColumn get carbsGramsPer100g => real().nullable()();
+  TextColumn get nutritionSource => text().nullable()();
+  TextColumn get nutritionSourceVersion => text().nullable()();
+  TextColumn get nutritionSourceRef => text().nullable()();
+
+  /// Reviewed EU allergen groups, comma-separated. null = unknown (never
+  /// safe), '' = reviewed with no allergen, 'milk,eggs' = reviewed groups.
+  TextColumn get allergenCodes => text().nullable()();
+  TextColumn get allergenSource => text().nullable()();
+  TextColumn get allergenSourceRef => text().nullable()();
+  DateTimeColumn get allergenReviewedAt => dateTime().nullable()();
+  DateTimeColumn get reviewedAt => dateTime().nullable()();
+  DateTimeColumn get withdrawnAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Alias namirnice (v8, 018). Kućni aliasi namerno nemaju jedinstven ključ
+/// (zamena = upis pa brisanje, a trag brisanja može da stigne kasnije);
+/// deljeni je jedinstven dok je aktivan. Bez stranog ključa: alias može da
+/// stigne pre ili posle svoje namirnice.
+@DataClassName('FoodAliasRow')
+@TableIndex.sql(
+  'CREATE UNIQUE INDEX food_aliases_shared_active ON food_aliases '
+  '(alias_normalized) WHERE household_id IS NULL AND withdrawn_at IS NULL',
+)
+class FoodAliases extends Table {
+  TextColumn get id => text()();
+  TextColumn get foodId => text()();
+  TextColumn get householdId => text().nullable()();
+  TextColumn get alias => text()();
+
+  /// Izlaz `ingredientKey`, kako je sačuvan na serveru.
+  TextColumn get aliasNormalized => text()();
+  DateTimeColumn get withdrawnAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DataClassName('RatingRow')
+@TableIndex(
+  name: 'ratings_user_recipe_unique',
+  columns: {#userId, #recipeId},
+  unique: true,
+)
 class Ratings extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId => text().references(Recipes, #id)();
@@ -274,6 +418,18 @@ class Ratings extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Lokalni keš bezbednog, server-izračunatog proseka domaćinstva.
+@DataClassName('RatingSummaryRow')
+class RatingSummaries extends Table {
+  TextColumn get householdId => text()();
+  TextColumn get recipeId => text()();
+  RealColumn get averageStars => real()();
+  IntColumn get ratingCount => integer()();
+
+  @override
+  Set<Column> get primaryKey => {householdId, recipeId};
 }
 
 /// Profil ukusa kao JSON (polja će se često menjati). Id je userId osobe;
@@ -313,7 +469,7 @@ class ModelStatuses extends Table {
 }
 
 /// Nalozi prijavljeni na ovom uređaju: profil i domaćinstvo za pokretanje
-/// bez mreže. Sesija (tokeni) se nikad ne čuva ovde, samo u Keychain-u.
+/// bez mreže. Sesija (tokeni) se nikad ne čuva ovde, samo u bezbednom skladištu.
 @DataClassName('AccountRow')
 class Accounts extends Table {
   TextColumn get userId => text()();
@@ -325,6 +481,12 @@ class Accounts extends Table {
   BoolColumn get initialDownloadDone =>
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastPullAt => dateTime().nullable()();
+  TextColumn get catalogStatus => text().nullable()();
+
+  /// Da li je nalog prošao korak "Tvoje domaćinstvo" (v12). Postojeći
+  /// nalozi su ga već prošli, pa je podrazumevano true.
+  BoolColumn get householdReady =>
+      boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -369,6 +531,27 @@ class SyncCursors extends Table {
   Set<Column> get primaryKey => {accountId, entity};
 }
 
+@DataClassName('UserAllergenSelectionRow')
+class UserAllergenSelections extends Table {
+  TextColumn get userId => text()();
+  TextColumn get groupCodesJson => text()();
+
+  @override
+  Set<Column> get primaryKey => {userId};
+}
+
+@DataClassName('UserFavoriteRow')
+class UserFavorites extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text()();
+  TextColumn get recipeId => text()();
+  TextColumn get recipeHouseholdId => text()();
+  BoolColumn get isFavorite => boolean()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Recipes,
@@ -381,8 +564,16 @@ class SyncCursors extends Table {
     ShoppingSources,
     ShoppingContributions,
     SupplyAllocations,
+    CookedEvents,
+    PantryConsumptions,
+    Foods,
+    FoodAliases,
     Ratings,
+    RatingSummaries,
     UserProfiles,
+    UserAllergenSelections,
+    UserFavorites,
+    RecipeImageJobs,
     AppSettings,
     ModelStatuses,
     Accounts,
@@ -395,7 +586,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -412,8 +603,246 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) await transaction(() => _migrateToAccounts(m));
       if (from < 5) await transaction(() => _migrateToPlanShopping(m));
+      if (from < 6) await transaction(() => _migrateToRecipeLabels(m));
+      if (from < 7) await transaction(() => _migrateToCookedEvents(m));
+      if (from < 8) await transaction(_migrateToRecipeRatings);
+      if (from < 9) await transaction(() => _migrateToFoodCatalog(m));
+      if (from < 10) await transaction(() => _migrateToMemberPlanning(m));
+      if (from < 11) await transaction(() => _migrateToRecipeImages(m));
+      if (from < 12) {
+        await transaction(
+          () => _addMissingColumn(m, accounts, accounts.householdReady),
+        );
+      }
+      if (from < 13) await transaction(() => _migrateToFoodNutrition(m));
+      if (from < 14) await transaction(() => _migrateToFoodAllergens(m));
     },
   );
+
+  /// v11: opis i izvor slike recepta i lokalni red za AI slike. Samo
+  /// dodaje; ponovljen korak (vraćen user_version) ne pada.
+  Future<void> _migrateToRecipeImages(Migrator m) async {
+    final hasRecipes = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'recipes'",
+    ).get();
+    // Delimične šeme u testovima starijih koraka nemaju recepte.
+    if (hasRecipes.isNotEmpty) {
+      await _addMissingColumn(m, recipes, recipes.imageDescription);
+      await _addMissingColumn(m, recipes, recipes.imageSource);
+    }
+    await m.createTable(recipeImageJobs);
+  }
+
+  /// v10: private allergen selections and favorites. Drift creates tables
+  /// with IF NOT EXISTS, so a cache that already has them opens unchanged.
+  Future<void> _migrateToMemberPlanning(Migrator m) async {
+    await m.createTable(userAllergenSelections);
+    await m.createTable(userFavorites);
+  }
+
+  /// v13: attributed nutrition reference values on shared foods. Existing
+  /// catalog rows stay unknown until reviewed values are loaded.
+  Future<void> _migrateToFoodNutrition(Migrator m) async {
+    final foodsExists = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'foods'",
+    ).getSingleOrNull();
+    if (foodsExists == null) return;
+    for (final column in [
+      foods.kcalPer100g,
+      foods.proteinGramsPer100g,
+      foods.fatGramsPer100g,
+      foods.carbsGramsPer100g,
+      foods.nutritionSource,
+      foods.nutritionSourceVersion,
+      foods.nutritionSourceRef,
+    ]) {
+      await _addMissingColumn(m, foods, column);
+    }
+  }
+
+  /// v14: reviewed allergen groups on shared foods. Existing rows stay
+  /// unknown until the next catalog download brings reviewed values.
+  Future<void> _migrateToFoodAllergens(Migrator m) async {
+    final foodsExists = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'foods'",
+    ).getSingleOrNull();
+    if (foodsExists == null) return;
+    for (final column in [
+      foods.allergenCodes,
+      foods.allergenSource,
+      foods.allergenSourceRef,
+      foods.allergenReviewedAt,
+    ]) {
+      await _addMissingColumn(m, foods, column);
+    }
+  }
+
+  /// v6: oznake recepta. Postojeći recepti ostaju neoznačeni (null).
+  Future<void> _migrateToRecipeLabels(Migrator m) async {
+    for (final c in [
+      recipes.mealTypesJson,
+      recipes.weight,
+      recipes.dishKind,
+      recipes.labelsSource,
+    ]) {
+      await _addMissingColumn(m, recipes, c);
+    }
+  }
+
+  /// v8: jedan lični rejting po receptu i lokalni keš proseka domaćinstva.
+  Future<void> _migrateToRecipeRatings() async {
+    await _moveRatingEditsToSurvivors();
+    await customStatement('''
+      DELETE FROM ratings
+      WHERE EXISTS (
+        SELECT 1 FROM ratings newer
+        WHERE newer.user_id IS ratings.user_id
+          AND newer.recipe_id = ratings.recipe_id
+          AND (newer.cooked_at > ratings.cooked_at
+            OR (newer.cooked_at = ratings.cooked_at AND newer.id > ratings.id))
+      )
+    ''');
+    await customStatement(
+      'CREATE UNIQUE INDEX IF NOT EXISTS ratings_user_recipe_unique '
+      'ON ratings (user_id, recipe_id)',
+    );
+    await customStatement(
+      'CREATE TABLE IF NOT EXISTS rating_summaries ('
+      'household_id TEXT NOT NULL, recipe_id TEXT NOT NULL, '
+      'average_stars REAL NOT NULL, rating_count INTEGER NOT NULL, '
+      'PRIMARY KEY (household_id, recipe_id))',
+    );
+  }
+
+  /// Pre brisanja duplikata (v8): neposlata izmena obrisanog rejtinga prelazi
+  /// na rejting koji ostaje, inače bi je Uploader odbacio kao obrisan zapis.
+  /// Najnovija neposlata izmena grupe (najveći seq) daje ocenu, a u outboxu
+  /// ostaje jedan upsert za preživeli ID (dva ista reda u jednom upsertu
+  /// server odbija).
+  Future<void> _moveRatingEditsToSurvivors() async {
+    // Isti izbor kao DELETE ispod: najnoviji cooked_at, pa najveći id.
+    final losers = await customSelect('''
+      SELECT loser.id AS loser_id,
+        (SELECT s.id FROM ratings s
+         WHERE s.user_id IS loser.user_id AND s.recipe_id = loser.recipe_id
+         ORDER BY s.cooked_at DESC, s.id DESC LIMIT 1) AS survivor_id
+      FROM ratings loser
+      WHERE EXISTS (
+        SELECT 1 FROM ratings newer
+        WHERE newer.user_id IS loser.user_id
+          AND newer.recipe_id = loser.recipe_id
+          AND (newer.cooked_at > loser.cooked_at
+            OR (newer.cooked_at = loser.cooked_at AND newer.id > loser.id))
+      )
+    ''').get();
+    final groups = <String, List<String>>{};
+    for (final r in losers) {
+      groups
+          .putIfAbsent(r.read<String>('survivor_id'), () => [])
+          .add(r.read<String>('loser_id'));
+    }
+
+    for (final MapEntry(key: survivor, value: lost) in groups.entries) {
+      final ids = [survivor, ...lost];
+      final marks = List.filled(ids.length, '?').join(', ');
+      final edits = await customSelect(
+        'SELECT seq, record_id FROM sync_outbox '
+        "WHERE entity = 'rating' AND op = 'upsert' "
+        "AND state IN ('pending', 'sending') AND record_id IN ($marks) "
+        'ORDER BY seq DESC',
+        variables: [for (final id in ids) Variable<String>(id)],
+      ).get();
+      if (edits.isEmpty) continue;
+
+      final latest = edits.first;
+      final editedId = latest.read<String>('record_id');
+      if (editedId != survivor) {
+        // cooked_at ostaje od preživelog: to je poslednje kuvanje.
+        await customStatement(
+          'UPDATE ratings SET '
+          '(stars, comment, is_comfort_food) = '
+          '(SELECT stars, comment, is_comfort_food FROM ratings WHERE id = ?) '
+          'WHERE id = ?',
+          [editedId, survivor],
+        );
+      }
+      for (final older in edits.skip(1)) {
+        await customStatement('DELETE FROM sync_outbox WHERE seq = ?', [
+          older.read<int>('seq'),
+        ]);
+      }
+      await customStatement(
+        'UPDATE sync_outbox SET record_id = ? WHERE seq = ?',
+        [survivor, latest.read<int>('seq')],
+      );
+    }
+  }
+
+  /// Dodaje kolonu samo ako je nema: tabela napravljena iznova u ranijem
+  /// koraku (v4) već ima sve kolone, a ponovljena migracija ne sme da padne.
+  Future<void> _addMissingColumn(
+    Migrator m,
+    TableInfo<Table, Object?> table,
+    GeneratedColumn c,
+  ) async {
+    final columns = await customSelect(
+      'PRAGMA table_info("${table.actualTableName}")',
+    ).get();
+    if (columns.any((r) => r.read<String>('name') == c.$name)) return;
+    await m.addColumn(table, c);
+  }
+
+  /// v9: keš kataloga namirnica. Ponovljen korak (vraćen user_version)
+  /// čuva tabele sa aktuelnom šemom.
+  Future<void> _migrateToFoodCatalog(Migrator m) async {
+    await _addMissingColumn(m, accounts, accounts.catalogStatus);
+    final existing = {
+      for (final r in await customSelect(
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'index')",
+      ).get())
+        r.read<String>('name'),
+    };
+    if (!existing.contains(foods.actualTableName)) await m.createTable(foods);
+    if (existing.contains(foodAliases.actualTableName)) {
+      // Keš kataloga: stara šema (bez alias_normalized) se odbacuje i pravi ponovo.
+      final columns = await customSelect(
+        'PRAGMA table_info("${foodAliases.actualTableName}")',
+      ).get();
+      if (!columns.any(
+        (r) => r.read<String>('name') == foodAliases.aliasNormalized.$name,
+      )) {
+        await customStatement('DROP TABLE "${foodAliases.actualTableName}"');
+        existing.remove(foodAliasesSharedActive.entityName);
+        await m.createTable(foodAliases);
+        // Kursor preuzimanja je inkrementalan: bez brisanja se stari aliasi
+        // ne bi vratili.
+        await (delete(
+          syncCursors,
+        )..where((t) => t.entity.equals('food_alias'))).go();
+      }
+    } else {
+      await m.createTable(foodAliases);
+    }
+    if (!existing.contains(foodAliasesSharedActive.entityName)) {
+      await m.createIndex(foodAliasesSharedActive);
+    }
+  }
+
+  /// v7: zapis skuvanog obroka, potrošnja iz ostave i vreme ručnog
+  /// brojanja. Samo dodaje; ponovljen korak (vraćen user_version) ne pada.
+  Future<void> _migrateToCookedEvents(Migrator m) async {
+    await _addMissingColumn(m, pantryItems, pantryItems.quantitySetAt);
+    await m.createTable(cookedEvents);
+    await m.createTable(pantryConsumptions);
+    final indexes = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'index'",
+    ).get();
+    if (!indexes.any(
+      (r) => r.read<String>('name') == pantryConsumptionsIdentity.entityName,
+    )) {
+      await m.createIndex(pantryConsumptionsIdentity);
+    }
+  }
 
   /// v5: porcije i odobren recept u planu, nedeljni delovi listi, poreklo
   /// kupovine, prijem u ostavu i tri tabele za izvore, doprinose i

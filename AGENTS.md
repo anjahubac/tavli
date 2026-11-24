@@ -6,13 +6,14 @@ precedence; this file explains how to follow them day to day.
 
 ## Project overview
 
-Tavli is a Flutter app (Android, iOS, macOS) for recipes, meal plans, pantry
-and shopping lists. AI turns a photo or a dish name into a recipe and edits
-recipes via chat. AI runs on free tiers of Gemini, Groq and OpenRouter through
-one OpenAI-compatible client and a router with fallback chains.
+Tavli is a Flutter app (Android, iOS, macOS, Windows; a Linux runner builds in CI)
+for recipes, meal plans, pantry and shopping lists. AI turns a photo or a dish name into a recipe and edits
+recipes via chat. AI runs through one OpenAI-compatible client and a router with fallback chains.
+Built-in access uses free tiers of Gemini, Groq and OpenRouter; a person can also
+add their own key, free or paid, for any service in the service list (spec 004).
 
 **An account is required.** After the intro the user signs in (email with a
-6-digit code; Apple/Google later) and every piece of their data is stored on
+one-time code; Apple/Google later) and synced business data is stored on
 Supabase (Auth, Postgres with Row Level Security, Storage; EU region) under the
 account. drift is the offline cache: changes are written locally plus an outbox
 and uploaded when online; data is downloaded on sign-in. Sign-out keeps the data
@@ -24,22 +25,33 @@ existing comments are mostly Serbian — match the surrounding file.
 
 ## Product direction
 
-Read [docs/product-design.md](docs/product-design.md) before new UI planning.
-Target: weekly/monthly meal plans and linked shopping and standalone recipe shopping; Plan, Nabavka, Recepti,
-Ostava, profile/settings behind an avatar, "Danas" inside Plan.
-[010](specs/010-plan-and-shopping/spec.md) records the direction and future
-tasks. Existing five-tab code and historical completed specs remain current
-until implementation. Do not present planned features as shipped or rewrite
-old acceptance history to pretend the target was already delivered.
+Read [docs/product-design.md](docs/product-design.md),
+[docs/product-plan.md](docs/product-plan.md) and the active spec before planning.
+Tabs: Plan, Nabavka, Početna, Recepti, Ostava; Početna (`/home`) is the default
+and shows today's and tomorrow's meals with cook/undo and one notice. Planning
+and linked/standalone shopping code exist, while 010 acceptance remains partial.
+Pantry (Ostava) is implemented and stays simple: no expiry dates or “use first”
+UI, optional quantity. On `dev` (2026-11-24) the AI gateway, ingredient catalog,
+household invitations, ratings, tastes, cookbooks, voice recipe drafting, fasting
+questions and the Windows target are built, but none is a released or accepted
+feature until its spec's evidence says so. The nutrition diary, store prices,
+receipt QR, cycle hints, plan import and public distribution are not built; the
+spec index (`specs/README.md`) has the per-spec status. Read the
+[010 overlay](specs/010-plan-and-shopping/current-direction.md) for superseded
+requirements; never rewrite historical checked tasks to imply new work shipped.
+
+All new/revised engineering documentation is English; exact UI copy remains
+Serbian Latin. Architecture evidence and current paths are in
+[docs/architecture.md](docs/architecture.md).
 
 ## Structure
 
 ```
 lib/
   main.dart               ProviderScope + TavliApp
-  providers.dart          Riverpod wiring (db, key store, chain config, router, RecipeAI)
+  providers.dart          Riverpod wiring (db, key store, chain config, router, RecipeAI, MealPlanAI, sync, realtime)
   app/                    MaterialApp, go_router config, responsive HomeShell, placeholders
-    theme/                  palettes, TavliColors extension, buildTavliTheme, ThemeController
+    theme_controller.dart   ThemeController (saved theme choice → TavliMotif)
     animations/             reduced-motion aware CustomPainter animations (MotionBuilder)
   ai/                     AI layer
     ai_models.dart          AIProvider, ModelSpec, AIRequest, AIImage, TaskKind
@@ -52,28 +64,49 @@ lib/
     model_check.dart        compare chain models with provider /models list
     prompts.dart            system prompt + recipe JSON schema + task prompts
     recipe_ai.dart          RecipeAI: fromImage, fromDishName, refine
-  account/                Supabase config/client, AuthGateway (email code), SessionStore
-                          (Keychain), AccountApi, AccountService, AuthController + AccountScope
+    meal_plan_ai.dart       MealPlanAI and planning schema
+    gateway_chat_client.dart shared-access transport (ai-gateway Edge Function)
+    ai_response_validator.dart strict recipe/summary checks, repair_prompt.dart bounded repair
+    pantry_ai.dart, voice_agent.dart, recipe_image_client.dart   photo-to-pantry, voice drafts, AI recipe images
+  account/                Supabase config/client, AuthGateway (email code, email confirmation), SessionStore
+                          (Keychain), AccountApi, AccountService, AuthController + AccountScope,
+                          household invitation codes
   sync/                   entity registry, SyncedWriter (outbox), Supabase SyncRemote/PhotoRemote,
-                          Uploader, Downloader, PhotoSync, LegacyMover, SyncEngine
+                          Uploader, Downloader, PhotoSync, LegacyMover, SyncEngine, RealtimeSync
+                          (invalidation signals only)
   data/                   drift database (all tables, per-account cache + outbox),
-                          DriftModelStatusStore, RecipeRepository, RecipePhotoStore, photo downscaling
-  domain/                 pure Dart models (Recipe, Ingredient, Account, ids)
-  features/<feature>/     screens and widgets per feature (recipes/, settings/, account/)
+                          DriftModelStatusStore, repositories (recipes, plans, shopping, pantry, cooking,
+                          ratings, cookbooks, catalog reader), RecipePhotoStore, photo downscaling
+  domain/                 pure Dart models and rules (Recipe, meal plan, shopping demand, catalog matcher,
+                          church calendar, nutrition calculation, ids)
+  features/<feature>/     screens, widgets and feature providers
+                          (home/, recipes/, planning/, shopping/, pantry/, cookbooks/, fasting/,
+                          settings/, account/)
+packages/tavli_ui/        local UI package (pub workspace member): palettes, buildTavliTheme,
+                          TavliColors, tokens (TavliSpacing, TavliRadius, TavliMotion),
+                          TavliPlatform, MotionBuilder, Plus Jakarta Sans font.
+                          The app imports only package:tavli_ui/tavli_ui.dart, never src/.
 supabase/                 config.toml, migrations/ (schema, RLS, grants, storage),
-                          tests/ (pgTAP: `supabase test db`), functions/delete-account/, templates/
+                          tests/ (pgTAP: `supabase test db`), templates/, functions/ (ai-gateway,
+                          voice-transcribe, planning-inputs, cookbook-process, cookbook-ask,
+                          household-invite, household-join, household-photo-cleanup, delete-account)
+site/                     static email confirmation page (Cloudflare Pages)
+evals/                    AI evaluation cases and recorded traces
 test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio,
                           helpers/fake_backend.dart fakes Supabase (auth, tables, storage),
                           helpers/test_app.dart pumps the whole app signed in (testTavli/pumpTavli)
-supabase/                 Supabase CLI project: config.toml (local ports 5532x),
-                          migrations/ (schema, RLS, grants), tests/ (pgTAP RLS tests),
-                          templates/ (Serbian emails)
 specs/NNN-name/           Spec Kit specs (spec.md, plan.md, tasks.md)
-docs/                     architecture.md, roadmap.md
+docs/                     architecture, product plan/design, development standards
 .specify/                 Spec Kit memory (constitution), templates, scripts
 ```
 
 ## Commands
+
+Use Flutter 3.50.0 stable, matching the CI pin. Import Material widgets from
+`package:material_ui/material_ui.dart` in app code and tests; the legacy
+`package:flutter/material.dart` library is deprecated. SDK upgrades require
+analyze, full tests and affected platform validation; see
+[quality gates](docs/development/quality-gates.md).
 
 ```bash
 flutter pub get
@@ -82,10 +115,11 @@ flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
-flutter run -d macos --dart-define-from-file=secrets.json   # Supabase URL/anon key + built-in AI keys (see secrets.example.json)
+flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend (see secrets.example.json)
+flutter run -d macos --dart-define-from-file=secrets.json       # local stack (`supabase start`) or your own config
 scripts/check.sh                                            # format check + analyze (fast, no tests)
 scripts/test-changed.sh                                     # tests affected by staged changes
-scripts/test-changed.sh origin/main                         # tests affected by the whole branch
+scripts/test-changed.sh origin/dev                          # tests affected by the whole branch
 git config core.hooksPath .githooks                         # once per clone: pre-commit runs both scripts above
 
 supabase start          # local Supabase in Docker (API :55321, DB :55322, Studio :55323, mail :55324)
@@ -99,6 +133,27 @@ The local stack uses ports 5532x so it does not clash with other Supabase
 projects on the same machine (default 5432x). Sign-in emails from the local
 stack land in the mail catcher (Mailpit, :55324), not in a real inbox.
 
+## Branches and environments
+
+| Branch | Backend (Supabase) | App config | Updated by |
+|---|---|---|---|
+| work branch | local stack (`supabase start`) | `secrets.json` | you |
+| `dev` (integration) | `tavli-dev` | `secrets.dev.json` | squash-merged PRs; CI deploys migrations |
+| `main` | production | `secrets.prod.json` | release PR `dev` → `main` (merge commit), approval required |
+
+- PRs into `dev` and `main` must pass `check`, `branch-name` and `pr-title`
+  (`.github/workflows/check.yml`, `pr-conventions.yml`).
+- Merging into `dev` applies new migrations and edge functions to `tavli-dev`;
+  merging into `main` applies them to production after approval in the
+  `production` environment (`deploy-supabase.yml`). Required reviewers/rulesets
+  must be verified in GitHub settings; a workflow file does not configure them.
+- `secrets.*.json` are gitignored and shared through a password manager.
+  Until the app has flavors, sign out before switching between dev and prod
+  config: both builds share the Keychain session and the drift cache.
+- macOS debug signing: copy `macos/Runner/Configs/Local.xcconfig.example` to
+  `Local.xcconfig` (gitignored) and set your own `DEVELOPMENT_TEAM`, so Keychain
+  "Always Allow" survives rebuilds.
+
 ## Code conventions
 
 Full rules: [docs/flutter-best-practices.md](docs/flutter-best-practices.md).
@@ -109,25 +164,28 @@ unawaited futures and context-after-await are errors).
   file; prefer `Provider`/`Notifier`; inject fakes via `ProviderScope(overrides:)`.
 - Routes are declared in `lib/app/router.dart`; tabs come from the `tabs` list.
 - Domain classes are immutable, pure Dart, no Flutter imports.
-- AI-facing parsing throws `FormatException` on schema mismatch (router retries once).
+- AI-facing parsing throws `FormatException` on schema mismatch (the router asks the same model once to repair it).
 - Errors shown to the user go through `aiErrorText` or an equivalent Serbian mapping.
 - Inject time (`DateTime Function() clock`) where behaviour depends on it.
 - Keep generated `lib/data/database.g.dart` committed and in sync.
 - UI reads from drift (the offline cache); never from the network directly.
-  Every user-data write goes through a repository that writes the row and an
-  outbox entry in one transaction. Record ids are client-generated (UUID).
+  Every synced business-data write goes through a repository that writes the row and an
+  outbox entry in one transaction. Use client-generated IDs. If devices can
+  create the same unique logical record offline, follow the identity, replay and
+  two-client regression rules in [quality gates](docs/development/quality-gates.md#sync-changes).
 - Backend access only through the data layer (Supabase client wrapped behind an
   interface so tests can fake it); no Supabase calls from widgets.
 - Follow `flutter_lints`; no `// ignore:` without a reason in the comment.
 
 ## Spec Kit workflow
 
-One feature = one spec = one branch (`NNN-short-name`). **Every new branch is
-created from the latest `main`** (`git fetch origin && git switch -c NNN-name origin/main`),
-never from another feature branch; full git rules are in
+One feature = one canonical spec. Each implementation slice has one owner/branch/PR. **Every new branch is
+created from the latest `dev`** (`git fetch origin && git switch -c NNN-name origin/dev`),
+never from another feature branch, and its PR targets `dev`; full git rules are in
 [docs/flutter-best-practices.md §17](docs/flutter-best-practices.md).
 
-1. `/speckit-specify <what and why>` — creates `specs/NNN-name/spec.md` and the branch.
+1. Create/verify the branch from `origin/dev` first; `/speckit-specify <what and why>`
+   prepares `specs/NNN-name/spec.md`. The installed script does not create a branch.
 2. `/speckit-clarify` — resolve open questions before planning.
 3. `/speckit-plan <tech notes>` — `plan.md` (+ research, data model, contracts);
    must pass the Constitution Check.
@@ -137,10 +195,38 @@ never from another feature branch; full git rules are in
 
 `specs/001-foundation-ai-router/` is a backfilled example of the finished format.
 
+## Four developers and AI sessions
+
+- Follow [team workflow](docs/development/team-workflow.md) for owners, contracts,
+  migration ordering, independent review and remaining-effort planning.
+- Switch branches in the existing repository folder; do not create additional
+  worktrees, clones or branch-specific folders unless explicitly requested. Allow
+  only one active writer in a checkout. Preserve unrelated edits; if they block
+  switching branches, ask rather than automatically stashing or resetting them.
+- Set `SPECIFY_FEATURE_DIRECTORY`
+  to your spec explicitly; do not overwrite tracked `.specify/feature.json` to
+  redirect someone else's work. Reserve the next number in `specs/README.md`.
+- Shared-file changes name paths and coordinator before implementation. Existing
+  feature providers stay under `lib/features/`; do not invent a replacement layout.
+- Follow [AI development](docs/development/ai-development.md) for briefs, untrusted
+  input, validation and handoff; an agent's claim is not test or review evidence.
+- Build UI exactly as the design canvas shows it, following the
+  [UI standard](docs/development/ui-standard.md): its measurements, icon style
+  and no-fixed-sizes rule, with existing theme/motion components. Never invent a
+  layout the canvas does not show. Validate phone, wide screen, 2× text and
+  reduced motion.
+- Before connecting two flows (plan, shopping, pantry, cooking, nutrition,
+  household), read the [flow map](docs/flows.md) and the producer's contract.
+- Device-only settings/secrets and the planned cycle privacy exception follow
+  constitution II; do not route them into the user-data outbox.
+- Read [quality gates](docs/development/quality-gates.md). Documentation changes
+  run `python3 scripts/check-docs.py` and `git diff --check`; runtime changes keep
+  their applicable Flutter, local SQL and platform gates.
+
 ## Guardrails for AI agents
 
 - Never commit secrets: no keys in code, tests, fixtures, docs or commit messages;
-  never read, print or edit `secrets.json` or Keychain entries.
+  never read, print or edit `secrets*.json` or Keychain entries.
 - Never disable, skip or delete tests to get green, and never add `// ignore:`
   without a reason comment on the line above.
 - Never edit generated `*.g.dart` by hand — change the source and run
@@ -159,12 +245,20 @@ never from another feature branch; full git rules are in
 - The full `flutter test` suite runs in CI on every PR; run it locally
   (`flutter test`) before opening a PR that touches shared code.
 - Keep changes scoped to the active spec/branch; note unrelated issues instead of fixing them in passing.
-- Branch only from the latest `main`; never stack a branch on another unmerged branch.
-  Never commit directly to `main` — open a PR from the branch.
+- Branch only from the latest `dev`; never stack a branch on another unmerged branch.
+  Never commit directly to `dev` or `main` — open a PR into `dev`. Only the
+  release PR (`dev` → `main`) and `hotfix/…` branches target `main`; agents
+  never open or merge those unless asked.
+- Never run migrations, `supabase db push`, `supabase link` or
+  `supabase config push` against a hosted project; hosted projects are updated
+  only by `.github/workflows/deploy-supabase.yml`.
 - Ask before destructive git operations (reset --hard, force push, branch deletion, history rewrite).
 - All new UI text in Serbian (Latin); AI only through `AIRouter`.
 
 ## Definition of done
+
+Apply the change-specific quality matrix; runtime criteria below apply to app changes.
+An independent human review and merged PR are required for delivery Done.
 
 - All tasks in `tasks.md` checked; acceptance scenarios in `spec.md` satisfied.
 - New UI text is Serbian (Latin) and listed in the spec.
@@ -182,10 +276,45 @@ never from another feature branch; full git rules are in
   docs, commit messages, or chat output.
 - User keys and the auth session live only in secure storage (`SecureKeyStore`,
   Keychain/Keystore). Tests use `InMemoryKeyStore` and fake backends with fake values.
-- Build-time values (Supabase URL and anon key, built-in AI keys) go in the
+- Current build-time values (Supabase URL and anon key) go in the
   gitignored `secrets.json` passed via `--dart-define-from-file`;
   `secrets.example.json` has empty placeholders only; never read them in tests.
 - The Supabase service-role key never goes into the app, the repo or chat output.
 - Never log session tokens, email codes, or personal data (recipes, lists, names, emails).
 - Don't add logging of request headers or full request bodies.
 - Agents must not edit, rotate or test real keys unless the user explicitly asks.
+
+Built-in provider credentials live only as secrets of the server functions; app
+builds have none (constitution IV). The gateway code is on `dev`, not on `main`
+(2026-11-24). Preserve `AIRouter` and fakeable transport.
+
+Spec Kit state caveat: the installed `get_feature_paths` persists an explicit
+`SPECIFY_FEATURE_DIRECTORY` into the current checkout's `.specify/feature.json`, even
+when a command only checks prerequisites. Inspect the resulting diff; keep this
+session pointer out of a feature PR unless intentionally updating shared default
+context. Set the environment selection for each session; it does not make the
+helper read-only. Serialize writers in the same checkout. Do not overwrite another person's existing pointer edit.
+
+## Security review for every feature
+
+Read [security baseline](docs/development/security.md) and the
+[012 specification](specs/012-security-baseline/spec.md). Existing source-level
+gaps are recorded there, not fixed by these rules. No shared provider secrets in
+the client; release evidence of gateway cutover is required before wider distribution.
+Validate synced file names/root containment; never display/log raw provider
+bodies or exception strings. Server grants/RLS and private storage enforce
+ownership independently of UI. New remote endpoints have auth/limits and negative
+tests. Use local synthetic accounts and fake providers; never probe production.
+Record privacy, abuse, credential, file and deployment impact in every active
+spec/PR, with explicit N/A where appropriate. Verify real hosted controls before
+claiming enforcement. Security implementation stays in separately reviewed slices.
+
+Testing infrastructure is specified in `specs/013-testing-strategy/`; use
+`docs/development/testing.md` and the critical journey matrix. Default unit/widget
+suites are network-free; only the explicitly invoked guarded local-backend lane
+may contact ephemeral local Supabase with synthetic accounts and fake AI.
+All roadmap specs are indexed in `specs/README.md`; source tasks map through
+`docs/development/source-task-map.md`; the task inventory is
+`docs/development/task-register.json` (`not_assessed` means not yet checked
+against code and PRs). Release/operations use spec 033. Drafts
+need their recorded decisions before dependent code; never treat them as shipped.

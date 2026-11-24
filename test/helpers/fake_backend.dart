@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:tavli/account/account_api.dart';
 import 'package:tavli/account/auth_gateway.dart';
+import 'package:tavli/domain/account.dart' show HouseholdMember;
 import 'package:tavli/sync/sync_remote.dart';
 
 /// Server u memoriji: nalozi sa domaćinstvom, tabele sa upsert-om po id-ju,
@@ -17,14 +18,25 @@ class FakeServer {
   final users = <String, String>{}; // email → userId
   final profiles = <String, Map<String, Object?>>{}; // userId → profil
   final households = <String, String>{}; // userId → householdId
+  final roles = <String, String>{}; // userId → uloga (bez unosa: owner)
   final tables = <String, Map<String, Map<String, Object?>>>{};
   final photos = <String, Uint8List>{};
   final revoked = <String>{}; // userId-jevi kojima je sesija opozvana
+  final removals =
+      <String, String>{}; // userId → domaćinstvo iz kog je uklonjen
 
   bool offline = false;
 
+  /// Novi nalog još nije izabrao domaćinstvo (kao na serveru).
+  bool newAccountNeedsHousehold = false;
+
+  String householdName(String householdId) =>
+      table('households')[householdId]?['name'] as String? ??
+      'Moje domaćinstvo';
+
   /// Sledeći poziv(i) baca(ju) ovu grešku.
   final failures = <SyncError>[];
+  SyncError? ratingSummaryFailure;
 
   /// Posle toliko upisanih redova sledeći upsert pukne (prekinuto slanje).
   int? interruptAfterRows;
@@ -34,6 +46,13 @@ class FakeServer {
 
   /// Slanje slika baca grešku.
   bool photoUploadFails = false;
+
+  /// Like RLS: a write into a household the caller is not a member of is
+  /// denied with 42501. Off by default so tests can seed any household.
+  bool enforceMembership = false;
+
+  /// Like a Storage policy: photo uploads are denied with 403.
+  bool photoUploadForbidden = false;
 
   /// Broj poziva po vrsti, za proveru grupisanja.
   final calls = <String>[];
@@ -48,6 +67,7 @@ class FakeServer {
 
   /// Posle toliko uspešnih preuzimanja sledeće pukne (prekinuto preuzimanje).
   int? fetchesBeforeFailure;
+  void Function(String table)? beforeFetch;
 
   Map<String, Map<String, Object?>> table(String name) =>
       tables.putIfAbsent(name, () => {});
@@ -59,10 +79,18 @@ class FakeServer {
     final uid = 'user-${++_n}';
     final hid = 'home-$_n';
     households[uid] = hid;
+    table('households')[hid] = {
+      'id': hid,
+      'name': 'Moje domaćinstvo',
+      'updated_at': _now(),
+    };
     profiles[uid] = {
       'id': uid,
       'email': email,
       'display_name': null,
+      // Postojeći testovi počinju posle koraka „Tvoje domaćinstvo“; novi
+      // nalog ga dobija sa newAccountNeedsHousehold.
+      'household_setup_done': !newAccountNeedsHousehold,
       'updated_at': _now(),
     };
     return uid;
@@ -81,18 +109,33 @@ class FakeServer {
     'pantry_items': 'pantry_item',
     'meal_plans': 'meal_plan',
     'meal_plan_entries': 'meal_plan_entry',
+    'cooked_events': 'cooked_event',
     'shopping_sources': 'shopping_source',
     'shopping_contributions': 'shopping_contribution',
     'supply_allocations': 'supply_allocation',
     'ratings': 'rating',
     'taste_profiles': 'taste_profile',
+    'user_allergen_selections': 'allergen_selection',
+    'user_favorites': 'favorite',
+    'foods': 'food',
+    'food_aliases': 'food_alias',
   };
+
+  /// Katalog namirnica: deljeni redovi (bez domaćinstva) vide svi.
+  static const _catalogTables = {'foods', 'food_aliases'};
+
+  /// Preuzimanje ovih tabela baca PGRST205 (stariji server bez tabele).
+  final missingTables = <String>{};
+
+  /// Preuzimanje ovih tabela baca 42501 (odbijen pristup).
+  final deniedTables = <String>{};
 
   /// Roditelji po stranim ključevima: dete obrisanog roditelja se preskače.
   static const _parentsOf = {
     'recipe_versions': [('recipe', 'recipe_id')],
     'shopping_items': [('shopping_list', 'list_id')],
     'meal_plan_entries': [('meal_plan', 'plan_id')],
+    'cooked_events': [('meal_plan_entry', 'plan_entry_id')],
     'ratings': [('recipe', 'recipe_id')],
     'shopping_sources': [
       ('shopping_list', 'list_id'),
@@ -123,14 +166,44 @@ class FakeServer {
         }
         interruptAfterRows = n - 1;
       }
-      final id = r[key]! as String;
+      final conflictColumns = key.split(',');
+      Map<String, Object?>? existing;
+      if (key != 'id') {
+        for (final candidate in table(name).values) {
+          if (conflictColumns.every(
+            (column) => candidate[column] == r[column],
+          )) {
+            existing = candidate;
+            break;
+          }
+        }
+      }
+      final id =
+          (existing?['id'] ?? (conflictColumns.length == 1 ? r[key] : r['id']))!
+              as String;
       if (rejectIds.contains(id)) throw const PermanentSyncError('23514');
       final entity = _entityOf[name]!;
       if (_deleted(entity, id)) continue;
       if (_parentsOf[name]?.any((p) => _deleted(p.$1, r[p.$2])) ?? false) {
         continue;
       }
+      if (name == 'shopping_lists' &&
+          r['meal_plan_id'] != null &&
+          r['period_start'] != null &&
+          table(name).values.any(
+            (existing) =>
+                existing['id'] != id &&
+                existing['meal_plan_id'] == r['meal_plan_id'] &&
+                existing['period_start'] == r['period_start'],
+          )) {
+        throw const PermanentSyncError('23505');
+      }
+      if (name == 'shopping_items' &&
+          !table('shopping_lists').containsKey(r['list_id'])) {
+        throw const PermanentSyncError(pgForeignKeyViolation);
+      }
       final row = {...?table(name)[id], ...r, 'updated_at': _now()};
+      if (existing != null && key == 'user_id,recipe_id') row['id'] = id;
       // Kao kolona koju računa baza (generated always).
       if (name == 'supply_allocations') {
         row['supply_id'] =
@@ -190,12 +263,15 @@ class FakeServer {
         setNull('shopping_lists', 'meal_plan_id');
       case 'meal_plan_entries':
         cascade('shopping_sources', 'plan_entry_id');
+        cascade('cooked_events', 'plan_entry_id');
       case 'shopping_items':
         setNull('shopping_contributions', 'shopping_item_id');
         setNull('pantry_items', 'source_shopping_item_id');
         cascade('supply_allocations', 'purchased_shopping_item_id');
       case 'pantry_items':
         cascade('supply_allocations', 'pantry_item_id');
+      case 'foods':
+        cascade('food_aliases', 'food_id');
       case 'shopping_sources':
         cascade('shopping_contributions', 'source_id');
       case 'shopping_contributions':
@@ -219,16 +295,28 @@ class FakeServer {
     required String idColumn,
   }) {
     _check();
+    beforeFetch?.call(name);
     if (fetchesBeforeFailure case final n?) {
       fetchesBeforeFailure = n == 0 ? null : n - 1;
       if (n == 0) throw const TransientSyncError('interrupted');
+    }
+    if (missingTables.contains(name)) {
+      throw const PermanentSyncError('PGRST205');
+    }
+    if (deniedTables.contains(name)) {
+      throw const PermanentSyncError('42501');
     }
     calls.add('fetch:$name');
     final source = name == 'profiles' ? profiles.values : table(name).values;
     final sorted =
         [
           for (final r in source)
-            if (_visible(r, userId)) Map<String, Object?>.of(r),
+            if (name == 'households'
+                ? households[userId] == r['id']
+                : _visible(r, userId) ||
+                      (_catalogTables.contains(name) &&
+                          r['household_id'] == null))
+              Map<String, Object?>.of(r),
         ]..sort((a, b) {
           final t = (a[timeColumn]! as String).compareTo(
             b[timeColumn]! as String,
@@ -287,6 +375,27 @@ class FakeAuth implements AuthGateway {
   /// Koliko puta je sesija obnovljena.
   int refreshes = 0;
 
+  /// Mejlovi za potvrdu adrese (registracija i "Pošalji mejl ponovo").
+  final sentConfirmations = <String>[];
+
+  /// Adrese registrovane, a još nepotvrđene (kodom ili linkom).
+  final unconfirmed = <String>{};
+
+  /// Server ne traži potvrdu adrese (kao cloud pre uključivanja "Confirm
+  /// email"): registracija odmah prijavljuje.
+  bool autoconfirm = false;
+
+  /// Linkovi za potvrdu: kod iz linka → e-pošta (iskorišćen link se briše).
+  final _links = <String, String>{};
+  var _linkN = 0;
+
+  /// Link iz mejla za potvrdu nove adrese (kao da ga je GoTrue poslao).
+  Uri linkFor(String email) {
+    final code = 'link-${++_linkN}';
+    _links[code] = email;
+    return Uri.parse('$authCallbackUrl?code=$code');
+  }
+
   AuthSession sessionFor(String email) {
     final uid = server.userFor(email);
     return AuthSession(
@@ -310,13 +419,43 @@ class FakeAuth implements AuthGateway {
   @override
   Future<void> sendCode(String email) async {
     _check();
+    if (!server.users.containsKey(email)) throw const NoAccount();
     sentCodes.add(email);
+  }
+
+  @override
+  Future<AuthSession?> signUp(String email) async {
+    _check();
+    if (server.users.containsKey(email) && !unconfirmed.contains(email)) {
+      throw const AlreadyRegistered();
+    }
+    server.userFor(email);
+    if (autoconfirm) return current = sessionFor(email);
+    unconfirmed.add(email);
+    sentConfirmations.add(email);
+    return null;
+  }
+
+  @override
+  Future<void> resendConfirmation(String email) async {
+    _check();
+    sentConfirmations.add(email);
   }
 
   @override
   Future<AuthSession> verifyCode(String email, String code) async {
     _check();
     if (code != FakeServer.code) throw const WrongCode();
+    unconfirmed.remove(email);
+    return current = sessionFor(email);
+  }
+
+  @override
+  Future<AuthSession> exchangeLink(Uri link) async {
+    _check();
+    final email = _links.remove(link.queryParameters['code']);
+    if (email == null) throw const LinkExpired();
+    unconfirmed.remove(email);
     return current = sessionFor(email);
   }
 
@@ -368,9 +507,21 @@ class FakeAccountApi implements AccountApi {
 
   /// Brisanje naloga baca ovu grešku.
   DeleteFailure? deleteFails;
+  Future<void> Function()? beforeFetch;
+  String? joinTargetHousehold;
+  String? joinFailureStatus;
+
+  /// Household names by ID; others are "Moje domaćinstvo".
+  final householdNames = <String, String>{};
+
+  /// Pregled traži potvrdu brisanja (osoba je poslednji član izvora).
+  bool joinRequiresAck = true;
+  int? lastJoinAck;
+  int joinCalls = 0;
 
   @override
   Future<RemoteAccount> fetch() async {
+    await beforeFetch?.call();
     if (server.offline) throw const Offline();
     final uid = auth.current!.userId;
     final p = server.profiles[uid]!;
@@ -379,9 +530,168 @@ class FakeAccountApi implements AccountApi {
       email: p['email']! as String,
       displayName: p['display_name'] as String?,
       householdId: server.households[uid]!,
-      householdName: 'Moje domaćinstvo',
-      role: 'owner',
+      householdName:
+          householdNames[server.households[uid]] ??
+          server.householdName(server.households[uid]!),
+      role: server.roles[uid] ?? 'owner',
+      householdSetupDone: p['household_setup_done'] as bool? ?? true,
     );
+  }
+
+  /// Pozivnica domaćinstva; vidi je svaki član.
+  String? inviteToken = 'K7M4P9RX5TQ8';
+
+  /// Kod koji dobija sledeća zamena pozivnice.
+  String nextInviteToken = 'W2N6-H3JD-8VQC';
+  int regenerateCalls = 0;
+  int renameCalls = 0;
+
+  @override
+  Future<RenameHouseholdResult> renameHousehold(String name) async {
+    renameCalls++;
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if ((server.roles[uid] ?? 'owner') != 'owner') {
+      return RenameHouseholdResult.notAllowed;
+    }
+    final clean = name.trim();
+    if (clean.isEmpty || clean.runes.length > 40) {
+      return RenameHouseholdResult.invalidName;
+    }
+    final hid = server.households[uid]!;
+    server.table('households')[hid] = {
+      ...?server.table('households')[hid],
+      'id': hid,
+      'name': clean,
+    };
+    server.profiles[uid]!['household_setup_done'] = true;
+    return RenameHouseholdResult.renamed;
+  }
+
+  @override
+  Future<List<HouseholdMember>> householdMembers() async {
+    if (server.offline) throw const Offline();
+    final home = server.households[auth.current!.userId];
+    return [
+      for (final MapEntry(key: uid, value: hid) in server.households.entries)
+        if (hid == home)
+          HouseholdMember(
+            userId: uid,
+            role: server.roles[uid] ?? 'owner',
+            displayName: server.profiles[uid]?['display_name'] as String?,
+          ),
+    ];
+  }
+
+  @override
+  Future<String> householdInviteToken() async {
+    if (server.offline) throw const Offline();
+    final token = inviteToken;
+    if (token == null) throw const Unavailable();
+    return token;
+  }
+
+  @override
+  Future<String> regenerateHouseholdInvite() async {
+    regenerateCalls++;
+    if (server.offline) throw const Offline();
+    if ((server.roles[auth.current!.userId] ?? 'owner') != 'owner') {
+      throw const Unavailable();
+    }
+    return inviteToken = nextInviteToken.replaceAll('-', '');
+  }
+
+  /// Domaćinstvo koje je napravio `prepareNewHousehold` (kod → naziv).
+  final newHouseholds = <String, String>{};
+  int prepareNewCalls = 0;
+
+  @override
+  Future<String> prepareNewHousehold(String name) async {
+    prepareNewCalls++;
+    if (server.offline) throw const Offline();
+    final token = 'N${(newHouseholds.length + 1).toString().padLeft(11, '0')}';
+    newHouseholds[token] = name.trim();
+    return token;
+  }
+
+  @override
+  Future<HouseholdPreview> previewHouseholdJoin(String token) async {
+    if (newHouseholds[token] case final name?) {
+      return HouseholdPreview(
+        householdName: name,
+        sourceHouseholdId: server.households[auth.current!.userId]!,
+        requiresSourceDeletionAcknowledgement: joinRequiresAck,
+      );
+    }
+    if (joinTargetHousehold == null) throw const Unavailable();
+    return HouseholdPreview(
+      householdName: 'Zajedničko domaćinstvo',
+      sourceHouseholdId: server.households[auth.current!.userId]!,
+      requiresSourceDeletionAcknowledgement: joinRequiresAck,
+    );
+  }
+
+  @override
+  Future<HouseholdJoinResult> confirmHouseholdJoin({
+    required String token,
+    required String expectedSourceHouseholdId,
+    required JoinRecipeChoice recipeChoice,
+    required bool acknowledgeSourceDeletion,
+    required String operationId,
+  }) async {
+    joinCalls++;
+    lastJoinAck = acknowledgeSourceDeletion ? 1 : 0;
+    if (joinFailureStatus case final status?) {
+      return HouseholdJoinResult(status: status);
+    }
+    if (newHouseholds[token] case final name?) {
+      // Prvi član novog domaćinstva je vlasnik (server: own_new_household).
+      final uid = auth.current!.userId;
+      if (server.households[uid] != expectedSourceHouseholdId) {
+        return const HouseholdJoinResult(status: 'stale_source');
+      }
+      final hid = 'new-$token';
+      server.table('households')[hid] = {'id': hid, 'name': name};
+      server.households[uid] = hid;
+      server.roles[uid] = 'owner';
+      return HouseholdJoinResult(status: 'joined', account: await fetch());
+    }
+    if (joinTargetHousehold case final destination?) {
+      final uid = auth.current!.userId;
+      if (server.households[uid] != expectedSourceHouseholdId) {
+        return const HouseholdJoinResult(status: 'stale_source');
+      }
+      server.households[uid] = destination;
+      server.roles[uid] = 'member';
+      server.profiles[uid]!['household_setup_done'] = true;
+      return HouseholdJoinResult(status: 'joined', account: await fetch());
+    }
+    throw const Unavailable();
+  }
+
+  /// Uklanjanje kao na serveru: samo član istog domaćinstva, ne sebe.
+  @override
+  Future<String> removeHouseholdMember(String memberId) async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if (memberId == uid) return 'invalid_request';
+    final home = server.households[uid];
+    if (home == null || server.households[memberId] != home) {
+      return 'not_allowed';
+    }
+    server.removals[memberId] = home;
+    server.households[memberId] = 'home-$memberId';
+    server.roles[memberId] = 'owner';
+    return 'removed';
+  }
+
+  @override
+  Future<bool> takeHouseholdRemoval(String previousHouseholdId) async {
+    if (server.offline) throw const Offline();
+    final uid = auth.current!.userId;
+    if (server.removals[uid] != previousHouseholdId) return false;
+    server.removals.remove(uid);
+    return true;
   }
 
   @override
@@ -397,6 +707,8 @@ class FakeSyncRemote implements SyncRemote {
 
   final FakeServer server;
   final FakeAuth auth;
+  Future<void> Function()? beforeUpsert;
+  SyncError? recipeReadFailure;
 
   String get _uid => auth.current?.userId ?? '';
 
@@ -414,10 +726,25 @@ class FakeSyncRemote implements SyncRemote {
     String table,
     List<Map<String, Object?>> rows, {
     String onConflict = 'id',
+    bool ignoreDuplicates = false,
   }) async {
+    await beforeUpsert?.call();
     _checkSession();
+    if (server.enforceMembership &&
+        rows.any(
+          (r) =>
+              r['household_id'] != null &&
+              r['household_id'] != server.households[_uid],
+        )) {
+      throw const PermanentSyncError(pgInsufficientPrivilege);
+    }
     server.upsert(table, [
-      for (final r in rows) jsonDecode(jsonEncode(r)) as Map<String, Object?>,
+      for (final r in rows)
+        if (!ignoreDuplicates ||
+            !server
+                .rows(table)
+                .any((existing) => existing[onConflict] == r[onConflict]))
+          jsonDecode(jsonEncode(r)) as Map<String, Object?>,
     ], onConflict);
   }
 
@@ -439,6 +766,51 @@ class FakeSyncRemote implements SyncRemote {
     server.profiles[userId]!
       ..['display_name'] = name
       ..['updated_at'] = server._now();
+  }
+
+  @override
+  Future<List<Map<String, Object?>>>
+  fetchHouseholdRecipeRatingSummaries() async {
+    _checkSession();
+    server._check();
+    server.calls.add('rating_summaries');
+    if (server.ratingSummaryFailure case final failure?) throw failure;
+    final householdId = server.households[_uid];
+    final totals = <String, (int sum, int count)>{};
+    for (final rating in server.rows('ratings')) {
+      final recipeId = rating['recipe_id']! as String;
+      final recipe = server.table('recipes')[recipeId];
+      if (recipe?['household_id'] != householdId) continue;
+      final current = totals[recipeId] ?? (0, 0);
+      totals[recipeId] = (
+        current.$1 + (rating['stars']! as int),
+        current.$2 + 1,
+      );
+    }
+    return [
+      for (final entry in totals.entries)
+        {
+          'household_id': householdId,
+          'recipe_id': entry.key,
+          'average_stars': (entry.value.$1 / entry.value.$2).toStringAsFixed(1),
+          'rating_count': entry.value.$2,
+        },
+    ];
+  }
+
+  @override
+  Future<Map<String, Object?>?> fetchRecipe(
+    String id,
+    String householdId,
+  ) async {
+    _checkSession();
+    server._check();
+    server.calls.add('fetch:recipe');
+    if (recipeReadFailure case final failure?) throw failure;
+    if (server.households[_uid] != householdId) return null;
+    final row = server.table('recipes')[id];
+    if (row == null || row['household_id'] != householdId) return null;
+    return jsonDecode(jsonEncode(row)) as Map<String, Object?>;
   }
 
   @override
@@ -475,6 +847,7 @@ class FakePhotoRemote implements PhotoRemote {
   Future<void> upload(String objectKey, Uint8List jpeg) async {
     server._check();
     if (server.photoUploadFails) throw const TransientSyncError('503');
+    if (server.photoUploadForbidden) throw const PermanentSyncError('403');
     server.calls.add('photo:upload');
     server.photos[objectKey] = jpeg;
   }
@@ -498,14 +871,15 @@ class FakePhotoRemote implements PhotoRemote {
 
 /// Sve lažne granice nad jednim serverom.
 class FakeBackend {
-  FakeBackend() {
+  FakeBackend({FakeServer? sharedServer})
+    : server = sharedServer ?? FakeServer() {
     auth = FakeAuth(server);
     accounts = FakeAccountApi(server, auth);
     sync = FakeSyncRemote(server, auth);
     photos = FakePhotoRemote(server);
   }
 
-  final server = FakeServer();
+  final FakeServer server;
   late final FakeAuth auth;
   late final FakeAccountApi accounts;
   late final FakeSyncRemote sync;

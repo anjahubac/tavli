@@ -2,23 +2,110 @@ name: check
 
 on:
   pull_request:
-    branches: [main]
+    branches: [dev, main]
   push:
-    branches: [main]
+    branches: [dev, main]
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  deno-functions:
+    name: deno-functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: denoland/setup-deno@v2
+        with:
+          # The Supabase edge runtime is compatible with Deno 2.1. Testing on
+          # the latest 2.x hid that Uint8Array.fromBase64 is missing there.
+          deno-version: 2.1.x
+          cache: true
+      - run: deno test supabase/functions
+
+  linux-build:
+    name: linux-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build linux --debug
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tavli-linux-debug-bundle
+          path: build/linux/x64/debug/bundle/
+          if-no-files-found: error
+          retention-days: 7
+
   check:
     name: check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.50.0'
           channel: stable
           cache: true
       - run: flutter pub get
       - run: scripts/check.sh
       - run: flutter test
+      - name: flutter test (packages/tavli_ui)
+        working-directory: packages/tavli_ui
+        # Uključuje testove izgleda (slike); porede se samo na Linuxu.
+        run: flutter test
+      - name: razlike u slikama izgleda
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: packages/tavli_ui/test/failures/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  windows:
+    name: windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/check-docs.py
+
+  scripts:
+    name: scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      # Regression tests for every repository script (scripts/test_*.py).
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'

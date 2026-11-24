@@ -1,0 +1,484 @@
+import 'package:drift/drift.dart' hide isNotNull, isNull;
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/account/auth_controller.dart';
+import 'package:tavli/data/database.dart';
+import 'package:tavli/data/food_catalog_reader.dart';
+import 'package:tavli/domain/allergen_group.dart';
+import 'package:tavli/domain/food_matcher.dart';
+import 'package:tavli/domain/shopping_sync.dart';
+import 'package:tavli/sync/catalog_status.dart';
+import 'package:tavli/sync/downloader.dart';
+
+import '../helpers/fake_backend.dart';
+
+void main() {
+  late AppDatabase db;
+  final t = DateTime.utc(2026, 11);
+  const home = FoodLookupScope(householdId: 'h1');
+
+  setUp(() => db = AppDatabase(NativeDatabase.memory()));
+  tearDown(() => db.close());
+
+  Future<void> food(String id, {String? household, String unit = 'gram'}) => db
+      .into(db.foods)
+      .insert(
+        FoodsCompanion.insert(
+          id: id,
+          householdId: Value(household),
+          slug: id,
+          name: 'namirnica $id',
+          category: 'Ostalo',
+          baseUnit: unit,
+          createdAt: t,
+          updatedAt: t,
+        ),
+      );
+
+  Future<void> alias(
+    String id,
+    String foodId,
+    String key, {
+    String? household,
+  }) => db
+      .into(db.foodAliases)
+      .insert(
+        FoodAliasesCompanion.insert(
+          id: id,
+          foodId: foodId,
+          householdId: Value(household),
+          alias: key,
+          aliasNormalized: key,
+          createdAt: t,
+          updatedAt: t,
+        ),
+      );
+
+  Future<FoodMatchResult> find(String text) async =>
+      (await FoodCatalogReader(db).matcherFor(
+        home,
+        status: CatalogStatus.available,
+      )).findByName(originalText: text, scope: home);
+
+  String? matchedId(FoodMatchResult r) => r is Matched ? r.food.id : null;
+
+  test('prazan keš: svako ime je Unresolved', () async {
+    expect(await find('jaja'), isA<Unresolved>());
+  });
+
+  test('poklapa sačuvan alias_normalized (izlaz ingredientKey)', () async {
+    await food('f-jaje');
+    await alias('a1', 'f-jaje', ingredientKey('Jaja'));
+    expect(matchedId(await find('Jaja')), 'f-jaje');
+  });
+
+  test('čita nutritivnu referencu samo uz poreklo izvora', () async {
+    await db
+        .into(db.foods)
+        .insert(
+          FoodsCompanion.insert(
+            id: 'f-nutrition',
+            slug: 'krompir',
+            name: 'krompir',
+            category: 'voće i povrće',
+            baseUnit: 'gram',
+            kcalPer100g: const Value(77),
+            proteinGramsPer100g: const Value(2),
+            fatGramsPer100g: const Value(0.1),
+            carbsGramsPer100g: const Value(17),
+            nutritionSource: const Value('USDA FoodData Central'),
+            nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+            nutritionSourceRef: const Value('FDC 170026'),
+            createdAt: t,
+            updatedAt: t,
+          ),
+        );
+    final matched = await find('krompir') as Matched;
+    expect(matched.food.nutrition?.kcalPer100g, 77);
+    expect(matched.food.nutrition?.sourceVersion, 'SR Legacy 2018-04');
+
+    for (final sourceRef in [null, '  ']) {
+      final name = sourceRef == null ? 'nepoznato poreklo' : 'prazno poreklo';
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: name,
+              slug: name,
+              name: name,
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(1),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: Value(sourceRef),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      final unattributed = await find(name) as Matched;
+      expect(unattributed.food.nutrition, isNull);
+    }
+  });
+
+  test(
+    'zanemaruje neispravnu nutritivnu referencu umesto da obori matcher',
+    () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'f-infinite',
+              slug: 'beskonacno',
+              name: 'beskonacno',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(double.infinity),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: const Value('FDC 1'),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+
+      final matched = await find('beskonacno') as Matched;
+      expect(matched.food.nutrition, isNull);
+    },
+  );
+
+  test('tuđe domaćinstvo i nepoznata jedinica se ne vide', () async {
+    await food('f-tudja', household: 'h2');
+    await alias('a1', 'f-tudja', 'ajvar', household: 'h2');
+    await food('f-cudna', unit: 'kilogram');
+    await alias('a2', 'f-cudna', 'brasno');
+    await alias('a3', 'f-nema', 'so');
+    expect(await find('ajvar'), isA<Unresolved>());
+    expect(await find('brasno'), isA<Unresolved>());
+    expect(await find('so'), isA<Unresolved>());
+  });
+
+  test('zamena kućnog aliasa pre traga: Unresolved, posle traga nova '
+      'namirnica', () async {
+    final backend = FakeBackend();
+    final s = await backend.auth.verifyCode('ana@mail.com', FakeServer.code);
+    final hid = backend.server.households[s.userId]!;
+    final scope = FoodLookupScope(householdId: hid);
+    Downloader downloader() => Downloader(
+      db: db,
+      remote: backend.sync,
+      scope: AccountScope(userId: s.userId, householdId: hid),
+    );
+    void serverFood(String id) => backend.server.upsert('foods', [
+      {
+        'id': id,
+        'household_id': null,
+        'slug': id,
+        'name': 'namirnica $id',
+        'category': 'Ostalo',
+        'base_unit': 'gram',
+        'created_at': '2026-11-01T10:00:00.000Z',
+      },
+    ], 'id');
+    void serverAlias(String id, String foodId) =>
+        backend.server.upsert('food_aliases', [
+          {
+            'id': id,
+            'food_id': foodId,
+            'household_id': hid,
+            'alias': 'ajvar',
+            'alias_normalized': 'ajvar',
+            'created_at': '2026-11-01T10:00:00.000Z',
+          },
+        ], 'id');
+    Future<FoodMatchResult> findHere() async =>
+        (await FoodCatalogReader(db).matcherFor(
+          scope,
+          status: CatalogStatus.available,
+        )).findByName(originalText: 'ajvar', scope: scope);
+
+    serverFood('x');
+    serverFood('y');
+    serverAlias('old', 'x');
+    await downloader().run();
+    expect(matchedId(await findHere()), 'x');
+
+    // Drugi uređaj: upis nove veze stigao, brisanje stare još nije.
+    serverAlias('new', 'y');
+    await downloader().run();
+    expect(await findHere(), isA<Unresolved>());
+
+    backend.server.delete('food_aliases', ['old'], 'id');
+    await downloader().run();
+    expect(matchedId(await findHere()), 'y');
+  });
+
+  group('status kataloga', () {
+    Future<FoodMatchResult> find(CatalogStatus status) async =>
+        (await FoodCatalogReader(db).matcherFor(
+          home,
+          status: status,
+        )).findByName(originalText: 'namirnica f1', scope: home);
+
+    test(
+      'notOnServer: popunjen keš se ne čita, svako ime je Unresolved',
+      () async {
+        await food('f1');
+        expect(await find(CatalogStatus.available), isA<Matched>());
+        expect(await find(CatalogStatus.notOnServer), isA<Unresolved>());
+      },
+    );
+  });
+
+  group('visibleFoodById', () {
+    FoodCatalogReader reader() => FoodCatalogReader(db);
+
+    test(
+      'returns only active exact-ID food visible to scope and status',
+      () async {
+        await food('shared');
+        await food('own', household: 'h1');
+        await food('other', household: 'h2');
+        final shared = await reader().visibleFoodById(
+          home,
+          'shared',
+          status: CatalogStatus.available,
+        );
+        expect(shared?.id, 'shared');
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.available,
+          ))?.id,
+          'own',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'other',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.accessDenied,
+          ))?.id,
+          'shared',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.accessDenied,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.failed,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.notOnServer,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'missing',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test('rejects withdrawn and unknown-unit rows', () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'withdrawn',
+              slug: 'withdrawn',
+              name: 'Povučena',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              withdrawnAt: Value(t),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      await food('unknown-unit', unit: 'bushel');
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'withdrawn',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'unknown-unit',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('search', () {
+    Future<void> named(
+      String id,
+      String name, {
+      String? household,
+      DateTime? withdrawn,
+      String unit = 'gram',
+    }) => db
+        .into(db.foods)
+        .insert(
+          FoodsCompanion.insert(
+            id: id,
+            householdId: Value(household),
+            slug: id,
+            name: name,
+            category: 'mlečni proizvodi i jaja',
+            baseUnit: unit,
+            withdrawnAt: Value(withdrawn),
+            createdAt: t,
+            updatedAt: t,
+          ),
+        );
+
+    Future<List<String>> names(String q, {CatalogStatus? status}) async => [
+      for (final f in await FoodCatalogReader(
+        db,
+      ).search(home, q, status: status ?? CatalogStatus.available))
+        f.name,
+    ];
+
+    test(
+      'po delu naziva i aliasu, počeci prvi, bez povučenih i tuđih',
+      () async {
+        await named('a', 'Pavlaka', unit: 'milliliter');
+        await named('b', 'Paprika');
+        await named('c', 'Crna paprika');
+        await named('d', 'Pasulj', withdrawn: t);
+        await named('e', 'Pamuk', household: 'drugi');
+        await named('f', 'Kisela pavlaka za kuvanje', household: 'h1');
+        await named('g', 'Jogurt');
+        await alias('al', 'g', 'kiselo mleko');
+
+        expect(await names('pa'), [
+          'Paprika',
+          'Pavlaka',
+          'Crna paprika',
+          'Kisela pavlaka za kuvanje',
+        ]);
+        expect(await names('KISELO'), ['Jogurt']);
+        expect(await names('  '), isEmpty);
+      },
+    );
+
+    test(
+      'bez pristupa domaćinstvu samo deljeni redovi; stariji server prazno',
+      () async {
+        await named('a', 'Pavlaka');
+        await named('f', 'Pavlaka kućna', household: 'h1');
+        expect(await names('pavl', status: CatalogStatus.accessDenied), [
+          'Pavlaka',
+        ]);
+        expect(await names('pavl', status: CatalogStatus.notOnServer), isEmpty);
+      },
+    );
+
+    test('nepoznata osnovna jedinica se preskače', () async {
+      await named('a', 'Pavlaka', unit: 'bushel');
+      expect(await names('pavl'), isEmpty);
+    });
+  });
+
+  group('allergens', () {
+    Future<void> reviewed(
+      String id,
+      String? codes, {
+      bool review = true,
+    }) async {
+      await food(id);
+      await (db.update(db.foods)..where((f) => f.id.equals(id))).write(
+        FoodsCompanion(
+          allergenCodes: Value(codes),
+          allergenReviewedAt: Value(review ? t : null),
+        ),
+      );
+    }
+
+    test('unknown, reviewed none and reviewed groups stay distinct', () async {
+      await food('unknown');
+      await reviewed('none', '');
+      await reviewed('dairy', 'milk,eggs');
+      final map = await FoodCatalogReader(db)
+          .reviewedAllergens(['unknown', 'none', 'dairy', 'missing']);
+      expect(map.keys, unorderedEquals(['none', 'dairy']));
+      expect(map['none'], isEmpty);
+      expect(map['dairy'], {AllergenGroup.milk, AllergenGroup.eggs});
+    });
+
+    test('unreadable or half-reviewed values fail closed', () async {
+      await reviewed('bad', 'milk,unobtainium');
+      await reviewed('nodate', 'milk', review: false);
+      expect(
+        await FoodCatalogReader(db).reviewedAllergens(['bad', 'nodate']),
+        isEmpty,
+      );
+    });
+
+    test('recipe result lists groups and flags incomplete data', () async {
+      await reviewed('flour', 'gluten');
+      await reviewed('egg', 'eggs');
+      await food('mystery');
+      final reader = FoodCatalogReader(db);
+
+      final ok = await reader.allergensForRecipe(['flour', 'egg']);
+      expect(ok.groups, {AllergenGroup.gluten, AllergenGroup.eggs});
+      expect(ok.isComplete, isTrue);
+
+      final partial = await reader.allergensForRecipe([
+        'flour',
+        'mystery',
+        null,
+      ]);
+      expect(partial.groups, {AllergenGroup.gluten});
+      expect(partial.hasUnreviewedMapping, isTrue);
+      expect(partial.hasUnresolvedIngredient, isTrue);
+      expect(partial.isComplete, isFalse);
+    });
+
+    test('withdrawn foods are not reviewed', () async {
+      await reviewed('old', 'fish');
+      await (db.update(db.foods)..where((f) => f.id.equals('old'))).write(
+        FoodsCompanion(withdrawnAt: Value(t)),
+      );
+      expect(await FoodCatalogReader(db).reviewedAllergens(['old']), isEmpty);
+    });
+
+    test('identity from the matcher carries the reviewed groups', () async {
+      await reviewed('milk1', 'milk');
+      await alias('a1', 'milk1', 'namirnica milk1');
+      final result = await find('namirnica milk1');
+      expect((result as Matched).food.allergens, {AllergenGroup.milk});
+    });
+  });
+}

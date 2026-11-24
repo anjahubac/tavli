@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/data/recipe_rating_repository.dart';
 import 'package:tavli/sync/downloader.dart';
 import 'package:tavli/sync/photo_sync.dart';
 import 'package:tavli/sync/sync_engine.dart';
@@ -23,6 +26,7 @@ void main() {
   late SyncEngine engine;
   late List<SyncStatus> seen;
   var unauthorized = 0;
+  var forbidden = 0;
   var refreshOk = true;
 
   setUp(() async {
@@ -30,6 +34,7 @@ void main() {
     backend = FakeBackend();
     timers = FakeTimers();
     unauthorized = 0;
+    forbidden = 0;
     refreshOk = true;
     final s = await backend.auth.verifyCode('ana@mail.com', FakeServer.code);
     scope = AccountScope(
@@ -49,6 +54,9 @@ void main() {
       ),
       timer: timers.call,
       onUnauthorized: () async => unauthorized++,
+      onForbidden: () => engine.reconcileMembership(() async {
+        forbidden++;
+      }),
     );
     writer = SyncedWriter(db, accountId: scope.userId, onChange: engine.kick);
     seen = [];
@@ -165,6 +173,21 @@ void main() {
     expect(backend.server.table('recipes'), isEmpty);
   });
 
+  test(
+    'permission denial rechecks membership after the upload stops',
+    () async {
+      await addRecipe('a');
+      backend.server.failures.addAll(const [
+        PermanentSyncError('42501'),
+        PermanentSyncError('42501'),
+      ]);
+      await timers.fire();
+      expect(forbidden, 1);
+      expect(backend.server.table('recipes'), isEmpty);
+      expect(engine.status, isA<Rejected>());
+    },
+  );
+
   test('stop gasi tajmere i slanje', () async {
     await addRecipe('a');
     engine.stop();
@@ -173,13 +196,170 @@ void main() {
     expect(backend.server.table('recipes'), isEmpty);
   });
 
+  group('odbijanje zbog prava', () {
+    late SyncEngine guarded;
+    late Completer<void> checkDone;
+    var checks = 0;
+
+    setUp(() {
+      checks = 0;
+      checkDone = Completer<void>();
+      guarded = SyncEngine(
+        db: db,
+        scope: scope,
+        uploader: Uploader(
+          db: db,
+          remote: backend.sync,
+          photos: backend.photos,
+          photoStore: FakePhotoStore(),
+          scope: scope,
+          refreshSession: () async => refreshOk,
+        ),
+        timer: timers.call,
+        onUnauthorized: () async => unauthorized++,
+        onForbidden: () {
+          checks++;
+          return checkDone.future;
+        },
+      );
+    });
+    tearDown(() {
+      if (!checkDone.isCompleted) checkDone.complete();
+      guarded.stop();
+    });
+
+    /// The user was removed: RLS denies writes into the old household.
+    void removeFromHousehold() {
+      backend.server.enforceMembership = true;
+      backend.server.households[scope.userId] = 'new-home';
+    }
+
+    test('odbijanje tokom provere zakazuje jednu dodatnu proveru', () async {
+      await addRecipe('a');
+      await addRecipe('b');
+      removeFromHousehold();
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 1);
+      expect(unauthorized, 0);
+
+      // A second denial while the check runs does not start another one.
+      await addRecipe('c');
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 1);
+
+      // Multiple denials in the gap before membership reconciliation starts
+      // must coalesce into one follow-up check, not disappear.
+      await addRecipe('c2');
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 1);
+
+      checkDone.complete();
+      await pumpQueue();
+      expect(checks, 2);
+      checkDone = Completer<void>();
+      await addRecipe('d');
+      await guarded.push();
+      await pumpQueue();
+      expect(checks, 3);
+    });
+
+    test(
+      'privremena, offline, 401 i druge trajne greške ne pokreću proveru',
+      () async {
+        await addRecipe('a');
+        backend.server.failures.add(const TransientSyncError('503'));
+        await guarded.push();
+        backend.server.offline = true;
+        await guarded.push();
+        backend.server.offline = false;
+        refreshOk = false;
+        backend.server.failures.addAll(const [
+          UnauthorizedSyncError(),
+          UnauthorizedSyncError(),
+        ]);
+        await guarded.push();
+        refreshOk = true;
+        await addRecipe('los');
+        backend.server.rejectIds.add('los');
+        await guarded.push();
+        await pumpQueue();
+        expect(checks, 0);
+        expect(unauthorized, 1);
+      },
+    );
+
+    test('posle stop-a se provera ne pokreće', () async {
+      await addRecipe('a');
+      removeFromHousehold();
+      await guarded.push();
+      // Sign-out lands between the denial and the scheduled check.
+      guarded.stop();
+      await pumpQueue();
+      expect(checks, 0);
+    });
+
+    test(
+      'greška u proveri ne izlazi van engine-a i ne blokira sledeću',
+      () async {
+        var failing = 0;
+        final throwing = SyncEngine(
+          db: db,
+          scope: scope,
+          uploader: Uploader(
+            db: db,
+            remote: backend.sync,
+            photos: backend.photos,
+            photoStore: FakePhotoStore(),
+            scope: scope,
+            refreshSession: () async => true,
+          ),
+          timer: timers.call,
+          onForbidden: () async {
+            failing++;
+            throw StateError('nalog');
+          },
+        );
+        addTearDown(throwing.stop);
+        await addRecipe('a');
+        removeFromHousehold();
+        await throwing.push();
+        await pumpQueue();
+        await addRecipe('b');
+        await throwing.push();
+        await pumpQueue();
+        expect(failing, 2);
+      },
+    );
+
+    test('odbijanje čeka završetak tekuće provere članstva', () async {
+      await addRecipe('a');
+      removeFromHousehold();
+      final push = guarded.push();
+      final finish = Completer<void>();
+      final check = guarded.reconcileMembership(() => finish.future);
+      await push;
+      await pumpQueue();
+      expect(checks, 0);
+
+      finish.complete();
+      await check;
+      await pumpQueue();
+      expect(checks, 1);
+    });
+  });
+
   group('preuzimanje', () {
     late SyncEngine full;
     late List<SyncPhase?> phases;
+    Future<void> Function()? afterPull;
     var now = DateTime.utc(2026, 11, 1, 12);
 
     setUp(() async {
       now = DateTime.utc(2026, 11, 1, 12);
+      afterPull = null;
       await db
           .into(db.accounts)
           .insert(
@@ -212,6 +392,7 @@ void main() {
         ),
         timer: timers.call,
         clock: () => now,
+        afterPull: () async => afterPull?.call(),
       );
       writer = SyncedWriter(db, accountId: scope.userId, onChange: full.kick);
       phases = [];
@@ -227,6 +408,27 @@ void main() {
       ], 'id');
     });
     tearDown(() => full.stop());
+
+    test(
+      'rating upload completes and refreshes the household summary',
+      () async {
+        await addRecipe('rated');
+        final ratings = RecipeRatingRepository(
+          db,
+          writer: writer,
+          scope: scope,
+        );
+        await ratings.save(recipeId: 'rated', stars: 4);
+
+        await full.push().timeout(const Duration(seconds: 5));
+
+        expect(backend.server.table('ratings'), hasLength(1));
+        final summary = await ratings.watchHouseholdSummary('rated').first;
+        expect(summary?.averageStars, 4);
+        expect(summary?.ratingCount, 1);
+        expect(full.status, isA<AllSaved>());
+      },
+    );
 
     Future<AccountRow> account() => db.select(db.accounts).getSingle();
 
@@ -254,6 +456,122 @@ void main() {
       await full.onStart();
       expect(phases, isEmpty);
     });
+
+    test(
+      'posle preuzimanja poziva afterPull, kad su redovi već upisani',
+      () async {
+        var after = 0;
+        final engine2 = SyncEngine(
+          db: db,
+          scope: scope,
+          uploader: Uploader(
+            db: db,
+            remote: backend.sync,
+            photos: backend.photos,
+            photoStore: FakePhotoStore(),
+            scope: scope,
+            refreshSession: () async => true,
+          ),
+          downloader: Downloader(db: db, remote: backend.sync, scope: scope),
+          timer: timers.call,
+          clock: () => now,
+          afterPull: () async {
+            expect(await db.select(db.pantryItems).get(), hasLength(1));
+            after++;
+          },
+        );
+        addTearDown(engine2.stop);
+        await engine2.pull();
+        expect(after, 1);
+      },
+    );
+
+    test(
+      'provera članstva čeka preuzimanje i pauzira sinhronizaciju',
+      () async {
+        final pulling = Completer<void>();
+        final finishPull = Completer<void>();
+        afterPull = () {
+          pulling.complete();
+          return finishPull.future;
+        };
+        final pull = full.pull();
+        await pulling.future;
+
+        final checking = Completer<void>();
+        final finishCheck = Completer<void>();
+        final check = full.reconcileMembership(() {
+          checking.complete();
+          return finishCheck.future;
+        });
+        try {
+          await pumpQueue();
+          expect(checking.isCompleted, isFalse);
+          finishPull.complete();
+          await checking.future;
+
+          backend.server.calls.clear();
+          await addRecipe('during-check');
+          await full.push();
+          await full.pull();
+          expect(backend.server.calls, isEmpty);
+        } finally {
+          if (!finishPull.isCompleted) finishPull.complete();
+          finishCheck.complete();
+          await pull;
+          await check;
+        }
+
+        await full.push();
+        expect(backend.server.calls, ['upsert:recipes:1']);
+      },
+    );
+
+    test(
+      'a realtime pull follows a pull that already read the changed table',
+      () async {
+        final firstApplied = Completer<void>();
+        final releaseFirst = Completer<void>();
+        afterPull = () async {
+          if (firstApplied.isCompleted) return;
+          firstApplied.complete();
+          await releaseFirst.future;
+        };
+
+        final first = full.pull();
+        await firstApplied.future;
+        backend.server.upsert('pantry_items', [
+          {
+            'id': 'o2',
+            'household_id': scope.householdId,
+            'name': 'biber',
+            'category': 'ostalo',
+            'added_at': '2026-10-30T10:00:00.000Z',
+          },
+        ], 'id');
+        final following = full.pullAfterCurrent();
+        expect(await db.select(db.pantryItems).get(), hasLength(1));
+        releaseFirst.complete();
+        await Future.wait([first, following]);
+        expect(await db.select(db.pantryItems).get(), hasLength(2));
+      },
+    );
+
+    test(
+      'realtime pull reports transient download failures for retry',
+      () async {
+        backend.server.failures.add(const TransientSyncError('503'));
+        expect(await full.pullAfterCurrent(), PullOutcome.retryableFailure);
+        expect((await account()).lastPullAt, isNull);
+
+        backend.server.failures.add(const PermanentSyncError('403'));
+        expect(await full.pullAfterCurrent(), PullOutcome.settled);
+        expect((await account()).lastPullAt, isNull);
+
+        expect(await full.pullAfterCurrent(), PullOutcome.settled);
+        expect((await account()).lastPullAt, isNotNull);
+      },
+    );
 
     test('povratak u aplikaciju preuzima tek posle 15 minuta', () async {
       await full.onStart();

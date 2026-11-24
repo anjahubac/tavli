@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Recept glasom (spec 027): snimanje samo na dugme „Govori“. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="tavli"
         android:name="${applicationName}"
@@ -21,6 +23,21 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Link iz mejla za potvrdu adrese (tavli://auth-callback). -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tavli" android:host="auth-callback" />
+            </intent-filter>
+            <!-- Pozivnica u domaćinstvo (tavli://household/join#KOD). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tavli" android:host="household" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

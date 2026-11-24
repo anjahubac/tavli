@@ -1,0 +1,46 @@
+{
+  "contract": "recipe.v1",
+  "expect": "accept",
+  "rule": "C2, C3, R3, R7, R8, R10",
+  "why": "Harmless problems are replaced or marked, not rejected: 48 h rest time, unknown units, unknown category, extra field, blank step, padded title.",
+  "response": {
+    "title": "  Domaći hleb  ",
+    "servings": 8,
+    "prepMinutes": 2880,
+    "calories": 2100,
+    "ingredients": [
+      {
+        "name": "brašno",
+        "quantity": 1,
+        "unit": "kg",
+        "category": "suvi proizvodi"
+      },
+      {
+        "name": "kvasac",
+        "quantity": 1,
+        "unit": "kocka",
+        "category": "mlečni proizvodi i jaja"
+      },
+      {
+        "name": "seme",
+        "quantity": 2,
+        "unit": "šaka",
+        "category": "semenke"
+      }
+    ],
+    "steps": [
+      "Zamesiti testo.",
+      "  ",
+      "Ostaviti da odstoji 48 sati u frižideru."
+    ]
+  },
+  "expected": {
+    "title": "Domaći hleb",
+    "prepMinutes": 2880,
+    "ingredients[1].unitStatus": "unknown",
+    "ingredients[2].unit": "šaka",
+    "ingredients[2].unitStatus": "unknown",
+    "ingredients[2].category": "ostalo",
+    "steps.length": 2
+  }
+}

@@ -1,64 +1,68 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../account/auth_controller.dart';
 import '../../account/auth_gateway.dart';
+import '../../app/router.dart';
 import '../../domain/account.dart';
-import '../../providers.dart';
 import 'auth_error_text.dart';
+import 'auth_layout.dart';
 
-/// Posle koliko sekundi može ponovo da se pošalje kod (FR-005).
-const resendAfter = Duration(seconds: 30);
-
-/// "Prijava": e-pošta pa 6-cifreni kod. Bez lozinke; isti tok za nov i
-/// postojeći nalog.
+/// "Prijava" (postojeći nalog): e-pošta, pa "Upiši kod". Bez lozinke.
+/// Prijava ne pravi nov nalog; za to je "Registracija" ([signUpPath]).
 class SignInScreen extends ConsumerWidget {
   const SignInScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
+    // Nova greška iz mejla ima prednost nad prethodnim razlogom odjave.
     final notice = switch (auth) {
-      SignedOut(reason: SignOutReason.sessionExpired) => sessionExpiredText,
-      SignedOut(reason: SignOutReason.accountDeleted) => accountDeletedText,
+      SignedOut(linkError: final f?) => (
+        authErrorText(f),
+        TavliNoticeTone.error,
+      ),
+      SignedOut(reason: SignOutReason.sessionExpired) => (
+        sessionExpiredText,
+        TavliNoticeTone.info,
+      ),
+      SignedOut(reason: SignOutReason.accountDeleted) => (
+        accountDeletedText,
+        TavliNoticeTone.info,
+      ),
+      SignedOut(reason: SignOutReason.storageUnavailable) => (
+        storageUnavailableText,
+        TavliNoticeTone.info,
+      ),
       _ => null,
     };
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: auth is CodeSent
-                  ? _CodeStep(key: ValueKey(auth.sentAt), sent: auth)
-                  : _EmailStep(notice: notice),
-            ),
-          ),
-        ),
-      ),
-    );
+    return auth is CodeSent
+        ? SignInCodeStep(key: ValueKey(auth.sentAt), sent: auth)
+        : _EmailStep(notice: notice);
   }
 }
 
 class _EmailStep extends ConsumerStatefulWidget {
   const _EmailStep({this.notice});
 
-  final String? notice;
+  final (String, TavliNoticeTone)? notice;
 
   @override
   ConsumerState<_EmailStep> createState() => _EmailStepState();
 }
 
 class _EmailStepState extends ConsumerState<_EmailStep> {
-  final _email = TextEditingController();
+  late final _email = TextEditingController(
+    text: ref.read(authEmailDraftProvider),
+  );
   final _focus = FocusNode();
   var _touched = false;
   var _busy = false;
-  String? _error;
+  AuthFailure? _error;
 
   @override
   void initState() {
@@ -89,107 +93,106 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
       await ref.read(authControllerProvider.notifier).sendCode(_email.text);
     } on AuthFailure catch (f) {
       if (!mounted) return;
-      setState(() => _error = authErrorText(f));
+      setState(() => _error = f);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  void _toSignUp() {
+    ref.read(authEmailDraftProvider.notifier).set(_email.text.trim());
+    context.go(signUpPath);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final invalid = _touched && !_valid;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Prijava', style: text.headlineMedium),
-        const SizedBox(height: 8),
-        const Text(
-          'Prijavi se e-poštom. Poslaćemo ti kod, lozinka nije potrebna.',
+    final error = _error;
+    return AuthPage(
+      title: 'Prijava',
+      intro: const TextSpan(
+        text:
+            'Upiši e-poštu naloga i poslaćemo ti kod za prijavu. Lozinka '
+            'nije potrebna.',
+      ),
+      footer: [
+        AuthSwitchLink(
+          question: 'Nemaš nalog?',
+          action: 'Registruj se',
+          onPressed: _toSignUp,
         ),
-        if (widget.notice case final n?) ...[
-          const SizedBox(height: 16),
-          _Notice(n),
-        ],
-        const SizedBox(height: 24),
-        TextField(
+      ],
+      children: [
+        TavliTextField(
+          label: 'E-pošta',
+          tall: true,
           controller: _email,
           focusNode: _focus,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
           autocorrect: false,
           textInputAction: TextInputAction.send,
-          decoration: InputDecoration(
-            labelText: 'E-pošta',
-            border: const OutlineInputBorder(),
-            errorText: invalid ? 'Unesi ispravnu adresu e-pošte.' : null,
-          ),
-          onChanged: (_) => setState(() {}),
+          errorText: invalid ? 'Unesi ispravnu adresu e-pošte.' : null,
+          onChanged: (_) => setState(() => _error = null),
           onSubmitted: (_) {
             setState(() => _touched = true);
             unawaited(_send());
           },
         ),
-        if (_error case final e?) ...[
-          const SizedBox(height: 12),
-          _ErrorText(e),
-        ],
-        const SizedBox(height: 16),
-        FilledButton(
+        TavliButton.primary(
+          label: 'Pošalji kod',
           onPressed: _valid && !_busy ? _send : null,
-          child: const Text('Pošalji kod'),
         ),
+        if (error is NoAccount)
+          const TavliNotice(
+            tone: TavliNoticeTone.error,
+            title: noAccountTitle,
+            message: noAccountText,
+          )
+        else if (error != null)
+          TavliNotice(
+            tone: TavliNoticeTone.error,
+            message: authErrorText(error),
+          )
+        else if (widget.notice case (final message, final tone))
+          TavliNotice(tone: tone, message: message),
       ],
     );
   }
 }
 
-class _CodeStep extends ConsumerStatefulWidget {
-  const _CodeStep({super.key, required this.sent});
+/// "Upiši kod": 6-cifreni kod iz mejla za prijavu.
+class SignInCodeStep extends ConsumerStatefulWidget {
+  const SignInCodeStep({super.key, required this.sent});
 
   final CodeSent sent;
 
   @override
-  ConsumerState<_CodeStep> createState() => _CodeStepState();
+  ConsumerState<SignInCodeStep> createState() => _SignInCodeStepState();
 }
 
-class _CodeStepState extends ConsumerState<_CodeStep> {
+class _SignInCodeStepState extends ConsumerState<SignInCodeStep>
+    with ResendCountdown {
   final _code = TextEditingController();
-  Timer? _ticker;
   var _busy = false;
   String? _error;
 
-  int get _secondsLeft {
-    final now = ref.read(authClockProvider)();
-    final left = resendAfter - now.difference(widget.sent.sentAt);
-    return left.isNegative ? 0 : (left.inMilliseconds / 1000).ceil();
-  }
+  @override
+  DateTime get sentAt => widget.sent.sentAt;
 
   @override
   void initState() {
     super.initState();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      setState(() {});
-      if (_secondsLeft == 0) t.cancel();
-    });
+    startCountdown();
   }
 
   @override
   void dispose() {
-    _ticker?.cancel();
     _code.dispose();
     super.dispose();
   }
 
-  Future<void> _onChanged(String value) async {
-    final code = normalizeCode(value);
-    if (code != value) {
-      _code.value = TextEditingValue(
-        text: code,
-        selection: TextSelection.collapsed(offset: code.length),
-      );
-    }
+  Future<void> _onChanged(String code) async {
     if (code.length == 6) await _verify(code);
   }
 
@@ -226,77 +229,41 @@ class _CodeStepState extends ConsumerState<_CodeStep> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final left = _secondsLeft;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final left = secondsLeft;
+    final auth = ref.read(authControllerProvider.notifier);
+    return AuthPage(
+      title: 'Upiši kod',
+      onBack: auth.changeEmail,
+      intro: TextSpan(
+        children: [
+          const TextSpan(text: 'Poslali smo kod na '),
+          boldSpan(context, widget.sent.email),
+          const TextSpan(text: '. Važi 10 minuta.'),
+        ],
+      ),
+      footer: [
+        TavliButton.text(
+          label: left == 0 ? 'Pošalji ponovo' : 'Pošalji ponovo (za $left s)',
+          onPressed: left == 0 && !_busy ? _resend : null,
+        ),
+        TavliButton.text(
+          label: 'Promeni e-poštu',
+          onPressed: _busy ? null : auth.changeEmail,
+        ),
+      ],
       children: [
-        Text('Prijava', style: text.headlineMedium),
-        const SizedBox(height: 8),
-        Text('Poslali smo kod na ${widget.sent.email}.'),
-        const SizedBox(height: 24),
-        TextField(
+        TavliCodeField(
+          label: 'Kod iz poruke',
           controller: _code,
           autofocus: true,
           enabled: !_busy,
-          keyboardType: TextInputType.number,
-          autofillHints: const [AutofillHints.oneTimeCode],
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
-            LengthLimitingTextInputFormatter(12),
-          ],
-          style: text.headlineSmall?.copyWith(letterSpacing: 8),
-          decoration: const InputDecoration(
-            labelText: 'Kod iz poruke',
-            border: OutlineInputBorder(),
-          ),
+          helper: 'Možeš i da nalepiš ceo kod. Proverava se sam čim je upisan.',
           onChanged: (v) => unawaited(_onChanged(v)),
         ),
-        if (_busy) ...[
-          const SizedBox(height: 12),
-          const LinearProgressIndicator(),
-        ],
-        if (_error case final e?) ...[
-          const SizedBox(height: 12),
-          _ErrorText(e),
-        ],
-        const SizedBox(height: 16),
-        OutlinedButton(
-          onPressed: left == 0 && !_busy ? _resend : null,
-          child: Text(
-            left == 0 ? 'Pošalji ponovo' : 'Pošalji ponovo za $left s',
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: _busy
-              ? null
-              : ref.read(authControllerProvider.notifier).changeEmail,
-          child: const Text('Promeni e-poštu'),
-        ),
+        if (_busy) const TavliLoading(),
+        if (_error case final e?)
+          TavliNotice(tone: TavliNoticeTone.error, message: e),
       ],
     );
   }
-}
-
-class _ErrorText extends StatelessWidget {
-  const _ErrorText(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) =>
-      Text(text, style: TextStyle(color: Theme.of(context).colorScheme.error));
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    color: Theme.of(context).colorScheme.secondaryContainer,
-    child: Padding(padding: const EdgeInsets.all(12), child: Text(text)),
-  );
 }

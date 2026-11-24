@@ -58,8 +58,8 @@ class ChainConfig {
   );
   static const _groqVision = ModelSpec(
     provider: AIProvider.groq,
-    model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-    label: 'Groq Llama 4 Maverick',
+    model: 'qwen/qwen3.8-27b',
+    label: 'Groq Qwen 3.6 27B',
     supportsVision: true,
   );
   static const _groqTextStrong = ModelSpec(
@@ -79,6 +79,15 @@ class ChainConfig {
     supportsVision: true,
   );
 
+  /// Za korisnikov OpenAI ključ. Zajednički OpenAI model je [_openAI], njega
+  /// bira server.
+  static const _openAIPersonal = ModelSpec(
+    provider: AIProvider.openAI,
+    model: 'gpt-6-luna',
+    label: 'OpenAI GPT-6 Luna',
+    supportsVision: true,
+  );
+
   static const defaults = ChainConfig(
     // Za čitanje recepta sa slike Flash je dovoljno dobar i višestruko brži
     // od Pro modela, koji pre odgovora dugo "razmišlja".
@@ -88,6 +97,7 @@ class ChainConfig {
       _geminiPro,
       _geminiFlashLite,
       _openRouterFree,
+      _openAIPersonal,
     ],
     text: [
       _geminiPro,
@@ -96,6 +106,22 @@ class ChainConfig {
       _groqTextNext,
       _geminiFlashLite,
       _openRouterFree,
+      _openAIPersonal,
     ],
   );
+
+  static const _openAI = ModelSpec(
+    provider: AIProvider.openAI,
+    model: 'default',
+    label: 'OpenAI',
+    supportsVision: true,
+    timeout: Duration(seconds: 60),
+  );
+
+  static Map<String, ModelSpec> gatewayModels(TaskKind kind) => {
+    'openai/default': _openAI,
+    for (final model in defaults.chainFor(kind))
+      if (model.provider != AIProvider.openAI)
+        '${model.provider.name.toLowerCase()}/${model.model}': model,
+  };
 }

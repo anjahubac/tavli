@@ -1,13 +1,12 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
-import 'motion.dart';
+import 'empty_art.dart';
 
-const _wood = Color(0xFFB07A45);
-const _woodDark = Color(0xFF8A5A2E);
-
-/// Povlačenje nadole za osvežavanje: umesto točkića varjača meša u loncu.
+/// Povlačenje nadole za osvežavanje: umesto točkića varjača meša u loncu
+/// (pogled odozgo).
 class SpoonRefresh extends StatefulWidget {
   const SpoonRefresh({super.key, required this.onRefresh, required this.child});
 
@@ -62,89 +61,95 @@ class _SpoonRefreshState extends State<SpoonRefresh> {
   }
 }
 
-/// Mali lonac u kome varjača kruži.
+/// Lonac gledan odozgo u kome varjača kruži; mala okrugla značka za
+/// osvežavanje.
 class SpoonPot extends StatelessWidget {
-  const SpoonPot({super.key, this.stirring = true, this.size = 56});
+  const SpoonPot({super.key, this.stirring = true, this.size = 64});
 
   final bool stirring;
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Material(
-      color: colors.surface,
-      shape: CircleBorder(side: BorderSide(color: colors.outlineVariant)),
-      child: MotionBuilder(
-        duration: const Duration(milliseconds: 1100),
-        restValue: 0.15,
-        play: stirring,
-        builder: (context, t, _) => MotionCanvas(
-          size: size,
-          design: 100,
-          label: 'Varjača u loncu',
-          painter: SpoonPotPainter(
-            t,
-            pot: colors.primary,
-            soup: colors.primaryContainer,
-          ),
-        ),
+    final colors = EmptyArtColors.of(Theme.of(context).colorScheme);
+    return MotionBuilder(
+      duration: const Duration(milliseconds: 1500),
+      restValue: 0.1,
+      play: stirring,
+      builder: (context, t, _) => MotionCanvas(
+        size: size,
+        design: 200,
+        label: 'Varjača u loncu',
+        painter: EmptyArtPainter(t, colors, stirringPot),
       ),
     );
   }
 }
 
-/// Koordinate 100×100.
-class SpoonPotPainter extends CustomPainter {
-  SpoonPotPainter(this.t, {required this.pot, required this.soup});
+/// Lonac odozgo, varjača i spirala u čorbi (koordinate 200×200).
+void stirringPot(Canvas canvas, double t, EmptyArtColors c) {
+  const center = Offset(100, 104);
+  final a = t * 2 * math.pi;
+  canvas
+    ..drawPath(
+      Path()
+        ..moveTo(52, 104)
+        ..lineTo(40, 104)
+        ..moveTo(148, 104)
+        ..lineTo(160, 104),
+      stroke(c.line, width: 5),
+    )
+    ..drawCircle(center, 50, fill(c.surface))
+    ..drawCircle(center, 50, stroke(c.line))
+    ..drawCircle(center, 40, fill(c.tint))
+    ..drawCircle(center, 40, stroke(c.softLine, width: 2.5));
 
-  final double t;
-  final Color pot;
-  final Color soup;
+  // Spirala u čorbi se okreće zajedno sa varjačom.
+  final swirl = Path()
+    ..moveTo(100, 94)
+    ..arcToPoint(const Offset(90, 104), radius: const Radius.circular(10))
+    ..arcToPoint(
+      const Offset(110, 124),
+      radius: const Radius.circular(20),
+      largeArc: true,
+    )
+    ..arcToPoint(const Offset(80, 94), radius: const Radius.circular(30));
+  canvas
+    ..save()
+    ..translate(center.dx, center.dy)
+    ..rotate(a)
+    ..translate(-center.dx, -center.dy)
+    ..drawPath(swirl, stroke(c.primary, opacity: 0.55))
+    ..restore();
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final a = t * 2 * math.pi;
-    // Glava varjače kruži po površini (elipsa).
-    final head = Offset(50 + 16 * math.cos(a), 52 + 5 * math.sin(a));
-    final behind = math.sin(a) < 0;
-    void spoon() {
-      final handleEnd = Offset(head.dx + 18 + 6 * math.cos(a), 14);
-      canvas.drawLine(
-        head,
-        handleEnd,
-        Paint()
-          ..color = _wood
-          ..strokeWidth = 5
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawOval(
-        Rect.fromCenter(center: head, width: 14, height: 9),
-        Paint()..color = _woodDark,
-      );
-    }
+  // Varjača: drška i glava.
+  canvas
+    ..save()
+    ..translate(center.dx, center.dy)
+    ..rotate(a - deg(40))
+    ..drawLine(
+      const Offset(24, 0),
+      const Offset(66, 0),
+      stroke(c.primary, width: 6),
+    )
+    ..drawOval(
+      Rect.fromCenter(center: const Offset(14, 0), width: 24, height: 16),
+      fill(c.surface),
+    )
+    ..drawOval(
+      Rect.fromCenter(center: const Offset(14, 0), width: 24, height: 16),
+      stroke(c.primary),
+    )
+    ..restore();
 
-    if (behind) spoon();
-    canvas.drawOval(
-      Rect.fromCenter(center: const Offset(50, 52), width: 56, height: 16),
-      Paint()..color = soup,
-    );
-    if (!behind) spoon();
-    final body = Path()
-      ..moveTo(20, 52)
-      ..lineTo(80, 52)
-      ..lineTo(76, 76)
-      ..quadraticBezierTo(75, 84, 66, 84)
-      ..lineTo(34, 84)
-      ..quadraticBezierTo(25, 84, 24, 76)
-      ..close();
-    canvas.drawPath(body, Paint()..color = pot);
-    canvas.drawRRect(
-      RRect.fromLTRBR(16, 48, 84, 55, const Radius.circular(3)),
-      Paint()..color = pot,
+  // Mehurići izranjaju.
+  const bubbles = [Offset(80, 90), Offset(118, 120), Offset(112, 86)];
+  for (final (i, b) in bubbles.indexed) {
+    final p = (t * 2 + i / 3) % 1;
+    canvas.drawCircle(
+      b,
+      2 + 3 * p,
+      stroke(c.softLine, width: 2, opacity: math.sin(math.pi * p)),
     );
   }
-
-  @override
-  bool shouldRepaint(SpoonPotPainter old) => old.t != t || old.pot != pot;
 }

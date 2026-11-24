@@ -1,200 +1,194 @@
-# Tavli: od plana obroka do nabavke i kuvanja
+# Tavli product and UX decisions
 
-**Dogovoreni pravac:** 02.11.2026.
-**Status:** cilj proizvoda; nije opis već završenih ekrana.
-**Spec Kit:** [010 — Plan i nabavka](../specs/010-plan-and-shopping/spec.md),
-[plan implementacije](../specs/010-plan-and-shopping/plan.md).
+Updated: 2026-11-13 from the owner's revision of 12–13 November. This is the
+accepted target, not a claim that every feature exists. The verified baseline is
+in [architecture](architecture.md); the six-phase sequence is in
+[product plan](product-plan.md). Existing visual design/themes remain.
+The 2026-11-20 UX review adds rules for narrow windows and the cooking journey.
+What is built on `dev` is listed in the [roadmap](roadmap.md) (checked 2026-11-24);
+Home, Ostava, household, cookbooks and voice exist, the nutrition diary does not.
 
-Tavli pomaže domaćinstvu da napravi nedeljni ili mesečni plan obroka, dobije
-predloge recepata i pripremi nabavku. Korisnik može i direktno iz jednog
-recepta da proveri sastojke i pripremi nabavku, bez pravljenja plana. Ostava, ukus i potrebe domaćinstva utiču
-na predloge. Recepti ostaju kuvarska zbirka i osnova za planiranje i pripremu.
+## Primary journeys
 
-**Napravi plan → prilagodi obroke → proveri šta imaš → pripremi nabavku →
-kupi → kuvaj → oceni.**
+Plan a week/month → review and adjust → check ingredients → shop → transfer
+purchases → cook → optionally record intake or feedback. Standalone recipe →
+check ingredients → add missing ingredients → shop is equally supported, with
+no plan or forced recipe-library save required.
 
-## 1. Navigacija
+A first useful plan must not require pantry/profile setup. Keep the main flow
+setup → progress/review → confirmation, with one clear primary action per step.
+AI suggestions are drafts and never silently alter saved data.
 
-Glavni tabovi su **Plan, Nabavka, Recepti, Ostava**, tim redom. Plan je početni
-ekran posle prijave i obaveznog koraka sa imenom. Profil, podešavanja i
-domaćinstvo otvaraju se preko avatara gore desno, na telefonu i računaru.
-„Danas“ je prečica unutar plana, sa današnjim obrocima i ulaskom u kuvanje.
+## Navigation
 
-Postojeće prijavljivanje, odjavljivanje, brisanje naloga, AI podešavanja i
-stanje čuvanja podataka ostaju dostupni. Adrese recepata i Profila ostaju
-važeće; naziv „Nabavka“ ne zahteva promenu postojeće adrese `/shopping`.
+The bottom bar orders destinations **Plan, Nabavka, Početna, Recepti, Ostava**.
+The side rail starts with **Početna**, then Plan, Nabavka, Recepti and Ostava.
+Home opens after sign-in/name gates. On compact layouts the title bar shows
+Tavli and the profile avatar. In the side rail, Profil sits at the bottom.
+Profile is the entry point for settings and household. The side rail omits
+shortcut badges. Preserve `/home`, `/plan`, `/shopping`, `/recipes`,
+`/pantry`, `/profile` and recipe URLs. See the
+[adaptive navigation rules](development/ui-standard.md#navigation-and-platform-behavior).
 
-## 2. Pravljenje plana
+Home shows today's approved meals (including snacks), the next uncooked meal,
+“Kuvaj” and “Skuvano”, tomorrow's meal names and at most one useful notice.
+Notice priority: today's allergen warning → missing shopping today/tomorrow →
+plan ending. Fasts are never announced in this slot: one “Post i praznici”
+status card (today's fasting state and the next or current fast) is the only
+entry to fasting questions, right of “Danas” on desktop and under today's
+meals on phone. Visibility when “Pratim post” is off is pending in
+[035 Q4](../specs/035-fasting-holidays/spec.md#dependencies-and-open-decisions).
+On desktop the right column starts level with the meal cards and places its
+labels inside the cards. Without a plan offer “Napravi plan”. Optional calorie strip appears
+only when tracking is enabled. Cooked meals use a green circular check and muted
+card. When all of today's meals are cooked, show “Svi današnji obroci su skuvani.”
+Offer “Poništi” after marking a meal and keep it available in the meal detail.
 
-Pri vrhu su period, izbor **Nedelja / Mesec**, prečica **Danas** i izbor
-sačuvanog plana. Bez plana, glavna akcija je **Napravi plan**. Kada plan
-postoji, istaknuta akcija je **Otvori nabavku**.
+## Planning
 
-1. Izaberi nedelju ili kalendarski mesec.
-2. Izaberi doručak, ručak i/ili večeru i broj porcija.
-3. Pregledaj sopstvene preference i posebne zahteve za ovaj plan.
-4. Odluči da li da se koriste potvrđene namirnice iz ostave.
-5. Pregledaj predloge raspoređene po danima, zameni šta ti ne odgovara i sačuvaj.
+Choose week/calendar month, meal types and servings. Add morning/afternoon
+snacks through a list-based meal contract, not more hard-coded slot fields.
+Defaults remain editable: current week, lunch, two servings unless a saved
+selection supplies them. Never pretend household member count is known.
 
-Početni izbori su tekuća nedelja, ručak i dve porcije; sve je izmenjivo.
-Porcije iz poslednjeg izabranog plana mogu da se ponude umesto dve. Model
-domaćinstva još nema broj članova; aplikacija ga ne prikazuje kao poznat podatak.
+Prompt context uses explicit wishes and the approved consent-filtered
+preference aggregate. For household-aware planning, the server applies member
+allergen restrictions to saved candidates and checks the result before returning
+it. AI fills gaps through the server planning boundary. Recipe suitability, intensity
+and dish kind use closed sets, user-editable annotations and post-generation
+validation. Household rules default to substantial lunch, lighter dinner,
+maximum one substantial meal/day and varied dish kinds. Locked meals remain
+protected; a nutritionist-imported meal is not rewritten by these defaults.
 
-AI predlog je nacrt. Pre potvrde ne menja sačuvan plan, recepte ili nabavku.
-Mesečni predlog nastaje u manjim celinama uz vidljiv napredak. Ako generisanje
-stane, dobijeni deo ostaje u otvorenom pregledu i može da se nastavi. Prazna
-mesta su označena; nepotpun nacrt se čuva samo izričitom akcijom.
+Monthly generation is bounded/batched with progress, cancellation and retry of
+missing work. Review, replacement and confirmation preserve accepted snapshots,
+servings, cooked/locked/past entries and concurrent edits. Never overwrite a
+newer edit with an obsolete draft. A month can intersect six Monday–Sunday weeks.
 
-## 3. Pregled i promene
+Week/month switching and primary actions remain at stable locations/sizes.
+Mobile shows day markers and selected-day meals for month. Provide a day list
+when seven columns cannot fit readable labels and usable targets. Wide screens
+use a readable calendar/detail layout. “Ponovo predloži” and “Otvori nabavku”
+stay in a fixed safe-area action bar above mobile navigation.
 
-Telefon prikazuje nedelju kao listu dana sa izabranim vrstama obroka. Za mesec
-prikazuje mali kalendar i detalje izabrane nedelje ispod njega. Široki prozor
-koristi kalendar i bočni pregled recepta. Telefon ne dobija sedam uskih kolona.
+## Ingredients and shopping
 
-Obrok prikazuje naziv, poznato vreme, porcije i oznake **Zaključano** i
-**Skuvano**. Može da se otvori recept, zameni jelo AI predlogom ili sačuvanim
-receptom, promene porcije, zaključa obrok i označi kao skuvan. Ponavljanje
-istog recepta različitih dana je dozvoljeno i računa se prema svakom unosu.
+Catalog identity is a stable UUID, with readable slug, category, base unit,
+aliases and ingredient-specific conversions. Preserve original ingredient text.
+An alias means the same ingredient, never a similar substitute. Unresolved items
+remain visibly unresolved and usable as text until reviewed. One shared matcher
+serves recipes, voice, cookbooks and imported plans.
 
-Ponovno generisanje čuva zaključane, skuvane i prošle obroke. Promene imaju
-pregled pre prihvatanja. Plan čuva odobrenu verziju recepta: kasnija izmena
-recepta u zbirci ne menja tiho plan i potrebne količine.
+“Po planu” and “Po receptu” remain reversible modes. Quantities aggregate only
+when dimensions are compatible; approximate conversions display “~”, unknown
+ones display “Proveri količinu”. Standard kitchen measures: glass 200 ml, cup
+250 ml, tablespoon 15 ml, teaspoon 5 ml; dl/dkg are exact dimensional conversions.
 
-Nedelje traju od ponedeljka do nedelje. Mesečni plan obuhvata kalendarski
-mesec; nabavke se grupišu u delove tih nedelja unutar meseca. Mesec može da
-zahvati **šest** nedelja. Prikazuju se datumi, bez pretpostavke o četiri ili pet.
+Allocate supply once across the whole plan and standalone preparations. A known
+pantry quantity reduces demand; presence without quantity produces a check hint,
+not certain complete coverage. Keep manual/bought entries and source history.
+Repeated Add reconciles only the delta; intentional repeat creates a new
+preparation identity. Recipe changes do not rewrite approved plan snapshots.
 
-## 4. Nabavka
+Bought entries form a separate undoable group. “Prebaci u ostavu” explicitly
+transfers checked purchases, once per receipt identity; it stays in the mobile
+fixed action bar. Checking a shopping item alone does not silently transfer it.
+A purchase and its pantry receipt are one supply and cannot cover demand twice.
+Keep the purchase checkbox separate from the visible “Za koje obroke” action
+for source details. Wide views can show those details beside the list while
+preserving the same action on compact views.
 
-Uvek se vidi plan i period za koji kupujemo. Za mesec postoje zbirni pregled
-i pojedinačne nedelje. Mesečni pregled sabira iste nedeljne stavke; ne pravi
-drugu kopiju liste koja bi se posebno kupovala.
+## Pantry
 
-- Isti sastojci se objedinjuju; količine se sabiraju kada su jedinice uporedive.
-  Nepoznate količine ostaju za proveru.
-- Uz stavku se vide obroci iz kojih potiče. Dve pojave istog recepta imaju
-  odvojene potrebe prema svojim porcijama.
-- „Imam“ znači da sastojak postoji kod kuće. Osoba potvrđuje količinu ili da
-  ima celu stavku. To nije oznaka „kupljeno“.
-- Potvrđena količina iz ostave koristi se jednom kroz ceo plan, umesto da se
-  ponovo oduzima u svakoj nedelji.
-- Ponovno dodavanje i izmena plana usklađuju samo razliku. Ručno dodate i
-  kupljene stavke ostaju. Izmena ne vraća kupljenu stavku u nekupljenu.
-- Stavke su grupisane po odeljenjima prodavnice, sa velikim površinama za
-  štikliranje i brzim ručnim dodavanjem. Kupljeno je u odvojenoj grupi i može
-  da se vrati.
+Presence means available; do not display a redundant “imam” badge. Quantity is
+optional. The list is flat, sorted by name, with search; add from the catalog or
+as a new name, and display plain names when quantity is unknown. There is no
+expiry entry, expiry warning or “use first” feature in this target. Legacy
+expiry columns are not dropped by documentation: a later migration must
+preserve data and older-client compatibility explicitly.
 
-Posle kupovine se nudi **Dodaj kupljeno u ostavu**, uz potvrdu količina.
-Ponovljena potvrda ne uvećava ostavu dvaput. Kupljena namirnica i njen zapis
-u ostavi predstavljaju istu zalihu i ne daju dvostruko pokriće plana.
+Swipe left to reveal “Ukloni” on phone; on desktop a trash action appears on
+hover or keyboard focus. Removal offers “Vrati”. Tap an entry to edit quantity
+with minus/plus and direct input. The same food and unit show as one row with
+the summed quantity, also after “Prebaci u ostavu”. “Slikaj namirnice” suggests
+foods from a photo of one item or an open fridge; the person reviews them
+before they are added, and the photo is not kept. Cooking consumes known quantities once, never below zero; undo restores
+them once. Unknown quantities persist until the person removes the item.
+Repeated events, partial failures and offline replay must not duplicate consumption or receipts.
 
-Primer: obroci traže 300 g, imamo 100 g i kupimo 200 g. Prenos kupljenog u
-ostavu ne daje još 200 g pokrića. Ako potreba poraste na 400 g, ostaje
-**100 g za nabavku**.
+## Recipes and cooking
 
-### Nabavka samo za recept
+Keep photo/name/manual input, search, AI edit preview, history/restore and
+original source-photo access. Phone offers camera/gallery; desktop uses file
+selection. A scanned recipe is not displayed as a confirmed dish photograph.
+Keep the wide recipe list and detail available together. A card grid can serve
+as a browse view if selecting a card still preserves search and selection.
 
-Nabavka ima dva jasna polazišta: **Po planu** i **Po receptu**. Iz sačuvanog,
-pronađenog, uvezenog ili upravo generisanog recepta može da se otvori
-**Proveri sastojke**, izaberu porcije, označi šta osoba ima i dodaju samo
-nedostajući sastojci. Nije potrebno napraviti plan.
+“Dodaj u plan” selects date/meal and confirms replacing an occupied entry.
+“Kuvaj” uses readable steps, previous/next, accessible ingredients and the
+existing keep-screen-on choice with lifecycle cleanup. Wide view can show
+steps and ingredients side by side. A recipe without preparation steps remains
+valid for shopping/intake; do not force AI to invent steps to unlock these flows.
 
-Pregled sastojaka ništa ne upisuje. Izričito dodavanje u nabavku čuva potreban
-snimak recepta kao poreklo stavki, čak i ako generisani recept nije sačuvan u
-zbirci. Kasnije odbacivanje tog recepta iz pregleda ne briše već potvrđenu nabavku.
+Catalog mapping, allergies, personal favorite and optional calories use separate
+widgets/services within the current recipes feature. Later cookbook and voice
+inputs feed the same validation/preview/persistence path.
 
-Ponovni klik za istu pripremu ažurira samo razliku. **Ponovi nabavku** znači
-novu namernu pripremu istog jela i ima zasebno poreklo. Ako je recept već u
-planu, prvo su jasno ponuđeni **Prikaži nabavku plana** i **Dodaj zasebnu
-pripremu**. Pregled recepta sam po sebi ne duplira potrebe plana. Potvrđena
-zaliha ne daje dvostruko pokriće ni kada se koriste oba načina nabavke.
+## Household and personal data
 
-## 5. Ostava i preference
+Any household member shares the one reusable invitation as a link, a QR payload or a code
+that the recipient can type. The QR scanner in Tavli reads the same code. The
+invite has no scheduled expiry; the owner can replace it with a new one, which
+retires the old link, QR and code. Any signed-in bearer
+can see the destination household name and confirm a direct switch. The
+confirmation offers joining with eligible recipes, joining without recipes,
+or staying. Plans, shopping and pantry stay outside the transfer. If the
+owner leaves, ownership passes automatically to a remaining member. A
+household and its remaining shared data are permanently deleted when the last
+member leaves after acknowledging the warning. The successor is the
+longest-serving remaining member. The recipe option copies recipes created by
+the departing user and recipes with no recorded creator. The current owner
+can also remove members. See [spec 008](../specs/008-household-members/spec.md).
+Review offline queues and account scope before switching household.
 
-Ostava ima pretragu, dodavanje i uređivanje količine, jedinice i roka. Izdvaja
-namirnice kojima rok ističe u narednih sedam dana i nudi **Iskoristi u planu**.
-Nepoznato ili zastarelo stanje traži potvrdu pre smanjenja nabavke. Kuvanje
-ne umanjuje stvarnu zalihu bez potvrde osobe. Oznaka „Skuvano“ zatvara
-nekupljene potrebe tog obroka; zaliha ostaje rezervisana do provere potrošnje,
-pa se ne nudi ponovo za drugi obrok kao da sigurno nije potrošena.
+Household shares recipes, plans, shopping and pantry. Taste preferences,
+favorites, ratings, diary/targets and cycle data are personal. Planning receives
+only the authorized aggregate of tastes, notes and favorites. Member allergen
+selections stay on the server for planning. Planning defaults to all current members
+but passes explicit participant IDs; only selected members' favorites contribute.
+The [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
+records the initial merged design and the pending implementation review.
+Access to personal rows remains owner-only. Allergy codes are structured;
+separate the fixed allergen vocabulary from lactose avoidance and other dietary
+preferences, with the final vocabulary/provenance reviewed before implementation.
 
-Profil ukusa obuhvata način ishrane, sastojke koje osoba ne voli i alergije.
-Ocene i omiljena jela utiču na buduće predloge. Generisanje koristi sopstveni
-profil osobe koja pravi plan i izričite zahteve tog plana. Tuđi lični profili
-i ocene se ne čitaju niti objavljuju drugim članovima domaćinstva.
+## Optional later capabilities
 
-## 6. Recepti i kuvanje
+- Nutrition tracking: off by default, no sixth tab, “Samo pratim”, “Ručno” or
+  optional “Kalkulator”. Values carry sources/method/coverage; AI does not invent
+  nutrition numbers. Private diary and meal-intake events are idempotent.
+- Cookbook RAG: private household books, bounded background processing,
+  authorized retrieval with book/page provenance and preview before saving.
+- Voice: press-to-talk, validated closed commands update only a draft, response
+  text plus platform speech; permission/cancel/failure paths on all targets.
+- Prices/receipt QR: attributed estimates, coverage and date; QR starts as a
+  time-boxed feasibility spike. Do not promise an integration before verified.
+- Cycle rhythm: explicit opt-in, secure device-only dates, no health promises,
+  generic optional dietary hints only, allergies/meal restrictions take priority.
+- Nutritionist plan import: review “Proveri” items, preserve exact source text and
+  quantities, lock imported meals, discard original upload under the approved
+  retention policy; PDF/alternatives/repeat are later slices.
 
-Zbirka zadržava pretragu, dodavanje iz fotografije, po nazivu i ručno, AI
-izmene uz pregled i istoriju verzija. **Dodaj u plan** nudi datum i obrok,
-sa potvrdom kada se menja postojeći unos.
+## Acceptance
 
-Fotografija napisanog recepta čuva se kao original koji može da se otvori.
-Fotografija gotovog jela ima zasebnu ulogu. Slika teksta se ne rasteže kao
-fotografija hrane, niti se izmišlja fotografija jela. Razdvajanje više
-foto-datoteka je zasebna buduća dorada; 010 otvara postojeći original i koristi
-neutralan prikaz kada fotografija hrane nije potvrđena.
+Use [UI standards](development/ui-standard.md): phone/wide, light/dark, 2× text,
+keyboard/screen reader, reduced motion, safe areas and offline/error states.
+The [design canvas](https://claude.ai/artifact/LYWX2feRv4ZUKSkRXTbsK7) is the
+canonical design (see the UI standard); accessibility fixes keep its look.
+From a saved plan to weekly shopping and from today's meal to available cooking
+steps should require at most two actions. Record additional generation/review
+steps honestly when steps are missing.
 
-Režim kuvanja prikazuje istaknut korak, **Prethodni**, **Sledeći**, dostupne
-sastojke i mogućnost zadržavanja uključenog ekrana. Na širokom prozoru sastojci
-su levo, priprema desno. Recept bez koraka nudi dopunjavanje i pregled pre
-kuvanja. Sačuvani koraci rade offline.
-
-Kuvanje iz plana radi i kada je izvorni recept obrisan, preko sačuvane verzije
-obroka. Za ocenu takvog recepta prvo se izričito sačuva novi recept u zbirku.
-
-Posle pripreme može da se označi **Skuvano**, oceni jelo i označi
-**Omiljeno jelo**. Ocena je lična i opciona.
-
-## 7. Vizuelni pravac
-
-Topla bela pozadina, tamnozelene glavne akcije i malo terakote. Fotografije
-imaju najviše prostora pri izboru i pregledu jela. Plan je miran raspored,
-a nabavka čitljiv spisak.
-
-- Osnovni tekst je najmanje 16 logičkih piksela, koraci imaju prozračan prored.
-- Umereno zaobljenje i manje okvira, uz jasne naslove i razmake.
-- Boja nije jedina oznaka: zaključano, skuvano i kupljeno imaju i tekst ili
-  ikonu sa pristupačnim nazivom.
-- Telefon, široki prozor i tekst 2× imaju ravnopravne tokove.
-- Tamni režim razdvaja pozadinu i površine. Animacije potvrđuju radnju,
-  poštuju smanjeno kretanje i ne dodaju namerna čekanja.
-
-## 8. UI/UX je uslov prihvatanja
-
-Prvi koristan plan mora da bude moguć bez prethodnog popunjavanja ostave ili
-profila ukusa. Osnovni izbori — period, obroci, porcije — staju na jedan ekran.
-Dodatna podešavanja se otvaraju po potrebi. Tok ima najviše tri celine:
-podešavanje → napredak i pregled → potvrda. Jedna glavna akcija vodi dalje.
-
-Od otvorenog plana do nabavke za tekuću nedelju potrebna su najviše dva
-dodira; od današnjeg obroka sa sačuvanim koracima do kuvanja takođe najviše dva.
-Ako koraci nedostaju, u dva dodira se stiže do dopunjavanja; generisanje i
-potvrda su jasno prikazani dodatni koraci. Štikliranje u
-prodavnici odmah daje vidljiv odgovor, bez dijaloga za svaku stavku. Greške
-čuvaju unos i nude ponovni pokušaj. Tehnički pojmovi ostaju u podešavanjima.
-
-Dizajn i zatim aplikacija proveravaju se sa pet ljudi koji ih koriste prvi
-put. Cilj je da najmanje četvoro završi tok plan → nabavka → kuvanje i
-samostalnu nabavku za recept bez objašnjavanja kontrola. Beleže se pogrešni
-koraci i zastajkivanja, problemi se
-ispravljaju i ponovo proveravaju. Ovo je budući kriterijum, ne već ostvaren
-rezultat. Vizuelni pregled i automatski testovi ne zamenjuju ovu proveru.
-
-## 9. Granice i redosled
-
-010 je povezana funkcionalnost **plan → nabavka**, sa osnovnim radnjama nad
-ostavom, preferencama, receptima i kuvanjem. Pozivanje članova ostaje 008,
-realtime i napredno rešavanje istovremenih izmena 009. Planiranje počinje na
-postojećem ličnom domaćinstvu, sa istim modelom deljenih podataka.
-
-Obavezni nalog, čuvanje na serveru i offline keš ostaju pravilo. Istorijske
-specifikacije opisuju ranije isporučene funkcije; ovaj dokument i 010 određuju
-novi pravac. Ova dokumentaciona izmena ne menja aplikaciju, šemu ili podatke.
-
-Drugi ravnopravan zadatak je: pronađi ili generiši recept → proveri sastojke →
-dodaj nedostajuće → kupi, bez otvaranja plana.
-
-Prvi povezani prototip proverava: mesečni plan → zamena i zaključavanje →
-nabavka za nedelju → potvrda ostave → kupovina → današnje kuvanje. Prototip
-ne označava buduće zadatke implementacije završenim.
+Observe five first-time users on the complete planning and standalone shopping
+journeys; target at least four completing without explaining controls. Record
+failures and retest. This remains a future release gate, not a completed result.

@@ -1,14 +1,303 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/sync/uploader.dart';
 
+import '../helpers/fake_backend.dart';
+import '../helpers/fake_photo_store.dart';
 import '../helpers/v3_schema.dart';
 import '../helpers/v4_schema.dart';
 
+/// v7 tabele potrebne za migracije rejtinga i kataloga.
+const _v7RatingTables = [
+  'CREATE TABLE accounts (user_id TEXT PRIMARY KEY, email TEXT NOT NULL, display_name TEXT, '
+      'household_id TEXT NOT NULL, household_name TEXT NOT NULL, role TEXT NOT NULL, '
+      'initial_download_done INTEGER NOT NULL DEFAULT 0, last_pull_at INTEGER, created_at INTEGER NOT NULL)',
+  'CREATE TABLE ratings (id TEXT PRIMARY KEY, user_id TEXT, '
+      'recipe_id TEXT NOT NULL, stars INTEGER NOT NULL, cooked_at INTEGER '
+      'NOT NULL, comment TEXT, is_comfort_food INTEGER NOT NULL DEFAULT 0)',
+  'CREATE TABLE sync_outbox (seq INTEGER PRIMARY KEY AUTOINCREMENT, '
+      'account_id TEXT NOT NULL, entity TEXT NOT NULL, record_id TEXT NOT NULL, '
+      "op TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending', "
+      'attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER, '
+      'last_error TEXT, created_at INTEGER NOT NULL)',
+];
+
 void main() {
+  for (final from in [7, 8, 9]) {
+    test('v$from upgrade creates allergen and favorite tables and preserves '
+        'the personal outbox', () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute(
+              'CREATE TABLE user_profiles (id TEXT PRIMARY KEY, profile_json TEXT NOT NULL)',
+            );
+            raw.execute("INSERT INTO user_profiles VALUES ('member', '{}')");
+            _v7RatingTables.forEach(raw.execute);
+            raw.execute(
+              'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+              "VALUES ('rating', 'member', 'recipe', 4, 1)",
+            );
+            if (from >= 8) {
+              raw.execute(
+                'CREATE UNIQUE INDEX ratings_user_recipe_unique ON ratings (user_id, recipe_id)',
+              );
+              raw.execute(
+                'CREATE TABLE rating_summaries (household_id TEXT NOT NULL, '
+                'recipe_id TEXT NOT NULL, average_stars REAL NOT NULL, '
+                'rating_count INTEGER NOT NULL, PRIMARY KEY (household_id, recipe_id))',
+              );
+            }
+            if (from == 9) {
+              raw.execute(
+                'ALTER TABLE accounts ADD COLUMN catalog_status TEXT',
+              );
+            }
+            raw.execute(
+              "INSERT INTO sync_outbox VALUES (1, 'member', 'taste_profile', 'member', 'upsert', 'pending', 0, NULL, NULL, 1)",
+            );
+            // v8 is recipe ratings, v9 the food catalog: no member planning tables.
+            raw.execute('PRAGMA user_version = $from');
+          },
+        ),
+      );
+      addTearDown(db.close);
+      expect(await db.select(db.userFavorites).get(), isEmpty);
+      expect((await db.select(db.ratings).getSingle()).stars, 4);
+      expect(await db.select(db.ratingSummaries).get(), isEmpty);
+      expect(await db.select(db.userAllergenSelections).get(), isEmpty);
+      expect((await db.select(db.userProfiles).getSingle()).id, 'member');
+      expect(
+        (await db.select(db.syncOutbox).getSingle()).entity,
+        'taste_profile',
+      );
+    });
+  }
+
+  for (final columnExists in [false, true]) {
+    test('v11 upgrade marks existing accounts as past the household step '
+        '(column already present: $columnExists)', () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute(_v7RatingTables.first);
+            raw.execute('ALTER TABLE accounts ADD COLUMN catalog_status TEXT');
+            if (columnExists) {
+              // Repeated step after user_version was reset.
+              raw.execute(
+                'ALTER TABLE accounts ADD COLUMN household_ready INTEGER '
+                'NOT NULL DEFAULT 1',
+              );
+            }
+            raw.execute(
+              'INSERT INTO accounts (user_id, email, household_id, '
+              "household_name, role, created_at) VALUES ('u', 'a@b.rs', "
+              "'h', 'Kuća', 'owner', 1)",
+            );
+            raw.execute('PRAGMA user_version = 11');
+          },
+        ),
+      );
+      addTearDown(db.close);
+      final row = await db.select(db.accounts).getSingle();
+      expect(row.householdReady, isTrue);
+      expect(row.householdName, 'Kuća');
+    });
+  }
+
+  test(
+    'v12 to v13 preserves catalog foods and adds nutrition columns',
+    () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute('''
+            CREATE TABLE foods (
+              id TEXT PRIMARY KEY NOT NULL, household_id TEXT,
+              slug TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL,
+              base_unit TEXT NOT NULL, source TEXT, reviewed_at INTEGER,
+              withdrawn_at INTEGER, created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+            raw.execute('''
+            INSERT INTO foods
+              (id, slug, name, category, base_unit, created_at, updated_at)
+            VALUES ('food', 'krompir', 'Krompir', 'ostalo', 'gram', 1, 1)
+          ''');
+            raw.execute('PRAGMA user_version = 12');
+          },
+        ),
+      );
+      addTearDown(db.close);
+
+      final original = await db.select(db.foods).getSingle();
+      expect(original.id, 'food');
+      expect(original.name, 'Krompir');
+      expect(original.kcalPer100g, isNull);
+      expect(original.nutritionSourceRef, isNull);
+      await db
+          .update(db.foods)
+          .write(
+            const FoodsCompanion(
+              kcalPer100g: Value(77),
+              nutritionSourceRef: Value('FDC 170026'),
+            ),
+          );
+      final updated = await db.select(db.foods).getSingle();
+      expect(updated.kcalPer100g, 77);
+      expect(updated.nutritionSourceRef, 'FDC 170026');
+    },
+  );
+
+  test('v13 to v14 keeps foods unknown and adds allergen columns', () async {
+    final db = AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          raw.execute('''
+            CREATE TABLE foods (
+              id TEXT PRIMARY KEY NOT NULL, household_id TEXT,
+              slug TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL,
+              base_unit TEXT NOT NULL, source TEXT, reviewed_at INTEGER,
+              withdrawn_at INTEGER, created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          raw.execute('''
+            INSERT INTO foods
+              (id, slug, name, category, base_unit, created_at, updated_at)
+            VALUES ('food', 'mleko', 'Mleko', 'mlečno', 'milliliter', 1, 1)
+          ''');
+          raw.execute('PRAGMA user_version = 13');
+        },
+      ),
+    );
+    addTearDown(db.close);
+
+    final original = await db.select(db.foods).getSingle();
+    expect(original.name, 'Mleko');
+    expect(original.allergenCodes, isNull);
+    await db
+        .update(db.foods)
+        .write(const FoodsCompanion(allergenCodes: Value('milk')));
+    expect((await db.select(db.foods).getSingle()).allergenCodes, 'milk');
+  });
+
+  test('v7 to v9 keeps the latest rating and creates both caches', () async {
+    final db = AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          _v7RatingTables.forEach(raw.execute);
+          raw.execute(
+            'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+            "VALUES ('old', 'u', 'r', 1, 1), ('new', 'u', 'r', 4, 2)",
+          );
+          raw.execute('PRAGMA user_version = 7');
+        },
+      ),
+    );
+    addTearDown(db.close);
+    expect((await db.select(db.ratings).get()).single.id, 'new');
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    expect(await db.select(db.foods).get(), isEmpty);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+  });
+
+  group('v7 to v9 keeps pending rating edits', () {
+    late FakeBackend backend;
+    late AccountScope scope;
+
+    setUp(() async {
+      backend = FakeBackend();
+      final s = await backend.auth.verifyCode('ana@mail.com', FakeServer.code);
+      scope = AccountScope(
+        userId: s.userId,
+        householdId: backend.server.households[s.userId]!,
+      );
+    });
+
+    // Dva rejtinga istog recepta (old je ranije kuvan) i upserti u outboxu
+    // po redu upisa.
+    AppDatabase v7({required List<String> queued}) => AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          _v7RatingTables.forEach(raw.execute);
+          raw.execute(
+            'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at, '
+            "comment) VALUES ('old', ?, 'r', 5, 1, 'edited'), "
+            "('new', ?, 'r', 2, 2, 'kept')",
+            [scope.userId, scope.userId],
+          );
+          for (final id in queued) {
+            raw.execute(
+              'INSERT INTO sync_outbox (account_id, entity, record_id, op, '
+              "created_at) VALUES (?, 'rating', ?, 'upsert', 1)",
+              [scope.userId, id],
+            );
+          }
+          raw.execute('PRAGMA user_version = 7');
+        },
+      ),
+    );
+
+    Uploader uploader(AppDatabase db) => Uploader(
+      db: db,
+      remote: backend.sync,
+      photos: backend.photos,
+      photoStore: FakePhotoStore(),
+      scope: scope,
+      refreshSession: () async => true,
+    );
+
+    test(
+      'an edit of the removed rating moves to the survivor and uploads',
+      () async {
+        final db = v7(queued: ['old']);
+        addTearDown(db.close);
+
+        final rating = (await db.select(db.ratings).get()).single;
+        expect(rating.id, 'new');
+        expect(rating.stars, 5);
+        expect(rating.comment, 'edited');
+        expect(rating.cookedAt, DateTime.fromMillisecondsSinceEpoch(2000));
+        final queue = await db.select(db.syncOutbox).get();
+        expect(queue.map((e) => e.recordId), ['new']);
+
+        final result = await uploader(db).run();
+
+        expect(result.sent, 1);
+        expect(await db.select(db.syncOutbox).get(), isEmpty);
+        final sent = backend.server.rows('ratings').single;
+        expect(sent['id'], 'new');
+        expect(sent['stars'], 5);
+        expect(sent['comment'], 'edited');
+      },
+    );
+
+    test('the newest edit wins and the queue keeps one upsert', () async {
+      final db = v7(queued: ['old', 'new']);
+      addTearDown(db.close);
+
+      final rating = (await db.select(db.ratings).get()).single;
+      expect(rating.stars, 2);
+      expect(rating.comment, 'kept');
+      final queue = await db.select(db.syncOutbox).get();
+      expect(queue.map((e) => e.recordId), ['new']);
+
+      await uploader(db).run();
+
+      final sent = backend.server.rows('ratings').single;
+      expect(sent['id'], 'new');
+      expect(sent['stars'], 2);
+    });
+  });
+
   test('postojeća v4 struktura označena kao v3 čuva id-jeve i outbox pri otvaranju', () async {
     final directory = await Directory.systemTemp.createTemp(
       'tavli-migration-test-',
@@ -154,7 +443,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 5);
+    expect(db.schemaVersion, 14);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));
@@ -323,5 +612,234 @@ void main() {
     addTearDown(again.close);
     expect((await again.select(again.shoppingLists).get()).single.id, 'l1');
     expect(await again.select(again.shoppingSources).get(), isEmpty);
+  });
+
+  test('migracija 5 → 6 dodaje oznake recepta, a postojeći recepti ostaju '
+      'neoznačeni; ponovljena migracija ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v6-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    await first.customStatement(
+      'INSERT INTO recipes (id, title, servings, source, ingredients_json, '
+      "steps_json, created_at, updated_at) VALUES ('r1', 'Sarma', 4, "
+      "'manual', '[]', '[]', 1, 2)",
+    );
+    // Vraćamo bazu na v5 bez kolona oznaka.
+    for (final c in [
+      'meal_types_json',
+      'weight',
+      'dish_kind',
+      'labels_source',
+    ]) {
+      await first.customStatement('ALTER TABLE recipes DROP COLUMN $c');
+    }
+    await first.customStatement('PRAGMA user_version = 5');
+    await first.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    final row = (await upgraded.select(upgraded.recipes).get()).single;
+    expect(row.id, 'r1');
+    expect(row.mealTypesJson, isNull);
+    expect(row.labelsSource, isNull);
+    await upgraded.customStatement('PRAGMA user_version = 5');
+    await upgraded.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.recipes).get()).single.title, 'Sarma');
+  });
+
+  test('migracija 6 → 7 čuva ostavu i dodaje kuvanje, potrošnju i '
+      'vreme brojanja; ponovljen korak ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v7-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    // v6 struktura: bez novih tabela i kolone.
+    await first.customStatement('DROP TABLE pantry_consumptions');
+    await first.customStatement('DROP TABLE cooked_events');
+    await first.customStatement(
+      'ALTER TABLE pantry_items DROP COLUMN quantity_set_at',
+    );
+    await first.customStatement(
+      'INSERT INTO pantry_items (id, name, quantity, unit, category, added_at) '
+      "VALUES ('o1', 'brašno', 1000, 'g', 'ostalo', 1)",
+    );
+    await first.customStatement('PRAGMA user_version = 6');
+    await first.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    final pantry = (await db.select(db.pantryItems).get()).single;
+    expect(pantry.id, 'o1');
+    expect(pantry.quantity, 1000);
+    expect(pantry.quantitySetAt, isNull);
+    expect(await db.select(db.cookedEvents).get(), isEmpty);
+    await db.customStatement(
+      'INSERT INTO cooked_events (id, plan_entry_id, meal_date, meal_type, '
+      'actor_user_id, servings, cooked_at) '
+      "VALUES ('k1', 'e1', 1, 'lunch', 'u1', 2, 1)",
+    );
+    await db.customStatement(
+      'INSERT INTO pantry_consumptions (id, event_id, pantry_item_id, '
+      "base_unit, micros, created_at) VALUES ('c1', 'k1', 'o1', 'g', 1, 1)",
+    );
+    await expectLater(
+      db.customStatement(
+        'INSERT INTO pantry_consumptions (id, event_id, pantry_item_id, '
+        "base_unit, micros, created_at) VALUES ('c2', 'k1', 'o1', 'g', 1, 1)",
+      ),
+      throwsA(isA<SqliteException>()),
+    );
+    await db.customStatement('PRAGMA user_version = 6');
+    await db.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.cookedEvents).get()).single.id, 'k1');
+    expect(await again.select(again.pantryConsumptions).get(), hasLength(1));
+  });
+  test('migracija 8 → 9 dodaje katalog i čuva ocene; ponovljen korak ne pada', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v9-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    // v8 sadrži ocene i sažetke, bez tabela kataloga.
+    await first.customStatement('DROP TABLE food_aliases');
+    await first.customStatement('DROP TABLE foods');
+    await first.customStatement(
+      'ALTER TABLE accounts DROP COLUMN catalog_status',
+    );
+    await first.customStatement(
+      'INSERT INTO pantry_items (id, name, quantity, unit, category, added_at) '
+      "VALUES ('o1', 'brašno', 1000, 'g', 'ostalo', 1)",
+    );
+    await first.customStatement(
+      'INSERT INTO accounts (user_id, email, household_id, household_name, role, created_at) '
+      "VALUES ('u1', 'u@example.test', 'h1', 'Moje domaćinstvo', 'owner', 1)",
+    );
+    await first.customStatement(
+      'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+      "VALUES ('rating-kept', 'u1', 'r1', 4, 1)",
+    );
+    await first.customStatement('PRAGMA user_version = 8');
+    await first.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    expect((await db.select(db.pantryItems).get()).single.id, 'o1');
+    expect(await db.select(db.foods).get(), isEmpty);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+    final account = await db.select(db.accounts).getSingle();
+    expect(account.userId, 'u1');
+    expect(account.catalogStatus, isNull);
+    expect((await db.select(db.ratings).get()).single.id, 'rating-kept');
+    expect(await db.select(db.ratingSummaries).get(), isEmpty);
+    await expectLater(
+      db.customStatement(
+        'INSERT INTO ratings (id, user_id, recipe_id, stars, cooked_at) '
+        "VALUES ('duplicate', 'u1', 'r1', 3, 2)",
+      ),
+      throwsA(isA<SqliteException>()),
+    );
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            "AND name = 'food_aliases_shared_active'",
+          )
+          .get(),
+      hasLength(1),
+    );
+    await db.customStatement(
+      'INSERT INTO foods (id, slug, name, category, base_unit, created_at, '
+      "updated_at) VALUES ('f1', 'jaje', 'jaje', 'ostalo', 'piece', 1, 1)",
+    );
+    await db.customStatement(
+      'INSERT INTO food_aliases (id, food_id, alias, alias_normalized, '
+      "created_at, updated_at) VALUES ('a1', 'f1', 'jaja', 'jaja', 1, 1)",
+    );
+    await db.customStatement('PRAGMA user_version = 8');
+    await db.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.foods).get()).single.id, 'f1');
+    expect((await again.select(again.foodAliases).get()).single.id, 'a1');
+  });
+
+  test('migracija 8 → 9 obnavlja food_aliases sa starom šemom bez alias_normalized', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v9-stale-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    // Baza iz drugog worktree-a: tabela postoji, ali sa starom šemom.
+    await first.customStatement('DROP TABLE food_aliases');
+    await first.customStatement(
+      'CREATE TABLE food_aliases (id TEXT NOT NULL PRIMARY KEY, '
+      'food_id TEXT NOT NULL, household_id TEXT, alias TEXT NOT NULL)',
+    );
+    await first.customStatement(
+      'CREATE UNIQUE INDEX food_aliases_shared_active ON food_aliases (alias) '
+      'WHERE household_id IS NULL',
+    );
+    await first
+        .into(first.syncCursors)
+        .insert(
+          SyncCursorsCompanion.insert(
+            accountId: 'u1',
+            entity: 'food_alias',
+            updatedAt: DateTime.utc(2026, 1, 2),
+            lastId: 'a1',
+          ),
+        );
+    await first.customStatement('PRAGMA user_version = 8');
+    await first.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+    expect(await db.select(db.foodAliases).get(), isEmpty);
+    // Kursor je obrisan, pa sync ponovo preuzima sve aliase.
+    expect(await db.select(db.syncCursors).get(), isEmpty);
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            "AND name = 'food_aliases_shared_active'",
+          )
+          .get(),
+      hasLength(1),
+    );
+  });
+
+  test('migration 10 → 11 adds recipe image columns and the local image '
+      'queue; a repeated step does not fail', () async {
+    final directory = await Directory.systemTemp.createTemp('tavli-v11-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/cache.sqlite');
+    final first = AppDatabase(NativeDatabase(file));
+    await first.customStatement(
+      'INSERT INTO recipes (id, title, servings, source, ingredients_json, '
+      "steps_json, image_path, created_at, updated_at) VALUES ('r1', "
+      "'Sarma', 4, 'photo', '[]', '[]', 'recipe_photos/a.jpg', 1, 2)",
+    );
+    for (final c in ['image_description', 'image_source']) {
+      await first.customStatement('ALTER TABLE recipes DROP COLUMN $c');
+    }
+    await first.customStatement('DROP TABLE recipe_image_jobs');
+    await first.customStatement('PRAGMA user_version = 10');
+    await first.close();
+
+    final upgraded = AppDatabase(NativeDatabase(file));
+    final row = (await upgraded.select(upgraded.recipes).get()).single;
+    expect(row.imagePath, 'recipe_photos/a.jpg');
+    expect(row.imageDescription, isNull);
+    expect(row.imageSource, isNull);
+    expect(await upgraded.select(upgraded.recipeImageJobs).get(), isEmpty);
+    await upgraded.customStatement('PRAGMA user_version = 10');
+    await upgraded.close();
+
+    final again = AppDatabase(NativeDatabase(file));
+    addTearDown(again.close);
+    expect((await again.select(again.recipes).get()).single.title, 'Sarma');
   });
 }

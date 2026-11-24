@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/meal_plan_repository.dart';
@@ -9,8 +10,11 @@ import 'package:tavli/domain/meal_plan.dart';
 import 'package:tavli/domain/plan_calendar.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
+import 'package:tavli/features/planning/plan_calendar.dart';
+import 'package:tavli/features/planning/planning_providers.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
 import 'package:tavli/sync/synced_writer.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
@@ -108,6 +112,20 @@ Future<void> show(WidgetTester tester, String text) async {
   expect(finder, findsWidgets);
 }
 
+/// Povratak sa ekrana obroka na Plan (širok ekran: „Plan“ iznad naslova).
+Future<void> backToPlan(WidgetTester tester) async {
+  await tester.tap(
+    find
+        .descendant(
+          of: find.byType(TavliPageHeader),
+          matching: find.text('Plan'),
+        )
+        .hitTestable()
+        .first,
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> tapText(WidgetTester tester, String text) async {
   await show(tester, text);
   await tester.ensureVisible(find.text(text).first);
@@ -117,14 +135,72 @@ Future<void> tapText(WidgetTester tester, String text) async {
 }
 
 void main() {
-  testTavli('telefon: nedelja je lista dana; danas je istaknut; obrok '
-      'otvara recept iz plana', (tester) async {
+  testWidgets('kalendar meseca: dan sa pet obroka ima pet oznaka', (
+    tester,
+  ) async {
+    final day = CivilDate(2026, 11, 3);
+    final plan = MealPlan(
+      id: 'p1',
+      range: week,
+      mealTypes: MealType.values.toSet(),
+      defaultServings: 2,
+      usePantry: false,
+      createdAt: DateTime.utc(2026, 11),
+    );
+    final meals = [
+      for (final t in MealType.values)
+        PlannedMeal(
+          id: t.name,
+          planId: 'p1',
+          slot: MealSlot(day, t),
+          servings: 2,
+        ),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildTavliTheme(TavliMotif.bosiljak, Brightness.light),
+        home: Scaffold(
+          body: PlanMonthCalendar(
+            plan: plan,
+            meals: meals,
+            selected: CivilDate(2026, 11, 2),
+            today: CivilDate(2026, 11, 2),
+            onSelect: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    final dots = find.descendant(
+      of: find
+          .ancestor(of: find.text('3'), matching: find.byType(Column))
+          .first,
+      matching: find.byWidgetPredicate(
+        (w) =>
+            w is DecoratedBox &&
+            w.decoration is BoxDecoration &&
+            (w.decoration as BoxDecoration).shape == BoxShape.circle,
+      ),
+    );
+    expect(dots, findsNWidgets(5));
+  });
+  testTavli('telefon: traka dana sa izabranim danom i njegovim obrocima; '
+      'obrok otvara recept iz plana', (tester) async {
     await pumpPlan(tester);
 
     expect(find.text('Otvori nabavku'), findsOneWidget);
-    await show(tester, 'Sreda, 4. novembar · danas');
-    expect(find.text('Ručak 2.11.'), findsOneWidget);
+    expect(find.text('Ponovo predloži'), findsOneWidget);
+    expect(find.text('2. – 8. novembar'), findsOneWidget);
+    await show(tester, 'Sreda, 4. novembar');
+    expect(find.text('Ručak 4.11.'), findsOneWidget);
+    expect(find.text('Ručak 2.11.'), findsNothing);
     expect(find.text('Napravi plan'), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel(RegExp('^Ponedeljak, 2. novembar')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ponedeljak, 2. novembar'), findsOneWidget);
+    expect(find.text('Ručak 2.11.'), findsOneWidget);
+    await tapText(tester, 'Danas');
 
     await tapText(tester, 'Ručak 4.11.');
 
@@ -135,8 +211,8 @@ void main() {
     expect(find.text('Zameni jelo'), findsOneWidget);
   });
 
-  testTavli('mesec: kompaktan kalendar, izbor dana pokazuje njegovu '
-      'nedelju; Danas vraća na danas', (tester) async {
+  testTavli('mesec: kompaktan kalendar, izbor dana pokazuje njegove '
+      'obroke; Danas vraća na danas', (tester) async {
     await pumpPlan(
       tester,
       setup: (db) => seedPlan(
@@ -151,9 +227,10 @@ void main() {
       findsOneWidget,
     );
 
+    expect(find.text('Novembar 2026'), findsOneWidget);
+    expect(find.text('skuvano'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel(RegExp('^Utorak, 17. novembar')));
     await tester.pumpAndSettle();
-    await show(tester, 'Utorak, 17. novembar');
     await show(tester, 'Ručak 17.11.');
     expect(find.text('Ručak 4.11.'), findsNothing);
 
@@ -172,15 +249,22 @@ void main() {
       ),
     );
 
-    expect(find.text('2–8. novembar 2026.'), findsOneWidget);
-    await tester.tap(find.byTooltip('Sledeća nedelja'));
+    expect(find.text('2. – 8. novembar'), findsOneWidget);
+    await tester.tap(iconButton('Sledeća nedelja'));
     await tester.pumpAndSettle();
-    expect(find.text('9–15. novembar 2026.'), findsOneWidget);
-    await tester.tap(find.byTooltip('Prethodna nedelja'));
+    expect(find.text('9. – 15. novembar'), findsOneWidget);
+    await show(tester, 'Sreda, 11. novembar');
+    await tester.tap(iconButton('Prethodna nedelja'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Prethodna nedelja'));
+    await tester.tap(iconButton('Prethodna nedelja'));
     await tester.pumpAndSettle();
-    expect(find.text('1. novembar 2026.'), findsOneWidget);
+    // Plan počinje u nedelju 1. novembra: dani pre toga se ne biraju.
+    expect(find.text('26. oktobar – 1. novembar'), findsOneWidget);
+    await show(tester, 'Nedelja, 1. novembar');
+    final previous = tester.widget<TavliIconButton>(
+      iconButton('Prethodna nedelja'),
+    );
+    expect(previous.onPressed, isNull);
   });
 
   testTavli('više planova: podrazumevan je onaj sa današnjim danom; drugi '
@@ -197,13 +281,9 @@ void main() {
       },
     );
 
-    expect(find.text('Izaberi plan'), findsOneWidget);
     await show(tester, 'Ručak 4.11.');
-    await tester.drag(find.byType(ListView).first, const Offset(0, 2000));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
-    await tester.pumpAndSettle();
+    await tapText(tester, '2–8. novembar 2026.');
+    expect(find.text('Izaberi plan'), findsOneWidget);
     await tester.tap(find.text('7–13. decembar 2026.').last);
     await tester.pumpAndSettle();
 
@@ -225,15 +305,66 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testTavli('široko: kalendar i recept jedan pored drugog', (tester) async {
+  testTavli('promena širine čuva izabrani dan; telefon čuva i skrol', (
+    tester,
+  ) async {
+    final month = DateRange(CivilDate(2026, 11, 1), CivilDate(2026, 11, 30));
+    await pumpPlan(
+      tester,
+      size: const Size(400, 560),
+      setup: (db) => seedPlan(db, month),
+    );
+    await tapText(tester, 'Mesec');
+    await tester.tap(find.bySemanticsLabel(RegExp('^Sreda, 18. novembar')));
+    await tester.pumpAndSettle();
+    final list = find.byType(ListView).first;
+    final container = ProviderScope.containerOf(tester.element(list));
+    expect(container.read(planViewProvider).date, CivilDate(2026, 11, 18));
+    final scrollable = find
+        .descendant(of: list, matching: find.byType(Scrollable))
+        .first;
+    await tester.drag(scrollable, const Offset(0, -150));
+    await tester.pumpAndSettle();
+    final offset = tester.state<ScrollableState>(scrollable).position.pixels;
+    expect(offset, greaterThan(0));
+
+    for (final width in [560.0, 719.0]) {
+      tester.view.physicalSize = Size(width, 560);
+      await tester.pumpAndSettle();
+      expect(
+        tester.state<ScrollableState>(scrollable).position.pixels,
+        closeTo(offset, 1),
+        reason: 'width: $width',
+      );
+    }
+    for (final width in [720.0, 1200.0, 719.0]) {
+      tester.view.physicalSize = Size(width, 560);
+      await tester.pumpAndSettle();
+      expect(location(tester), '/plan');
+      expect(container.read(planViewProvider).date, CivilDate(2026, 11, 18));
+      expect(tester.takeException(), isNull, reason: 'width: $width');
+    }
+  });
+
+  testTavli('široko: nedelja je mreža sedam dana; obrok se otvara na svom '
+      'ekranu sa povratkom na Plan', (tester) async {
     await pumpPlan(tester, size: wide);
 
-    expect(find.text('Izaberi obrok da vidiš recept.'), findsOneWidget);
-    await tapText(tester, 'Ručak 4.11.');
+    expect(find.text('Plan'), findsWidgets);
+    for (var d = 2; d <= 8; d++) {
+      expect(find.text('Ručak $d.11.'), findsOneWidget);
+    }
+    await tapText(tester, 'Mesec');
+    expect(find.text('PON'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel(RegExp('^Petak, 6. novembar')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ručak 2.11.'), findsOneWidget);
 
-    expect(location(tester), '/plan');
+    await tapText(tester, 'Ručak 4.11.');
+    expect(location(tester), contains('/entries/'));
     expect(find.text('Sastojci za 2 porcije · 40 min'), findsOneWidget);
-    expect(find.text('Izaberi obrok da vidiš recept.'), findsNothing);
+    await backToPlan(tester);
+    expect(location(tester), '/plan');
   });
 
   testTavli('zaključan obrok: oznaka u kalendaru, zamena i uklanjanje '
@@ -247,6 +378,28 @@ void main() {
     expect(find.text('Otključaj'), findsOneWidget);
     final replace = tester.widget<ButtonStyleButton>(button('Zameni jelo'));
     expect(replace.onPressed, isNull);
+    await backToPlan(tester);
+    expect(find.text('Ručak 4.11.'), findsOneWidget);
+  });
+
+  testTavli('skuvano iz Plana ide kroz zajedničko mesto: zapis kuvanja, '
+      'pa poništavanje', (tester) async {
+    final app = await pumpPlan(tester, size: wide);
+    await tapText(tester, 'Ručak 4.11.');
+
+    await tapText(tester, 'Označi kao skuvano');
+
+    expect(find.text('Nije skuvano'), findsOneWidget);
+    final events = await app.db.select(app.db.cookedEvents).get();
+    expect(events, hasLength(1));
+    expect(events.single.undoneAt, isNull);
+
+    await tapText(tester, 'Nije skuvano');
+
+    expect(find.text('Označi kao skuvano'), findsOneWidget);
+    final undone = await app.db.select(app.db.cookedEvents).getSingle();
+    expect(undone.id, events.single.id);
+    expect(undone.undoneAt, isNotNull);
   });
 
   testTavli('porcije obroka se menjaju i sastojci se preračunavaju', (
@@ -255,7 +408,7 @@ void main() {
     await pumpPlan(tester, size: wide);
     await tapText(tester, 'Ručak 4.11.');
 
-    await tester.tap(find.byTooltip('Više porcija').last);
+    await tester.tap(iconButton('Više porcija').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Sastojci za 3 porcije · 40 min'), findsOneWidget);
@@ -314,6 +467,7 @@ void main() {
     );
     await tapText(tester, 'Ručak 4.11.');
     await tapText(tester, 'Zaključaj');
+    await backToPlan(tester);
 
     await tapText(tester, 'Ponovo predloži');
 
@@ -322,8 +476,17 @@ void main() {
     expect(find.textContaining('Ručak 4.11.'), findsNothing);
     expect(find.text('Promeni izbore'), findsNothing);
     final outline = app.adapter.requests.first.data.toString();
-    expect(outline, isNot(contains('2026-11-04')));
-    expect(outline, isNot(contains('2026-11-02')));
+    // Za zaključan i prošle dane ne traži se novo jelo; pominju se samo
+    // kao jela koja ostaju, da ih pravila rasporeda vide (TRELLO-39).
+    final slots = RegExp(r'Slots: (\[[^\]]*\])').firstMatch(outline)![1]!;
+    expect(slots, isNot(contains('2026-11-04')));
+    expect(slots, isNot(contains('2026-11-02')));
+    expect(slots, contains('2026-11-05'));
+    expect(
+      outline,
+      contains('These meals stay in the plan'),
+      reason: 'jela koja ostaju idu u upit kao kontekst',
+    );
 
     await tapText(tester, 'Prihvati');
 
@@ -333,5 +496,69 @@ void main() {
     await show(tester, 'Ručak 4.11.');
     await show(tester, 'Novo 5');
     expect(find.text('Ručak 5.11.'), findsNothing);
+  });
+
+  testTavli('zamena jednog jela u ponovnom predlogu vidi zaključan obrok', (
+    tester,
+  ) async {
+    // Danas je sreda: 4. zaključavamo, menjaju se 5–8, pa se 5. zamenjuje.
+    final app = await pumpPlan(
+      tester,
+      size: wide,
+      ai: [
+        aiAnswer({
+          'meals': [
+            for (var d = 5; d <= 8; d++)
+              {
+                'date': '2026-11-0$d',
+                'meal': 'lunch',
+                'recipeId': null,
+                'title': 'Novo $d',
+              },
+          ],
+        }),
+        aiAnswer({
+          'recipes': [for (var d = 5; d <= 7; d++) recipeJson('Novo $d')],
+        }),
+        aiAnswer({
+          'recipes': [recipeJson('Novo 8')],
+        }),
+        aiAnswer({
+          'meals': [
+            {
+              'date': '2026-11-05',
+              'meal': 'lunch',
+              'recipeId': null,
+              'title': 'Zamena 5',
+            },
+          ],
+        }),
+        aiAnswer({
+          'recipes': [recipeJson('Zamena 5')],
+        }),
+      ],
+    );
+    await tapText(tester, 'Ručak 4.11.');
+    await tapText(tester, 'Zaključaj');
+    await backToPlan(tester);
+    await tapText(tester, 'Ponovo predloži');
+    final before = app.adapter.requests.length;
+
+    final replace = iconButton('Zameni jelo').first;
+    await tester.ensureVisible(replace);
+    await tester.pumpAndSettle();
+    await tester.tap(replace);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Predloži drugo'));
+    await tester.pumpAndSettle();
+
+    final outline = app.adapter.requests[before].data.toString();
+    final slots = RegExp(r'Slots: (\[[^\]]*\])').firstMatch(outline)![1]!;
+    expect(slots, contains('2026-11-05'));
+    expect(slots, isNot(contains('2026-11-04')));
+    // Zaključan obrok iz sačuvanog plana ide kao jelo koje ostaje.
+    final around = RegExp(r'These meals stay in the plan[^\n]*')
+        .firstMatch(outline)![0]!;
+    expect(around, contains('2026-11-04'));
   });
 }

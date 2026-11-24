@@ -1,0 +1,76 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
+
+import '../../helpers/test_app.dart';
+
+void main() {
+  testTavli('telefon: traka sa povratkom, odeljci jedan ispod drugog', (
+    tester,
+  ) async {
+    await pumpTavli(tester, location: '/profile');
+    expect(find.widgetWithText(TavliBackAppBar, 'Profil'), findsOneWidget);
+    for (final title in ['NALOG', 'DOMAĆINSTVO', 'PODEŠAVANJA']) {
+      expect(find.text(title), findsOneWidget);
+    }
+    expect(
+      tester.getTopLeft(find.text('DOMAĆINSTVO')).dy,
+      greaterThan(tester.getBottomLeft(find.text('Odjavi se')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('PODEŠAVANJA')).dy,
+      greaterThan(
+        tester.getBottomLeft(find.text('Pridruži se novom domaćinstvu')).dy,
+      ),
+    );
+    expect(find.text('Sve je sačuvano u nalogu.'), findsOneWidget);
+  });
+
+  testTavli('širok ekran: nalog levo, domaćinstvo i podešavanja desno', (
+    tester,
+  ) async {
+    await pumpTavli(tester, size: wide, location: '/profile');
+    expect(find.byType(TavliBackAppBar), findsNothing);
+    expect(find.widgetWithText(TavliPageHeader, 'Profil'), findsOneWidget);
+    final account = tester.getTopLeft(find.text('NALOG'));
+    final household = tester.getTopLeft(find.text('DOMAĆINSTVO'));
+    final settings = tester.getTopLeft(find.text('PODEŠAVANJA'));
+    final delete = tester.getTopLeft(find.text('BRISANJE NALOGA'));
+    expect(household.dx, greaterThan(account.dx));
+    expect(household.dy, account.dy);
+    expect(settings.dx, household.dx);
+    expect(settings.dy, greaterThan(household.dy));
+    expect(delete.dx, account.dx);
+    expect(
+      tester.getSize(find.byType(TavliPageHeader)).width,
+      lessThanOrEqualTo(TavliWidth.page),
+    );
+  });
+
+  for (final location in [
+    '/profile',
+    '/profile/ai-keys',
+    '/profile/appearance',
+  ]) {
+    testTavli('320 px, tekst 2×: $location bez prelivanja', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpTavli(tester, size: const Size(320, 700), location: location);
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -3000));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testTavli('Izgled i AI ključevi: povratak vodi na Profil', (tester) async {
+    await pumpTavli(tester, location: '/profile');
+    await tester.ensureVisible(find.text('AI ključevi'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('AI ključevi'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TavliBackAppBar, 'AI ključevi'), findsOneWidget);
+    await tester.tap(iconButton('Nazad'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TavliBackAppBar, 'Profil'), findsOneWidget);
+  });
+}

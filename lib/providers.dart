@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase/supabase.dart';
 
@@ -13,16 +14,33 @@ import 'account/supabase_config.dart';
 import 'ai/ai_router.dart';
 import 'ai/chain_config.dart';
 import 'ai/chat_client.dart';
+import 'ai/gateway_chat_client.dart';
 import 'ai/key_store.dart';
 import 'ai/meal_plan_ai.dart';
+import 'ai/pantry_ai.dart';
 import 'ai/recipe_ai.dart';
+import 'ai/recipe_image_client.dart';
+import 'data/allergen_repository.dart';
 import 'data/database.dart';
 import 'data/drift_model_status_store.dart';
+import 'data/favorite_repository.dart';
+import 'data/food_catalog_reader.dart';
+import 'data/planning_sharing_repository.dart';
+import 'data/planning_tastes_remote.dart';
+import 'data/recipe_image_jobs.dart';
 import 'data/shopping_repository.dart';
+import 'data/taste_profile_repository.dart';
+import 'domain/plan_safety.dart';
+import 'domain/planning_tastes.dart';
+import 'features/planning/planning_providers.dart';
+import 'features/recipes/recipe_image_queue.dart';
 import 'features/recipes/recipe_providers.dart';
+import 'features/settings/own_key_order.dart';
 import 'sync/downloader.dart';
 import 'sync/legacy_mover.dart';
 import 'sync/photo_sync.dart';
+import 'sync/realtime_sync.dart';
+import 'sync/supabase_sync_signals.dart';
 import 'sync/sync_engine.dart';
 import 'sync/sync_remote.dart';
 import 'sync/synced_writer.dart';
@@ -47,7 +65,10 @@ final supabaseConfigProvider = Provider<SupabaseConfig>(
 final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
   final config = ref.watch(supabaseConfigProvider);
   if (!config.isConfigured) return null;
-  final client = createSupabaseClient(config);
+  final client = createSupabaseClient(
+    config,
+    secrets: const KeychainSecretStorage(),
+  );
   ref.onDispose(client.dispose);
   return client;
 });
@@ -58,6 +79,12 @@ final authGatewayProvider = Provider<AuthGateway>((ref) {
       ? const UnconfiguredAuthGateway()
       : SupabaseAuthGateway(client);
 });
+
+/// Linkovi kojima je aplikacija otvorena (tavli://auth-callback iz mejla
+/// za potvrdu), uključujući onaj kojim je pokrenuta; menja se u testovima.
+final appLinksProvider = Provider<Stream<Uri>>(
+  (ref) => AppLinks().uriLinkStream,
+);
 
 /// Vreme za prijavu (kada je poslat kod); menja se u testovima.
 final authClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
@@ -81,7 +108,7 @@ final accountServiceProvider = Provider<AccountService>(
 );
 
 /// Upisuje izmene prijavljenog naloga u red za slanje i budi slanje.
-final syncedWriterProvider = Provider<SyncedWriter>(
+final Provider<SyncedWriter> syncedWriterProvider = Provider<SyncedWriter>(
   (ref) => SyncedWriter(
     ref.watch(databaseProvider),
     accountId: (ref.watch(accountScopeProvider) ?? noAccountScope).userId,
@@ -124,13 +151,26 @@ Future<bool> _refreshSession(Ref ref) async {
 
 /// Slanje i preuzimanje za prijavljen nalog; null bez naloga ili servera.
 /// Nov nalog → nov engine (stari se zaustavlja).
-final syncEngineProvider = Provider<SyncEngine?>((ref) {
+final Provider<SyncEngine?> syncEngineProvider = Provider<SyncEngine?>((ref) {
+  final verified = ref.watch(
+    authControllerProvider.select(
+      (state) => state is SignedIn && state.membershipVerified,
+    ),
+  );
+  if (!verified) return null;
   final scope = ref.watch(accountScopeProvider);
   final remote = ref.watch(syncRemoteProvider);
   final photos = ref.watch(photoRemoteProvider);
   if (scope == null || remote == null || photos == null) return null;
   final db = ref.watch(databaseProvider);
-  final engine = SyncEngine(
+  // Reconciliation only touches the cache and never queues an upload.
+  final favorites = FavoriteRepository(
+    db,
+    scope: scope,
+    writer: SyncedWriter(db, accountId: scope.userId),
+  );
+  late final SyncEngine engine;
+  engine = SyncEngine(
     db: db,
     scope: scope,
     uploader: Uploader(
@@ -140,6 +180,7 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
       photoStore: ref.watch(recipePhotoStoreProvider),
       scope: scope,
       refreshSession: () => _refreshSession(ref),
+      beforeFavoriteUpload: favorites.dropStaleFavorites,
     ),
     downloader: Downloader(db: db, remote: remote, scope: scope),
     photoSync: PhotoSync(
@@ -152,10 +193,37 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
     refreshSession: () => _refreshSession(ref),
     onUnauthorized: () =>
         ref.read(authControllerProvider.notifier).sessionExpired(),
+    // A removed member's writes are denied by RLS: re-check membership, which
+    // quarantines old-household writes and switches the scope.
+    onForbidden: () =>
+        ref.read(authControllerProvider.notifier).recheckMembership(engine),
+    // Ceo red obroka može da stigne zastareo; oznaka „skuvano“ se ponovo
+    // izvodi iz zapisa kuvanja.
+    afterPull: () async {
+      await ref.read(cookingRepositoryProvider).reconcileCookedFlags();
+      await favorites.dropStaleFavorites();
+    },
   );
   ref.onDispose(engine.stop);
   unawaited(engine.onStart());
   return engine;
+});
+
+final realtimeSyncProvider = Provider.autoDispose<RealtimeSync?>((ref) {
+  final scope = ref.watch(accountScopeProvider);
+  final engine = ref.watch(syncEngineProvider);
+  final client = ref.watch(supabaseClientProvider);
+  if (scope == null || engine == null || client == null) return null;
+  final realtime = RealtimeSync(
+    remote: SupabaseSyncSignals(client),
+    userId: scope.userId,
+    householdId: scope.householdId,
+    refreshMembership: () =>
+        ref.read(authControllerProvider.notifier).restoreSession(sync: engine),
+    pull: engine.pullAfterCurrent,
+  );
+  ref.onDispose(realtime.dispose);
+  return realtime;
 });
 
 /// Stanje čuvanja u nalogu za "Profil".
@@ -177,17 +245,8 @@ final syncPhaseProvider = StreamProvider<SyncPhase?>((ref) {
 
 final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
 
-/// Ugrađeni ključevi iz `--dart-define-from-file=secrets.json`.
-final builtInKeysProvider = Provider<BuiltInKeys>(
-  (ref) => BuiltInKeys.fromEnvironment(),
-);
-
-/// Sopstveni ključ pa ugrađeni. Kasnije ga menja Cloudflare proxy.
 final keySourceProvider = Provider<KeySource>(
-  (ref) => LayeredKeySource(
-    ref.watch(keyStoreProvider),
-    ref.watch(builtInKeysProvider),
-  ),
+  (ref) => OwnKeySource(ref.watch(keyStoreProvider)),
 );
 
 class ChainConfigNotifier extends Notifier<ChainConfig> {
@@ -206,12 +265,21 @@ final chatClientProvider = Provider<OpenAICompatibleClient>(
   (ref) => OpenAICompatibleClient(),
 );
 
+final gatewayChatClientProvider = Provider<GatewayChatClient?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? null
+      : GatewayChatClient.supabase(client, refresh: () => _refreshSession(ref));
+});
+
 final aiRouterProvider = Provider<AIRouter>(
   (ref) => AIRouter(
     config: () => ref.read(chainConfigProvider),
     client: ref.watch(chatClientProvider),
     keys: ref.watch(keySourceProvider),
     status: DriftModelStatusStore(ref.watch(databaseProvider)),
+    gateway: ref.watch(gatewayChatClientProvider),
+    ownKeyOrder: () => ref.read(ownKeyOrderProvider.future),
   ),
 );
 
@@ -219,8 +287,81 @@ final recipeAIProvider = Provider<RecipeAI>(
   (ref) => RecipeAI(ref.watch(aiRouterProvider)),
 );
 
+final recipeImageClientProvider = Provider<RecipeImageClient?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? null
+      : RecipeImageClient.supabase(client, refresh: () => _refreshSession(ref));
+});
+
+/// AI slike za AI recepte (TRELLO-130), u pozadini dok je nalog prijavljen;
+/// null bez naloga ili servera. Nov nalog → nov red (stari se zaustavlja).
+final Provider<RecipeImageQueue?> recipeImageQueueProvider =
+    Provider<RecipeImageQueue?>((ref) {
+      final verified = ref.watch(
+        authControllerProvider.select(
+          (state) => state is SignedIn && state.membershipVerified,
+        ),
+      );
+      if (!verified) return null;
+      final scope = ref.watch(accountScopeProvider);
+      final client = ref.watch(recipeImageClientProvider);
+      final photos = ref.watch(photoRemoteProvider);
+      if (scope == null || client == null || photos == null) return null;
+      final recipeAI = ref.watch(recipeAIProvider);
+      final queue = RecipeImageQueue(
+        jobs: RecipeImageJobStore(ref.watch(databaseProvider), scope),
+        recipes: ref.watch(recipeRepositoryProvider),
+        client: client,
+        photos: photos,
+        store: ref.watch(recipePhotoStoreProvider),
+        scope: scope,
+        describe: recipeAI.describeImage,
+        clock: ref.watch(clockProvider),
+      );
+      ref.onDispose(queue.stop);
+      queue.start();
+      return queue;
+    });
+
+/// Ukusi članova za plan (TRELLO-41); bez Supabase klijenta nema ukusa.
+final planningTastesProvider = Provider<PlanningTastesSource?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  final db = ref.watch(databaseProvider);
+  return RemotePlanningTastes.supabase(
+    client,
+    householdId: () => ref.read(accountScopeProvider)?.householdId,
+    foodNames: (household) async => {
+      for (final food in await CatalogFoodList(
+        db,
+      ).watchVisible(household).first)
+        food.id: food.name,
+    },
+  );
+});
+
+/// Provera bezbednosti recepata za plan (TRELLO-43); bez Supabase klijenta
+/// nema domaćinstva ni provere.
+final planSafetyProvider = Provider<PlanSafetySource?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  return RemotePlanSafety.supabase(
+    client,
+    householdId: () => ref.read(accountScopeProvider)?.householdId,
+  );
+});
+
 final mealPlanAIProvider = Provider<MealPlanAI>(
-  (ref) => MealPlanAI(ref.watch(aiRouterProvider)),
+  (ref) => MealPlanAI(
+    ref.watch(aiRouterProvider),
+    tastes: ref.watch(planningTastesProvider),
+    safety: ref.watch(planSafetyProvider),
+  ),
+);
+
+final pantryAIProvider = Provider<PantryAI>(
+  (ref) => PantryAI(ref.watch(aiRouterProvider)),
 );
 
 /// Lista prijavljenog domaćinstva; demo koristi zasebnu bazu u memoriji.
@@ -232,3 +373,38 @@ final shoppingRepositoryProvider = Provider<ShoppingRepository>(
     clock: ref.watch(clockProvider),
   ),
 );
+
+final favoriteRepositoryProvider = Provider<FavoriteRepository>(
+  (ref) => FavoriteRepository(
+    ref.watch(databaseProvider),
+    scope: ref.watch(accountScopeProvider) ?? noAccountScope,
+    writer: ref.watch(syncedWriterProvider),
+  ),
+);
+
+final allergenRepositoryProvider = Provider<AllergenRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return AllergenRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
+
+final tasteProfileRepositoryProvider = Provider<TasteProfileRepository>((ref) {
+  final scope = ref.watch(accountScopeProvider) ?? noAccountScope;
+  return TasteProfileRepository(
+    ref.watch(databaseProvider),
+    scope: scope,
+    writer: ref.watch(syncedWriterProvider),
+  );
+});
+
+final planningSharingRepositoryProvider = Provider<PlanningSharingRepository?>((
+  ref,
+) {
+  final scope = ref.watch(accountScopeProvider);
+  final client = ref.watch(supabaseClientProvider);
+  if (scope == null || client == null) return null;
+  return SupabasePlanningSharingRepository(client, userId: scope.userId);
+});

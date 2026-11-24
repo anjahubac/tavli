@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
+import 'package:tavli/sync/recipe_link_rollout.dart';
 import 'package:tavli/sync/sync_remote.dart';
 import 'package:tavli/sync/synced_writer.dart';
 import 'package:tavli/sync/uploader.dart';
@@ -111,6 +112,139 @@ void main() {
     expect(await outbox(), isEmpty);
   });
 
+  test(
+    'guarded recipe upload reads server and carries confirmed link',
+    () async {
+      await addRecipe('r');
+      await uploader.run();
+      final serverRecipe = server('recipes')['r']!;
+      serverRecipe['ingredients'] = [
+        {
+          'name': 'jaja',
+          'quantity': 2,
+          'unit': 'kom',
+          'category': 'ostalo',
+          'note': null,
+          'foodId': 'food-jaja',
+          'matchedKey': 'jaja',
+          'linkSource': 'confirmed',
+        },
+      ];
+      await (db.update(db.recipes)..where((t) => t.id.equals('r'))).write(
+        const RecipesCompanion(
+          ingredientsJson: Value(
+            '[{"name":"Jaja","quantity":3,"unit":"kom","category":"ostalo","note":null}]',
+          ),
+        ),
+      );
+      await writer.upsert('recipe', 'r');
+      backend.server.calls.clear();
+      uploader = Uploader(
+        db: db,
+        remote: backend.sync,
+        photos: backend.photos,
+        photoStore: photoStore,
+        scope: scope,
+        refreshSession: () async => true,
+        recipeLinkRollout: const RecipeLinkRollout(
+          allDevicesAtCompatibleBuild: true,
+          oldOutboxesDrained: true,
+        ),
+        clock: () => now,
+      );
+
+      final result = await uploader.run();
+
+      expect(result.sent, 1);
+      expect(backend.server.calls, ['fetch:recipe', 'upsert:recipes:1']);
+      final rawIngredients =
+          server('recipes')['r']!['ingredients'] as List<Object?>;
+      final sentIngredient = Map<String, Object?>.from(
+        rawIngredients.single as Map<Object?, Object?>,
+      );
+      expect(sentIngredient['quantity'], 3);
+      expect(sentIngredient['name'], 'Jaja');
+      expect(sentIngredient['foodId'], 'food-jaja');
+      expect(sentIngredient['linkSource'], 'confirmed');
+    },
+  );
+
+  for (final malformed in <String, Object>{
+    'a non-list ingredient payload': 'not a list',
+    'a non-object ingredient': [42],
+    'a non-string ingredient name': [
+      {'name': 42},
+    ],
+    'a non-string ingredient category': [
+      {'name': 'Jaja', 'category': 42},
+    ],
+  }.entries) {
+    test(
+      'guarded upload rejects ${malformed.key} and still sends later entries',
+      () async {
+        await addRecipe('bad');
+        await addRecipe('good');
+        await uploader.run();
+        server('recipes')['bad']!['ingredients'] = malformed.value;
+        await writer.upsert('recipe', 'bad');
+        await writer.upsert('recipe', 'good');
+        backend.server.calls.clear();
+        uploader = Uploader(
+          db: db,
+          remote: backend.sync,
+          photos: backend.photos,
+          photoStore: photoStore,
+          scope: scope,
+          refreshSession: () async => true,
+          recipeLinkRollout: const RecipeLinkRollout(
+            allDevicesAtCompatibleBuild: true,
+            oldOutboxesDrained: true,
+          ),
+          clock: () => now,
+        );
+
+        final result = await uploader.run();
+
+        expect(result.stoppedBy, isNull);
+        expect(result.rejected, 1);
+        expect(result.sent, 1);
+        final rows = await outbox();
+        expect(rows.single.state, OutboxState.rejected);
+        expect(rows.single.recordId, 'bad');
+        expect(rows.single.lastError, 'recipe_ingredients_invalid');
+        // The server row is left as it was: no link is overwritten.
+        expect(server('recipes')['bad']!['ingredients'], malformed.value);
+      },
+    );
+  }
+
+  test('guarded recipe upload stays queued when server read fails', () async {
+    await addRecipe('r');
+    await uploader.run();
+    await writer.upsert('recipe', 'r');
+    backend.server.calls.clear();
+    backend.sync.recipeReadFailure = const TransientSyncError('offline');
+    uploader = Uploader(
+      db: db,
+      remote: backend.sync,
+      photos: backend.photos,
+      photoStore: photoStore,
+      scope: scope,
+      refreshSession: () async => true,
+      recipeLinkRollout: const RecipeLinkRollout(
+        allDevicesAtCompatibleBuild: true,
+        oldOutboxesDrained: true,
+      ),
+      clock: () => now,
+    );
+
+    final result = await uploader.run();
+
+    expect(result.offline, isTrue);
+    expect(backend.server.calls, ['fetch:recipe']);
+    expect((await outbox()).single.state, OutboxState.pending);
+  });
+
   test('brisanja idu kao id=in(…); posle upsert-a istog zapisa', () async {
     await addRecipe('a');
     await addRecipe('b');
@@ -138,6 +272,24 @@ void main() {
     expect(left.recordId, 'los');
     expect(left.state, OutboxState.rejected);
     expect(left.lastError, '23514');
+  });
+
+  test('odbijanje zbog prava se prijavljuje kao forbidden', () async {
+    await addRecipe('tudji');
+    backend.server.enforceMembership = true;
+    backend.server.households[scope.userId] = 'drugo-domacinstvo';
+    final res = await uploader.run();
+    expect(res.rejected, 1);
+    expect(res.forbidden, isTrue);
+    expect((await outbox()).single.lastError, pgInsufficientPrivilege);
+  });
+
+  test('druga trajna greška nije forbidden', () async {
+    await addRecipe('los');
+    backend.server.rejectIds.add('los');
+    final res = await uploader.run();
+    expect(res.rejected, 1);
+    expect(res.forbidden, isFalse);
   });
 
   test('trajno odbijena izmena ne blokira kasnije', () async {
@@ -221,6 +373,16 @@ void main() {
     await uploader.run();
     expect(await outbox(), isEmpty);
     expect(backend.server.photos.keys, ['${scope.householdId}/p0.jpg']);
+  });
+
+  test('Storage odbijanje slike (403) je forbidden', () async {
+    final path = await photoStore.save(Uint8List.fromList([1, 2]));
+    await writer.photoUpload(path);
+    backend.server.photoUploadForbidden = true;
+    final res = await uploader.run();
+    expect(res.rejected, 1);
+    expect(res.forbidden, isTrue);
+    expect((await outbox()).single.state, OutboxState.rejected);
   });
 
   test('brisanje slike briše objekat', () async {

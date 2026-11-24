@@ -1,21 +1,42 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../ai/ai_units.dart' show canonicalUnit;
+import '../../app/animations/all_bought.dart';
 import '../../data/database.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
 import '../../domain/shopping_source.dart';
+import '../../domain/shopping_sync.dart' show ingredientKey;
 import '../../providers.dart';
 import '../planning/plan_format.dart';
+import 'shopping_frame.dart';
 import 'shopping_providers.dart';
 
-/// "1,5 kg", "2 kom"; null kad količina nije poznata.
-String? amountLabel(double? quantity, String? unit) => quantity == null
+const pantryQuantityNote = 'Imaš u ostavi, proveri';
+const quantityReviewNote = 'Proveri količinu';
+
+/// Prstohvat ostaje u svojoj jedinici, uz oznaku za proveru.
+String? shoppingQuantityNote(String? unit, {required bool unknownPantry}) {
+  final notes = [
+    if (canonicalUnit(unit) == 'prstohvat') quantityReviewNote,
+    if (unknownPantry) pantryQuantityNote,
+  ];
+  return notes.isEmpty ? null : notes.join(' · ');
+}
+
+/// "1,5 kg", "~35 ml", "2 kom"; null kad količina nije poznata.
+String? amountLabel(
+  double? quantity,
+  String? unit, {
+  bool approximate = false,
+}) => quantity == null
     ? null
-    : [formatQuantity(quantity), ?unit].join(' ').trim();
+    : '${approximate ? '~' : ''}${[formatQuantity(quantity), ?unit].join(' ').trim()}';
 
 /// "Voće i povrće"
 String categoryLabel(String category) => category.isEmpty
@@ -53,44 +74,98 @@ Future<void> setBought(
   final changed = await repo.setBought(ids, bought: bought);
   messenger.hideCurrentSnackBar();
   if (changed == 0 && !bought) {
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Već je primljeno u ostavu.')),
-    );
+    showTavliMessageOn(messenger, 'Već je primljeno u ostavu.');
     return;
   }
   if (changed == 0) return;
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text(bought ? 'Kupljeno: $name' : 'Vraćeno u nabavku: $name'),
-      action: SnackBarAction(
-        label: 'Poništi',
-        onPressed: () => unawaited(repo.setBought(ids, bought: !bought)),
-      ),
-    ),
+  showTavliMessageOn(
+    messenger,
+    bought ? 'Kupljeno: $name' : 'Vraćeno u nabavku: $name',
+    actionLabel: 'Poništi',
+    onAction: () => unawaited(repo.setBought(ids, bought: !bought)),
   );
 }
 
+/// Otvorene stavke po kategorijama (naslov odeljka i grupisana lista), pa
+/// „Kupljeno · n“ sa kupljenim stavkama.
+List<Widget> groupedRows<T>({
+  required List<T> open,
+  required List<T> bought,
+  required String Function(T) category,
+  required Widget Function(T) row,
+  required String emptyText,
+  required String allBoughtText,
+  required TextTheme text,
+  required ColorScheme colors,
+}) => [
+  if (open.isEmpty)
+    Padding(
+      padding: const EdgeInsets.symmetric(vertical: TavliSpacing.large),
+      child: Column(
+        children: [
+          if (bought.isNotEmpty) const AllBoughtArt(),
+          Text(
+            bought.isEmpty ? emptyText : allBoughtText,
+            textAlign: TextAlign.center,
+            style: text.bodyLarge?.copyWith(color: colors.onSurfaceVariant),
+          ),
+        ],
+      ),
+    ),
+  for (final (c, list) in byCategory(open, category)) ...[
+    TavliSectionHeader(categoryLabel(c)),
+    TavliListGroup(children: [for (final i in list) row(i)]),
+    const SizedBox(height: TavliSpacing.small),
+  ],
+  if (bought.isNotEmpty) ...[
+    TavliSectionHeader(
+      'Kupljeno · ${bought.length}',
+      style: TavliSectionHeaderStyle.bold,
+    ),
+    TavliListGroup(children: [for (final i in bought) row(i)]),
+  ],
+];
+
 /// Lista jedne nedelje ili nabavke bez plana: brzo dodavanje, otvorene
 /// stavke po kategorijama, pa kupljene sa prijemom u ostavu.
-class ShoppingItemsList extends ConsumerWidget {
+///
+/// Na širokom ekranu sa dovoljno mesta dodir na stavku je bira za detalj
+/// desno („Za koje obroke“); inače dug pritisak otvara isto u donjem listu.
+class ShoppingItemsList extends ConsumerStatefulWidget {
   const ShoppingItemsList({
     super.key,
+    required this.mode,
     required this.items,
     required this.listId,
+    this.filters = const [],
     this.header = const [],
+    this.unknownPantrySupply = const {},
     this.emptyText = 'Ovde nema šta da se kupi.',
   });
 
+  final Widget mode;
   final List<ShoppingItemRow> items;
 
   /// Lista u koju ide ručna stavka (pravi je po potrebi).
   final Future<String> Function() listId;
+  final List<Widget> filters;
+
+  /// Sadržaj iznad polja za dodavanje (npr. „Recepti u nabavci“).
   final List<Widget> header;
   final String emptyText;
+  final Set<String> unknownPantrySupply;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShoppingItemsList> createState() => _ShoppingItemsListState();
+}
+
+class _ShoppingItemsListState extends ConsumerState<ShoppingItemsList> {
+  String? _selectedId;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final items = widget.items;
     final received = ref.watch(receivedItemsProvider).value ?? const {};
     final open = [
       for (final i in items)
@@ -110,101 +185,99 @@ class ShoppingItemsList extends ConsumerWidget {
       final n = await ref
           .read(pantryRepositoryProvider)
           .receivePurchases(toPantry);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Prebačeno u ostavu: $n')));
+      showTavliMessageOn(messenger, 'Prebačeno u ostavu: $n');
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-      children: [
-        ...header,
-        QuickAddField(listId: listId),
-        const SizedBox(height: 8),
-        if (open.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Text(
-              bought.isEmpty ? emptyText : 'Sve je kupljeno.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final withDetail = hasShoppingDetail(context, constraints);
+        // Izabrana stavka, inače prva otvorena (kao na platnu).
+        ShoppingItemRow? selected;
+        if (withDetail) {
+          for (final i in items) {
+            if (i.id == _selectedId) selected = i;
+          }
+          selected ??= open.firstOrNull ?? bought.firstOrNull;
+        }
+
+        Widget row(ShoppingItemRow i) => ShoppingItemTile(
+          item: i,
+          resolveList: widget.listId,
+          received: received.contains(i.id),
+          hasUnknownPantrySupply:
+              !i.isBought &&
+              widget.unknownPantrySupply.contains(ingredientKey(i.name)),
+          selected: selected?.id == i.id,
+          onSelect: withDetail
+              ? () => setState(() => _selectedId = i.id)
+              : null,
+        );
+
+        return ShoppingFrame(
+          mode: widget.mode,
+          filters: widget.filters,
+          pantry: toPantry.isEmpty
+              ? null
+              : (count: toPantry.length, onPressed: () => unawaited(receive())),
+          detail: selected == null
+              ? null
+              : ShoppingItemDetail(
+                  key: ValueKey(selected.id),
+                  name: selected.name,
+                  amount: amountLabel(selected.quantity, selected.unit),
+                  ids: selected.isManual ? const [] : [selected.id],
+                  bought: selected.isBought,
+                ),
+          children: [
+            ...widget.header,
+            QuickAddField(listId: widget.listId),
+            const SizedBox(height: TavliSpacing.small),
+            ...groupedRows(
+              open: open,
+              bought: bought,
+              category: (i) => i.category,
+              row: row,
+              emptyText: widget.emptyText,
+              allBoughtText: 'Sve je kupljeno.',
+              text: theme.textTheme,
+              colors: theme.colorScheme,
             ),
-          ),
-        for (final (category, list) in byCategory(open, (i) => i.category)) ...[
-          CategoryHeader(categoryLabel(category)),
-          for (final i in list) ShoppingItemTile(item: i),
-        ],
-        if (bought.isNotEmpty) ...[
-          const Divider(height: 32),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Kupljeno · ${bought.length}',
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-              if (toPantry.isNotEmpty)
-                TextButton.icon(
-                  onPressed: receive,
-                  icon: const Icon(Icons.kitchen_outlined),
-                  label: Text('Prebaci u ostavu (${toPantry.length})'),
-                ),
-            ],
-          ),
-          for (final i in bought)
-            ShoppingItemTile(item: i, received: received.contains(i.id)),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 }
 
-class CategoryHeader extends StatelessWidget {
-  const CategoryHeader(this.label, {super.key});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 4),
-      child: Semantics(
-        header: true,
-        child: Text(
-          label,
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.primary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Jedna stavka: dodir štiklira odmah; "i" pokazuje za koje obroke je.
+/// Jedna stavka: dodir štiklira odmah; dug pritisak pokazuje za koje
+/// obroke je (čitač ekrana: radnja „Za koje obroke“). Sa [onSelect] (lista
+/// i detalj) dodir bira stavku, a štiklira se poljem.
 class ShoppingItemTile extends ConsumerWidget {
   const ShoppingItemTile({
     super.key,
     required this.item,
+    required this.resolveList,
     this.received = false,
+    this.hasUnknownPantrySupply = false,
+    this.selected = false,
+    this.onSelect,
   });
 
   final ShoppingItemRow item;
+  final Future<String> Function() resolveList;
   final bool received;
+  final bool hasUnknownPantrySupply;
+  final bool selected;
+  final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final amount = amountLabel(item.quantity, item.unit);
-    final subtitle = [
+    final detail = [
       if (amount != null)
         amount
       else if (!item.isManual && !item.isBought)
-        'Proveri količinu',
+        quantityReviewNote,
       if (received) 'U ostavi',
     ].join(' · ');
     void toggle() => unawaited(
@@ -214,58 +287,58 @@ class ShoppingItemTile extends ConsumerWidget {
       final messenger = ScaffoldMessenger.of(context);
       final repo = ref.read(shoppingRepositoryProvider);
       await repo.deleteManual(item.id);
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Obrisano: ${item.name}'),
-            action: SnackBarAction(
-              label: 'Vrati',
-              onPressed: () => unawaited(
-                repo.addManual(
-                  item.listId,
-                  item.name,
-                  quantity: item.quantity,
-                  unit: item.unit,
-                  category: item.category,
-                ),
-              ),
-            ),
+      showTavliMessageOn(
+        messenger,
+        'Obrisano: ${item.name}',
+        actionLabel: 'Vrati',
+        onAction: () => unawaited(
+          repo.addManualToList(
+            resolveList,
+            item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.category,
           ),
-        );
+        ),
+      );
     }
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      minTileHeight: 56,
-      leading: Checkbox(
-        value: item.isBought,
+    final showSources = item.isManual || onSelect != null
+        ? null
+        : () => unawaited(showItemSources(context, ref, item));
+    return TavliContextMenu(
+      // Desni klik (računar): isto što i dugi pritisak.
+      actions: [
+        if (showSources != null)
+          TavliMenuAction('Za koje obroke', onSelected: showSources),
+        if (item.isManual && !item.isBought)
+          TavliMenuAction(
+            'Obriši',
+            isDestructive: true,
+            onSelected: () => unawaited(delete()),
+          ),
+      ],
+      child: TavliCheckRow(
+        title: item.name,
+        subtitle: shoppingQuantityNote(
+          amount != null && !item.isManual && !item.isBought ? item.unit : null,
+          unknownPantry: hasUnknownPantrySupply,
+        ),
+        detail: detail.isEmpty ? null : detail,
+        checked: item.isBought,
         onChanged: received ? null : (_) => toggle(),
-      ),
-      title: Text(
-        item.name,
-        style: item.isBought
-            ? TextStyle(
-                decoration: TextDecoration.lineThrough,
-                color: theme.colorScheme.onSurfaceVariant,
+        onSelect: onSelect,
+        selected: selected,
+        onLongPress: showSources,
+        longPressLabel: showSources == null ? null : 'Za koje obroke',
+        trailing: item.isManual && !item.isBought
+            ? TavliIconButton(
+                glyph: TavliIcons.delete,
+                semanticLabel: 'Obriši',
+                onPressed: () => unawaited(delete()),
               )
             : null,
       ),
-      subtitle: subtitle.isEmpty ? null : Text(subtitle),
-      trailing: item.isManual
-          ? (item.isBought
-                ? null
-                : IconButton(
-                    tooltip: 'Obriši',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => unawaited(delete()),
-                  ))
-          : IconButton(
-              tooltip: 'Za koje obroke',
-              icon: const Icon(Icons.info_outline),
-              onPressed: () => unawaited(showItemSources(context, ref, item)),
-            ),
-      onTap: received ? null : toggle,
     );
   }
 }
@@ -294,29 +367,27 @@ class _QuickAddFieldState extends ConsumerState<QuickAddField> {
     if (name.isEmpty) return;
     _controller.clear();
     final repo = ref.read(shoppingRepositoryProvider);
-    await repo.addManual(await widget.listId(), name);
+    await repo.addManualToList(widget.listId, name);
   }
 
   @override
-  Widget build(BuildContext context) => TextField(
+  Widget build(BuildContext context) => TavliTextField(
     controller: _controller,
+    label: 'Dodaj stavku',
+    hint: 'npr. deterdžent',
     textInputAction: TextInputAction.done,
     textCapitalization: TextCapitalization.sentences,
     onSubmitted: (_) => unawaited(_add()),
-    decoration: InputDecoration(
-      labelText: 'Dodaj stavku',
-      hintText: 'npr. deterdžent',
-      border: const OutlineInputBorder(),
-      suffixIcon: IconButton(
-        tooltip: 'Dodaj',
-        icon: const Icon(Icons.add),
-        onPressed: () => unawaited(_add()),
-      ),
+    trailing: TavliIconButton(
+      glyph: TavliIcons.add,
+      semanticLabel: 'Dodaj',
+      onPressed: () => unawaited(_add()),
     ),
   );
 }
 
-/// Za koje obroke ili recepte je stavka (za kupljenu: u trenutku kupovine).
+/// Za koje obroke ili recepte je stavka (za kupljenu: u trenutku kupovine),
+/// u donjem listu.
 Future<void> showItemSources(
   BuildContext context,
   WidgetRef ref,
@@ -326,53 +397,154 @@ Future<void> showItemSources(
       .read(shoppingRepositoryProvider)
       .itemSources(item.id);
   if (!context.mounted) return;
-  await showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          Text(item.name, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 4),
-          Text(item.isBought ? 'Kupljeno za:' : 'Potrebno za:'),
-          if (sources.isEmpty)
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('Dodato ranije, bez obroka.'),
-            ),
-          for (final s in sources) _SourceTile(s),
-        ],
-      ),
-    ),
+  await showTavliSheet<void>(
+    context,
+    title: item.name,
+    builder: (context) => _SourcesList(sources: sources, bought: item.isBought),
   );
 }
 
-class _SourceTile extends StatelessWidget {
-  const _SourceTile(this.source);
+/// Detalj izabrane stavke na širokom ekranu: naziv, količina i „Za koje
+/// obroke“. [ids] su stavke iz kojih se čita poreklo (cela lista plana ima
+/// više nedeljnih stavki); prazno za ručnu stavku.
+class ShoppingItemDetail extends ConsumerStatefulWidget {
+  const ShoppingItemDetail({
+    super.key,
+    required this.name,
+    required this.amount,
+    required this.ids,
+    required this.bought,
+  });
+
+  final String name;
+  final String? amount;
+  final List<String> ids;
+  final bool bought;
+
+  @override
+  ConsumerState<ShoppingItemDetail> createState() => _ShoppingItemDetailState();
+}
+
+class _ShoppingItemDetailState extends ConsumerState<ShoppingItemDetail> {
+  late Future<List<ItemSource>> _sources = _load();
+
+  Future<List<ItemSource>> _load() async {
+    final repo = ref.read(shoppingRepositoryProvider);
+    final all = await Future.wait(widget.ids.map(repo.itemSources));
+    return [for (final list in all) ...list];
+  }
+
+  @override
+  void didUpdateWidget(ShoppingItemDetail old) {
+    super.didUpdateWidget(old);
+    if (old.bought != widget.bought || old.ids.join() != widget.ids.join()) {
+      _sources = _load();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final amount = widget.amount;
+    return TavliCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              widget.name,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          if (amount != null)
+            Text(
+              widget.bought ? '$amount kupljeno' : '$amount ukupno',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          if (widget.ids.isNotEmpty) ...[
+            const SizedBox(height: TavliSpacing.small),
+            FutureBuilder(
+              future: _sources,
+              builder: (context, snapshot) => switch (snapshot.data) {
+                final sources? => _SourcesList(
+                  sources: sources,
+                  bought: widget.bought,
+                ),
+                null => const TavliLoading(),
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// „Za koje obroke“ (ili „Kupljeno za“) i obroci ili recepti stavke.
+class _SourcesList extends StatelessWidget {
+  const _SourcesList({required this.sources, required this.bought});
+
+  final List<ItemSource> sources;
+  final bool bought;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: TavliSpacing.small,
+      children: [
+        TavliSectionHeader(bought ? 'Kupljeno za' : 'Za koje obroke'),
+        if (sources.isEmpty)
+          Text('Dodato ranije, bez obroka.', style: theme.textTheme.bodyMedium),
+        for (final s in sources) _SourceLine(s),
+      ],
+    );
+  }
+}
+
+class _SourceLine extends StatelessWidget {
+  const _SourceLine(this.source);
 
   final ItemSource source;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final s = source;
     final servings = s.servings == null ? null : servingsLabel(s.servings!);
     final date = s.date;
-    if (date != null) {
-      final meal = MealType.tryParse(s.mealType)?.label;
-      return ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.calendar_today_outlined),
-        title: Text(s.title),
-        subtitle: Text([dayLabel(date), ?meal, ?servings].join(' · ')),
-      );
-    }
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.menu_book_outlined),
-      title: Text(s.title),
-      subtitle: Text(['Recept', ?servings].join(' · ')),
+    final subtitle = date != null
+        ? [
+            dayLabel(date),
+            ?MealType.tryParse(s.mealType)?.label,
+            ?servings,
+          ].join(' · ')
+        : ['Recept', ?servings].join(' · ');
+    return MergeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            s.title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

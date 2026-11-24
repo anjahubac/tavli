@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/domain/plan_calendar.dart';
+import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/features/recipes/ingredient_review_sheet.dart';
 
 import '../../helpers/test_app.dart';
@@ -31,6 +34,49 @@ Finder checkboxOf(String text) => find.descendant(
 );
 
 void main() {
+  for (final accessible in [false, true]) {
+    testTavli('Otvori nabavku: pristupačna navigacija $accessible', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          FakeAccessibilityFeatures(accessibleNavigation: accessible);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await pumpTavli(
+        tester,
+        location: '/recipes/r1',
+        recipes: [sampleRecipe('r1', 'Sarma')],
+      );
+      await openReview(tester);
+      await tapButton(tester, 'Dodaj u nabavku (2)');
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(find.text('Otvori'), accessible ? findsOneWidget : findsNothing);
+      if (accessible) {
+        await tester.tap(find.text('Otvori'));
+        await tester.pumpAndSettle();
+        expect(find.text('Recepti u nabavci'), findsOneWidget);
+        expect(find.text('kupus'), findsOneWidget);
+      }
+    });
+  }
+
+  testTavli('recept bez koraka ulazi u nabavku sa tačnim količinama', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/r1',
+      recipes: [sampleRecipe('r1', 'Užina').copyWith(steps: [])],
+    );
+    await openReview(tester);
+    await tester.tap(find.text('biber').last);
+    await tester.pump();
+    await tapButton(tester, 'Dodaj u nabavku (1)');
+    expect(await shopping(app.db), ['kupus 500.0 g']);
+  });
+
   testTavli('recept bez plana: pregled ne čuva ništa; dodaje se samo ono '
       'što fali, ponovo samo razlika', (tester) async {
     final app = await pumpTavli(
@@ -48,7 +94,7 @@ void main() {
     await tester.pump();
     expect(inSheet('2 porcije'), findsOneWidget);
     expect(inSheet('0,25 kg kupus'), findsOneWidget);
-    await tester.tap(find.text('biber'));
+    await tester.tap(find.text('biber').last);
     await tester.pump();
     await tapButton(tester, 'Dodaj u nabavku (1)');
 
@@ -61,7 +107,7 @@ void main() {
     await openReview(tester);
     expect(inSheet('2 porcije'), findsOneWidget);
     expect(tester.widget<Checkbox>(checkboxOf('biber')).value, isTrue);
-    await tester.tap(find.text('biber'));
+    await tester.tap(find.text('biber').last);
     await tester.pump();
     await tapButton(tester, 'Ažuriraj nabavku');
     expect(
@@ -87,7 +133,7 @@ void main() {
       recipes: [sampleRecipe('r1', 'Sarma')],
     );
     await openReview(tester);
-    await tester.tap(find.text('biber'));
+    await tester.tap(find.text('biber').last);
     await tester.pump();
     await tapButton(tester, 'Dodaj u nabavku (1)');
     await openReview(tester);
@@ -106,10 +152,7 @@ void main() {
       location: '/recipes/new/name',
       ai: [aiAnswer(recipeJson('Sarma'))],
     );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Naziv jela'),
-      'sarma',
-    );
+    await tester.enterText(textField('Naziv jela'), 'sarma');
     await tester.pump();
     await tapButton(tester, 'Napravi recept');
     await openReview(tester);
@@ -167,5 +210,45 @@ void main() {
     await tapButton(tester, 'Pogledaj');
     expect(find.text('Po planu'), findsOneWidget);
     expect(find.text('Proveri sastojke'), findsNothing);
+  });
+  testTavli('dodavanje u nabavku sa drugim brojem porcija čuva vezu', (
+    tester,
+  ) async {
+    final app = await pumpTavli(
+      tester,
+      location: '/recipes/a',
+      recipes: [
+        Recipe(
+          id: 'a',
+          title: 'Kajgana',
+          servings: 2,
+          ingredients: const [
+            Ingredient(
+              name: 'jaja',
+              quantity: 3,
+              unit: 'kom',
+              category: 'mlečni proizvodi i jaja',
+              link: IngredientLink(
+                foodId: '00000000-0000-4000-8000-000000000001',
+                matchedKey: 'jaja',
+                linkSource: LinkSource.confirmed,
+              ),
+            ),
+          ],
+          source: RecipeSource.manual,
+          createdAt: DateTime.utc(2026),
+        ),
+      ],
+    );
+    await openReview(tester);
+    await tester.tap(find.byTooltip('Više porcija'));
+    await tester.pump();
+    await tapButton(tester, 'Dodaj u nabavku (1)');
+
+    final source = (await app.db.select(app.db.shoppingSources).get()).single;
+    final snapshot = jsonDecode(source.recipeSnapshotJson!) as Map;
+    final ingredient = (snapshot['ingredients'] as List).single as Map;
+    expect(ingredient['foodId'], '00000000-0000-4000-8000-000000000001');
+    expect(ingredient['linkSource'], 'confirmed');
   });
 }

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../data/shopping_repository.dart';
 import '../../domain/recipe.dart';
@@ -101,19 +101,16 @@ class _IngredientReviewSheetState extends ConsumerState<IngredientReviewSheet> {
 
   Ingredient _scaled(Ingredient i) => i.quantity == null
       ? i
-      : Ingredient(
-          name: i.name,
+      : i.copyWith(
           quantity: scaleQuantity(
             i.quantity,
             baseServings: widget.snapshot.baseServings,
             servings: _servings,
           ),
-          unit: i.unit,
-          category: i.category,
-          note: i.note,
         );
 
   Future<void> _add({required bool repeat}) async {
+    final accessibleNavigation = MediaQuery.accessibleNavigationOf(context);
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -142,6 +139,9 @@ class _IngredientReviewSheetState extends ConsumerState<IngredientReviewSheet> {
                 ? 'Sve imaš; ništa nije dodato.'
                 : 'Dodato u nabavku: ${missing.length}',
           ),
+          duration: const Duration(seconds: 5),
+          persist: accessibleNavigation,
+          showCloseIcon: accessibleNavigation,
           action: SnackBarAction(
             label: 'Otvori',
             onPressed: () {

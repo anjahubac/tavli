@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/features/recipes/keep_screen_on.dart';
 
 import '../../helpers/test_app.dart';
@@ -50,10 +50,6 @@ void main() {
     expect(app.wakeLock.on, isTrue);
     expect(await stored(app), 'true');
     expectStatus(on: true);
-    expect(
-      find.text('Ekran se neće gasiti dok je recept otvoren.'),
-      findsOneWidget,
-    );
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
@@ -63,7 +59,6 @@ void main() {
     expect(app.wakeLock.on, isFalse);
     expect(await stored(app), 'false');
     expectStatus(on: false);
-    expect(find.text('Ekran se gasi kao i obično.'), findsOneWidget);
   });
 
   testTavli('izlazak iz recepta pušta ekran da se ugasi', (tester) async {
@@ -74,6 +69,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(app.wakeLock.on, isTrue);
 
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(app.wakeLock.on, isFalse);
+  });
+
+  testTavli('zatvaranje recepta ponavlja neuspelo otpuštanje', (tester) async {
+    final app = await pumpTavli(tester, recipes: [sampleRecipe('a', 'Sarma')]);
+    await tester.tap(find.text('Sarma'));
+    await tester.pumpAndSettle();
+    await tester.tap(toggle());
+    await tester.pumpAndSettle();
+    expect(app.wakeLock.on, isTrue);
+
+    // Isključivanje u receptu propada: ekran ostaje zadržan.
+    app.wakeLock.failDisable = true;
+    await tester.tap(toggle());
+    await tester.pumpAndSettle();
+    expect(app.wakeLock.on, isTrue);
+
+    // Platforma se oporavi; zatvaranje recepta mora ponovo da pokuša.
+    app.wakeLock.failDisable = false;
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
 
@@ -139,5 +156,11 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(app.wakeLock.on, isFalse);
     expect(await stored(app), 'true');
+    expect(
+      find.text(
+        'Sistem nije uspeo da spreči gašenje ekrana. Proveri da li okruženje podržava ovu funkciju.',
+      ),
+      findsOneWidget,
+    );
   });
 }

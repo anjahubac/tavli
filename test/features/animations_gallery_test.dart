@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tavli/app/theme/app_theme.dart';
-import 'package:tavli/domain/theme_choice.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/features/settings/animations_gallery_screen.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../helpers/test_app.dart';
 
 void main() {
-  testWidgets('galerija prikazuje svih devet animacija po imenu', (
+  testWidgets('galerija prikazuje sve animacije sa opisom gde i kada', (
     tester,
   ) async {
     tester.view.physicalSize = phone;
@@ -15,7 +14,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildTavliTheme(TavliTheme.bosiljak, Brightness.light),
+        theme: buildTavliTheme(TavliMotif.bosiljak, Brightness.light),
         home: Builder(
           builder: (context) => MediaQuery(
             data: MediaQuery.of(context).copyWith(disableAnimations: true),
@@ -24,88 +23,19 @@ void main() {
         ),
       ),
     );
-    expect(animationNames, hasLength(11)); // uvod ×3 + 8
-    for (final name in animationNames) {
+    expect(animationEntries, hasLength(12));
+    for (final e in animationEntries) {
       await tester.scrollUntilVisible(
-        find.text(name),
+        find.text(e.title),
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text(name), findsOneWidget);
+      expect(find.text(e.title), findsOneWidget);
+      expect(find.text(e.where), findsOneWidget);
     }
+    expect(find.text('Ponovi'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
-
-  for (final reduced in [true, false]) {
-    testWidgets(
-      'sastojci (smanjeno kretanje: $reduced): štikliran = imam; ponovno "Dodaj u kupovinu" '
-      'dodaje samo razliku; "imam" skida stavku',
-      (tester) async {
-        tester.view.physicalSize = const Size(400, 1600);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.reset);
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: buildTavliTheme(TavliTheme.bosiljak, Brightness.light),
-            home: Builder(
-              builder: (context) => MediaQuery(
-                data: MediaQuery.of(context)
-                    .copyWith(disableAnimations: reduced),
-                child: const TickerMode(
-                  enabled: false,
-                  child: AnimationsGalleryScreen(),
-                ),
-              ),
-            ),
-          ),
-        );
-        await tester.scrollUntilVisible(
-          find.text('Kupovina'),
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
-
-        Future<void> tap(String text) async {
-          await tester.ensureVisible(find.text(text));
-          await tester.pumpAndSettle();
-          await tester.tap(find.text(text));
-          await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-          await tester.pumpAndSettle();
-        }
-
-        int badge() => find.text('1').evaluate().isNotEmpty
-            ? 1
-            : find.text('2').evaluate().isNotEmpty
-            ? 2
-            : 0;
-
-        // 3 stvari, imam 2 (meso je već štiklirano, štikliram i luk).
-        expect(find.text('Dodaj u kupovinu (2)'), findsOneWidget);
-        await tap('Crni luk');
-        expect(find.text('imam'), findsNWidgets(2));
-        expect(find.text('Dodaj u kupovinu (1)'), findsOneWidget);
-        expect(badge(), 0); // štikliranje ne dira kupovinu
-
-        await tap('Dodaj u kupovinu (1)');
-        expect(badge(), 1);
-        expect(find.text('Sve je u kupovini'), findsOneWidget);
-
-        // Ipak nemam luk: dodaje se samo on, krompir se ne duplira.
-        await tap('Crni luk');
-        expect(find.text('Dodaj u kupovinu (1)'), findsOneWidget);
-        await tap('Dodaj u kupovinu (1)');
-        expect(badge(), 2);
-        expect(find.text('Dodato u nabavku: 1'), findsOneWidget);
-        expect(find.text('Sve je u kupovini'), findsOneWidget);
-
-        // Ipak imam luk: tiho izlazi iz kupovine.
-        await tap('Crni luk');
-        expect(badge(), 1);
-        expect(find.text('Sve je u kupovini'), findsOneWidget);
-      },
-    );
-  }
 
   testTavli('Ostava i Nabavka imaju animirana prazna stanja', (tester) async {
     await pumpTavli(tester);
@@ -119,9 +49,8 @@ void main() {
     expect(find.bySemanticsLabel('Prazan frižider'), findsOneWidget);
 
     await tester.tap(find.text('Nabavka'));
-    // Nabavka sada ima miran prikaz prazne korpe.
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
+    // Sačekaj obe lokalne liste i inicijalizaciju prikaza Nabavke.
+    await tester.pumpAndSettle();
     expect(find.text('Nabavka je prazna'), findsOneWidget);
     expect(find.bySemanticsLabel('Prazna korpa za nabavku'), findsOneWidget);
     await tester.tap(find.text('Pogledaj recepte'));
@@ -136,7 +65,11 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await pumpTavli(tester, size: size, location: '/pantry');
       expect(find.text('Još nema unetih namirnica'), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.shopping_basket_outlined));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (w) => w is TavliIcon && w.icon == TavliIcons.shopping,
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Nabavka je prazna'), findsOneWidget);
       await tester.ensureVisible(find.text('Pogledaj recepte'));

@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../app/animations/empty_basket.dart';
-import '../../app/placeholder_screen.dart';
 import '../../app/tab_app_bar.dart';
 import '../../data/database.dart';
 import '../../data/shopping_repository.dart';
@@ -17,168 +17,252 @@ import '../../providers.dart';
 import '../planning/plan_format.dart';
 import '../planning/planning_providers.dart';
 import '../recipes/recipe_providers.dart';
+import 'shopping_counts.dart';
+import 'shopping_frame.dart';
 import 'shopping_list_view.dart';
 import 'shopping_providers.dart';
 
 /// Tab Nabavka: po planu (nedelja ili ceo plan) ili po receptu (bez plana).
-class ShoppingScreen extends ConsumerWidget {
+class ShoppingScreen extends ConsumerStatefulWidget {
   const ShoppingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShoppingScreen> createState() => _ShoppingScreenState();
+}
+
+class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
+  @override
+  Widget build(BuildContext context) {
     final view = ref.watch(shoppingViewProvider);
-    final plans = ref.watch(mealPlansProvider).value;
-    final recipeItems = ref.watch(recipeShoppingProvider).value;
-    if (plans != null &&
-        plans.isEmpty &&
-        recipeItems != null &&
-        recipeItems.isEmpty) {
-      return EmptyStateScreen(
-        art: const EmptyBasket(),
-        title: 'Nabavka je prazna',
-        body: 'Dodaj sastojke iz plana obroka ili iz pojedinačnog recepta.',
-        action: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.center,
-          children: [
-            FilledButton.icon(
-              onPressed: () => context.go('/recipes'),
-              icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('Pogledaj recepte'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => context.go('/plan/new'),
-              icon: const Icon(Icons.calendar_month_outlined),
-              label: const Text('Napravi plan'),
-            ),
-          ],
+    final plansAsync = ref.watch(mealPlansProvider);
+    final recipeAsync = ref.watch(recipeShoppingProvider);
+    final plans = plansAsync.value;
+    final recipeItems = recipeAsync.value;
+    if (view.mode == null) {
+      final failed = plansAsync.hasError || recipeAsync.hasError;
+      if (!failed &&
+          !plansAsync.isLoading &&
+          !recipeAsync.isLoading &&
+          plans != null &&
+          recipeItems != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final currentPlans = ref.read(mealPlansProvider);
+          final currentItems = ref.read(recipeShoppingProvider);
+          if (currentPlans.hasError ||
+              currentItems.hasError ||
+              currentPlans.isLoading ||
+              currentItems.isLoading ||
+              !currentPlans.hasValue ||
+              !currentItems.hasValue) {
+            return;
+          }
+          ref
+              .read(shoppingViewProvider.notifier)
+              .initializeMode(
+                hasPlan: currentPlans.requireValue.isNotEmpty,
+                hasRecipeItems: currentItems.requireValue.isNotEmpty,
+              );
+        });
+      }
+      return Scaffold(
+        appBar: const TabAppBar(),
+        body: SafeArea(
+          child: failed
+              ? _ShoppingLoadError(
+                  onRetry: () {
+                    ref.invalidate(mealPlansProvider);
+                    ref.invalidate(recipeShoppingProvider);
+                  },
+                )
+              : const TavliLoading(),
         ),
       );
     }
-    return Scaffold(
-      appBar: const TabAppBar(),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: SegmentedButton<ShoppingMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ShoppingMode.plan,
-                        icon: Icon(Icons.calendar_month_outlined),
-                        label: Text('Po planu'),
-                      ),
-                      ButtonSegment(
-                        value: ShoppingMode.recipe,
-                        icon: Icon(Icons.menu_book_outlined),
-                        label: Text('Po receptu'),
-                      ),
-                    ],
-                    selected: {view.mode},
-                    onSelectionChanged: (s) => ref
-                        .read(shoppingViewProvider.notifier)
-                        .setMode(s.single),
+    if (!plansAsync.hasError &&
+        !recipeAsync.hasError &&
+        !plansAsync.isLoading &&
+        !recipeAsync.isLoading &&
+        plans != null &&
+        plans.isEmpty &&
+        recipeItems != null &&
+        recipeItems.isEmpty) {
+      return Scaffold(
+        appBar: const TabAppBar(),
+        body: SafeArea(
+          child: TavliEmptyArea(
+            child: TavliEmptyState(
+              art: const EmptyBasket(),
+              title: 'Nabavka je prazna',
+              message:
+                  'Dodaj sastojke iz plana obroka ili iz pojedinačnog recepta.',
+              // Dugmad u redu kada staju, inače jedno ispod drugog; obe
+              // vrste su iste visine.
+              action: OverflowBar(
+                alignment: MainAxisAlignment.center,
+                overflowAlignment: OverflowBarAlignment.center,
+                spacing: TavliSpacing.small,
+                overflowSpacing: TavliSpacing.small,
+                children: [
+                  TavliButton.primary(
+                    label: 'Pogledaj recepte',
+                    glyph: TavliIcons.recipes,
+                    onPressed: () => context.go('/recipes'),
                   ),
-                ),
-                Expanded(
-                  child: switch (view.mode) {
-                    ShoppingMode.plan => const _PlanShopping(),
-                    ShoppingMode.recipe => const _RecipeShopping(),
-                  },
-                ),
-              ],
+                  TavliButton.secondary(
+                    label: 'Napravi plan',
+                    glyph: TavliIcons.plan,
+                    onPressed: () => context.go('/plan/new'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
+      );
+    }
+    final mode = view.mode!;
+    final modeChoice = TavliChoice<ShoppingMode>.segmented(
+      options: const [
+        TavliOption(ShoppingMode.plan, 'Po planu'),
+        TavliOption(ShoppingMode.recipe, 'Po receptu'),
+      ],
+      selected: mode,
+      onChanged: (m) => ref.read(shoppingViewProvider.notifier).setMode(m),
+    );
+    return Scaffold(
+      appBar: const TabAppBar(),
+      body: SafeArea(
+        child: switch (mode) {
+          ShoppingMode.plan => _PlanShopping(mode: modeChoice),
+          ShoppingMode.recipe => _RecipeShopping(mode: modeChoice),
+        },
       ),
     );
   }
 }
 
+/// Prazno stanje koje se pomera kada ne staje (veliki tekst, nizak ekran),
+/// a inače stoji u sredini.
+class _ScrollableState extends StatelessWidget {
+  const _ScrollableState({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: Center(child: child),
+      ),
+    ),
+  );
+}
+
+class _ShoppingLoadError extends StatelessWidget {
+  const _ShoppingLoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => _ScrollableState(
+    child: TavliEmptyState(
+      glyph: TavliIcons.info,
+      title: 'Nabavka trenutno ne može da se prikaže.',
+      action: TavliButton.primary(label: 'Pokušaj ponovo', onPressed: onRetry),
+    ),
+  );
+}
+
 class _PlanShopping extends ConsumerWidget {
-  const _PlanShopping();
+  const _PlanShopping({required this.mode});
+
+  final Widget mode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plans = ref.watch(mealPlansProvider);
     return plans.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) =>
-          const Center(child: Text('Nabavka trenutno ne može da se prikaže.')),
+      loading: () => ShoppingFrame(mode: mode, body: const TavliLoading()),
+      error: (_, _) => ShoppingFrame(
+        mode: mode,
+        body: _ShoppingLoadError(
+          onRetry: () => ref.invalidate(mealPlansProvider),
+        ),
+      ),
       data: (list) {
         final plan = selectedPlan(
           list,
           ref.watch(planViewProvider),
           ref.watch(clockProvider)(),
         );
-        if (plan == null) return const _NoPlan();
-        return _PlanPeriod(plans: list, plan: plan);
+        if (plan == null) {
+          return ShoppingFrame(mode: mode, body: const _NoPlan());
+        }
+        return _PlanPeriod(mode: mode, plans: list, plan: plan);
       },
     );
   }
 }
 
+/// „Po planu“ bez plana. Kad postoji nabavka po receptu, kaže koliko čeka u
+/// tabu „Po receptu“, da ekran ne izgleda kao da nabavke nema.
 class _NoPlan extends ConsumerWidget {
   const _NoPlan();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Icon(
-          Icons.calendar_month_outlined,
-          size: 56,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Još nemaš plan',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Nabavka po planu se pravi iz sačuvanog plana. Za jedan recept '
-          'izaberi „Po receptu“.',
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              FilledButton.icon(
+    final recipeAsync = ref.watch(recipeShoppingProvider);
+    if (recipeAsync.hasError) {
+      return _ShoppingLoadError(
+        onRetry: () => ref.invalidate(recipeShoppingProvider),
+      );
+    }
+    if (recipeAsync.isLoading && !recipeAsync.hasValue) {
+      return const TavliLoading();
+    }
+    final recipeItems = recipeAsync.value ?? const <ShoppingItemRow>[];
+    final open = recipeItems.where((i) => !i.isBought).length;
+    return _ScrollableState(
+      child: TavliEmptyState(
+        glyph: TavliIcons.plan,
+        title: 'Još nemaš plan',
+        message: 'Nabavka po planu nastaje iz sačuvanog plana obroka.',
+        // „Po receptu“ je već izbor iznad, pa ovde nema drugog dugmeta.
+        action: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: TavliSpacing.large,
+          children: [
+            if (recipeItems.isNotEmpty)
+              TavliNotice(
+                message: open > 0
+                    ? 'U „Po receptu“ te čeka ${itemsCount(open)} za kupovinu.'
+                    : 'Sve iz nabavke po receptu je kupljeno.',
+              ),
+            Center(
+              child: TavliButton.primary(
+                label: 'Napravi plan',
+                glyph: TavliIcons.add,
                 onPressed: () => context.go('/plan/new'),
-                icon: const Icon(Icons.add),
-                label: const Text('Napravi plan'),
               ),
-              OutlinedButton(
-                onPressed: () => ref
-                    .read(shoppingViewProvider.notifier)
-                    .setMode(ShoppingMode.recipe),
-                child: const Text('Po receptu'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
 class _PlanPeriod extends ConsumerWidget {
-  const _PlanPeriod({required this.plans, required this.plan});
+  const _PlanPeriod({
+    required this.mode,
+    required this.plans,
+    required this.plan,
+  });
 
+  final Widget mode;
   final List<MealPlan> plans;
   final MealPlan plan;
 
@@ -191,94 +275,143 @@ class _PlanPeriod extends ConsumerWidget {
     final periods = weekPeriods(plan.range);
     final week = selectedWeek(periods, view, today);
     final shopping = ref.watch(planShoppingProvider(plan.id));
-    final all = shopping.value ?? const <PlanShoppingItem>[];
-
-    final header = <Widget>[
-      if (plans.length > 1) ...[
-        DropdownButtonFormField<String>(
-          initialValue: plan.id,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Izaberi plan',
-            border: OutlineInputBorder(),
-          ),
-          items: [
-            for (final p in plans)
-              DropdownMenuItem(
-                value: p.id,
-                child: Text(
-                  rangeLabel(p.range),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ],
-          onChanged: (id) {
-            if (id != null) ref.read(planViewProvider.notifier).selectPlan(id);
-          },
+    if (shopping.hasError) {
+      return ShoppingFrame(
+        mode: mode,
+        body: _ShoppingLoadError(
+          onRetry: () => ref.invalidate(planShoppingProvider(plan.id)),
         ),
-        const SizedBox(height: 12),
-      ],
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final p in periods)
-            ChoiceChip(
-              label: Text('Nedelja ${p.number}'),
-              selected: !view.wholePlan && p == week,
-              onSelected: (_) => controller.selectWeek(p.range.start),
-            ),
-          if (periods.length > 1)
-            ChoiceChip(
-              label: const Text('Ceo plan'),
-              selected: view.wholePlan,
-              onSelected: (_) => controller.selectWholePlan(),
-            ),
+      );
+    }
+    final all = shopping.value ?? const <PlanShoppingItem>[];
+    final wholePlan = view.wholePlan && periods.length > 1;
+
+    // Nedelje se biraju po rednom broju; „Ceo plan“ je poseban izbor.
+    const whole = 0;
+    final filters = <Widget>[
+      if (plans.length > 1) _PlanPicker(plans: plans, plan: plan),
+      TavliChoice<int>.chips(
+        options: [
+          for (final p in periods) TavliOption(p.number, 'Nedelja ${p.number}'),
+          if (periods.length > 1) const TavliOption(whole, 'Ceo plan'),
         ],
+        selected: wholePlan ? whole : week.number,
+        onChanged: (n) {
+          if (n == whole) return controller.selectWholePlan();
+          for (final p in periods) {
+            if (p.number == n) controller.selectWeek(p.range.start);
+          }
+        },
       ),
-      const SizedBox(height: 8),
       Text(
-        view.wholePlan && periods.length > 1
+        wholePlan
             ? '${rangeLabel(plan.range)} · zbir svih nedelja'
             : rangeLabel(week.range),
         style: theme.textTheme.titleMedium,
       ),
-      const SizedBox(height: 12),
     ];
 
     if (shopping.isLoading && !shopping.hasValue) {
-      return const Center(child: CircularProgressIndicator());
+      return ShoppingFrame(
+        mode: mode,
+        filters: filters,
+        body: const TavliLoading(),
+      );
     }
-    if (view.wholePlan && periods.length > 1) {
-      return _WholePlan(header: header, items: [for (final i in all) i.item]);
+    final unknownPantrySupply =
+        ref.watch(unknownPantrySupplyProvider).value ?? const <String>{};
+    if (wholePlan) {
+      return _WholePlan(
+        mode: mode,
+        filters: filters,
+        items: [for (final i in all) i.item],
+        unknownPantrySupply: unknownPantrySupply,
+      );
     }
+    final repo = ref.read(shoppingRepositoryProvider);
     return ShoppingItemsList(
-      header: header,
+      mode: mode,
+      filters: filters,
       items: [
         for (final i in all)
           if (i.weekStart == week.range.start) i.item,
       ],
-      listId: () =>
-          ref.read(shoppingRepositoryProvider).weekList(plan.id, week),
+      listId: () => repo.weekList(plan.id, week),
+      unknownPantrySupply: unknownPantrySupply,
       emptyText: 'Za ovu nedelju nema šta da se kupi.',
     );
   }
 }
 
-/// Ceo plan: zbir nedelja po namirnici. Štikliranje beleži kupovinu u
-/// nedeljnim stavkama, pa nedelje i ceo plan pokazuju istu kupovinu.
-class _WholePlan extends ConsumerWidget {
-  const _WholePlan({required this.header, required this.items});
+/// Izbor plana kada ih ima više: dugme sa opsegom izabranog plana otvara
+/// meni sa planovima.
+class _PlanPicker extends ConsumerWidget {
+  const _PlanPicker({required this.plans, required this.plan});
 
-  final List<Widget> header;
-  final List<ShoppingItemRow> items;
+  final List<MealPlan> plans;
+  final MealPlan plan;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => Align(
+    alignment: AlignmentDirectional.centerStart,
+    child: Semantics(
+      label: 'Izaberi plan',
+      child: TavliButton.secondary(
+        label: rangeLabel(plan.range),
+        glyph: TavliIcons.plan,
+        onPressed: () {
+          final box = context.findRenderObject()! as RenderBox;
+          unawaited(
+            showTavliActionMenu(
+              context,
+              title: 'Izaberi plan',
+              position: box.localToGlobal(box.size.bottomLeft(Offset.zero)),
+              actions: [
+                for (final p in plans)
+                  TavliMenuAction(
+                    rangeLabel(p.range),
+                    onSelected: () =>
+                        ref.read(planViewProvider.notifier).selectPlan(p.id),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    ),
+  );
+}
+
+/// Ceo plan: zbir nedelja po namirnici. Štikliranje beleži kupovinu u
+/// nedeljnim stavkama, pa nedelje i ceo plan pokazuju istu kupovinu.
+class _WholePlan extends ConsumerStatefulWidget {
+  const _WholePlan({
+    required this.mode,
+    required this.filters,
+    required this.items,
+    required this.unknownPantrySupply,
+  });
+
+  final Widget mode;
+  final List<Widget> filters;
+  final List<ShoppingItemRow> items;
+  final Set<String> unknownPantrySupply;
+
+  @override
+  ConsumerState<_WholePlan> createState() => _WholePlanState();
+}
+
+class _WholePlanState extends ConsumerState<_WholePlan> {
+  String? _selected;
+
+  static String _key(PlanTotal t) => '${t.ingredient}/${t.unitGroup}';
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final received = ref.watch(receivedItemsProvider).value ?? const {};
-    final byId = {for (final i in items) i.id: i};
-    final totals = ShoppingRepository.totalsOf(items);
+    final byId = {for (final i in widget.items) i.id: i};
+    final totals = ShoppingRepository.totalsOf(widget.items);
     final open = [
       for (final t in totals)
         if (t.openMicros > 0 || t.hasUnknown) t,
@@ -292,104 +425,138 @@ class _WholePlan extends ConsumerWidget {
         if (byId[id] case final i? when i.isBought == bought) id,
     ];
 
-    String? amount(int micros, PlanTotal t) {
+    String? amount(PlanTotal t, {required bool bought}) {
+      final micros = bought ? t.boughtMicros : t.openMicros;
       if (micros == 0) return null;
       final a = displayAmount(micros, t.baseUnit);
-      return amountLabel(a.quantity, a.unit);
-    }
-
-    Widget tile(PlanTotal t, {required bool bought}) {
-      final isReceived =
-          bought && ids(t, bought: true).every(received.contains);
-      final subtitle = [
-        if (!bought) amount(t.openMicros, t) ?? 'Proveri količinu',
-        if (amount(t.boughtMicros, t) case final b?) 'kupljeno $b',
-        if (isReceived) 'U ostavi',
-      ].join(' · ');
-      void toggle() => unawaited(
-        setBought(
-          context,
-          ref,
-          ids(t, bought: bought),
-          t.name,
-          bought: !bought,
-        ),
-      );
-      return ListTile(
-        contentPadding: EdgeInsets.zero,
-        minTileHeight: 56,
-        leading: Checkbox(
-          value: bought,
-          onChanged: isReceived ? null : (_) => toggle(),
-        ),
-        title: Text(
-          t.name,
-          style: bought
-              ? TextStyle(
-                  decoration: TextDecoration.lineThrough,
-                  color: theme.colorScheme.onSurfaceVariant,
-                )
-              : null,
-        ),
-        subtitle: subtitle.isEmpty ? null : Text(subtitle),
-        onTap: isReceived ? null : toggle,
+      return amountLabel(
+        a.quantity,
+        a.unit,
+        approximate: bought ? t.boughtApproximate : t.openApproximate,
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-      children: [
-        ...header,
-        if (open.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Text(
-              done.isEmpty
-                  ? 'Za ovaj plan nema šta da se kupi.'
-                  : 'Sve je kupljeno.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final withDetail = hasShoppingDetail(context, constraints);
+        PlanTotal? selected;
+        if (withDetail) {
+          for (final t in totals) {
+            if (_key(t) == _selected) selected = t;
+          }
+          selected ??= open.firstOrNull ?? done.firstOrNull;
+        }
+        final selectedBought = selected != null && done.contains(selected);
+
+        Widget row(PlanTotal t) {
+          final bought = done.contains(t);
+          final isReceived =
+              bought && ids(t, bought: true).every(received.contains);
+          final detail = [
+            if (!bought) amount(t, bought: false) ?? quantityReviewNote,
+            if (amount(t, bought: true) case final b?) 'kupljeno $b',
+            if (isReceived) 'U ostavi',
+          ].join(' · ');
+          return TavliCheckRow(
+            title: t.name,
+            subtitle: bought
+                ? null
+                : shoppingQuantityNote(
+                    t.openMicros > 0 ? t.baseUnit : null,
+                    unknownPantry: widget.unknownPantrySupply.contains(
+                      t.ingredient,
+                    ),
+                  ),
+            detail: detail.isEmpty ? null : detail,
+            checked: bought,
+            onChanged: isReceived
+                ? null
+                : (_) => unawaited(
+                    setBought(
+                      context,
+                      ref,
+                      ids(t, bought: bought),
+                      t.name,
+                      bought: !bought,
+                    ),
+                  ),
+            selected: selected == t,
+            onSelect: withDetail
+                ? () => setState(() => _selected = _key(t))
+                : null,
+          );
+        }
+
+        return ShoppingFrame(
+          mode: widget.mode,
+          filters: widget.filters,
+          detail: selected == null
+              ? null
+              : ShoppingItemDetail(
+                  key: ValueKey(_key(selected)),
+                  name: selected.name,
+                  amount: amount(selected, bought: selectedBought),
+                  ids: ids(selected, bought: selectedBought),
+                  bought: selectedBought,
+                ),
+          children: groupedRows(
+            open: open,
+            bought: done,
+            category: (t) => t.category,
+            row: row,
+            emptyText: 'Za ovaj plan nema šta da se kupi.',
+            allBoughtText: 'Sve je kupljeno.',
+            text: theme.textTheme,
+            colors: theme.colorScheme,
           ),
-        for (final (category, list) in byCategory(open, (t) => t.category)) ...[
-          CategoryHeader(categoryLabel(category)),
-          for (final t in list) tile(t, bought: false),
-        ],
-        if (done.isNotEmpty) ...[
-          const Divider(height: 32),
-          Text('Kupljeno · ${done.length}', style: theme.textTheme.titleMedium),
-          for (final t in done) tile(t, bought: true),
-        ],
-      ],
+        );
+      },
     );
   }
 }
 
 class _RecipeShopping extends ConsumerWidget {
-  const _RecipeShopping();
+  const _RecipeShopping({required this.mode});
+
+  final Widget mode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(recipeShoppingProvider);
-    if (items.isLoading && !items.hasValue) {
-      return const Center(child: CircularProgressIndicator());
+    final preparationsAsync = ref.watch(preparationsProvider);
+    if (items.hasError || preparationsAsync.hasError) {
+      return ShoppingFrame(
+        mode: mode,
+        body: _ShoppingLoadError(
+          onRetry: () {
+            ref.invalidate(recipeShoppingProvider);
+            ref.invalidate(preparationsProvider);
+          },
+        ),
+      );
     }
-    final preparations = ref.watch(preparationsProvider).value ?? const [];
+    if ((items.isLoading && !items.hasValue) ||
+        (preparationsAsync.isLoading && !preparationsAsync.hasValue)) {
+      return ShoppingFrame(mode: mode, body: const TavliLoading());
+    }
+    final preparations = preparationsAsync.value ?? const [];
+    final repo = ref.read(shoppingRepositoryProvider);
     return ShoppingItemsList(
+      mode: mode,
       header: [
         if (preparations.isNotEmpty) ...[
-          Text(
+          const TavliSectionHeader(
             'Recepti u nabavci',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: TavliSectionHeaderStyle.bold,
           ),
-          for (final p in preparations) _PreparationTile(p),
-          const SizedBox(height: 12),
+          TavliListGroup(
+            children: [for (final p in preparations) _PreparationTile(p)],
+          ),
+          const SizedBox(height: TavliSpacing.medium),
         ],
       ],
       items: items.value ?? const [],
-      listId: () => ref.read(shoppingRepositoryProvider).recipeList(),
+      listId: repo.recipeList,
       emptyText:
           'Otvori recept i izaberi „Proveri sastojke“ da dodaš ono što '
           'nemaš.',
@@ -406,41 +573,23 @@ class _PreparationTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = preparation;
     final n = p.snapshot.ingredients.length;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.menu_book_outlined),
-      title: Text(p.snapshot.title),
-      subtitle: Text(
-        '${servingsLabel(p.servings)} · ${ingredientsCount(n)} za kupovinu',
-      ),
-      trailing: IconButton(
-        tooltip: 'Ukloni iz nabavke',
-        icon: const Icon(Icons.remove_shopping_cart_outlined),
+    return TavliListRow(
+      title: p.snapshot.title,
+      subtitle:
+          '${servingsLabel(p.servings)} · ${ingredientsCount(n)} za kupovinu',
+      leading: const TavliIcon(TavliIcons.recipes),
+      trailing: TavliIconButton(
+        glyph: TavliIcons.delete,
+        semanticLabel: 'Ukloni iz nabavke',
         onPressed: () async {
           final messenger = ScaffoldMessenger.of(context);
           await ref.read(shoppingRepositoryProvider).removeSource(p.id);
-          messenger
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Uklonjeno iz nabavke: ${p.snapshot.title}. Kupljeno ostaje.',
-                ),
-              ),
-            );
+          showTavliMessageOn(
+            messenger,
+            'Uklonjeno iz nabavke: ${p.snapshot.title}. Kupljeno ostaje.',
+          );
         },
       ),
     );
   }
-}
-
-/// "1 sastojak", "2 sastojka", "5 sastojaka" (11–14 su "sastojaka").
-String ingredientsCount(int n) {
-  final lastTwo = n % 100;
-  final last = n % 10;
-  if (last == 1 && lastTwo != 11) return '$n sastojak';
-  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
-    return '$n sastojka';
-  }
-  return '$n sastojaka';
 }

@@ -2,8 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>auth-callback</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tavli</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>Tavli koristi kameru da slikaš recept.</string>
+	<string>Tavli koristi kameru da slikaš recept ili skeniraš QR kod pozivnice.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Tavli snima samo od „Govori“ do „Zaustavi“, da upiše recept koji izgovoriš.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Tavli čita sliku recepta iz tvoje galerije.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

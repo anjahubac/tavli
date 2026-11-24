@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tavli/features/account/sync_banner.dart';
 import 'package:tavli/providers.dart';
 import 'package:tavli/sync/sync_engine.dart';
@@ -66,17 +66,11 @@ void main() {
         'created_at': '2026-10-30T10:00:00.000Z',
       },
     ], 'id');
-    await tester.enterText(
-      find.widgetWithText(TextField, 'E-pošta'),
-      testEmail,
-    );
+    await tester.enterText(textField('E-pošta'), testEmail);
     await tester.pump();
     await tester.tap(button('Pošalji kod'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Kod iz poruke'),
-      '123456',
-    );
+    await tester.enterText(textField('Kod iz poruke'), '123456');
     await tester.pumpAndSettle();
     expect(find.text('Pasulj sa drugog uređaja'), findsOneWidget);
   });

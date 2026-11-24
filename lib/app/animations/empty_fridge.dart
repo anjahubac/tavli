@@ -1,41 +1,60 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
-import 'motion.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:tavli_ui/tavli_ui.dart';
+
+import 'empty_art.dart';
 
 const _light = Color(0xFFFFF1B8);
 
-/// Prazna ostava: vrata frižidera se otvore, svetlo se postepeno upali, unutra
-/// nema ničega. Igra jednom; završna slika su otvorena vrata i svetlo.
+/// Prazna ostava: vrata frižidera se otvore, svetlo se postepeno upali,
+/// unutra nema ničega osim jedne pahulje koja se spusti na donju policu.
+/// Igra jednom; završna slika su otvorena vrata, svetlo i pahulja.
 class EmptyFridge extends StatelessWidget {
-  const EmptyFridge({super.key, this.size = 200});
-
-  final double size;
+  const EmptyFridge({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return MotionBuilder(
-      repeat: false,
-      duration: const Duration(milliseconds: 2600),
-      builder: (context, t, _) => MotionCanvas(
-        size: size,
-        design: 200,
-        label: 'Prazan frižider',
-        painter: FridgePainter(
-          t,
-          body: colors.surface,
-          line: colors.outline,
-          inside: colors.surfaceContainerHighest,
-          door: colors.primaryContainer,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const EmptyArt(
+    label: 'Prazan frižider',
+    duration: Duration(milliseconds: 2600),
+    fit: 0.8,
+    scene: _fridge,
+  );
 }
 
 /// Svetlo se mirno upali dok se vrata otvaraju.
 double fridgeLight(double t) =>
     Curves.easeOut.transform(interval(t, 0.2, 0.65));
+
+void _fridge(Canvas canvas, double t, EmptyArtColors c) {
+  FridgePainter(
+    t,
+    body: c.surface,
+    line: c.line,
+    inside: c.surface,
+    door: Color.lerp(c.surface, c.primary, 0.3)!,
+  ).paint(canvas, Size.zero);
+
+  // Pahulja izleti iz frižidera i spusti se na donju policu.
+  final f = interval(t, 0.62, 1);
+  if (f == 0) return;
+  final flake = Path()
+    ..moveTo(0, -8)
+    ..lineTo(0, 8)
+    ..moveTo(-7, -4)
+    ..lineTo(7, 4)
+    ..moveTo(-7, 4)
+    ..lineTo(7, -4);
+  canvas
+    ..save()
+    ..translate(112 + 5 * math.sin(f * math.pi * 2), 82 + 58 * easeOut(f) - 9)
+    ..rotate(deg(120 * f))
+    ..drawPath(
+      flake,
+      stroke(c.primary, width: 2.4, opacity: math.min(1, f * 4)),
+    )
+    ..restore();
+}
 
 /// Koordinate 200×200; frižider od x 56 do 144.
 class FridgePainter extends CustomPainter {

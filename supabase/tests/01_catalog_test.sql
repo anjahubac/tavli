@@ -28,9 +28,16 @@ select is(
           and has_table_privilege('authenticated', c.oid, p)
         order by 1),
   array[
-    'deletions:select', 'household_members:select', 'households:select',
+    'account_sync_signals:select',
+    'cookbook_chunks:select', 'cookbooks:delete', 'cookbooks:select',
+    'cooked_events:delete', 'cooked_events:insert', 'cooked_events:select', 'cooked_events:update',
+    'deletions:select',
+    'food_aliases:delete', 'food_aliases:insert', 'food_aliases:select', 'food_aliases:update',
+    'foods:delete', 'foods:insert', 'foods:select', 'foods:update',
+    'household_members:select', 'household_sync_signals:select', 'households:select',
     'meal_plan_entries:delete', 'meal_plan_entries:insert', 'meal_plan_entries:select', 'meal_plan_entries:update',
     'meal_plans:delete', 'meal_plans:insert', 'meal_plans:select', 'meal_plans:update',
+    'pantry_consumptions:delete', 'pantry_consumptions:insert', 'pantry_consumptions:select', 'pantry_consumptions:update',
     'pantry_items:delete', 'pantry_items:insert', 'pantry_items:select', 'pantry_items:update',
     'profiles:select',
     'ratings:delete', 'ratings:insert', 'ratings:select', 'ratings:update',
@@ -41,7 +48,10 @@ select is(
     'shopping_lists:delete', 'shopping_lists:insert', 'shopping_lists:select', 'shopping_lists:update',
     'shopping_sources:delete', 'shopping_sources:insert', 'shopping_sources:select', 'shopping_sources:update',
     'supply_allocations:delete', 'supply_allocations:insert', 'supply_allocations:select', 'supply_allocations:update',
-    'taste_profiles:delete', 'taste_profiles:insert', 'taste_profiles:select', 'taste_profiles:update'
+    'taste_profiles:delete', 'taste_profiles:insert', 'taste_profiles:select', 'taste_profiles:update',
+    'user_allergen_selections:insert', 'user_allergen_selections:select', 'user_allergen_selections:update',
+    'user_favorites:insert', 'user_favorites:select', 'user_favorites:update',
+    'user_planning_sharing:select'
   ],
   'authenticated ima tačno dogovorena prava na tabelama'
 );
@@ -68,8 +78,18 @@ select is(
         where n.nspname in ('public', 'private')
           and has_function_privilege('authenticated', p.oid, 'execute')
         order by 1),
-  array['private.is_member'],
-  'authenticated izvršava samo private.is_member'
+  -- CHECK functions and the named RPCs need authenticated execute.
+  array[
+    'private.is_member', 'private.join_photo_is_published', 'private.recipe_meal_types_valid',
+    'private.valid_allergen_selection', 'public.can_search_recipe_vectors', 'public.confirm_household_join',
+    'public.enable_recipe_vector_indexing', 'public.get_household_recipe_rating_summaries', 'public.household_invite_token',
+    'public.household_members_overview', 'public.household_realtime_eligible',
+    'public.prepare_new_household', 'public.preview_household_join',
+    'public.rank_recipe_vectors', 'public.regenerate_household_invite', 'public.remove_household_member',
+    'public.rename_household',
+    'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing', 'public.take_household_removal'
+  ],
+  'authenticated izvršava samo dozvoljene bezbednosne i validacione funkcije'
 );
 
 select is(

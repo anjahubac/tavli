@@ -1,0 +1,45 @@
+{
+  "contract": "recipe-summary.v1",
+  "expect": "accept",
+  "rule": "S1-S4",
+  "why": "One recipe per requested title (case-insensitive key), with preparation steps.",
+  "request": {
+    "titles": [
+      "Pasulj"
+    ]
+  },
+  "response": {
+    "recipes": [
+      {
+        "title": "pasulj",
+        "servings": 4,
+        "prepMinutes": 120,
+        "ingredients": [
+          {
+            "name": "pasulj",
+            "quantity": 500,
+            "unit": "g",
+            "category": "suvi proizvodi",
+            "note": null
+          },
+          {
+            "name": "crni luk",
+            "quantity": 2,
+            "unit": "glavice",
+            "category": "voće i povrće",
+            "note": null
+          }
+        ],
+        "steps": [
+          "Potopi pasulj preko noći.",
+          "Isperi ga i kuvaj sa lukom dok ne omekša."
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "Pasulj.baseServings": 4,
+    "Pasulj.ingredients[1].unitCanonical": "glavica",
+    "Pasulj.steps.length": 2
+  }
+}

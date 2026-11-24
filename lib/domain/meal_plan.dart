@@ -2,14 +2,19 @@
 /// čuvanja. Nacrt živi samo u sesiji; čuva se tek odobren.
 library;
 
+import 'meal_rules.dart';
 import 'plan_calendar.dart';
+import 'recipe_labels.dart';
 import 'shopping_demand.dart' show maxServings, minServings;
 import 'shopping_source.dart';
 
-/// Vrste obroka, redom kojim idu u danu. `name` je vrednost u bazi.
+/// Vrste obroka, redom kojim idu u danu. `name` je vrednost u bazi; indeks se
+/// nikad ne čuva, pa se redosled sme menjati.
 enum MealType {
   breakfast('Doručak'),
+  morningSnack('Užina pre podne'),
   lunch('Ručak'),
+  afternoonSnack('Užina posle podne'),
   dinner('Večera');
 
   const MealType(this.label);
@@ -57,8 +62,10 @@ class PlanRequest {
     this.wishes,
     this.pantryNames = const [],
     Set<MealSlot>? only,
+    Map<MealSlot, MealFacts> kept = const {},
   }) : mealTypes = Set.unmodifiable(mealTypes),
-       only = only == null ? null : Set.unmodifiable(only) {
+       only = only == null ? null : Set.unmodifiable(only),
+       kept = Map.unmodifiable(kept) {
     if (mealTypes.isEmpty) {
       throw ArgumentError('Izaberi bar jedan obrok');
     }
@@ -92,6 +99,11 @@ class PlanRequest {
   /// obroka); null = sva mesta plana.
   final Set<MealSlot>? only;
 
+  /// Jela iz sačuvanog plana koja ostaju (zaključana, skuvana, prošla ili
+  /// ostali dani kod zamene jednog jela). Ne predlažu se ponovo, ali ih
+  /// pravila rasporeda gledaju (jak obrok u danu, ponavljanje).
+  final Map<MealSlot, MealFacts> kept;
+
   /// Mesta za predlog, hronološki.
   List<MealSlot> get slots => [
     for (final d in range.days)
@@ -107,6 +119,8 @@ class SlotProposal {
     required this.title,
     this.libraryRecipeId,
     this.draftRecipeKey,
+    this.weight,
+    this.dishKind,
   }) : assert((libraryRecipeId == null) != (draftRecipeKey == null));
 
   final String title;
@@ -115,7 +129,22 @@ class SlotProposal {
   /// Ključ novog recepta u [PlanDraft.newRecipes].
   final String? draftRecipeKey;
 
+  /// Težina i vrsta jela za pravila rasporeda; null = nepoznato. Za recept
+  /// iz biblioteke važe njegove sačuvane oznake kad postoje.
+  final DishWeight? weight;
+  final DishKind? dishKind;
+
   bool get isNew => draftRecipeKey != null;
+
+  /// Isti ključ = isti recept (pravilo ponavljanja).
+  String get recipeKey => libraryRecipeId ?? draftRecipeKey!;
+
+  MealFacts get facts => MealFacts(
+    recipeKey: recipeKey,
+    title: title,
+    weight: weight,
+    dishKind: dishKind,
+  );
 }
 
 /// Ključ novog recepta: naziv bez razlike u velikim slovima i razmacima.
@@ -141,6 +170,8 @@ class PlanDraft {
     Map<String, RecipeSnapshot> newRecipes = const {},
     Map<String, RecipeSnapshot> libraryRecipes = const {},
     this.base,
+    this.withoutTastes = false,
+    this.householdRestricted = false,
   }) : proposals = Map.unmodifiable(proposals),
        newRecipes = Map.unmodifiable(newRecipes),
        libraryRecipes = Map.unmodifiable(libraryRecipes);
@@ -151,18 +182,26 @@ class PlanDraft {
   /// Plan koji nacrt menja (zamena ili ponovno generisanje), null za nov.
   final PlanBase? base;
 
-  /// Novi recepti po [draftRecipeKey] (sažetak, bez koraka).
+  /// Novi recepti po [draftRecipeKey], sa sastojcima i koracima.
   final Map<String, RecipeSnapshot> newRecipes;
 
   /// Snimci recepata iz biblioteke po id-ju, u trenutku predloga.
   final Map<String, RecipeSnapshot> libraryRecipes;
+
+  /// Ukusi članova nisu bili dostupni (mreža, server), pa je bar deo
+  /// predloga napravljen bez njih. Pregled to kaže (spec 019 FR-004).
+  final bool withoutTastes;
+
+  /// Neko u domaćinstvu ima alergiju (server, TRELLO-43): plan je samo od
+  /// bezbednih sačuvanih recepata, pa mesta mogu ostati prazna.
+  final bool householdRestricted;
 
   List<MealSlot> get missingSlots => [
     for (final s in request.slots)
       if (!proposals.containsKey(s)) s,
   ];
 
-  /// Novi recepti koji su predloženi, a još nemaju sastojke.
+  /// Predloženi novi recepti čiji detalji još nisu spremni.
   List<String> get missingRecipeKeys {
     final keys = <String>{};
     for (final p in proposals.values) {
@@ -193,16 +232,23 @@ class PlanDraft {
     Map<MealSlot, SlotProposal>? proposals,
     Map<String, RecipeSnapshot>? newRecipes,
     Map<String, RecipeSnapshot>? libraryRecipes,
+    bool? withoutTastes,
+    bool? householdRestricted,
   }) => PlanDraft(
     request: request,
     proposals: proposals ?? this.proposals,
     newRecipes: newRecipes ?? this.newRecipes,
     libraryRecipes: libraryRecipes ?? this.libraryRecipes,
     base: base,
+    withoutTastes: withoutTastes ?? this.withoutTastes,
+    householdRestricted: householdRestricted ?? this.householdRestricted,
   );
 }
 
 /// Sačuvan plan, kako ga je osoba odobrila.
+/// Porcije po obroku za nov plan dok osoba ne izabere drugačije.
+const defaultPlanServings = 2;
+
 class MealPlan {
   const MealPlan({
     required this.id,
@@ -225,6 +271,14 @@ class MealPlan {
       for (final t in MealType.values)
         if (mealTypes.contains(t)) MealSlot(d, t),
   ];
+
+  /// Koliko dana pre kraja plana Početna kaže „Plan se završava za dva
+  /// dana.“
+  static const endingNoticeDays = 2;
+
+  /// Plan se završava tačno [endingNoticeDays] dana posle [date].
+  bool endsSoonAfter(CivilDate date) =>
+      range.end == date.addDays(endingNoticeDays);
 }
 
 /// Obrok u sačuvanom planu, sa receptom odobrenim u trenutku planiranja.

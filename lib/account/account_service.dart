@@ -38,12 +38,24 @@ class AccountService {
     return row == null ? null : _fromRow(row);
   }
 
-  /// Keširan nalog, a ako ga nema na uređaju — sa servera (prva prijava
-  /// na ovom uređaju). Baca `AuthFailure`.
-  Future<Account> loadOrFetch(AuthSession session) async {
+  /// Usklađuje članstvo pre uključivanja sinhronizacije.
+  Future<Account> loadOrFetch(
+    AuthSession session, {
+    bool allowOffline = true,
+  }) async {
     final local = await cached(session.userId);
-    if (local != null) return local;
-    final remote = await _api.fetch();
+    final RemoteAccount remote;
+    try {
+      remote = await _api.fetch();
+    } on Offline {
+      if (allowOffline && local != null) return local;
+      rethrow;
+    } on Unavailable {
+      if (allowOffline && local != null) return local;
+      rethrow;
+    }
+    if (remote.userId != session.userId) throw const SessionRevoked();
+    if (local != null) return _saveMembership(local, remote);
     await _db
         .into(_db.accounts)
         .insertOnConflictUpdate(
@@ -54,11 +66,170 @@ class AccountService {
             householdId: remote.householdId,
             householdName: remote.householdName,
             role: remote.role,
+            householdReady: Value(remote.householdSetupDone),
             createdAt: _clock(),
           ),
         );
     return (await cached(remote.userId))!;
   }
+
+  Future<Account> refreshMembership(Account account) async {
+    final remote = await _api.fetch();
+    if (remote.userId != account.userId) throw const SessionRevoked();
+    return _saveMembership(account, remote);
+  }
+
+  static final _householdOutboxEntities = [
+    for (final entity in syncEntities)
+      // Ratings and favorites are user-scoped but tied to household recipes.
+      if (entity.scope == EntityScope.household ||
+          entity.name == 'rating' ||
+          entity.name == 'favorite')
+        entity.name,
+    'photo',
+  ];
+
+  SimpleSelectStatement<$SyncOutboxTable, OutboxRow> _pendingHouseholdWrites(
+    String userId,
+  ) => _db.select(_db.syncOutbox)
+    ..where(
+      (t) =>
+          t.accountId.equals(userId) &
+          t.entity.isIn(_householdOutboxEntities) &
+          t.state.isIn([OutboxState.pending, OutboxState.sending]),
+    )
+    ..limit(1);
+
+  Future<bool> hasPendingHouseholdWrites(String userId) async =>
+      await _pendingHouseholdWrites(userId).getSingleOrNull() != null;
+
+  Stream<bool> watchPendingHouseholdWrites(String userId) =>
+      _pendingHouseholdWrites(userId)
+          .watch()
+          .map((rows) => rows.isNotEmpty)
+          .distinct();
+
+  /// Vlasnik daje naziv domaćinstvu (korak "Tvoje domaćinstvo" ili "Izmeni
+  /// domaćinstvo"). Posle uspeha keš ima novi naziv i završen korak. Baca
+  /// [ArgumentError] za neispravan naziv i `AuthFailure`.
+  Future<(RenameHouseholdResult, Account)> renameHousehold(
+    Account account,
+    String name,
+  ) async {
+    final n = normalizeHouseholdName(name);
+    if (n == null) throw ArgumentError.value(name, 'name');
+    final result = await _api.renameHousehold(n);
+    if (result != RenameHouseholdResult.renamed) return (result, account);
+    await (_db.update(_db.accounts)..where(
+          (t) =>
+              t.userId.equals(account.userId) &
+              t.householdId.equals(account.householdId),
+        ))
+        .write(
+          AccountsCompanion(
+            householdName: Value(n),
+            householdReady: const Value(true),
+          ),
+        );
+    return (result, account.copyWith(householdName: n, householdReady: true));
+  }
+
+  /// Članovi domaćinstva sa servera (bez keša; potrebna je veza).
+  Future<List<HouseholdMember>> householdMembers() => _api.householdMembers();
+
+  /// Vlasnik uklanja člana. Server proverava ulogu i uklonjenom pravi novo
+  /// lično domaćinstvo; vlasnikovo članstvo se ne menja.
+  Future<String> removeHouseholdMember(String memberId) =>
+      _api.removeHouseholdMember(memberId);
+
+  /// Vidi [AccountApi.takeHouseholdRemoval].
+  Future<bool> takeHouseholdRemoval(String previousHouseholdId) =>
+      _api.takeHouseholdRemoval(previousHouseholdId);
+
+  Future<HouseholdJoinResult> confirmHouseholdJoin({
+    required Account account,
+    required String token,
+    required JoinRecipeChoice recipeChoice,
+    required bool acknowledgeSourceDeletion,
+    required String operationId,
+    bool proceedWithoutPendingWrites = false,
+  }) async {
+    if (!proceedWithoutPendingWrites &&
+        await hasPendingHouseholdWrites(account.userId)) {
+      return const HouseholdJoinResult(status: 'pending_sync');
+    }
+    final result = await _api.confirmHouseholdJoin(
+      token: token,
+      expectedSourceHouseholdId: account.householdId,
+      recipeChoice: recipeChoice,
+      acknowledgeSourceDeletion: acknowledgeSourceDeletion,
+      operationId: operationId,
+    );
+    if (result.status != 'joined') return result;
+    if (result.account case final remote?) {
+      if (remote.userId != account.userId) throw const SessionRevoked();
+      await _saveMembership(account, remote);
+    }
+    return result;
+  }
+
+  Future<Account> _saveMembership(Account account, RemoteAccount remote) =>
+      _db.transaction(() async {
+        final current = await cached(account.userId);
+        if (current == null) throw const SessionRevoked();
+        if (current.householdId != account.householdId) return current;
+
+        final switched = current.householdId != remote.householdId;
+        if (switched) {
+          await (_db.update(_db.syncOutbox)..where(
+                (t) =>
+                    t.accountId.equals(account.userId) &
+                    t.entity.isIn(_householdOutboxEntities) &
+                    t.state.isNotValue(OutboxState.quarantined),
+              ))
+              .write(
+                SyncOutboxCompanion.custom(
+                  state: const Constant(OutboxState.quarantined),
+                  lastError: CaseWhenExpression(
+                    cases: [
+                      CaseWhen(
+                        _db.syncOutbox.state.equals(OutboxState.rejected),
+                        then: _db.syncOutbox.lastError,
+                      ),
+                    ],
+                    orElse: const Constant('household_changed'),
+                  ),
+                ),
+              );
+          await (_db.delete(
+            _db.syncCursors,
+          )..where((t) => t.accountId.equals(account.userId))).go();
+        }
+        await (_db.update(
+          _db.accounts,
+        )..where((t) => t.userId.equals(account.userId))).write(
+          AccountsCompanion(
+            displayName: current.hasName
+                ? const Value.absent()
+                : Value(remote.displayName),
+            householdId: Value(remote.householdId),
+            householdName: Value(remote.householdName),
+            role: Value(remote.role),
+            householdReady: Value(remote.householdSetupDone),
+            initialDownloadDone: switched
+                ? const Value(false)
+                : const Value.absent(),
+            lastPullAt: switched ? const Value(null) : const Value.absent(),
+          ),
+        );
+        return current.copyWith(
+          displayName: current.displayName ?? remote.displayName,
+          householdId: remote.householdId,
+          householdName: remote.householdName,
+          role: remote.role,
+          householdReady: remote.householdSetupDone,
+        );
+      });
 
   /// Čuva ime (1–40 znakova posle skidanja razmaka) lokalno i u redu za
   /// slanje. Baca [ArgumentError] za neispravno ime.
@@ -99,6 +270,9 @@ class AccountService {
     final photos = <String>{};
     await _db.transaction(() async {
       if (hid != null) {
+        await (_db.delete(
+          _db.ratingSummaries,
+        )..where((t) => t.householdId.equals(hid))).go();
         for (final r in await (_db.select(
           _db.recipes,
         )..where((t) => t.householdId.equals(hid))).get()) {
@@ -109,7 +283,21 @@ class AccountService {
         )..where((t) => t.householdId.equals(hid))).get()) {
           if (_imagePath(v.recipeJson) case final p?) photos.add(p);
         }
-        // Deca pre roditelja: raspodela, doprinosi, izvori, pa liste i ostava.
+        // Deca pre roditelja: potrošnja i kuvanje, raspodela, doprinosi,
+        // izvori, pa liste i ostava.
+        // Kućni katalog namirnica; deljeni ostaje (ne pripada nalogu).
+        await (_db.delete(
+          _db.foodAliases,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.foods,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.pantryConsumptions,
+        )..where((t) => t.householdId.equals(hid))).go();
+        await (_db.delete(
+          _db.cookedEvents,
+        )..where((t) => t.householdId.equals(hid))).go();
         await (_db.delete(
           _db.supplyAllocations,
         )..where((t) => t.householdId.equals(hid))).go();
@@ -143,6 +331,15 @@ class AccountService {
       }
       await (_db.delete(
         _db.ratings,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
+        _db.recipeImageJobs,
+      )..where((t) => t.accountId.equals(userId))).go();
+      await (_db.delete(
+        _db.userFavorites,
+      )..where((t) => t.userId.equals(userId))).go();
+      await (_db.delete(
+        _db.userAllergenSelections,
       )..where((t) => t.userId.equals(userId))).go();
       await (_db.delete(
         _db.userProfiles,
@@ -180,5 +377,6 @@ class AccountService {
     householdId: r.householdId,
     householdName: r.householdName,
     role: r.role,
+    householdReady: r.householdReady,
   );
 }

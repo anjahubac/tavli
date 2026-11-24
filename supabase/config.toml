@@ -118,6 +118,14 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
+# Slike u mejlovima prijave (znak Tavli). Javna kanta: mejl klijenti ne
+# šalju prijavu. Deploy je puni sa `supabase seed buckets --linked`.
+[storage.buckets.email-assets]
+public = true
+file_size_limit = "1MiB"
+allowed_mime_types = ["image/png"]
+objects_path = "./email-assets"
+
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]
 # public = false
@@ -246,11 +254,11 @@ otp_expiry = 600
 # sender_name = "Admin"
 
 [auth.email.template.magic_link]
-subject = "Tvoj Tavli kod: {{ .Token }}"
+subject = "Tvoj Tavli kod"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.confirmation]
-subject = "Potvrdi svoju adresu za Tavli"
+subject = "Potvrdi adresu za Tavli"
 content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
@@ -392,7 +400,35 @@ inspector_port = 8093
 # The Deno major version to use.
 deno_version = 2
 
+[functions.ai-gateway]
+enabled = true
+verify_jwt = true
+
+[functions.recipe-vector-index]
+enabled = true
+verify_jwt = false
+
 [functions.delete-account]
+enabled = true
+verify_jwt = true
+
+[functions.cookbook-process]
+enabled = true
+verify_jwt = true
+
+[functions.cookbook-ask]
+enabled = true
+verify_jwt = true
+# Govor u tekst za glasovni nacrt recepta (spec 027). GROQ_API_KEY je tajna.
+[functions.voice-transcribe]
+enabled = true
+verify_jwt = true
+
+[functions.household-invite]
+enabled = true
+verify_jwt = false
+
+[functions.household-join]
 enabled = true
 verify_jwt = true
 
@@ -426,3 +462,11 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.planning-inputs]
+enabled = true
+verify_jwt = true
+
+[functions.household-photo-cleanup]
+enabled = true
+verify_jwt = false
