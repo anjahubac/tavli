@@ -129,21 +129,25 @@ owners below record them.
   backfill is idempotent.
 - **A compile-time switch and the "all devices" condition.** `recipeLinkRollout`
   is a `const`, so opening it needs a new build. That fits the floor: the floor
-  is the build that already knows the link fields (#100), and the build that
-  flips the switch is a later build. A device still on the floor build keeps
-  the switch off and does not drop links, so only devices on the flip build
-  write them. The switch may be flipped only after the outboxes written by
-  builds older than the floor are drained (step 3).
+  for understanding the link fields is the build that includes #100. Before
+  opening the switch, verify that every syncing device also protects links
+  when uploading a stale recipe and uses the same shopping key rules. A build
+  that understands links but keeps the switch closed can still upload a stale
+  recipe without carrying server links forward and reconcile shopping by
+  text. Drain old outboxes as in step 3 and keep the switch closed until the
+  team agrees how to prevent mixed behavior across devices.
 - **Unreadable server ingredients.** When the server row's `ingredients` cannot
   be read, the uploader rejects that outbox entry (`recipe_ingredients_invalid`)
   and goes on with the next ones. A transient error here would retry forever
   and hold up the whole outbox. The server row is left unchanged, so no link is
-  overwritten. The local edit stays in the app but is not uploaded until the
-  server row is repaired and the recipe is saved again.
+  overwritten. The rejected entry is not retried. After the server row is
+  repaired, the recipe needs to be saved again to queue another upload.
 - **Fetch and upsert are not atomic.** A link written by another device between
   the uploader's read and its upsert can still be overwritten. The window is
-  one request; the link returns the next time that device saves or the backfill
-  runs. Accepted for the first slice; a server-side merge would remove it.
+  the time between the read and the write. Backfill may resolve a lost match
+  from an alias, but cannot recover a recipe-only confirmation. The decision
+  owners need to accept this risk before enabling the switch. A server-side
+  merge would remove the client-side race.
 - **`updatedAt` and ordering.** Backfill sets `updatedAt` on every recipe it
   links. Recipe lists are ordered by `createdAt` (`RecipeRepository._all`) and
   no list in `lib/` orders by `updatedAt`, so one backfill does not reorder the

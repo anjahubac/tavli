@@ -288,11 +288,10 @@ class Uploader {
               final rawLocalIngredients = rawLocal;
               final localIngredients = [
                 for (final item in rawLocalIngredients)
-                  Ingredient.fromJson(_ingredientJson(item)),
+                  _parseRecipeIngredient(item),
               ];
               final serverIngredients = [
-                for (final item in rawIngredients)
-                  Ingredient.fromJson(_ingredientJson(item)),
+                for (final item in rawIngredients) _parseRecipeIngredient(item),
               ];
               payload['ingredients'] = _mergeRecipeIngredientJson(
                 rawLocalIngredients,
@@ -368,6 +367,16 @@ class Uploader {
           merged[i],
         ),
     ];
+  }
+
+  Ingredient _parseRecipeIngredient(Object? value) {
+    final json = _ingredientJson(value);
+    final name = json['name'];
+    final category = json['category'];
+    if (name is! String || (category != null && category is! String)) {
+      throw const FormatException('ingredient field type');
+    }
+    return Ingredient.fromJson(json);
   }
 
   Map<String, dynamic> _ingredientJson(Object? value) {

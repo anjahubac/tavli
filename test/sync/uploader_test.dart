@@ -169,40 +169,54 @@ void main() {
     },
   );
 
-  test('guarded upload rejects a recipe whose server ingredients are malformed '
-      'and still sends later entries', () async {
-    await addRecipe('bad');
-    await addRecipe('good');
-    await uploader.run();
-    server('recipes')['bad']!['ingredients'] = 'not a list';
-    await writer.upsert('recipe', 'bad');
-    await writer.upsert('recipe', 'good');
-    backend.server.calls.clear();
-    uploader = Uploader(
-      db: db,
-      remote: backend.sync,
-      photos: backend.photos,
-      photoStore: photoStore,
-      scope: scope,
-      refreshSession: () async => true,
-      recipeLinkRollout: const RecipeLinkRollout(
-        allDevicesAtCompatibleBuild: true,
-        oldOutboxesDrained: true,
-      ),
-      clock: () => now,
+  for (final malformed in <String, Object>{
+    'a non-list ingredient payload': 'not a list',
+    'a non-object ingredient': [42],
+    'a non-string ingredient name': [
+      {'name': 42},
+    ],
+    'a non-string ingredient category': [
+      {'name': 'Jaja', 'category': 42},
+    ],
+  }.entries) {
+    test(
+      'guarded upload rejects ${malformed.key} and still sends later entries',
+      () async {
+        await addRecipe('bad');
+        await addRecipe('good');
+        await uploader.run();
+        server('recipes')['bad']!['ingredients'] = malformed.value;
+        await writer.upsert('recipe', 'bad');
+        await writer.upsert('recipe', 'good');
+        backend.server.calls.clear();
+        uploader = Uploader(
+          db: db,
+          remote: backend.sync,
+          photos: backend.photos,
+          photoStore: photoStore,
+          scope: scope,
+          refreshSession: () async => true,
+          recipeLinkRollout: const RecipeLinkRollout(
+            allDevicesAtCompatibleBuild: true,
+            oldOutboxesDrained: true,
+          ),
+          clock: () => now,
+        );
+
+        final result = await uploader.run();
+
+        expect(result.stoppedBy, isNull);
+        expect(result.rejected, 1);
+        expect(result.sent, 1);
+        final rows = await outbox();
+        expect(rows.single.state, OutboxState.rejected);
+        expect(rows.single.recordId, 'bad');
+        expect(rows.single.lastError, 'recipe_ingredients_invalid');
+        // The server row is left as it was: no link is overwritten.
+        expect(server('recipes')['bad']!['ingredients'], malformed.value);
+      },
     );
-
-    final result = await uploader.run();
-
-    expect(result.stoppedBy, isNull);
-    expect(result.rejected, 1);
-    expect(result.sent, 1);
-    final rows = await outbox();
-    expect(rows.single.state, OutboxState.rejected);
-    expect(rows.single.recordId, 'bad');
-    // The server row is left as it was: no link is overwritten.
-    expect(server('recipes')['bad']!['ingredients'], 'not a list');
-  });
+  }
 
   test('guarded recipe upload stays queued when server read fails', () async {
     await addRecipe('r');
