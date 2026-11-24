@@ -35,6 +35,287 @@ class ChurchCalendar {
   static String format(DateTime date) =>
       '${date.day}. ${_months[date.month - 1]} ${date.year}.';
 
+  /// Krsne slave with their civil date (Julian date + 13 days, valid for the
+  /// supported years 1900–2099). Sources: the slava calendars of Danas
+  /// ("Veliki kalendar srpskih krsnih slava") and Religija.rs ("Veliki
+  /// kalendar krsnih slava"), which agree on every shared date, plus a few
+  /// feasts of the SPC calendar missing from both lists. Feasts already in
+  /// `named` (Blagovesti, Petrovdan, Preobraženje, Velika Gospojina,
+  /// Vavedenje) are answered there. Keys are normalized search stems; more
+  /// specific entries come first, so "Jovan Zlatousti" or "Letnji Nikola" is
+  /// not answered as Jovanjdan or Nikoljdan.
+  static const _slave = <(List<String>, String, int, int)>[
+    // Several saints share a name: the specific ones first.
+    (
+      ['letnji nikol', 'nikola letnji', 'prenos mostiju svetog nikol'],
+      'Prenos moštiju Svetog Nikole (Letnji Nikola)',
+      5,
+      22,
+    ),
+    (['zlatoust'], 'Sveti Jovan Zlatousti', 11, 26),
+    (['bogoslov'], 'Sveti apostol i jevanđelist Jovan Bogoslov', 5, 21),
+    (['milostiv'], 'Sveti Jovan Milostivi', 11, 25),
+    (
+      ['usekovanj', 'glavosek', 'glavosjek'],
+      'Usekovanje glave Svetog Jovana Krstitelja',
+      9,
+      11,
+    ),
+    (['zacec'], 'Začeće Svetog Jovana Preteče i Krstitelja', 10, 6),
+    (
+      ['ivanjdan', 'rodjenje svetog jovan', 'rodjenje jovan', 'jovana pretec'],
+      'Rođenje Svetog Jovana Preteče (Ivanjdan)',
+      7,
+      7,
+    ),
+    (
+      ['prohor', 'pcinjsk', 'joil', 'rilsk'],
+      'Prepodobni Prohor Pčinjski, Sveti prorok Joil i Prepodobni Jovan Rilski',
+      11,
+      1,
+    ),
+    (
+      ['jovanjdan', 'jovandan', 'sveti jovan', 'svetog jovan', 'krstitelj'],
+      'Sabor Svetog Jovana Krstitelja (Jovanjdan)',
+      1,
+      20,
+    ),
+    (['ostrosk'], 'Sveti Vasilije Ostroški Čudotvorac', 5, 12),
+    (['vasilij', 'vasiljevdan', 'mali bozic'], 'Sveti Vasilije Veliki', 1, 14),
+    (
+      ['mrat', 'decansk'],
+      'Sveti Mrata i Sveti Stefan Dečanski (Mratindan)',
+      11,
+      24,
+    ),
+    (
+      [
+        'stevanjdan',
+        'stevandan',
+        'sveti stefan',
+        'svetog stefan',
+        'arhidjakon',
+      ],
+      'Sveti prvomučenik i arhiđakon Stefan (Stevanjdan)',
+      1,
+      9,
+    ),
+    (
+      ['vidovdan', 'knez lazar', 'kneza lazar', 'car lazar', 'cara lazar'],
+      'Sveti mučenik knez Lazar i svi srpski mučenici (Vidovdan)',
+      6,
+      28,
+    ),
+    (
+      ['djurdjic', 'obnovljenje hrama'],
+      'Obnovljenje hrama Svetog Georgija (Đurđic)',
+      11,
+      16,
+    ),
+    (
+      ['djurdjevdan', 'sveti djordj', 'svetog djordj', 'djuradj', 'georgij'],
+      'Sveti velikomučenik Georgije (Đurđevdan)',
+      5,
+      6,
+    ),
+    (
+      ['gavril', 'letnji arandjel', 'arandjelovdan letnji'],
+      'Sabor Svetog Arhangela Gavrila',
+      7,
+      26,
+    ),
+    (
+      ['arandjel', 'arhangel', 'arhandjel', 'sveti mihail', 'svetog mihail'],
+      'Sabor Svetog Arhangela Mihaila (Aranđelovdan)',
+      11,
+      21,
+    ),
+    (['verig'], 'Časne verige Svetog apostola Petra', 1, 29),
+    (
+      ['petar i pavl', 'petra i pavl', 'sveti petar', 'svetog petr'],
+      'Sveti apostoli Petar i Pavle (Petrovdan)',
+      7,
+      12,
+    ),
+    (
+      [
+        'letnja petk',
+        'letnju petk',
+        'letnja sveta petk',
+        'letnju svetu petk',
+        'prepodobnomucenic',
+      ],
+      'Sveta prepodobnomučenica Paraskeva (letnja Sveta Petka)',
+      8,
+      8,
+    ),
+    (
+      ['sveta petk', 'svete petk', 'svetu petk', 'petkovic', 'paraskev'],
+      'Prepodobna mati Paraskeva (Sveta Petka)',
+      10,
+      27,
+    ),
+    (
+      ['bogoprim', 'simeon i an', 'simeona i an'],
+      'Sveti Simeon Bogoprimac i Ana Proročica',
+      2,
+      16,
+    ),
+    (['mirotociv', 'nemanj', 'simeon'], 'Sveti Simeon Mirotočivi', 2, 26),
+    (['joakim'], 'Sveti pravedni bogoroditelji Joakim i Ana', 9, 22),
+    (
+      ['blaga marij', 'magdalin'],
+      'Sveta Marija Magdalina (Blaga Marija)',
+      8,
+      4,
+    ),
+    (
+      ['ognjena marij', 'sveta marin', 'svete marin', 'marina'],
+      'Sveta velikomučenica Marina (Ognjena Marija)',
+      7,
+      30,
+    ),
+    (
+      ['mala gospojin', 'rodjenje presvete bogorodic'],
+      'Mala Gospojina (Rođenje Presvete Bogorodice)',
+      9,
+      21,
+    ),
+    // Saints whose names are not shared.
+    (['ignjatovdan', 'ignjatij'], 'Sveti Ignjatije Bogonosac', 1, 2),
+    (
+      ['sveti sava', 'svetog sav', 'savindan', 'svetosavsk'],
+      'Sveti Sava (Savindan)',
+      1,
+      27,
+    ),
+    (
+      ['tanasijevdan', 'tanasij'],
+      'Sveti Atanasije Veliki (Tanasijevdan)',
+      1,
+      31,
+    ),
+    (['trifun', 'trivun'], 'Sveti mučenik Trifun', 2, 14),
+    (['sretenj'], 'Sretenje Gospodnje', 2, 15),
+    (['haralamp'], 'Sveti Haralampije', 2, 23),
+    (
+      ['mladenc', '40 mucenik', 'cetrdeset mucenik', 'sevastij'],
+      'Sveti četrdeset mučenika Sevastijskih (Mladenci)',
+      3,
+      22,
+    ),
+    (
+      ['markovdan', 'sveti mark', 'svetog mark', 'apostol mark'],
+      'Sveti apostol i jevanđelist Marko (Markovdan)',
+      5,
+      8,
+    ),
+    (['jeremij'], 'Sveti prorok Jeremija', 5, 14),
+    (['kiril', 'ciril', 'metodij'], 'Sveti Kirilo i Metodije', 5, 24),
+    (
+      ['konstantin', 'carica jelen', 'carice jelen', 'sveta jelen'],
+      'Sveti car Konstantin i carica Jelena',
+      6,
+      3,
+    ),
+    (
+      ['nedeljic', 'sveta nedelj', 'svete nedelj'],
+      'Sveta Nedelja (Nedeljica)',
+      7,
+      20,
+    ),
+    (['prokopij'], 'Sveti velikomučenik Prokopije', 7, 21),
+    (['kirik', 'julit'], 'Sveti Kirik i Julita', 7, 28),
+    (
+      ['ilindan', 'sveti ilij', 'svetog ilij', 'prorok ilij'],
+      'Sveti prorok Ilija (Ilindan)',
+      8,
+      2,
+    ),
+    (
+      ['pantelin', 'pantelejmon', 'sveti pantelij', 'svetog pantelij'],
+      'Sveti velikomučenik Pantelejmon',
+      8,
+      9,
+    ),
+    (
+      ['krstovdan', 'vozdvizenj'],
+      'Vozdviženje Časnog krsta (Krstovdan)',
+      9,
+      27,
+    ),
+    (
+      ['miholjdan', 'kirijak'],
+      'Prepodobni Kirijak Otšelnik (Miholjdan)',
+      10,
+      12,
+    ),
+    (['pokrov'], 'Pokrov Presvete Bogorodice', 10, 14),
+    (
+      ['tomindan', 'sveti tom', 'svetog tom', 'apostol tom'],
+      'Sveti apostol Toma (Tomindan)',
+      10,
+      19,
+    ),
+    (
+      ['srdjevdan', 'sergij', 'vakh'],
+      'Sveti mučenici Sergije i Vakh (Srđevdan)',
+      10,
+      20,
+    ),
+    (
+      ['lucindan', 'lukindan', 'sveti luk', 'svetog luk', 'apostol luk'],
+      'Sveti apostol i jevanđelist Luka (Lučindan)',
+      10,
+      31,
+    ),
+    (
+      ['mitrovdan', 'dimitrij', 'sveti mitar'],
+      'Sveti velikomučenik Dimitrije (Mitrovdan)',
+      11,
+      8,
+    ),
+    (['avramij'], 'Prepodobni Avramije Zatvornik', 11, 11),
+    (['vracev', 'kozm', 'damjan'], 'Sveti Kozma i Damjan (Vračevi)', 11, 14),
+    (['matej', 'matijevdan'], 'Sveti apostol i jevanđelist Matej', 11, 29),
+    (['alimpij'], 'Prepodobni Alimpije Stolpnik', 12, 9),
+    (
+      ['andrijevdan', 'sveti andr', 'svetog andr', 'apostol andr'],
+      'Sveti apostol Andrej Prvozvani',
+      12,
+      13,
+    ),
+    (
+      ['nikoljdan', 'sveti nikol', 'svetog nikol', 'nikola', 'nikolaj'],
+      'Sveti Nikolaj Mirlikijski Čudotvorac (Nikoljdan)',
+      12,
+      19,
+    ),
+  ];
+
+  /// Movable slava: Lazareva subota (Vrbica), the Saturday before Cveti.
+  static const _lazarusKeys = ['lazarev', 'vrbic', 'lazaric'];
+
+  /// Lazareva subota in [year].
+  static DateTime _lazarus(int year) => _days(easter(year), -8);
+
+  /// A fixed slava falls on the same civil date every year, so its answer has
+  /// no year: "Sveti Nikola (Nikoljdan) je 19. decembra." Only the movable
+  /// Lazareva subota names a year; without an explicit one it is the next
+  /// date from [today].
+  String? _slavaAnswer(String q, String? explicitYear) {
+    if (_lazarusKeys.any(q.contains)) {
+      var year = explicitYear == null ? today.year : int.parse(explicitYear);
+      if (explicitYear == null && _lazarus(year).isBefore(today)) year++;
+      if (year > 2099) return null;
+      return 'Lazareva subota (Vrbica) je ${format(_lazarus(year))}';
+    }
+    for (final (keys, name, month, day) in _slave) {
+      if (keys.any(q.contains)) return '$name je $day. ${_months[month - 1]}.';
+    }
+    return null;
+  }
+
   static DateTime _days(DateTime date, int days) =>
       date.add(Duration(days: days));
 
@@ -191,7 +472,17 @@ class ChurchCalendar {
       );
     }
 
-    if (q.contains('kada') || q.contains('datum') || q.contains('kad ')) {
+    final asksDate =
+        q.contains('kada') || q.contains('datum') || q.contains('kad ');
+    if ((asksDate || q.contains('slav')) &&
+        !q.contains('post') &&
+        !isFoodQuestion(q)) {
+      if (_slavaAnswer(q, explicit) case final text?) {
+        return (text: text, source: source);
+      }
+    }
+
+    if (asksDate) {
       for (final MapEntry(key: key, value: (name, date)) in named.entries) {
         if (q.contains(key) && !q.contains('post')) {
           return (text: '$name je ${format(date)}', source: source);
@@ -243,14 +534,16 @@ class ChurchCalendar {
     if (isFoodQuestion(question)) return false;
     final q = normalizeForSearch(question);
     return RegExp(
-      r'\b(kad|kada|datum|kalendar\w*|praznik\w*|posti|posta|postu|post)\b',
+      r'\b(kad|kada|datum|kalendar\w*|praznik\w*|slav\w*|posti|posta|postu|post)\b',
     ).hasMatch(q);
   }
 
   static bool isFoodQuestion(String question) {
     final q = normalizeForSearch(question);
     return RegExp(
-      r'recept|jel[oa]|kuva|sprema|spremi|skuv|predlog|predloz|obrok|rucak|vecer|doruc|sastoj|naprav|sta ima od|pretrazi',
+      // `\bjel` so "jelo", "jela" and "jelovnik" match but "Aranđelovdan"
+      // (arandjelovdan) does not.
+      r'recept|\bjel[oa]|kuva|sprema|spremi|skuv|predlog|predloz|obrok|rucak|vecer|doruc|sastoj|naprav|sta ima od|pretrazi',
     ).hasMatch(q);
   }
 }
