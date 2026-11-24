@@ -43,6 +43,7 @@ See [documentation index](../docs/README.md) and [product plan](../docs/product-
 | [033-release-operations](033-release-operations/spec.md) | Dev 3 | Draft; resolve recorded questions before dependent implementation |
 | [034-linux-support](034-linux-support/spec.md) | Matija / Dev 3 | In progress: GTK runner, CI build and link registration on dev; device evidence pending |
 | [035-fasting-holidays](035-fasting-holidays/spec.md) | Dev 2 | Partly built (church calendar, Home card, questions, fasting plan); Home entry and RAG decided 2026-11-20, open questions Q1–Q7 |
+| [036-pwa-web](036-pwa-web/spec.md) | Dev 4 | Draft; web/PWA target for iOS and macOS without the Apple Developer Program |
 
 "Built on dev" means the code is merged into `dev` and was found in the source on
 2026-11-24. It is not acceptance: a spec is Done only with its tasks, tests, review
@@ -99,7 +100,7 @@ comparison and `store-price-import`). Semantic recipe search
 
 ## Number allocation and historical scope
 
-001–035 are allocated. Reserve the next number (currently 036)
+001–036 are allocated. Reserve the next number (currently 037)
 with a small registry PR before parallel creation; local auto-numbering cannot
 prevent collisions across four agents. Existing 001–007 evidence is preserved;
 010 has a dated overlay and its original checkmarks. Never rewrite history to
