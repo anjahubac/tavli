@@ -17,10 +17,11 @@ import {
   parseImageRequest,
 } from "./image.ts";
 import {
-  chains,
   type Env,
   type Kind,
   modelId,
+  orderedChain,
+  providerOrder,
   resolveModel,
 } from "./providers.ts";
 
@@ -240,12 +241,17 @@ export function gateway(dependencies: GatewayDependencies) {
         return failure(503, "gateway_unavailable");
       }
       if (request.method === "GET") {
-        return response(200, {
-          text: chains.text.filter((candidate) => resolveModel(candidate, env))
-            .map(modelId),
-          vision: chains.vision.filter((candidate) =>
+        const { ignored } = providerOrder(env);
+        if (ignored.length > 0) {
+          console.warn("ai_provider_order_ignored " + ignored.join(","));
+        }
+        const available = (kind: Kind) =>
+          orderedChain(kind, env).filter((candidate) =>
             resolveModel(candidate, env)
-          ).map(modelId),
+          ).map(modelId);
+        return response(200, {
+          text: available("text"),
+          vision: available("vision"),
         });
       }
 
@@ -266,7 +272,7 @@ export function gateway(dependencies: GatewayDependencies) {
       const input: Completion | undefined = parseCompletion(raw);
       if (!input) return failure(400, "bad_request");
 
-      const candidate = chains[input.kind].find((entry) =>
+      const candidate = orderedChain(input.kind, env).find((entry) =>
         modelId(entry) === input.model
       );
       if (!candidate) return failure(400, "bad_request");
@@ -280,7 +286,12 @@ export function gateway(dependencies: GatewayDependencies) {
       );
       if ("limit" in reservation) return quotaResponse(reservation, input.kind);
       try {
-        return await complete(input, selected, send);
+        const result = await complete(input, selected, send);
+        // Only the model id and status: no prompt, output, token or key.
+        console.info(
+          "ai_gateway_call model=" + input.model + " status=" + result.status,
+        );
+        return result;
       } finally {
         try {
           await release(reservation.id);

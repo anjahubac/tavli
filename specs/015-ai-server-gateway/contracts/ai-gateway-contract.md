@@ -231,6 +231,33 @@ remaining eligible models. Requests for an allowlisted
 model with missing credentials return `503 model_unavailable` before quota
 reservation.
 
+### Provider order (`AI_PROVIDER_ORDER`)
+
+The order of the built-in chains can be changed per project without a code
+change or app release, with the optional secret `AI_PROVIDER_ORDER`: a
+comma-separated list of provider names (`openai`, `gemini`, `groq`,
+`openrouter`), for example `openai,gemini,groq,openrouter`.
+
+- Unset or empty (or no known name in it): the chains above, unchanged. This
+  is the `tavli-dev` setting.
+- Set: models are grouped by provider in the listed order; each provider keeps
+  its own model order from the chains above. Providers that are not listed
+  follow in their default order, so a short list never removes a model. To
+  turn a provider off, remove its key instead.
+- Names are trimmed and case-insensitive; duplicates are ignored. Unknown
+  names are ignored and logged as `ai_provider_order_ignored <names>` on
+  `GET`, so a typo is visible in the function logs.
+- A provider without its key (or OpenAI without `AI_OPENAI_ENABLED=1` and
+  `OPENAI_MODEL`) is skipped, so the next provider in the list comes first.
+- The same order is used by `GET` (the list the app walks), by the `POST`
+  allowlist and by the server-side `cookbook-ask` text chain.
+
+Verification on a real project: the `GET` response lists the effective order,
+and every `POST` answer carries `model` and logs one line
+`ai_gateway_call model=<provider>/<model> status=<status>` (no prompt, output,
+token or key), visible in the dashboard under Edge Functions → `ai-gateway` →
+Logs.
+
 ### Deadlines
 
 Each allowlisted model has one timeout, the same value on both sides: the
@@ -326,6 +353,7 @@ print them.
 | `OPENAI_API_KEY` | OpenAI models (D3) | optional | optional, when enabling OpenAI |
 | `OPENAI_MODEL` | model behind `openai/default` (D3) | with the OpenAI key | with the OpenAI key |
 | `AI_OPENAI_ENABLED` | opts in to OpenAI when set to `1` | unset initially | unset initially |
+| `AI_PROVIDER_ORDER` | built-in provider order, comma-separated (see Provider order) | unset (default order) | `openai,gemini,groq,openrouter` |
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` come from the platform, as for
 `delete-account`. Rotation: replace the secret in the dashboard; no deploy or
