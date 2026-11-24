@@ -299,6 +299,9 @@ class ChurchCalendar {
   /// Movable slava: Lazareva subota (Vrbica), the Saturday before Cveti.
   static const _lazarusKeys = ['lazarev', 'vrbic', 'lazaric'];
 
+  /// Towns whose names start with a feast key.
+  static final _feastTowns = RegExp(r'\b(lazarev|arandjelov)(ac|cu|ca|cem)\b');
+
   /// Lazareva subota in [year].
   static DateTime _lazarus(int year) => _days(easter(year), -8);
 
@@ -306,7 +309,14 @@ class ChurchCalendar {
   /// no year: "Sveti Nikola (Nikoljdan) je 19. decembra." Only the movable
   /// Lazareva subota names a year; without an explicit one it is the next
   /// date from [today].
-  ({String text, String source})? _slavaAnswer(String q, String? explicitYear) {
+  ({String text, String source})? _slavaAnswer(
+    String question,
+    String? explicitYear,
+  ) {
+    // A birthday is not a slava, and a town named after a feast is not the
+    // feast ("pijaca u Lazarevcu", "vašar u Aranđelovcu").
+    if (question.contains('rodjendan')) return null;
+    final q = question.replaceAll(_feastTowns, ' ');
     if (_lazarusKeys.any(q.contains)) {
       var year = explicitYear == null ? today.year : int.parse(explicitYear);
       if (explicitYear == null && _lazarus(year).isBefore(today)) year++;
@@ -581,9 +591,7 @@ class ChurchCalendar {
 
     final asksDate =
         q.contains('kada') || q.contains('datum') || q.contains('kad ');
-    if ((asksDate || q.contains('slav')) &&
-        !q.contains('post') &&
-        !isFoodQuestion(q)) {
+    if (asksDate && !q.contains('post') && !isFoodQuestion(q)) {
       if (_slavaAnswer(q, explicit) case final answer?) return answer;
     }
 
@@ -638,17 +646,20 @@ class ChurchCalendar {
   static bool isCalendarQuestion(String question) {
     if (isFoodQuestion(question)) return false;
     final q = normalizeForSearch(question);
+    // "slava" alone is not a calendar question ("Šta se služi na slavi?"
+    // belongs to the cookbook); it is one when it asks which slava.
     return RegExp(
-      r'\b(kad|kada|datum|kalendar\w*|praznik\w*|slav\w*|posti|posta|postu|post)\b',
-    ).hasMatch(q);
+          r'\b(kad|kada|datum|kalendar\w*|praznik\w*|posti|posta|postu|post)\b',
+        ).hasMatch(q) ||
+        RegExp(r'\bkoj\w*\b.*\bslav').hasMatch(q);
   }
 
   static bool isFoodQuestion(String question) {
     final q = normalizeForSearch(question);
     return RegExp(
       // `\bjel` so "jelo", "jela" and "jelovnik" match but "Aranđelovdan"
-      // (arandjelovdan) does not.
-      r'recept|\bjel[oa]|kuva|sprema|spremi|skuv|predlog|predloz|obrok|rucak|vecer|doruc|sastoj|naprav|sta ima od|pretrazi',
+      // (arandjelovdan) does not; "predjelo" is listed on its own.
+      r'recept|\bjel[oa]|predjel|kuva|sprema|spremi|skuv|predlog|predloz|obrok|rucak|vecer|doruc|sastoj|naprav|sta ima od|pretrazi',
     ).hasMatch(q);
   }
 }

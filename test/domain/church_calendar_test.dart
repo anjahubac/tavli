@@ -101,6 +101,33 @@ void main() {
       expect(ChurchCalendar.isCalendarQuestion('Koja je naša slava?'), isTrue);
       expect(ask('Koja je naša slava?'), isNull);
     });
+
+    test('food questions about a slava go to the cookbook', () {
+      for (final q in [
+        'Koliko brašna za slavski kolač?',
+        'Šta se služi na slavi?',
+        'Kada se služi predjelo za slavu?',
+      ]) {
+        expect(ChurchCalendar.isCalendarQuestion(q), isFalse, reason: q);
+        expect(ask(q), isNull, reason: q);
+      }
+    });
+
+    test('a slava date is given only when a date is asked', () {
+      expect(ask('Šta se mesi za slavu Svetog Nikole?'), isNull);
+    });
+
+    test('a birthday is not a slava', () {
+      expect(ask('Kada Nikola slavi rođendan?'), isNull);
+      expect(ask('Kada Marina slavi rođendan?'), isNull);
+    });
+
+    test('a town named after a feast is not the feast', () {
+      expect(ask('Kada radi pijaca u Lazarevcu?'), isNull);
+      expect(ask('Kada je vašar u Aranđelovcu?'), isNull);
+      expect(ask('Kada je Lazareva subota?'), contains('24. aprila 2027.'));
+      expect(ask('Kada je Aranđelovdan?'), endsWith('je 21. novembra.'));
+    });
   });
 
   test('unknown holidays and unsupported years do not invent a date', () {
