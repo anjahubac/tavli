@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
+
+import '../data/socket_exception.dart';
 
 /// Greška pri slanju ili preuzimanju. [code] je kod greške (HTTP status ili
 /// Postgres kod), nikad sadržaj zapisa.

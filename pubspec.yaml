@@ -49,6 +49,10 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   drift: ^2.35.4
   drift_flutter: ^0.3.1
+  # Samo `package:sqlite3/common.dart` (SqliteException bez dart:ffi, radi i na webu).
+  sqlite3: ^3.9.1
+  # Samo za web (spec 036): IndexedDB za slike recepata; već u lock-u (Flutter ga koristi).
+  web: ^1.1.1
   path_provider: ^2.1.6
   image_picker: ^1.2.4
   file_selector: ^1.0.3

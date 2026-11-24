@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
@@ -206,6 +207,20 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      // Spec 036 (D2): u pregledaču nema sopstvenih ključeva.
+      return const SettingsPage(
+        title: 'AI ključevi',
+        backLabel: 'Profil',
+        fallbackLocation: '/profile',
+        children: [
+          TavliNotice(
+            title: 'Sopstveni ključevi rade samo u aplikaciji.',
+            message: 'U pregledaču Tavli koristi zajednički pristup.',
+          ),
+        ],
+      );
+    }
     final detected = detectProvider(_input.text);
     final hasText = _input.text.trim().isNotEmpty;
     final message = _message;
