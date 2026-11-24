@@ -89,14 +89,14 @@ function retryAfterSeconds(header: string | null): number | null {
 
 async function transcribe(
   deps: Deps,
-  audio: Uint8Array<ArrayBuffer>,
+  audio: Uint8Array,
   type: string,
   key: string,
 ): Promise<Response> {
   const form = new FormData();
   form.append(
     "file",
-    new Blob([audio], { type }),
+    new Blob([audio as BlobPart], { type }),
     `speech.${AUDIO_TYPES[type]}`,
   );
   form.append("model", deps.env("VOICE_MODEL")?.trim() || DEFAULT_MODEL);
