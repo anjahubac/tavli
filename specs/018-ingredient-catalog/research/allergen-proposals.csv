@@ -1,164 +1,156 @@
 candidate_name,category_hint,proposed_codes,confidence,rule,note,decision
-dunja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-nar,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-mandarina,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-grejpfrut,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-mango,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-ananas,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-kivi,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-višnja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-trešnja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-kupina,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-ribizla,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-sveža brusnica,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-sveža smokva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-sveža urma,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-dinja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-lubenica,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-nektarina,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-papaja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-marakuja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-kaki,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-guava,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-karambola,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-liči,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-kumkvat,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-kelj,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-prokelj,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-crveni kupus,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-kineski kupus,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-bela rotkva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-crna rotkva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-paškanat,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-koren peršuna,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-batat,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-čičoka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-bela repa,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-korabica,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-komorač,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-artičoka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-špargla,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-bamija,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-endivija,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-radič,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-matovilac,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-blitva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-potočarka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-list maslačka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-list korabice,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-list cvekle,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-cvet tikvice,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,
-teleći file,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-svinjski file,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-pileća krilca,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-pileća džigerica,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-juneća džigerica,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-ćureći file,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-goveđi rep,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-pačje meso,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-guščje meso,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-zečetina,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-meso prepelice,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-jareće meso,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-srnetina,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-meso divlje svinje,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-fazan,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-pileća srca,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,
-smuđ,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-šaran,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-som,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-orada,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-brancin,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-grdobina,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-bakalar,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-haringa,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-inćun,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-papalina,meso i riba,fish,auto,Annex II 4: fish and products thereof,,
-dagnja,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,
-ostriga,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,
-jakobova kapica,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,
-hobotnica,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,
-sipa,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,
-rečni rak,meso i riba,crustaceans,auto,Annex II 2: crustaceans and products thereof,,
-proso,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-raž,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-raženo brašno,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-speltino brašno,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-pirinčano brašno,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-ovseno brašno,suvi proizvodi,gluten,needs_review,Annex II 1: oats,"Oats are listed in Annex II 1; pure gluten-free oats are a labelling claim, not the default.",
-heljdino brašno,suvi proizvodi,,needs_review,none: buckwheat is not a cereal of Annex II 1,"Buckwheat is not in Annex II, but milled flour is often cross-contaminated; confirm none.",
-leblebijino brašno,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-bademovo brašno,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,
-ječmeno brašno,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-tapioka,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-kuskus,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-bulgur,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-amarant,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-mak,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-seme lana,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-seme bundeve,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-seme suncokreta,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-čija seme,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-makadamija,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,
-brazilski orah,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,
-pekan orah,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,
-pistać,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,
-indijski orah,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,
-zrno pšenice,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-integralni pirinač,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-divlji pirinač,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-crni pasulj,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-crveni pasulj,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-crno sočivo,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-žuti grašak,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-mungo pasulj,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,
-hranjivi kvasac,suvi proizvodi,,needs_review,"none: no Annex II ingredient, but processed",Processed product; sulphites or carriers possible depending on the product. Confirm.,
-ovčije mleko,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-kozje mleko,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-bivolje mleko,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-kefir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-rikota,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-maskarpone,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-ementaler,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-gorgonzola,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-gauda,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-čedar,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-edamer,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-feta,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-halumi,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-skir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-kozji sir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-ovčiji sir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-bivolji sir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-provolone,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-grujer,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-mančego,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,
-pačje jaje,mlečni proizvodi i jaja,eggs,auto,Annex II 3: eggs and products thereof,,
-prepeličje jaje,mlečni proizvodi i jaja,eggs,auto,Annex II 3: eggs and products thereof,,
-kardamom,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-anis,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-zvezdasti anis,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-karanfilić,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-vanila štapić,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-seme korijandera,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-list korijandera,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-žalfija,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-estragon,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-nana,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-šafran,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-piment,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-sumak,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-sušeni đumbir,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-beli biber,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-zeleni biber,začini i sosovi,,needs_review,"none: no Annex II ingredient, but processed",Processed product; sulphites or carriers possible depending on the product. Confirm.,
-čili pahuljice,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-seme slačice,začini i sosovi,mustard,auto,Annex II 10: mustard and products thereof,,
-javorov sirup,začini i sosovi,,needs_review,"none: no Annex II ingredient, but processed",Processed product; sulphites or carriers possible depending on the product. Confirm.,
-susamovo ulje,začini i sosovi,sesame,auto,Annex II 11: sesame seeds and products thereof,,
-laneno ulje,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-ulje od kikirikija,začini i sosovi,peanuts,needs_review,Annex II 5: peanuts and products thereof,"Refined peanut oil is not exempt, but confirm the intended product.",
-ulje avokada,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,
-pirinčano sirće,začini i sosovi,,needs_review,"none: no Annex II ingredient, but processed",Processed product; sulphites or carriers possible depending on the product. Confirm.,
-vinsko sirće,začini i sosovi,sulphites,needs_review,Annex II 12: sulphur dioxide and sulphites >10 mg/kg,Wine vinegar usually has sulphites above the threshold; confirm.,
-brašno t-400,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
-brašno t-500,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,
+dunja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+nar,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+mandarina,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+grejpfrut,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+mango,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+ananas,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+kivi,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+višnja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+trešnja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+kupina,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+ribizla,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+sveža brusnica,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+sveža smokva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+sveža urma,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+dinja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+lubenica,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+nektarina,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+papaja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+marakuja,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+kaki,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+guava,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+karambola,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+liči,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+kumkvat,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+kelj,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+prokelj,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+crveni kupus,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+kineski kupus,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+bela rotkva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+crna rotkva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+paškanat,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+koren peršuna,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+batat,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+čičoka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+bela repa,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+korabica,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+komorač,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+artičoka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+špargla,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+bamija,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+endivija,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+radič,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+matovilac,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+blitva,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+potočarka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+list maslačka,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+list korabice,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+list cvekle,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+cvet tikvice,voće i povrće,,auto,"none: raw single ingredient, no Annex II group",,approved
+teleći file,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+svinjski file,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+pileća krilca,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+pileća džigerica,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+juneća džigerica,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+ćureći file,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+goveđi rep,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+pačje meso,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+guščje meso,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+zečetina,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+meso prepelice,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+jareće meso,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+srnetina,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+meso divlje svinje,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+fazan,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+pileća srca,meso i riba,,auto,"none: raw single ingredient, no Annex II group",,approved
+smuđ,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+šaran,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+som,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+orada,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+brancin,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+grdobina,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+bakalar,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+haringa,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+inćun,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+papalina,meso i riba,fish,auto,Annex II 4: fish and products thereof,,approved
+dagnja,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,approved
+ostriga,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,approved
+jakobova kapica,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,approved
+hobotnica,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,approved
+sipa,meso i riba,molluscs,auto,Annex II 14: molluscs and products thereof,,approved
+rečni rak,meso i riba,crustaceans,auto,Annex II 2: crustaceans and products thereof,,approved
+proso,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+raž,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+raženo brašno,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+speltino brašno,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+pirinčano brašno,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+leblebijino brašno,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+bademovo brašno,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,approved
+ječmeno brašno,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+tapioka,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+kuskus,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+bulgur,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+amarant,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+mak,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+seme lana,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+seme bundeve,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+seme suncokreta,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+čija seme,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+makadamija,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,approved
+brazilski orah,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,approved
+pekan orah,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,approved
+pistać,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,approved
+indijski orah,suvi proizvodi,nuts,auto,"Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",,approved
+zrno pšenice,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+integralni pirinač,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+divlji pirinač,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+crni pasulj,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+crveni pasulj,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+crno sočivo,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+žuti grašak,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+mungo pasulj,suvi proizvodi,,auto,"none: raw single ingredient, no Annex II group",,approved
+ovčije mleko,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+kozje mleko,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+bivolje mleko,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+kefir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+rikota,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+maskarpone,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+ementaler,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+gorgonzola,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+gauda,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+čedar,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+edamer,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+feta,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+halumi,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+skir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+kozji sir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+ovčiji sir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+bivolji sir,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+provolone,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+grujer,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+mančego,mlečni proizvodi i jaja,milk,auto,Annex II 7: milk and products thereof,,approved
+pačje jaje,mlečni proizvodi i jaja,eggs,auto,Annex II 3: eggs and products thereof,,approved
+prepeličje jaje,mlečni proizvodi i jaja,eggs,auto,Annex II 3: eggs and products thereof,,approved
+kardamom,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+anis,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+zvezdasti anis,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+karanfilić,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+vanila štapić,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+seme korijandera,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+list korijandera,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+žalfija,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+estragon,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+nana,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+šafran,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+piment,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+sumak,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+sušeni đumbir,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+beli biber,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+čili pahuljice,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+seme slačice,začini i sosovi,mustard,auto,Annex II 10: mustard and products thereof,,approved
+susamovo ulje,začini i sosovi,sesame,auto,Annex II 11: sesame seeds and products thereof,,approved
+laneno ulje,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+ulje avokada,začini i sosovi,,auto,"none: raw single ingredient, no Annex II group",,approved
+brašno t-400,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
+brašno t-500,suvi proizvodi,gluten,auto,Annex II 1: cereals containing gluten,,approved
