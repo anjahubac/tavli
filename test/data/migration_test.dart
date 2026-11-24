@@ -705,7 +705,7 @@ void main() {
           SyncCursorsCompanion.insert(
             accountId: 'u1',
             entity: 'food_alias',
-            updatedAt: DateTime.utc(2026, 1, 1),
+            updatedAt: DateTime.utc(2026, 1, 2),
             lastId: 'a1',
           ),
         );
