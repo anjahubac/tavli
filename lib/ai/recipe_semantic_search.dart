@@ -64,7 +64,19 @@ class RecipeSemanticSearchService {
     queryVector ??= (await _client.embed([
       EmbeddingInput(text: query, taskType: EmbeddingTaskType.retrievalQuery),
     ])).single;
-    return searchSemantically(recipes, filter, queryVector, vectors);
+    final titleMatches = searchRecipes(candidates, filter);
+    final titleMatchIds = {for (final recipe in titleMatches) recipe.id};
+    final semanticMatches = searchSemantically(
+      candidates,
+      filter,
+      queryVector,
+      vectors,
+    );
+    return [
+      ...titleMatches,
+      for (final recipe in semanticMatches)
+        if (!titleMatchIds.contains(recipe.id)) recipe,
+    ];
   }
 
   List<List<Recipe>> _documentBatches(List<Recipe> recipes, int queryLength) {

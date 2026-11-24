@@ -1,3 +1,8 @@
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
+import 'ai_errors.dart';
 import 'gateway_chat_client.dart';
 
 /// Pinned model and vector size: every cached document vector must use the
@@ -38,6 +43,10 @@ class EmbeddingRequestException implements Exception {
   String toString() => 'EmbeddingRequestException: $message';
 }
 
+class EmbeddingConnectionException implements Exception {
+  const EmbeddingConnectionException();
+}
+
 /// Authenticated transport through the existing AI gateway; no provider key
 /// leaves Supabase and calls count against the gateway's text quota.
 class OpenAIEmbeddingClient {
@@ -63,9 +72,19 @@ class OpenAIEmbeddingClient {
             1) {
       throw const EmbeddingRequestException('Zahtev za pretragu je prevelik.');
     }
-    final result = await _gateway.embed([
-      for (final input in inputs) input.toJson(),
-    ]);
+    final Map<String, Object?> result;
+    try {
+      result = await _gateway.embed([
+        for (final input in inputs) input.toJson(),
+      ]);
+    } on SocketException {
+      throw const EmbeddingConnectionException();
+    } on http.ClientException {
+      throw const EmbeddingConnectionException();
+    } on TransientError catch (error) {
+      if (error.isTimeout) throw const EmbeddingConnectionException();
+      rethrow;
+    }
     if (result['model'] != recipeEmbeddingModel) {
       throw const EmbeddingRequestException('Nepoznat embedding model.');
     }

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
+import 'package:tavli/ai/ai_errors.dart';
 import 'package:tavli/ai/embedding_client.dart';
 import 'package:tavli/ai/gateway_chat_client.dart';
 
@@ -18,7 +22,36 @@ GatewayChatClient gatewayFor(
 );
 
 void main() {
+  const queryInput = EmbeddingInput(
+    text: 'query',
+    taskType: EmbeddingTaskType.retrievalQuery,
+  );
   group('OpenAIEmbeddingClient', () {
+    for (final error in [
+      http.ClientException('Connection failed'),
+      TimeoutException('No response'),
+    ]) {
+      test('classifies ${error.runtimeType} as a connection failure', () async {
+        final client = OpenAIEmbeddingClient(
+          gatewayFor((_) => throw error, []),
+        );
+        await expectLater(
+          client.embed([queryInput]),
+          throwsA(isA<EmbeddingConnectionException>()),
+        );
+      });
+    }
+
+    test('keeps authentication failures distinct', () async {
+      final client = OpenAIEmbeddingClient(
+        gatewayFor((_) => throw const GatewayAuthError(), []),
+      );
+      await expectLater(
+        client.embed([queryInput]),
+        throwsA(isA<GatewayAuthError>()),
+      );
+    });
+
     test(
       'sends document and query tasks through the authenticated gateway',
       () async {

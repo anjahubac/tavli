@@ -20,6 +20,73 @@ Recipe _recipe(String id, String title) => Recipe(
 
 void main() {
   test(
+    'combines title hits and semantic hits once, with shared filters',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final embeddings = RecipeEmbeddingRepository(db, 'household');
+      final titleMatch = _recipe(
+        'title',
+        'Šargarepa čorba',
+      ).copyWith(prepMinutes: 15);
+      final titleWithoutVector = _recipe(
+        'title-no-vector',
+        'Šargarepa iz rerne',
+      ).copyWith(prepMinutes: 25);
+      final semanticMatch = _recipe(
+        'semantic',
+        'Krem supa',
+      ).copyWith(prepMinutes: 20);
+      final filtered = _recipe(
+        'filtered',
+        'Šargarepa paprikaš',
+      ).copyWith(prepMinutes: 60);
+      final queryVector = List<double>.filled(recipeEmbeddingDimensions, 1);
+      await embeddings.save(titleMatch, [
+        1,
+        ...List<double>.filled(recipeEmbeddingDimensions - 1, 0),
+      ]);
+      await embeddings.save(
+        titleWithoutVector,
+        List<double>.filled(recipeEmbeddingDimensions, 0),
+      );
+      await embeddings.save(semanticMatch, queryVector);
+      final service = RecipeSemanticSearchService(
+        embeddings: embeddings,
+        client: OpenAIEmbeddingClient(
+          GatewayChatClient(
+            accountId: () => 'account',
+            refresh: () async => false,
+            invoke: (_, body) async {
+              expect(body!['inputs'], [
+                {'text': 'SARGAREPA', 'taskType': 'RETRIEVAL_QUERY'},
+              ]);
+              return FunctionResponse(
+                status: 200,
+                data: {
+                  'model': recipeEmbeddingModel,
+                  'embeddings': [queryVector],
+                },
+              );
+            },
+          ),
+        ),
+      );
+
+      final result = await service.search(
+        query: 'SARGAREPA',
+        recipes: [semanticMatch, titleMatch, titleWithoutVector, filtered],
+        filter: const RecipeFilter(query: 'SARGAREPA', maxPrepMinutes: 30),
+      );
+      expect(result.map((recipe) => recipe.id), [
+        'title',
+        'title-no-vector',
+        'semantic',
+      ]);
+    },
+  );
+
+  test(
     'batches changed recipe vectors, caches them, and embeds each query',
     () async {
       final db = AppDatabase(NativeDatabase.memory());

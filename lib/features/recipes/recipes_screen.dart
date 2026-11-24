@@ -125,6 +125,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   Object? _semanticError;
   bool _semanticLoading = false;
   bool _semanticSearch = false;
+  bool _showOfflineSearchNotice = false;
   int _semanticGeneration = 0;
 
   @override
@@ -196,6 +197,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
     if (accepted != true || !mounted) return;
     setState(() {
       _semanticSearch = true;
+      _showOfflineSearchNotice = false;
       _semanticResults = null;
       _semanticError = null;
     });
@@ -252,7 +254,14 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
       }
       setState(() {
         _semanticLoading = false;
-        _semanticError = error;
+        if (error is EmbeddingConnectionException) {
+          _semanticSearch = false;
+          _showOfflineSearchNotice = true;
+          _semanticResults = null;
+          _semanticError = null;
+        } else {
+          _semanticError = error;
+        }
       });
     }
   }
@@ -316,7 +325,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
         _queueSemanticSearch(ref.read(recipeSearchProvider));
       }
     });
-    final content = ref
+    final resultsContent = ref
         .watch(recipesProvider)
         .when(
           loading: () => const TavliLoading(),
@@ -399,6 +408,29 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
             return _RecipeGrid(recipes);
           },
         );
+
+    final content = _showOfflineSearchNotice
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                liveRegion: true,
+                child: const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    TavliSpacing.large,
+                    0,
+                    TavliSpacing.large,
+                    TavliSpacing.small,
+                  ),
+                  child: TavliNotice(
+                    message: 'Veza sa AI pretragom nije dostupna. Pretražujemo po nazivu.',
+                  ),
+                ),
+              ),
+              Expanded(child: resultsContent),
+            ],
+          )
+        : resultsContent;
 
     if (!widget.header) {
       final hasRecipes = ref.watch(recipesProvider).value?.isNotEmpty ?? false;
