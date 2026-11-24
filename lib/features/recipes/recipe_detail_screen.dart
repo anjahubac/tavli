@@ -9,6 +9,7 @@ import 'add_to_plan_sheet.dart';
 import 'ingredient_review_sheet.dart';
 import 'keep_screen_on.dart';
 import 'recipe_labels_sheet.dart';
+import 'recipe_nutrition_line.dart';
 import 'recipe_providers.dart';
 import 'recipe_rating_section.dart';
 import 'recipe_view.dart';
@@ -150,6 +151,7 @@ class _Detail extends ConsumerWidget {
             const SizedBox(height: TavliSpacing.medium),
             RecipeRatingSection(recipeId: recipe.id),
             const SizedBox(height: TavliSpacing.large),
+            RecipeNutritionLine(recipe: recipe),
             RecipeView(
               recipe,
               onEditLabels: () => _editLabels(context, ref),

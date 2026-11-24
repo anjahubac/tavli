@@ -3,7 +3,9 @@ import 'package:drift/drift.dart';
 import '../domain/allergen_group.dart';
 import '../domain/food_matcher.dart';
 import '../domain/food_nutrition.dart';
+import '../domain/recipe.dart';
 import '../domain/recipe_allergens.dart';
+import '../domain/recipe_nutrition.dart';
 import '../sync/catalog_status.dart';
 import 'database.dart';
 
@@ -159,6 +161,30 @@ class FoodCatalogReader {
       baseUnit: baseUnit,
       nutrition: _nutrition(row),
       allergens: parseAllergens(row),
+    );
+  }
+
+  /// Calories and macros per portion from the recipe's catalog links, or
+  /// null when nothing can be calculated. Only foods visible under [status]
+  /// count; stale links and missing values stay uncovered (never zero).
+  Future<NutritionPerPortion?> nutritionForRecipe(
+    FoodLookupScope scope, {
+    required List<Ingredient> ingredients,
+    required int servings,
+    required CatalogStatus status,
+  }) async {
+    final foodsById = <String, FoodIdentity>{};
+    for (final id in {
+      for (final ingredient in ingredients) ?ingredient.link?.foodId,
+    }) {
+      final food = await visibleFoodById(scope, id, status: status);
+      if (food != null) foodsById[id] = food;
+    }
+    if (foodsById.isEmpty) return null;
+    return recipeNutritionPerPortion(
+      ingredients: ingredients,
+      servings: servings,
+      foodsById: foodsById,
     );
   }
 
