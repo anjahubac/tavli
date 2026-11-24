@@ -155,11 +155,12 @@ The server migration is additive: nullable `food_id`, a foreign key to `foods`,
 and a validation trigger/policy for active shared or same-household foods. It
 must preserve existing RLS behavior and not cascade-delete shopping rows. Add
 two-household SQL tests for valid shared/same-household links and a denied
-cross-household link. The trigger validates only on `INSERT` or when
-`food_id` changes. It must allow ordinary edits (such as checking off a row)
-that already references a food which was later withdrawn; otherwise a valid
-queued shopping row becomes permanently unwritable after withdrawal. Add a SQL
-case proving that update passes while setting a withdrawn food ID is denied.
+cross-household link. Validate a new shopping row's food ID and any change to
+an existing row's food ID. Allow ordinary edits (such as checking off a row)
+that keep the same food ID after the food is withdrawn. This also applies to
+the sync upsert's conflict path, where a `BEFORE INSERT` trigger runs before
+the update can be applied. Cover both the allowed edit and the rejection of a
+new link to a withdrawn food. [PostgreSQL trigger behavior](https://www.postgresql.org/docs/17/trigger-definition.html)
 
 Old clients do not know `food_id`. The current sync path batches rows through
 `SupabaseSyncRemote` and calls the locked `postgrest` 2.9.1 `.upsert` with
@@ -168,10 +169,10 @@ The [Supabase Dart upsert reference](https://supabase.com/docs/reference/dart/up
 says missing-field defaults apply on insert, not when merging with an existing
 row. That is evidence that an old client's payload omitting `food_id` should
 preserve an existing link on conflict and insert a new legacy row as unlinked.
-Add a compatibility regression case against the actual sync/PostgREST path
-before rollout; if that check disagrees, gate the feature or document downgrade
-to unlinked text. Allocate the local schema version after preceding migrations
-have merged.
+Run the upsert compatibility cases in fixtures 5 and 10 through
+`SupabaseSyncRemote` against local PostgREST before rollout. If the old-client
+check disagrees, gate the feature or document downgrade to unlinked text.
+Allocate the local schema version after preceding migrations have merged.
 
 ## Acceptance fixtures
 
@@ -203,6 +204,10 @@ to regular regression tests with the implementation.
    behaviors above; no unsupported conversion is guessed.
 9. Empty catalog, cached offline selection, catalog read failure, retry and
    cancellation do not create an unintended linked item.
+10. Link a row while the food is active, withdraw the food, and check off the
+    already linked row through the existing sync upsert with the same
+    `food_id`. The server stores the bought state, retains the link, and the
+    client acknowledges the outbox entry.
 
 ## Decisions for review
 
