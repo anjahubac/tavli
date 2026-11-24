@@ -199,7 +199,7 @@ provider keys stay on the device and this task uses gateway credentials.
 
 The gateway has an ordered allowlist of `<provider>/<model>` IDs for each kind.
 It preserves the existing provider order with Groq
-[`qwen/qwen3.6-27b`](https://console.groq.com/docs/model/qwen/qwen3.6-27b)
+`qwen/qwen3.8-27b` (`qwen/qwen3.6-27b` is no longer served by Groq)
 in place of the
 [retired Maverick model](https://console.groq.com/docs/deprecations)
 in the vision chain. Attempt deadlines are 30 s by default and 60 s for
