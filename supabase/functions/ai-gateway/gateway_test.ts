@@ -172,8 +172,37 @@ Deno.test("a provider error returns only a typed error and releases the reservat
   equal(released, ["fake-reservation"]);
 });
 
+const recipe = {
+  title: "Sarma",
+  servings: 6,
+  ingredients: [{ name: "kiseli kupus", quantity: 1, unit: "glavica" }],
+  steps: ["Umotati sarme."],
+};
+
+function modelAnswer(content: unknown) {
+  return () =>
+    Response.json({
+      choices: [{
+        message: {
+          content: typeof content === "string"
+            ? content
+            : JSON.stringify(content),
+        },
+      }],
+    });
+}
+
+function photoRequest() {
+  return post({
+    ...typedRequest,
+    task: "recipe_from_image",
+    model: imageModel,
+    images: [png],
+  });
+}
+
 Deno.test("accepts image input and sends it to the allowlisted Groq vision model", async () => {
-  const { handle, calls, reserved } = setup();
+  const { handle, calls, reserved } = setup({ upstream: modelAnswer(recipe) });
   const result = await handle(post({
     ...typedRequest,
     task: "recipe_from_image",
@@ -422,4 +451,51 @@ Deno.test("recipe indexing records consent as the caller without contacting the 
   equal(recorded, [["test-session", otherId], ["test-session", householdId]]);
   equal(reserved, []);
   equal(calls, []);
+});
+
+Deno.test("a photo import returns a valid recipe, a fenced one and not_a_recipe unchanged", async () => {
+  for (
+    const answer of [
+      recipe,
+      "```json\n" + JSON.stringify(recipe) + "\n```",
+      { error: "not_a_recipe" },
+      { ...recipe, steps: null },
+    ]
+  ) {
+    const { handle } = setup({ upstream: modelAnswer(answer) });
+    const result = await handle(photoRequest());
+    equal(result.status, 200);
+  }
+});
+
+Deno.test("a photo import that is not a valid recipe becomes invalid_model_output and releases quota", async () => {
+  const bad: unknown[] = [
+    "not json at all",
+    "[]",
+    {},
+    { ...recipe, title: "   " },
+    { ...recipe, servings: 0 },
+    { ...recipe, servings: 2.5 },
+    { ...recipe, servings: "4" },
+    { ...recipe, ingredients: "kupus" },
+    { ...recipe, ingredients: [] },
+    { ...recipe, ingredients: [{ quantity: 1 }] },
+    { ...recipe, ingredients: ["kupus"] },
+    { ...recipe, steps: "Umotati." },
+    { ...recipe, steps: [1, 2] },
+    { error: "something_else" },
+  ];
+  for (const answer of bad) {
+    const { handle, released } = setup({ upstream: modelAnswer(answer) });
+    const result = await handle(photoRequest());
+    equal(result.status, 502);
+    equal(await result.json(), { error: "invalid_model_output" });
+    equal(released, ["fake-reservation"]);
+  }
+});
+
+Deno.test("the recipe output check applies only to the photo import", async () => {
+  const { handle } = setup({ upstream: modelAnswer("{}") });
+  const result = await handle(post());
+  equal(result.status, 200);
 });

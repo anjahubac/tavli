@@ -25,6 +25,7 @@ import {
   resolveModel,
 } from "./providers.ts";
 
+import { validRecipeOutput } from "./recipe_output.ts";
 import {
   embedRecipeVectors,
   parseRecipeSearch,
@@ -194,6 +195,11 @@ async function complete(
     const content = record(first?.message)?.content;
     if (typeof content !== "string" || !content.trim()) {
       return failure(502, "provider_error");
+    }
+    // CAP-02: the server checks the structured output of a photo import, so
+    // an answer that is not a recipe never leaves as a successful call.
+    if (input.task === "recipe_from_image" && !validRecipeOutput(content)) {
+      return failure(502, "invalid_model_output");
     }
     return response(200, { content, model: input.model });
   } catch {
