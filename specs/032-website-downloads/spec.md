@@ -43,7 +43,7 @@ Static public release information only. Never expose keys, accounts or personal 
 
 “Preuzmi”, “Uskoro”, “Android”, “iOS”, “macOS”, “Windows”, “Linux”.
 Download page (`site/preuzmi/`): “Preuzmi Tavli”, “Recepti, plan obroka i lista za kupovinu.”,
-“Preuzmi za Android”, “Preuzmi za Windows”, “Preuzmi za Linux”, “iOS i macOS”,
+“Preuzmi za Android”, “Preuzmi za iOS (IPA)”, “Preuzmi za Windows”, “Preuzmi za Linux”,
 “Sve verzije i SHA-256 provera fajlova” and the per-platform install hints in that file.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
@@ -66,7 +66,12 @@ Producer specs: [028](../028-windows-support/spec.md)
   production Supabase URL and anon key from repository secrets. The Android APK
   stays debug-signed until a release keystore is provided, so a later APK signed
   with a different key cannot update an installed one in place.
-- Store listings (Play, App Store) and iOS/macOS downloads stay “Uskoro”.
+- **2026-11-24, Dev 1**: until the team has an Apple Developer account, iOS is
+  an unsigned `tavli-ios.ipa` that the user re-signs with their own Apple ID
+  (AltStore, Sideloadly; with a free Apple ID it runs for 7 days). The page says
+  so and shows no iOS QR, because the IPA cannot be installed from the phone's
+  browser. TestFlight replaces it once the account exists.
+- Store listings (Play, App Store) and the macOS download stay “Uskoro”.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

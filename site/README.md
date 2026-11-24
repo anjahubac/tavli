@@ -9,8 +9,8 @@ third-party requests (fonts and the Tavli badge are local files).
   `error`/`error_code`) from the URL, removes it from the address bar and offers
   "Otvori Tavli" → `tavli://auth-callback?code=…`. Layout follows the design
   canvas boards `WebUspesnaRegistracija` and `WebUspesnaRegistracijaSiroko`.
-- `preuzmi/` — "Preuzmi Tavli": download buttons for Android, Windows and Linux
-  and "Uskoro" for iOS and macOS. Every button points at
+- `preuzmi/` — "Preuzmi Tavli": download buttons for Android, iOS (unsigned IPA
+  for sideloading), Windows and Linux, and "Uskoro" for macOS. Every button points at
   `https://github.com/anjahubac/tavli/releases/latest/download/<file>`; the files
   are built and attached by `.github/workflows/release.yml` when a `v*` tag is
   pushed. The Android QR code (and `qr-stranica.svg`, the page's own address for
