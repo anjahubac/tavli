@@ -708,6 +708,7 @@ class FakeSyncRemote implements SyncRemote {
   final FakeServer server;
   final FakeAuth auth;
   Future<void> Function()? beforeUpsert;
+  SyncError? recipeReadFailure;
 
   String get _uid => auth.current?.userId ?? '';
 
@@ -795,6 +796,21 @@ class FakeSyncRemote implements SyncRemote {
           'rating_count': entry.value.$2,
         },
     ];
+  }
+
+  @override
+  Future<Map<String, Object?>?> fetchRecipe(
+    String id,
+    String householdId,
+  ) async {
+    _checkSession();
+    server._check();
+    server.calls.add('fetch:recipe');
+    if (recipeReadFailure case final failure?) throw failure;
+    if (server.households[_uid] != householdId) return null;
+    final row = server.table('recipes')[id];
+    if (row == null || row['household_id'] != householdId) return null;
+    return jsonDecode(jsonEncode(row)) as Map<String, Object?>;
   }
 
   @override
