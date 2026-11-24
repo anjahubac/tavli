@@ -59,15 +59,32 @@ const _meat = [
   'plećk',
 ];
 
+/// Sme samo lokalni gateway (spec 013, FR-009): `apikey` i JWT se nikad ne
+/// šalju na hosted adresu, pa se adresa proverava pre prvog zahteva.
+Uri _localGatewayUri() {
+  final uri = Uri.tryParse(_url);
+  const loopback = {'127.0.0.1', 'localhost', '[::1]', '::1'};
+  if (uri == null ||
+      uri.scheme != 'http' ||
+      !loopback.contains(uri.host.toLowerCase())) {
+    throw StateError(
+      'EVAL_GATEWAY_URL mora biti lokalni http gateway (127.0.0.1, '
+      'localhost ili ::1); hosted adresa se odbija pre slanja.',
+    );
+  }
+  return uri;
+}
+
 Future<FunctionResponse> _invoke(
   HttpMethod method,
   Map<String, Object?>? body,
 ) async {
+  final target = _localGatewayUri();
   final client = HttpClient();
   try {
     final request = await client.openUrl(
       method == HttpMethod.get ? 'GET' : 'POST',
-      Uri.parse(_url),
+      target,
     );
     request.headers
       ..set('apikey', _anon)
@@ -114,6 +131,7 @@ void main() {
   test(
     'live EV cases through the gateway',
     () async {
+      _localGatewayUri();
       HttpOverrides.global = null;
       final gateway = GatewayChatClient(
         invoke: _invoke,
@@ -182,10 +200,12 @@ void main() {
         ],
       );
       await run('EV-02', () => ai.fromDishName('goveđi paprikaš'), (r) {
+        // `cases.jsonl`: najmanje 70% sastojaka iz EV-01 mora ostati u EV-02,
+        // pa je imenilac EV-01 (isti smer kao kod EV-06).
         final share = ev01 == null
             ? 0.0
-            : _overlap(r.ingredients, ev01.ingredients);
-        return [if (share < 0.7) 'overlap=${(share * 100).round()}%'];
+            : _overlap(ev01.ingredients, r.ingredients);
+        return [if (share < 0.7) 'kept=${(share * 100).round()}%'];
       });
       await run(
         'EV-03',
@@ -250,11 +270,14 @@ void main() {
           for (final l in lines) jsonEncode(l),
         ].join('\n'),
       );
+      final failed = [
+        for (final l in lines)
+          if (l['pass'] != true) l['case'],
+      ];
       // ignore: avoid_print, ručni ispis rezultata ove evaluacije
-      print(
-        'GATEWAY_EV ${lines.where((l) => l['pass'] == true).length}/'
-        '${lines.length} pass',
-      );
+      print('GATEWAY_EV ${lines.length - failed.length}/${lines.length} pass');
+      // Trag je već sačuvan; test pada ako neki slučaj nije prošao.
+      expect(failed, isEmpty, reason: 'EV slučajevi koji nisu prošli');
     },
     skip: _url.isEmpty ? 'ručno: traži EVAL_GATEWAY_URL i prijavu' : null,
     timeout: const Timeout(Duration(minutes: 30)),
