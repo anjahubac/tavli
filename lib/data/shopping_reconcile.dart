@@ -44,11 +44,14 @@ mixin _ShoppingReconcile on _ShoppingBase {
         for (final c in contributions.values)
           if (c.sourceId == s.id) (c.ingredientKey, c.unitGroup): c,
       };
-      for (final line in await _demand(
+      final lines = await _demand(
         s,
         entries,
         catalogStatus: catalogStatus,
-      )) {
+        hasContributions: existing.isNotEmpty,
+      );
+      if (lines == null) continue;
+      for (final line in lines) {
         final key = (line.key.ingredient, line.key.unitGroup);
         final prev = existing.remove(key);
         final notes = jsonEncode(line.notes);

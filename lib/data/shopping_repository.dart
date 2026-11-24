@@ -13,6 +13,7 @@ import '../domain/shopping_source.dart';
 import '../domain/shopping_sync.dart';
 import '../domain/supply_allocation.dart';
 import '../sync/catalog_status.dart';
+import '../sync/recipe_link_rollout.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
 import 'food_catalog_reader.dart';
@@ -45,6 +46,7 @@ String weekListId(String planId, CivilDate start) => sha256
 abstract class _ShoppingBase {
   AppDatabase get _db;
   FoodCatalogReader get _catalogReader;
+  RecipeLinkRollout get _recipeLinkRollout;
   AccountScope get _scope;
   SyncedWriter get _writer;
   DateTime Function() get _clock;
@@ -60,10 +62,11 @@ abstract class _ShoppingBase {
     List<ShoppingSourceRow> sources,
     Map<String, ShoppingContributionRow> contributions,
   );
-  Future<List<DemandLine>> _demand(
+  Future<List<DemandLine>?> _demand(
     ShoppingSourceRow s,
     Map<String, MealPlanEntryRow> entries, {
     required CatalogStatus catalogStatus,
+    required bool hasContributions,
   });
 }
 
@@ -75,6 +78,7 @@ class ShoppingRepository extends _ShoppingBase
     required this._scope,
     required this._writer,
     FoodCatalogReader? catalogReader,
+    this._recipeLinkRollout = recipeLinkRollout,
     DateTime Function()? clock,
   }) : _catalogReader = catalogReader ?? FoodCatalogReader(_db),
        _clock = clock ?? DateTime.now;
@@ -87,6 +91,8 @@ class ShoppingRepository extends _ShoppingBase
   final SyncedWriter _writer;
   @override
   final FoodCatalogReader _catalogReader;
+  @override
+  final RecipeLinkRollout _recipeLinkRollout;
   @override
   final DateTime Function() _clock;
 

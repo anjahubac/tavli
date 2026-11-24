@@ -8,6 +8,7 @@ import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/shopping_source.dart';
 import 'package:tavli/domain/shopping_sync.dart';
 import 'package:tavli/sync/catalog_status.dart';
+import 'package:tavli/sync/recipe_link_rollout.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
 const _scope = AccountScope(userId: 'user-1', householdId: 'home-1');
@@ -17,12 +18,20 @@ void main() {
   late AppDatabase db;
   late ShoppingRepository repository;
 
+  ShoppingRepository build(RecipeLinkRollout rollout) => ShoppingRepository(
+    db,
+    scope: _scope,
+    writer: SyncedWriter(db, accountId: _scope.userId),
+    recipeLinkRollout: rollout,
+  );
+
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
-    repository = ShoppingRepository(
-      db,
-      scope: _scope,
-      writer: SyncedWriter(db, accountId: _scope.userId),
+    repository = build(
+      const RecipeLinkRollout(
+        allDevicesAtCompatibleBuild: true,
+        oldOutboxesDrained: true,
+      ),
     );
   });
 
@@ -175,6 +184,67 @@ void main() {
         (c) => c.ingredientKey != ingredientKey('Maslac'),
       ),
       isTrue,
+    );
+  });
+
+  RecipeSnapshot butterRecipe() => RecipeSnapshot(
+    title: 'Test',
+    baseServings: 2,
+    ingredients: [
+      linked('maslac domaći', 100, 'shared'),
+      linked('putar', 150, 'shared'),
+    ],
+  );
+
+  Future<void> setStatus(CatalogStatus status) =>
+      (db.update(db.accounts)..where((t) => t.userId.equals(_scope.userId)))
+          .write(AccountsCompanion(catalogStatus: Value(status.name)));
+
+  test('a catalog status change keeps linked demand under one key', () async {
+    await catalogStatus(CatalogStatus.available);
+    await food('shared');
+    await repository.addRecipePreparation(
+      snapshot: butterRecipe(),
+      servings: 2,
+      originKey: 'stable-key',
+    );
+    final before = await db.select(db.shoppingContributions).get();
+    final itemsBefore = await db.select(db.shoppingItems).get();
+    expect(itemsBefore.single.name, 'Maslac');
+
+    await setStatus(CatalogStatus.failed);
+    await repository.reconcileSupply();
+    await setStatus(CatalogStatus.notOnServer);
+    await repository.reconcileSupply();
+
+    final after = await db.select(db.shoppingContributions).get();
+    expect(
+      {for (final c in after) c.id: c.ingredientKey},
+      {for (final c in before) c.id: c.ingredientKey},
+    );
+    final itemsAfter = await db.select(db.shoppingItems).get();
+    expect(
+      [for (final i in itemsAfter) i.id],
+      [for (final i in itemsBefore) i.id],
+    );
+    expect(itemsAfter.single.name, 'Maslac');
+    expect(itemsAfter.single.quantity, 250);
+  });
+
+  test('links are ignored while the rollout guard is closed', () async {
+    repository = build(const RecipeLinkRollout());
+    await catalogStatus(CatalogStatus.available);
+    await food('shared');
+    await repository.addRecipePreparation(
+      snapshot: butterRecipe(),
+      servings: 2,
+      originKey: 'closed-rollout',
+    );
+
+    final items = await db.select(db.shoppingItems).get();
+    expect(
+      items.map((i) => i.name),
+      unorderedEquals(['maslac domaći', 'putar']),
     );
   });
 }

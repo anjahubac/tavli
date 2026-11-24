@@ -273,11 +273,17 @@ mixin _ShoppingSources on _ShoppingBase {
 
   /// Potrebe izvora iz odobrenog recepta i porcija; prazno kad recept nije
   /// čitljiv.
+  ///
+  /// Vraća `null` kad se postojeći doprinosi izvora moraju ostaviti kakvi
+  /// jesu: katalog trenutno nije čitljiv, a izvor ima verodostojne veze. Ključ
+  /// se tada ne vraća na tekst, pa privremena greška ne cepa „Maslac“ na
+  /// „maslac domaći“ i „putar“ niti gubi stanje kupljeno/izmenjeno.
   @override
-  Future<List<DemandLine>> _demand(
+  Future<List<DemandLine>?> _demand(
     ShoppingSourceRow s,
     Map<String, MealPlanEntryRow> entries, {
     required CatalogStatus catalogStatus,
+    required bool hasContributions,
   }) async {
     final entry = entries[s.planEntryId];
     final json = s.planEntryId == null
@@ -300,7 +306,18 @@ mixin _ShoppingSources on _ShoppingBase {
           link.foodId,
     };
     final visibleFoods = <String, FoodIdentity>{};
-    for (final foodId in validLinks) {
+    // Dok pravilo uvođenja nije otvoreno, stariji klijenti ključaju po tekstu;
+    // isti domaćinstvo ne sme da dobije drugačije ključeve.
+    final readable =
+        catalogStatus == CatalogStatus.available ||
+        catalogStatus == CatalogStatus.accessDenied;
+    if (_recipeLinkRollout.enabled &&
+        validLinks.isNotEmpty &&
+        hasContributions &&
+        !readable) {
+      return null;
+    }
+    for (final foodId in _recipeLinkRollout.enabled ? validLinks : <String>{}) {
       final food = await _catalogReader.visibleFoodById(
         FoodLookupScope(householdId: _scope.householdId),
         foodId,
