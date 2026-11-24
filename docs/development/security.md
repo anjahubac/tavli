@@ -40,10 +40,24 @@ since 2026-11-24: the client no longer reads or carries them. This is source
 evidence only. Key-free artifact proof and rotation of keys from older builds stay
 open under FR-002 of [012](../../specs/012-security-baseline/spec.md).
 
+SEC-02 (synced photo paths reaching file operations) and SEC-03 (provider
+response bodies in error messages) are removed from the table since 2026-11-24
+(PRs #173 and #174). Source evidence only; no dynamic exploit test was run.
+
+- SEC-02: `lib/data/recipe_photo_store.dart` accepts only
+  `recipe_photos/<name>` (`isSafeRecipePhotoPath`); `PhotoSync.fetchMissing`
+  skips other names. Negative tests: `test/data/recipe_photo_store_test.dart`
+  (traversal, absolute and backslash paths, hidden names) and
+  `test/sync/photo_sync_test.dart`.
+- SEC-03: `mapDioException` in `lib/ai/chat_client.dart` reads the body only to
+  classify the error; the message carries `HTTP <status>`. Negative test:
+  `test/ai/chat_client_test.dart` (sentinel never reaches `message` or
+  `toString()`). The gateway client (`lib/ai/gateway_chat_client.dart`) already
+  uses fixed Serbian texts. Raw provider bodies may still appear in a debug
+  build's own network logging, which is outside this control.
+
 | ID | Source evidence | Assessment / next step | Priority |
 | --- | --- | --- | --- |
-| SEC-02 | `lib/data/recipe_photo_store.dart`: _resolve; `lib/sync/entities.dart`: photoLocalPath; `lib/sync/photo_sync.dart` | Relative names from synced records/snapshots reach filesystem operations without a containment check in this boundary. Add allowlisted leaf names and normalized root containment for read/write/delete, including traversal/symlink cases. Exploit impact has not been dynamically tested. | High |
-| SEC-03 | `lib/ai/chat_client.dart`: mapDioError; `lib/ai/ai_router.dart`; `lib/features/settings/ai_error_text.dart` | Provider body snippets enter error/attempt strings; BadRequest and fallback UI interpolate raw messages/errors. Replace with stable safe categories and regression fixtures containing synthetic sensitive values. | High |
 | SEC-04 | `lib/account/session_store.dart`: auth_session; `lib/ai/key_store.dart`: api_keys; `lib/data/database.dart`: driftDatabase(name: 'tavli') | Environment-independent storage names and no configured application-level DB encryption here. Validate project/account isolation, OS backup/file protection and retention before adding sensitive diary data. Do not erase retained caches at ordinary sign-out. | Medium; gate for sensitive data |
 | SEC-05 | `supabase/config.toml`: local OTP length 6/expiry 600, confirmation and rate limits | Local settings exist; hosted OTP, redirects, SMTP limits, recovery and abuse controls are unverified. Verify each environment without exposing values. A resend button timer is not a security limit. | Pre-release verification |
 | SEC-06 | `supabase/migrations/*rls*`, private helpers, storage migration; `supabase/tests/` | RLS, explicit grants, hardened helper search paths and two-account tests exist. Private photo bucket limits JPEG to 5 MiB. Preserve and expand tests for forged ownership, parent IDs, RPC execute, tombstones and membership transitions. | Existing foundation + regression gate |
@@ -104,6 +118,32 @@ content rather than trusting extensions/MIME declarations. Strip unneeded image
 metadata during re-encoding. Canonicalize file paths, reject separators/traversal
 and keep all file operations under the approved root. Imported nutritionist
 originals are not retained; temporary server/provider retention must be explicit.
+
+### Gateway evidence (source and fake-provider tests)
+
+What the `ai-gateway` function does today, with the test that shows it. These
+run with fakes (`deno test supabase/functions/ai-gateway`); none of them is a
+hosted or live-provider proof.
+
+| Control | Test (`supabase/functions/ai-gateway/gateway_test.ts` unless noted) |
+| --- | --- |
+| Only the verified user is used; one provider attempt is reserved and released | `uses only the verified user and reserves and releases one provider attempt` |
+| Unauthorized, forged, invalid and oversized input (401, 400, 413) is rejected before quota or provider work | `rejects unauthorized, forged, invalid and oversized input before quota or provider work` |
+| Daily and concurrency limits return 429 and skip the provider | `daily and concurrency denials have typed errors and skip the provider` |
+| A provider error returns only a typed error and releases the reservation | `a provider error returns only a typed error and releases the reservation` |
+| Only configured, allowlisted models are listed and used | `lists only configured models and places opted-in OpenAI first for both kinds` |
+| Kill switch (`AI_GATEWAY_DISABLED`) skips quota and provider (503) | `the gateway kill switch skips both quota and provider` |
+| Logs carry only the model id and status | `each answered call logs only the model id and status` |
+| Images are checked by content and pixel count, and decode without `Uint8Array.fromBase64` | `accepts image input and sends it to the allowlisted Groq vision model`; `base64_test.ts`; `input_test.ts` |
+| Household consent is checked before any recipe text reaches a provider | `search without household consent never reaches the provider` |
+| Database side: reservation limits and two-account isolation | `supabase/tests/13_ai_reservation_test.sql`, `supabase/tests/03_isolation_test.sql` |
+
+Known limits: the client still sends `system` and `prompt`, so a signed-in user
+can spend their quota on any prompt (the rule above about arbitrary system
+prompts is not yet met); server-side output validation covers structure only
+(PR #177, open, adds it for `recipe_from_image`); hosted rulesets, OTP
+settings and a CI gate before deploy (SEC-05, SEC-08) are unverified, and
+database encryption (SEC-04) is not configured.
 
 ## Device data and privacy
 
