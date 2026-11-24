@@ -21,6 +21,18 @@ abstract interface class KeySource {
 1. own key from `KeyStore` if non-empty → `KeyOrigin.user`
 2. built-in key if non-empty → `KeyOrigin.builtIn`
 
+Note (2026-11-23): own keys may be free or paid, for any service in the
+service list of spec 004. Own keys are always before the built-in key.
+`AIRouter` gets an `OwnKeyOrder { paidFirst, freeFirst }` (default
+`paidFirst`, stored on the device). The router stable-sorts the direct model
+chain by the cost class of each model's service according to it; the order
+inside a class and the order of keys of one service do not change. The gateway
+pass stays last.
+
+`BuiltInKeys` and layer 2 are removed: `OwnKeySource(KeyStore own)` returns own
+keys only. `KeyOrigin.builtIn` now marks the gateway credential, which has no
+key value on the device.
+
 Guarantees: no empty values; at most one credential per origin; never throws
 for a missing key.
 

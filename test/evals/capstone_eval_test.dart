@@ -66,9 +66,8 @@ void main() {
     final router = AIRouter(
       config: () => chain,
       client: client,
-      keys: LayeredKeySource(
+      keys: OwnKeySource(
         InMemoryKeyStore({AIProvider.gemini: 'g', AIProvider.groq: 'q'}),
-        const BuiltInKeys(),
       ),
       status: InMemoryModelStatusStore(),
       clock: () => DateTime.utc(2026, 11, 21, 12),

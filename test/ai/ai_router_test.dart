@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase/supabase.dart';
 import 'package:tavli/ai/ai_errors.dart';
 import 'package:tavli/ai/ai_models.dart';
 import 'package:tavli/ai/ai_router.dart';
 import 'package:tavli/ai/chain_config.dart';
 import 'package:tavli/ai/chat_client.dart';
+import 'package:tavli/ai/gateway_chat_client.dart';
 import 'package:tavli/ai/key_store.dart';
 import 'package:tavli/ai/model_status_store.dart';
 import 'package:tavli/ai/repair_prompt.dart';
@@ -39,6 +42,17 @@ const geminiFlash = ModelSpec(
 const config = ChainConfig(
   vision: [geminiPro, groqVision, geminiFlash],
   text: [geminiPro, groqText, geminiFlash],
+);
+
+const openAI = ModelSpec(
+  provider: AIProvider.openAI,
+  model: 'paid',
+  label: 'OpenAI',
+  supportsVision: true,
+);
+const configWithPaid = ChainConfig(
+  vision: [geminiPro, groqVision, geminiFlash, openAI],
+  text: [geminiPro, groqText, geminiFlash, openAI],
 );
 
 /// Za svaki model vraća unapred zadate odgovore (String ili AIError).
@@ -97,13 +111,28 @@ void main() {
   late DateTime now;
   late AIRouter router;
 
-  AIRouter makeRouter({BuiltInKeys builtIn = const BuiltInKeys()}) => AIRouter(
-    config: () => config,
-    client: client,
-    keys: LayeredKeySource(keys, builtIn),
-    status: status,
-    clock: () => now,
-  );
+  AIRouter makeRouter({
+    GatewayChatClient? gateway,
+    FutureOr<OwnKeyOrder> Function()? order,
+    ChainConfig Function()? chain,
+  }) => order == null
+      ? AIRouter(
+          config: chain ?? () => config,
+          client: client,
+          keys: OwnKeySource(keys),
+          status: status,
+          gateway: gateway,
+          clock: () => now,
+        )
+      : AIRouter(
+          config: chain ?? () => config,
+          client: client,
+          keys: OwnKeySource(keys),
+          status: status,
+          gateway: gateway,
+          ownKeyOrder: order,
+          clock: () => now,
+        );
 
   setUp(() {
     client = FakeClient();
@@ -571,54 +600,70 @@ void main() {
     );
   });
 
-  group('ugrađeni ključ', () {
-    const builtIn = BuiltInKeys({AIProvider.gemini: 'b-key'});
+  group('zajednički pristup (gateway)', () {
+    const gatewayId = 'gemini/gemini-pro-latest';
+    const taskRequest = AIRequest(
+      task: AITask.recipeFromName,
+      system: 'Return JSON',
+      prompt: 'p',
+    );
+    final shared = ChainConfig.gatewayModels(TaskKind.text)[gatewayId]!;
+    late List<Object?> posted;
+    late List<Object> answers;
 
-    test('radi bez sopstvenih ključeva', () async {
-      await keys.remove('gemini');
+    setUp(() async {
+      posted = [];
+      answers = [];
       await keys.remove('groq');
-      router = makeRouter(builtIn: builtIn);
-      client.script(geminiPro, [okJson]);
-
-      final r = await router.run(textRequest, parseValue);
-
-      expect(r.model, geminiPro);
-      expect(r.origin, KeyOrigin.builtIn);
-      expect(r.attempts.last.origin, KeyOrigin.builtIn);
-      expect(client.keysUsed, ['b-key']);
-    });
-
-    test('sopstveni ključ ide prvi', () async {
-      router = makeRouter(builtIn: builtIn);
-      client.script(geminiPro, [okJson]);
-
-      final r = await router.run(textRequest, parseValue);
-
-      expect(r.origin, KeyOrigin.user);
-      expect(client.keysUsed, ['g-key']);
-    });
-
-    test('limit na sopstvenom -> isti model sa ugrađenim, pa pauza', () async {
-      router = makeRouter(builtIn: builtIn);
-      client.script(geminiPro, [const RateLimitError('limit'), okJson, okJson]);
-
-      final first = await router.run(textRequest, parseValue);
-      expect(first.model, geminiPro);
-      expect(first.origin, KeyOrigin.builtIn);
-      expect(client.keysUsed, ['g-key', 'b-key']);
-
-      // Sopstveni ključ je pauziran, ugrađeni nije.
-      await router.run(textRequest, parseValue);
-      expect(client.keysUsed, ['g-key', 'b-key', 'b-key']);
-      expect(await status.blockedUntil(geminiPro, keyId: 'gemini'), isNotNull);
-      expect(
-        await status.blockedUntil(geminiPro, origin: KeyOrigin.builtIn),
-        isNull,
+      client.script(geminiFlash, []);
+      router = makeRouter(
+        gateway: GatewayChatClient(
+          accountId: () => 'account',
+          refresh: () async => false,
+          invoke: (method, body) async {
+            if (method == HttpMethod.get) {
+              return const FunctionResponse(
+                status: 200,
+                data: {
+                  'text': [gatewayId],
+                },
+              );
+            }
+            posted.add(body?['model']);
+            final next = answers.isEmpty ? okJson : answers.removeAt(0);
+            if (next is FunctionResponse) return next;
+            return FunctionResponse(
+              status: 200,
+              data: {'model': body?['model'], 'content': next},
+            );
+          },
+        ),
       );
     });
 
-    test('pauza ugrađenog ključa ne utiče na sopstveni', () async {
-      router = makeRouter(builtIn: builtIn);
+    test(
+      'limit na sopstvenom -> gateway, a pauzira se samo sopstveni',
+      () async {
+        client
+          ..script(geminiPro, [const RateLimitError('limit')])
+          ..script(geminiFlash, [const RateLimitError('limit')]);
+
+        final r = await router.run(taskRequest, parseValue);
+
+        expect(r.origin, KeyOrigin.builtIn);
+        expect(posted, [gatewayId]);
+        expect(
+          await status.blockedUntil(geminiPro, keyId: 'gemini'),
+          isNotNull,
+        );
+        expect(
+          await status.blockedUntil(shared, origin: KeyOrigin.builtIn),
+          isNull,
+        );
+      },
+    );
+
+    test('pauza gateway modela ne utiče na sopstveni ključ', () async {
       await status.block(
         geminiPro,
         now.add(const Duration(hours: 1)),
@@ -627,70 +672,163 @@ void main() {
       );
       client.script(geminiPro, [okJson]);
 
-      final r = await router.run(textRequest, parseValue);
+      final r = await router.run(taskRequest, parseValue);
 
       expect(r.origin, KeyOrigin.user);
+      expect(posted, isEmpty);
+    });
+
+    test('odbijen sopstveni ključ: gateway radi, UI traži novi', () async {
+      client.script(geminiPro, [const AuthError('bad')]);
+
+      final r = await router.run(taskRequest, parseValue);
+
+      expect(r.origin, KeyOrigin.builtIn);
+      expect(router.invalidKeyIds, {'gemini'});
+    });
+
+    test('nextAvailableAt gleda i gateway pauzu', () async {
+      client
+        ..script(geminiPro, [
+          const RateLimitError('l', retryAfter: Duration(minutes: 5)),
+        ])
+        ..script(geminiFlash, [
+          const RateLimitError('l', retryAfter: Duration(minutes: 10)),
+        ]);
+      answers = [
+        const FunctionResponse(
+          status: 429,
+          data: {'error': 'provider_rate_limited', 'retryAfterSeconds': 120},
+        ),
+      ];
+
+      await expectLater(
+        router.run(taskRequest, parseValue),
+        throwsA(
+          isA<AllModelsExhausted>().having(
+            (e) => e.nextAvailableAt,
+            'nextAvailableAt',
+            now.add(const Duration(minutes: 2)),
+          ),
+        ),
+      );
+    });
+
+    test('plaćeni i besplatni sopstveni ključevi idu pre gateway-a', () async {
+      await keys.add(AIProvider.openAI, 'o-key');
+      for (final order in OwnKeyOrder.values) {
+        client.calls.clear();
+        client
+          ..script(openAI, [const TransientError('x')])
+          ..script(geminiPro, [const TransientError('x')])
+          ..script(geminiFlash, [const TransientError('x')]);
+        router = makeRouter(
+          gateway: router.gateway,
+          order: () => order,
+          chain: () => configWithPaid,
+        );
+
+        final r = await router.run(taskRequest, parseValue);
+
+        expect(client.calls, hasLength(3), reason: order.name);
+        expect(r.origin, KeyOrigin.builtIn);
+      }
+    });
+  });
+
+  group('redosled sopstvenih ključeva', () {
+    setUp(() => keys.add(AIProvider.openAI, 'o-key'));
+
+    Future<AIResult<String>> runWith(FutureOr<OwnKeyOrder> Function()? order) {
+      client
+        ..script(openAI, [const TransientError('x')])
+        ..script(geminiPro, [const TransientError('x')])
+        ..script(groqText, [const TransientError('x')])
+        ..script(geminiFlash, [okJson, okJson]);
+      router = makeRouter(order: order, chain: () => configWithPaid);
+      return router.run(textRequest, parseValue);
+    }
+
+    test('podrazumevano: prvo plaćeni, ostali istim redom', () async {
+      final r = await runWith(null);
+
+      expect(r.attempts.map((a) => a.model.key), [
+        'openAI/paid',
+        'gemini/pro',
+        'groq/text',
+        'gemini/flash',
+      ]);
+      expect(client.keysUsed, ['o-key', 'g-key', 'q-key', 'g-key']);
     });
 
     test(
-      'odbijen sopstveni ključ: ugrađeni radi, UI traži novi ključ',
+      'prvo besplatni: plaćeni je poslednji i ne zove se bez potrebe',
       () async {
-        router = makeRouter(builtIn: builtIn);
-        client.script(geminiPro, [const AuthError('bad'), okJson, okJson]);
+        final r = await runWith(() => OwnKeyOrder.freeFirst);
 
-        final r = await router.run(textRequest, parseValue);
-        expect(r.origin, KeyOrigin.builtIn);
-        expect(router.invalidKeyIds, {'gemini'});
-
-        await router.run(textRequest, parseValue);
-        expect(client.keysUsed, ['g-key', 'b-key', 'b-key']);
+        expect(r.model, geminiFlash);
+        expect(client.calls, ['gemini/pro', 'groq/text', 'gemini/flash']);
       },
     );
 
-    test('odbijen ugrađeni ključ se tiho preskače', () async {
-      await keys.remove('gemini');
-      router = makeRouter(builtIn: builtIn);
-      client.script(geminiPro, [const AuthError('bad')]);
-      client.script(groqText, [okJson]);
+    test('prvo besplatni: kad svi padnu, plaćeni odgovara', () async {
+      client
+        ..script(geminiPro, [const RateLimitError('l')])
+        ..script(groqText, [const RateLimitError('l')])
+        ..script(geminiFlash, [const RateLimitError('l')])
+        ..script(openAI, [okJson]);
+      router = makeRouter(
+        order: () => OwnKeyOrder.freeFirst,
+        chain: () => configWithPaid,
+      );
 
       final r = await router.run(textRequest, parseValue);
 
-      expect(r.model, groqText);
-      expect(router.invalidKeyIds, isEmpty);
+      expect(r.model, openAI);
+      expect(client.calls.last, 'openAI/paid');
     });
 
-    test('resetKey briše samo stanje tog sopstvenog ključa', () async {
-      router = makeRouter(builtIn: builtIn);
-      client.script(geminiPro, [const AuthError('own'), const AuthError('b')]);
-      client.script(groqText, [okJson, okJson]);
-      await router.run(textRequest, parseValue);
+    test('izbor koji se još učitava važi i za prvi zahtev', () async {
+      final loading = Completer<OwnKeyOrder>();
+      final result = runWith(() => loading.future);
+      await pumpEventQueue();
+      expect(client.calls, isEmpty);
 
-      router.resetKey('gemini');
-      client.script(geminiPro, [const RateLimitError('limit')]);
+      loading.complete(OwnKeyOrder.freeFirst);
+
+      expect((await result).model, geminiFlash);
+      expect(client.calls, isNot(contains('openAI/paid')));
+    });
+
+    test('promena redosleda važi za sledeći zahtev', () async {
+      var order = OwnKeyOrder.freeFirst;
+      await runWith(() => order);
+      order = OwnKeyOrder.paidFirst;
       client.calls.clear();
-      await router.run(textRequest, parseValue);
+      client.script(openAI, [okJson]);
 
-      // Sopstveni ključ se opet proba, ugrađeni ostaje odbijen.
-      expect(client.calls, ['gemini/pro', 'groq/text']);
+      final r = await router.run(textRequest, parseValue);
+
+      expect(r.model, openAI);
+    });
+  });
+
+  group('OpenAI model za sopstveni ključ', () {
+    test('na kraju je oba lanca i čita slike', () {
+      for (final kind in TaskKind.values) {
+        final last = ChainConfig.defaults.chainFor(kind).last;
+        expect(last.key, 'openAI/gpt-6-luna');
+        expect(last.supportsVision, isTrue);
+      }
     });
 
-    test('nextAvailableAt gleda pauze oba ključa', () async {
-      await keys.remove('groq');
-      router = makeRouter(builtIn: builtIn);
-      client.script(geminiPro, [
-        const RateLimitError('l', retryAfter: Duration(minutes: 5)),
-        const RateLimitError('l', retryAfter: Duration(minutes: 2)),
-      ]);
-      client.script(geminiFlash, [
-        const RateLimitError('l', retryAfter: Duration(minutes: 10)),
-        const RateLimitError('l', retryAfter: Duration(minutes: 10)),
-      ]);
-
-      try {
-        await router.run(textRequest, parseValue);
-        fail('očekivana greška');
-      } on AllModelsExhausted catch (e) {
-        expect(e.nextAvailableAt, now.add(const Duration(minutes: 2)));
+    test('gateway i dalje zna samo openai/default', () {
+      for (final kind in TaskKind.values) {
+        final models = ChainConfig.gatewayModels(kind);
+        expect(models['openai/default']?.model, 'default');
+        expect(models.keys.where((id) => id.startsWith('openai/')), [
+          'openai/default',
+        ]);
       }
     });
   });

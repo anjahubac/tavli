@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../icons/tavli_icons.dart';
 import '../motion/motion.dart';
 import '../tokens.dart';
+import 'empty_art_slot.dart';
 
 /// Prazan ekran: ikonica u mekom krugu, naslov, objašnjenje i opciona
 /// akcija (npr. `TavliButton.primary` „Dodaj recept“). Centriran, najviše
@@ -42,6 +43,7 @@ class TavliEmptyState extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final message = this.message;
     final action = this.action;
+    final largeText = MediaQuery.textScalerOf(context).scale(16) > 20;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: TavliWidth.message),
@@ -51,7 +53,21 @@ class TavliEmptyState extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (art case final art?)
-                art
+                // Kada nema dovoljno visine, crtež se smanjuje, a ne tekst.
+                Flexible(
+                  child: EmptyArtSlot(
+                    child: largeText
+                        // Uz krupan tekst crtež je manji, da naslov i
+                        // objašnjenje stanu na ekran.
+                        ? ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxHeight: EmptyArtSlot.smallHeight,
+                            ),
+                            child: FittedBox(fit: BoxFit.scaleDown, child: art),
+                          )
+                        : art,
+                  ),
+                )
               else
                 ExcludeSemantics(
                   child: SizedBox.square(

@@ -273,12 +273,6 @@ class RecipeRepository {
                 t.recipeId.equals(id),
           ))
           .go();
-      await (_db.delete(_db.recipeEmbeddings)..where(
-            (t) =>
-                t.recipeId.equals(id) &
-                t.householdId.equals(_scope.householdId),
-          ))
-          .go();
       final entries = await (_db.select(
         _db.mealPlanEntries,
       )..where((t) => t.recipeId.equals(id))).get();

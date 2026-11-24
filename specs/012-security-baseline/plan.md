@@ -1,6 +1,7 @@
 # Implementation plan: security baseline
 
-**Status**: proposed slices; none implemented by the documentation revision.
+**Status**: proposed slices; SEC-01 is closed in client source (2026-11-24), the
+other slices are open.
 **Spec**: [012](spec.md) | **Baseline**: dev 207c94c
 **Lead / reviewer**: Dev 3 / Anja and affected owner
 Each implementation branch starts from then-current origin/dev and links task IDs.
@@ -18,8 +19,9 @@ keep business logic/domain tests fakeable. No dependency is selected by this pla
    fixtures. These independent existing-file fixes can proceed before the gateway.
 2. Dev 3 establishes local SQL/Edge security checks and same-SHA deployment
    dependency with Anja. Do not enable hosted changes during this planning task.
-3. Dev 2 implements the separately contracted AI gateway; 012 verifies its
-   authorization/limits and release cutover, avoiding duplicate gateway work.
+3. The separately contracted AI gateway is merged to dev and the client key layer
+   is removed. 012 verifies its authorization/limits, the key-free artifact and
+   rotation of keys from older builds, avoiding duplicate gateway work.
 4. Dev 3/1/4 agree environment/session/cache migration and device protection;
    implement before distributing against multiple environments or storing diary data.
 5. Verify auth/deletion and actual hosted settings through authorized operators.
@@ -31,6 +33,7 @@ keep business logic/domain tests fakeable. No dependency is selected by this pla
 | Existing boundary | Owner / reviewer | Work |
 | --- | --- | --- |
 | lib/ai/chat_client.dart, ai_errors.dart, ai_router.dart; settings/ai_error_text.dart | Dev 2 / Dev 3 | Safe error and attempt representations |
+| lib/ai/key_store.dart; settings/ai_keys_screen.dart | Dev 2 / Dev 3 | Own keys on the device only (FR-013) |
 | lib/data/recipe_photo_store.dart; lib/sync/entities.dart, photo_sync.dart | Dev 1 / Dev 4 | File validation/containment and integration fixtures |
 | lib/account/session_store.dart, auth_controller.dart; providers.dart; database.dart | Dev 3 / Dev 1+4 | Scope/migration design, then reviewed slice |
 | supabase/tests, functions/delete-account | Dev 3 / Dev 1 | Local authorization/deletion fault tests |

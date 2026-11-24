@@ -19,10 +19,9 @@ integration review and release verification remain open.
 - **Local storage**: `lib/data/database.dart` and generated
   `lib/data/database.g.dart`, with the next drift version coordinated by Dev 1.
   Extend `test/data/migration_test.dart`; see [data model](data-model.md).
-- **Settings and cutover**: `lib/features/settings/ai_keys_screen.dart` still
-  reads `builtInKeysProvider`. Replace that dependency and update its widget
-  tests and the shared test fixture in `test/helpers/test_app.dart`. Remove
-  built-in AI build parameters and check build documentation and release inputs.
+- **Settings and cutover**: `BuiltInKeys` and `builtInKeysProvider` are removed
+  from the client, its tests and the shared fixture, with the built-in AI build
+  parameters ([PR #157](https://github.com/anjahubac/tavli/pull/157)). Release inputs still need a check.
 
 ## Contract and data plan
 
@@ -77,7 +76,7 @@ If no schema change is needed, explicitly record that decision in the slice PR.
    original account after awaited operations before retries and before parsing
    or returning results. Route terminal failures to safe Serbian UI copy.
 5. Remove `BuiltInKeys.fromEnvironment` and its legacy consumers in the
-   cutover. Update test overrides and eval fixtures to use fake transports or
+   cutover (removed in [PR #157](https://github.com/anjahubac/tavli/pull/157); artifact check still open). Update test overrides and eval fixtures to use fake transports or
    explicitly supplied personal credentials as appropriate. Preserve provider
    key management for user-entered keys. Build with the Supabase URL and public
    client key, then verify that shared provider credential defines and values

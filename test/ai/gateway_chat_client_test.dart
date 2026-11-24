@@ -46,7 +46,7 @@ AIRouter _router(
 }) => AIRouter(
   config: () => ChainConfig.defaults,
   client: direct ?? FakeClient(),
-  keys: LayeredKeySource(keys ?? InMemoryKeyStore(), const BuiltInKeys()),
+  keys: OwnKeySource(keys ?? InMemoryKeyStore()),
   status: InMemoryModelStatusStore(),
   gateway: gateway,
 );

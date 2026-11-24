@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show File;
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -34,6 +36,23 @@ import 'fake_adapter.dart';
 import 'fake_backend.dart';
 import 'fake_photo_store.dart';
 import 'fake_secret_storage.dart';
+
+/// Pravi font aplikacije, za testove koji mere raspored: test font je mnogo
+/// širi. Zvati kroz `tester.runAsync`, jer čitanje ne radi po lažnom satu.
+Future<void> loadTavliFont() async {
+  final font = FontLoader('packages/tavli_ui/PlusJakartaSans');
+  for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+    font.addFont(
+      Future.value(
+        ByteData.sublistView(
+          File('packages/tavli_ui/assets/fonts/PlusJakartaSans-$weight.ttf')
+              .readAsBytesSync(),
+        ),
+      ),
+    );
+  }
+  await font.load();
+}
 
 /// Naziv izabranog taba (gornja traka pokazuje samo naziv aplikacije).
 String currentTab(WidgetTester tester) =>
@@ -211,7 +230,7 @@ class TestApp {
   ];
 }
 
-/// Cela aplikacija sa bazom u memoriji, lažnim AI-jem (ugrađeni test ključ)
+/// Cela aplikacija sa bazom u memoriji, lažnim AI-jem (test ključ)
 /// i lažnim izborom slike.
 Future<TestApp> pumpTavli(
   WidgetTester tester, {
@@ -264,8 +283,8 @@ Future<TestApp> pumpTavli(
         syncRemoteProvider.overrideWithValue(app.backend.sync),
         photoRemoteProvider.overrideWithValue(app.backend.photos),
         keyStoreProvider.overrideWithValue(app.keys),
-        builtInKeysProvider.overrideWithValue(
-          const BuiltInKeys({AIProvider.gemini: 'fake-test-key'}),
+        keySourceProvider.overrideWithValue(
+          OwnKeySource(InMemoryKeyStore({AIProvider.gemini: 'fake-test-key'})),
         ),
         chatClientProvider.overrideWithValue(
           OpenAICompatibleClient(

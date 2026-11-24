@@ -9,14 +9,30 @@ import 'package:win32/win32.dart' show WindowsException;
 
 import 'ai_models.dart';
 
-/// Servis po početku ključa; null kad format nije poznat.
+/// Počeci ključeva servisa koje Tavli ne podržava, a liče na podržane.
+const _foreignPrefixes = ['sk-ant-'];
+
+/// Servis po početku ključa; null kad format nije poznat. Važi najduži
+/// početak koji se poklapa (`sk-or-` pre `sk-`).
 AIProvider? detectProvider(String key) {
   final k = key.trim();
-  if (k.startsWith('AIza')) return AIProvider.gemini;
-  if (k.startsWith('gsk_')) return AIProvider.groq;
-  if (k.startsWith('sk-or-')) return AIProvider.openRouter;
-  return null;
+  if (_foreignPrefixes.any(k.startsWith)) return null;
+  AIProvider? found;
+  var longest = 0;
+  for (final p in AIProvider.values) {
+    for (final prefix in p.prefixes) {
+      if (prefix.length > longest && k.startsWith(prefix)) {
+        found = p;
+        longest = prefix.length;
+      }
+    }
+  }
+  return found;
 }
+
+/// Kojim redom se probaju korisnikovi ključevi. Zajednički pristup preko
+/// servera je uvek poslednji.
+enum OwnKeyOrder { paidFirst, freeFirst }
 
 /// Ključ koji je korisnik dodao.
 class StoredKey {
@@ -160,8 +176,20 @@ class SecureKeyStore implements KeyStore {
     return List.generate(8, (_) => r.nextInt(36).toRadixString(36)).join();
   }
 
+  /// Ključevi posle prvog uspešnog čitanja. Router listu traži više puta po
+  /// zahtevu, a svako čitanje Keychain-a može da traži lozinku na macOS-u.
+  List<StoredKey>? _cache;
+
   @override
   Future<List<StoredKey>> list() async {
+    final cached = _cache;
+    if (cached != null) return cached;
+    final keys = await _read();
+    // Upis koji se završio tokom čitanja je noviji od pročitanog.
+    return _cache ??= List.unmodifiable(keys);
+  }
+
+  Future<List<StoredKey>> _read() async {
     final raw = await _storage.read(_listKey);
     // Kad lista postoji, stari zapisi su već prebačeni: jedno čitanje
     // Keychain-a umesto četiri (svako može da traži lozinku na macOS-u).
@@ -193,7 +221,7 @@ class SecureKeyStore implements KeyStore {
         // Ostaje u Keychain-u, ali se više ne čita (lista sada postoji).
       }
     }
-    await _save(keys);
+    await _write(keys);
     return keys;
   }
 
@@ -234,13 +262,23 @@ class SecureKeyStore implements KeyStore {
 
   @override
   Future<void> clear() async {
+    _cache = null;
     await _storage.delete(_listKey);
     for (final p in AIProvider.values.where((p) => p.supportsPersonalKey)) {
       await _storage.delete(_legacyKey(p));
     }
+    _cache = const [];
   }
 
-  Future<void> _save(List<StoredKey> keys) =>
+  /// Upisuje listu i tek posle uspeha je pamti; posle greške se sledeći put
+  /// čita iz skladišta.
+  Future<void> _save(List<StoredKey> keys) async {
+    _cache = null;
+    await _write(keys);
+    _cache = List.unmodifiable(keys);
+  }
+
+  Future<void> _write(List<StoredKey> keys) =>
       _storage.write(_listKey, jsonEncode([for (final k in keys) k.toJson()]));
 }
 
@@ -284,7 +322,8 @@ class InMemoryKeyStore implements KeyStore {
   Future<void> clear() async => _keys.clear();
 }
 
-/// Odakle je ključ: korisnikov (bezbedno skladište) ili ugrađen u Tavli.
+/// Odakle je pristup: korisnikov ključ (bezbedno skladište) ili zajednički
+/// pristup koji dolazi uz Tavli (preko servera, bez ključa na uređaju).
 enum KeyOrigin { user, builtIn }
 
 class ApiCredential {
@@ -315,50 +354,21 @@ class ApiCredential {
   String toString() => 'ApiCredential(${provider.name}, ${origin.name})';
 }
 
-/// Ključevi koje router proba za provajdera, redom. Kasnije ga može
-/// zameniti Cloudflare proxy bez izmena u routeru.
+/// Ključevi koje router proba za provajdera, redom.
 abstract interface class KeySource {
   Future<List<ApiCredential>> credentialsFor(AIProvider provider);
 }
 
-/// Ugrađeni ključevi iz `secrets.json` preko `--dart-define-from-file`.
-class BuiltInKeys {
-  const BuiltInKeys([this._keys = const {}]);
-
-  final Map<AIProvider, String> _keys;
-
-  String? operator [](AIProvider provider) {
-    final key = _keys[provider]?.trim();
-    return key == null || key.isEmpty ? null : key;
-  }
-
-  bool has(AIProvider provider) => this[provider] != null;
-
-  /// Da li je vrednost neki od ugrađenih ključeva (tada nije korisnička).
-  bool contains(String value) {
-    final v = value.trim();
-    return v.isNotEmpty && AIProvider.values.any((p) => this[p] == v);
-  }
-}
-
-/// Prvo korisnikovi ključevi (redom dodavanja), pa ugrađeni. Sačuvan ključ
-/// koji je isti kao ugrađeni (npr. unet ranije ručno) računa se kao ugrađeni.
-class LayeredKeySource implements KeySource {
-  LayeredKeySource(this._own, this._builtIn);
+/// Korisnikovi ključevi, redom dodavanja.
+class OwnKeySource implements KeySource {
+  OwnKeySource(this._own);
 
   final KeyStore _own;
-  final BuiltInKeys _builtIn;
 
   @override
-  Future<List<ApiCredential>> credentialsFor(AIProvider provider) async {
-    final builtIn = _builtIn[provider];
-    return [
-      for (final k in await _own.list())
-        if (k.provider == provider &&
-            k.value.trim().isNotEmpty &&
-            !_builtIn.contains(k.value))
-          ApiCredential(provider, k.value.trim(), KeyOrigin.user, keyId: k.id),
-      if (builtIn != null) ApiCredential(provider, builtIn, KeyOrigin.builtIn),
-    ];
-  }
+  Future<List<ApiCredential>> credentialsFor(AIProvider provider) async => [
+    for (final k in await _own.list())
+      if (k.provider == provider && k.value.trim().isNotEmpty)
+        ApiCredential(provider, k.value.trim(), KeyOrigin.user, keyId: k.id),
+  ];
 }

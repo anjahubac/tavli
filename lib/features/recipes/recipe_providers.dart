@@ -7,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import '../../account/auth_controller.dart';
 import '../../ai/recipe_semantic_search.dart';
 import '../../data/photo_resize.dart';
-import '../../data/recipe_embedding_repository.dart';
 import '../../data/recipe_photo_store.dart';
 import '../../data/recipe_rating_repository.dart';
 import '../../data/recipe_repository.dart';
@@ -33,13 +32,6 @@ final recipeRepositoryProvider = Provider<RecipeRepository>(
     writer: ref.watch(syncedWriterProvider),
     scope: ref.watch(accountScopeProvider) ?? noAccountScope,
     clock: ref.watch(clockProvider),
-  ),
-);
-
-final recipeEmbeddingRepositoryProvider = Provider<RecipeEmbeddingRepository>(
-  (ref) => RecipeEmbeddingRepository(
-    ref.watch(databaseProvider),
-    (ref.watch(accountScopeProvider) ?? noAccountScope).householdId,
   ),
 );
 

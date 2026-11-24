@@ -1,6 +1,6 @@
+import type { RankedRecipe } from "./recipe_vectors.ts";
 import { gateway, type Reservation } from "./gateway.ts";
 import { maxBodyBytes } from "./input.ts";
-import type { RankedRecipe } from "./recipe_vectors.ts";
 
 const textModel = "gemini/gemini-pro-latest";
 const imageModel = "groq/qwen/qwen3.6-27b";
@@ -25,12 +25,17 @@ function equal(actual: unknown, expected: unknown) {
 function setup({
   env = {},
   reservation = { id: "fake-reservation" },
+  enableRecipeIndexing,
   rankRecipes,
   upstream = () => Response.json({ choices: [{ message: { content: "{}" } }] }),
 }: {
   env?: Record<string, string>;
   reservation?: Reservation;
   upstream?: () => Response;
+  enableRecipeIndexing?: (
+    token: string,
+    householdId: string,
+  ) => Promise<boolean>;
   rankRecipes?: (
     token: string,
     vector: number[],
@@ -57,6 +62,7 @@ function setup({
       released.push(id);
       return Promise.resolve();
     },
+    enableRecipeIndexing,
     rankRecipes,
     reserveImage: () => Promise.reject(new Error("unexpected")),
     storeImage: () => Promise.reject(new Error("unexpected")),
@@ -210,7 +216,17 @@ Deno.test("lists only configured models and places opted-in OpenAI first for bot
       .status,
     200,
   );
-  equal(JSON.parse(String(on.calls[0].init?.body)).model, "fake-model");
+  const request = JSON.parse(String(on.calls[0].init?.body));
+  equal(request.model, "fake-model");
+  equal(request.reasoning_effort, "none");
+  equal("temperature" in request, false);
+});
+
+Deno.test("only reasoning models get the lowest effort", async () => {
+  const { handle, calls } = setup();
+  equal((await handle(post())).status, 200);
+  const request = JSON.parse(String(calls[0].init?.body));
+  equal("reasoning_effort" in request, false);
 });
 
 Deno.test("the gateway kill switch skips both quota and provider", async () => {
@@ -224,106 +240,55 @@ Deno.test("the gateway kill switch skips both quota and provider", async () => {
   equal(calls.length, 0);
 });
 
-Deno.test("recipe embeddings stay behind auth, OpenAI opt-in and text quota", async () => {
-  const values = Array.from({ length: 768 }, (_, index) => index / 768);
-  const { handle, reserved, released, calls } = setup({
-    env: {
-      AI_OPENAI_EMBEDDINGS_ENABLED: "1",
-      OPENAI_API_KEY: "fake-openai-key",
-    },
-    upstream: () =>
-      Response.json({
-        model: "text-embedding-3-small",
-        data: [
-          { index: 0, embedding: values },
-          { index: 1, embedding: values },
-        ],
-      }),
+Deno.test("GET lists models in the AI_PROVIDER_ORDER order and warns about unknown names", async () => {
+  const authGet = new Request("http://local.test/ai-gateway", {
+    headers: { Authorization: "Bearer test-session" },
   });
-  const result = await handle(post({
-    task: "recipe_embeddings",
-    inputs: [
-      { text: "recipe title and ingredients", taskType: "RETRIEVAL_DOCUMENT" },
-      { text: "something with vegetables", taskType: "RETRIEVAL_QUERY" },
-    ],
-  }));
-  equal(result.status, 200);
-  const body = await result.json() as { model: string; embeddings: number[][] };
-  equal(body.model, "text-embedding-3-small");
-  equal(body.embeddings.length, 2);
-  equal(body.embeddings[0].length, 768);
-  equal(reserved.length, 1);
-  equal((reserved[0] as { kind: string }).kind, "text");
-  equal(released, ["fake-reservation"]);
-  equal(calls[0].url, "https://api.openai.com/v1/embeddings");
-  equal(calls[0].init?.headers, {
-    Authorization: "Bearer fake-openai-key",
-    "Content-Type": "application/json",
-  });
-  const sent = JSON.parse(String(calls[0].init?.body));
-  equal(sent.model, "text-embedding-3-small");
-  equal(sent.dimensions, 768);
-  equal(sent.input, [
-    "recipe title and ingredients",
-    "something with vegetables",
-  ]);
+  const warnings: string[] = [];
+  const warn = console.warn;
+  console.warn = (message: string) => warnings.push(message);
+  try {
+    const { handle, reserved, calls } = setup({
+      env: {
+        AI_PROVIDER_ORDER: "openai,gemini,groq,openrouter,open ai",
+        OPENAI_API_KEY: "fake-openai",
+        OPENAI_MODEL: "fake-model",
+        AI_OPENAI_ENABLED: "1",
+        OPENROUTER_API_KEY: "fake-openrouter",
+      },
+    });
+    const body = await (await handle(authGet)).json();
+    equal(body.text, [
+      "openai/default",
+      "gemini/gemini-pro-latest",
+      "gemini/gemini-flash-latest",
+      "gemini/gemini-flash-lite-latest",
+      "groq/openai/gpt-oss-120b",
+      "groq/llama-3.3-70b-versatile",
+      "openrouter/google/gemma-3-27b-it:free",
+    ]);
+    equal(body.vision[0], "openai/default");
+    equal(body.vision[1], "gemini/gemini-flash-latest");
+    equal(warnings, ["ai_provider_order_ignored open ai"]);
+    equal(reserved.length, 0);
+    equal(calls.length, 0);
+  } finally {
+    console.warn = warn;
+  }
 });
 
-Deno.test("embeddings are unavailable before OpenAI is enabled", async () => {
-  const { handle, reserved, calls } = setup({
-    env: {
-      AI_OPENAI_ENABLED: "1",
-      OPENAI_API_KEY: "fake-openai-key",
-      OPENAI_MODEL: "fake-chat-model",
-    },
-  });
-  const result = await handle(post({
-    task: "recipe_embeddings",
-    inputs: [{ text: "query", taskType: "RETRIEVAL_QUERY" }],
-  }));
-  equal(result.status, 503);
-  equal(reserved.length, 0);
-  equal(calls.length, 0);
-});
-
-Deno.test("invalid embedding requests are rejected before quota reservation", async () => {
-  const { handle, reserved, calls } = setup({
-    env: {
-      AI_OPENAI_EMBEDDINGS_ENABLED: "1",
-      OPENAI_API_KEY: "fake-openai-key",
-    },
-  });
-  const result = await handle(post({
-    task: "recipe_embeddings",
-    inputs: [{ text: "query", taskType: "RETRIEVAL_QUERY", owner: "forged" }],
-  }));
-  equal(result.status, 400);
-  equal(reserved.length, 0);
-  equal(calls.length, 0);
-});
-
-Deno.test("embedding quota rejection makes no OpenAI call", async () => {
-  const { handle, reserved, released, calls } = setup({
-    env: {
-      AI_OPENAI_EMBEDDINGS_ENABLED: "1",
-      OPENAI_API_KEY: "fake-openai-key",
-    },
-    reservation: { limit: "daily", retryAfterSeconds: 60 },
-  });
-  const result = await handle(post({
-    task: "recipe_embeddings",
-    inputs: [{ text: "query", taskType: "RETRIEVAL_QUERY" }],
-  }));
-  equal(result.status, 429);
-  equal(await result.json(), {
-    error: "quota_exceeded",
-    limit: "daily",
-    kind: "text",
-    retryAfterSeconds: 60,
-  });
-  equal(reserved.length, 1);
-  equal(released.length, 0);
-  equal(calls.length, 0);
+Deno.test("each answered call logs only the model id and status", async () => {
+  const lines: string[] = [];
+  const info = console.info;
+  console.info = (message: string) => lines.push(message);
+  try {
+    const { handle } = setup({ env: { AI_PROVIDER_ORDER: "groq,gemini" } });
+    const result = await handle(post());
+    equal(await result.json(), { content: "{}", model: textModel });
+    equal(lines, ["ai_gateway_call model=" + textModel + " status=200"]);
+  } finally {
+    console.info = info;
+  }
 });
 
 const recipeVectorEnv = {
@@ -412,4 +377,30 @@ Deno.test("server search rejects a zero-length direction and releases quota", as
   });
   equal((await search.handle(post(recipeSearch))).status, 502);
   equal(search.released, ["fake-reservation"]);
+});
+
+Deno.test("recipe indexing records consent as the caller without contacting the provider", async () => {
+  const householdId = "10000000-0000-0000-0000-000000000001";
+  const otherId = "10000000-0000-0000-0000-000000000002";
+  const recorded: [string, string][] = [];
+  const { handle, reserved, calls } = setup({
+    env: recipeVectorEnv,
+    enableRecipeIndexing: (token, id) => {
+      recorded.push([token, id]);
+      return Promise.resolve(id === householdId);
+    },
+  });
+  const consent = { task: "recipe_vector_consent", householdId };
+  equal((await handle(post(consent, "forged"))).status, 401);
+  equal(
+    (await handle(post({ ...consent, householdId: "invalid" }))).status,
+    400,
+  );
+  equal((await handle(post({ ...consent, householdId: otherId }))).status, 403);
+  const accepted = await handle(post(consent));
+  equal(accepted.status, 200);
+  equal(await accepted.json(), { enabled: true });
+  equal(recorded, [["test-session", otherId], ["test-session", householdId]]);
+  equal(reserved, []);
+  equal(calls, []);
 });

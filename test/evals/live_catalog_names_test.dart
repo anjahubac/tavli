@@ -69,10 +69,7 @@ void main() {
         AIRouter(
           config: () => ChainConfig.defaults,
           client: OpenAICompatibleClient(),
-          keys: LayeredKeySource(
-            InMemoryKeyStore({AIProvider.gemini: key}),
-            const BuiltInKeys(),
-          ),
+          keys: OwnKeySource(InMemoryKeyStore({AIProvider.gemini: key})),
           status: InMemoryModelStatusStore(),
         ),
       );

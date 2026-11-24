@@ -50,23 +50,30 @@ Deno.serve(gateway({
       ? user.id
       : null;
   },
-  async rankRecipes(token, embedding, recipeIds) {
-    const matches: RankedRecipe[] = [];
-    const packedEmbedding = JSON.stringify(embedding);
-    for (let offset = 0; offset < recipeIds.length; offset += 256) {
-      const result = await platform("/rest/v1/rpc/rank_recipe_vectors", token, {
-        p_embedding: packedEmbedding,
-        p_recipe_ids: recipeIds.slice(offset, offset + 256),
-      });
-      if (!result.ok) {
-        await result.body?.cancel().catch(() => {});
-        throw new Error("recipe_vector_rank_failed");
-      }
-      matches.push(...await result.json() as RankedRecipe[]);
-    }
-    return matches.sort((a, b) =>
-      a.distance - b.distance || a.recipe_id.localeCompare(b.recipe_id)
+  async enableRecipeIndexing(token, householdId) {
+    const result = await platform(
+      "/rest/v1/rpc/enable_recipe_vector_indexing",
+      token,
+      {
+        p_household_id: householdId,
+      },
     );
+    if (!result.ok) {
+      await result.body?.cancel().catch(() => {});
+      throw new Error("recipe_vector_consent_failed");
+    }
+    return await result.json() === true;
+  },
+  async rankRecipes(token, embedding, recipeIds) {
+    const result = await platform("/rest/v1/rpc/rank_recipe_vectors", token, {
+      p_embedding: JSON.stringify(embedding),
+      p_recipe_ids: recipeIds,
+    });
+    if (!result.ok) {
+      await result.body?.cancel().catch(() => {});
+      throw new Error("recipe_vector_rank_failed");
+    }
+    return await result.json() as RankedRecipe[];
   },
   async reserve(uid, kind, limits) {
     const result = await rpc("ai_reserve", {

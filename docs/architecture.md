@@ -168,20 +168,21 @@ check current `dev` and coordinate the next version before each schema PR.
 Preserve these rules during catalog normalization and shared cooking operations.
 Test local rollback, duplicate event/retry, undo, account switch and deletion.
 
-## 5. Runtime AI, current and target
+## 5. Runtime AI
 
 Current: `RecipeAI`/`MealPlanAI` → `AIRouter` → fakeable `ChatClient` (dio).
-`ChainConfig` owns models/capabilities; `KeySource` supplies own keys then built-in
-credentials; model cooldown state persists in drift. Parsers throw
+`ChainConfig` owns models/capabilities; `KeySource` supplies own keys
+(paid or free services first, `OwnKeyOrder`); the gateway comes after them. Model
+cooldown state persists in drift. Parsers throw
 `FormatException` for shape/domain mismatch; the router has bounded repair and
 fallback. UI receives typed errors mapped to Serbian. JSON-object decoding alone
 is not sufficient semantic validation.
 
-Target: keep the same feature/router boundaries; add a gateway transport for
-built-in Tavli credentials through a Supabase Edge Function. Server validates
+Shared access uses a gateway transport through a Supabase Edge Function, behind
+the same feature/router boundaries. Server validates
 identity, allowed tasks, size/budget and per-user limits, then adds provider
-credentials. Bring-your-own keys stay in secure device storage and can use the
-existing direct transport. The gateway serves the ordered shared text and photo
+credentials. Bring-your-own keys stay in secure device storage and use the
+direct transport, before the gateway. The gateway serves the ordered shared text and photo
 model lists and runs one provider attempt per completion. AIRouter owns fallback,
 repair and cancellation. See [the 015 integration plan](../specs/015-ai-server-gateway/plan.md)
 for the Flutter cutover and current verification status.
@@ -191,13 +192,12 @@ flowchart LR
   F["Feature facade"] --> AR["AIRouter: one policy"]
   AR --> CH{Credential source}
   CH -->|"own key"| DIRECT["Existing provider client"]
-  CH -->|"built-in: planned"| GW["Authenticated Edge gateway"]
+  CH -->|"shared access"| GW["Authenticated Edge gateway"]
   GW --> LIMIT["Allowed task + quota + bounded request"]
   LIMIT --> AI["Provider using server-only key"]
 ```
 
-After gateway acceptance, built-in provider keys must no longer ship in app
-builds. On the gateway implementation branch the app reads only Supabase
+App builds contain no shared provider keys. The app reads only Supabase
 client configuration and passes its session token to the Edge Function. Older
 builds that shipped shared provider keys still need the cutover and rotation
 procedure in 015.

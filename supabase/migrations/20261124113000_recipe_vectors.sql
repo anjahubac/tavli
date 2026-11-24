@@ -1,3 +1,31 @@
+-- Household-wide opt-in recorded by a signed-in member before recipe text is sent.
+create table private.recipe_vector_consents (
+  household_id uuid primary key references public.households (id) on delete cascade,
+  granted_by uuid references auth.users (id) on delete set null,
+  granted_at timestamptz not null default now()
+);
+
+alter table private.recipe_vector_consents enable row level security;
+revoke all on private.recipe_vector_consents from public, anon, authenticated;
+
+create function public.enable_recipe_vector_indexing(p_household_id uuid)
+returns boolean language plpgsql security definer set search_path = ''
+as $$
+begin
+  if not coalesce(private.is_member(p_household_id), false) then
+    return false;
+  end if;
+
+  insert into private.recipe_vector_consents (household_id, granted_by)
+  values (p_household_id, auth.uid())
+  on conflict (household_id) do nothing;
+  return true;
+end;
+$$;
+
+revoke all on function public.enable_recipe_vector_indexing(uuid) from public, anon, authenticated;
+grant execute on function public.enable_recipe_vector_indexing(uuid) to authenticated;
+
 -- One derived row per recipe. Pending rows also serve as the durable work queue.
 create table private.recipe_vectors (
   recipe_id text primary key,
@@ -41,7 +69,8 @@ create trigger queue_recipe_vector
   after insert or update of title, ingredients, meal_types, weight, dish_kind, prep_minutes on public.recipes
   for each row execute function private.queue_recipe_vector();
 
--- Existing recipes enter the same queue once. Migration does not call the provider.
+-- Track IDs only, including recipes added concurrently with consent. The worker
+-- cannot claim or read recipe text until the household opts in.
 insert into private.recipe_vectors (recipe_id, household_id)
 select id, household_id from public.recipes
 on conflict (recipe_id) do nothing;
@@ -53,6 +82,10 @@ as $$
   with batch as (
     select v.recipe_id from private.recipe_vectors v
     where v.embedding is null and v.retry_at <= now()
+      and exists (
+        select 1 from private.recipe_vector_consents consent
+        where consent.household_id = v.household_id
+      )
     order by v.retry_at, v.recipe_id
     limit 16 for update skip locked
   ), claimed as (
@@ -111,6 +144,10 @@ as $$
   where cardinality(p_recipe_ids) <= 256
     and v.recipe_id = any(p_recipe_ids)
     and private.is_member(v.household_id)
+    and exists (
+      select 1 from private.recipe_vector_consents consent
+      where consent.household_id = v.household_id
+    )
     and v.embedding is not null
     and extensions.vector_dims(p_embedding) = 1024
     and extensions.vector_norm(p_embedding) > 0
@@ -136,5 +173,9 @@ select cron.schedule('recipe-vector-index', '* * * * *', $job$
     and exists (
       select 1 from private.recipe_vectors v
       where v.embedding is null and v.retry_at <= now()
+        and exists (
+          select 1 from private.recipe_vector_consents consent
+          where consent.household_id = v.household_id
+        )
     );
 $job$);

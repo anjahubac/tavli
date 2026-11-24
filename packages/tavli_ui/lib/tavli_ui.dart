@@ -5,6 +5,7 @@ library;
 
 export 'src/content/tavli_card.dart';
 export 'src/content/tavli_data_table.dart';
+export 'src/content/tavli_empty_area.dart';
 export 'src/content/tavli_expandable.dart';
 export 'src/content/tavli_list.dart';
 export 'src/content/tavli_media.dart';

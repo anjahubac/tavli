@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
+import '../../account/auth_controller.dart';
 import '../../ai/ai_errors.dart';
-import '../../ai/embedding_client.dart';
 import '../../ai/recipe_semantic_search.dart';
 import '../../app/animations/empty_tabs.dart';
 import '../../app/animations/spoon_refresh.dart';
@@ -125,6 +125,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   Object? _semanticError;
   bool _semanticLoading = false;
   bool _semanticSearch = false;
+  bool _semanticOptInPending = false;
   bool _showOfflineSearchNotice = false;
   int _semanticGeneration = 0;
 
@@ -174,27 +175,50 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
       _semanticSearchTimer?.cancel();
       return;
     }
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pretraga preko Cloudflare-a'),
-        content: const Text(
-          'Cloudflare obrađuje tvoj upit radi pretrage sačuvanih recepata. '
-          'Za indeksiranje se obrađuju nazivi, sastojci i oznake recepata.',
+    if (_semanticOptInPending) return;
+    final scope = ref.read(accountScopeProvider);
+    _semanticOptInPending = true;
+    try {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Pretraga preko Cloudflare-a'),
+          content: const Text(
+            'Cloudflare obrađuje tvoj upit za pretragu. Ako dozvoliš '
+            'indeksiranje za domaćinstvo, obrađivaće i nazive, sastojke, '
+            'oznake i vreme pripreme postojećih i novih recepata. '
+            'Indeksiranje se nastavlja i kada isključiš pretragu na uređaju.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Otkaži'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Dozvoli indeksiranje'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Otkaži'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Nastavi'),
-          ),
-        ],
-      ),
-    );
-    if (accepted != true || !mounted) return;
+      );
+      if (accepted != true ||
+          !mounted ||
+          scope == null ||
+          scope != ref.read(accountScopeProvider)) {
+        return;
+      }
+      final service = ref.read(recipeSemanticSearchServiceProvider);
+      if (service == null) throw const EmbeddingServiceUnavailableException();
+      await service.enableIndexing(scope.householdId);
+    } on Object {
+      if (mounted && scope == ref.read(accountScopeProvider)) {
+        setState(() => _showOfflineSearchNotice = true);
+      }
+      return;
+    } finally {
+      _semanticOptInPending = false;
+    }
+    if (!mounted || scope != ref.read(accountScopeProvider)) return;
     setState(() {
       _semanticSearch = true;
       _showOfflineSearchNotice = false;
@@ -227,6 +251,9 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
   Future<void> _runSemanticSearch(RecipeFilter filter, int generation) async {
     try {
       final all = await ref.read(recipesProvider.future);
+      if (!mounted || !_semanticSearch || generation != _semanticGeneration) {
+        return;
+      }
       final service = ref.read(recipeSemanticSearchServiceProvider);
       if (service == null) throw const EmbeddingServiceUnavailableException();
       final results = await service.search(
@@ -318,6 +345,11 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
         _searchFocus.requestFocus();
       }
     });
+    ref.listen(accountScopeProvider, (previous, next) {
+      if (_semanticSearch && previous != next) {
+        unawaited(_toggleSemanticSearch(false));
+      }
+    });
     final filter = ref.watch(recipeSearchProvider);
     ref.listen(recipeSearchProvider, (previous, next) {
       if (_semanticSearch && previous != next) _queueSemanticSearch(next);
@@ -339,8 +371,8 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
           ),
           data: (all) {
             if (all.isEmpty) {
-              return const _ScrollableMessage(
-                TavliEmptyState(
+              return const TavliEmptyArea(
+                child: TavliEmptyState(
                   art: EmptyCookbook(),
                   title: 'Još nema recepata',
                   message:
@@ -372,7 +404,6 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                   GatewayAuthError() => 'Sesija je istekla. Prijavi se ponovo.',
                   GatewayUnavailableError() =>
                     'Pretraga preko AI-ja trenutno nije dostupna.',
-                  EmbeddingRequestException(:final message) => message,
                   _ => 'Semantička pretraga trenutno nije uspela.',
                 };
                 return _ScrollableMessage(

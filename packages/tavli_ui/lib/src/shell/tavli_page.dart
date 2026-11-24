@@ -24,6 +24,20 @@ class TavliPage extends StatelessWidget {
       maxWidth = null,
       _centered = true;
 
+  /// Ivice strane; koristi ih i prostor praznog stanja na istom ekranu.
+  static EdgeInsets padding({required bool wide}) => wide
+      ? const EdgeInsets.symmetric(horizontal: 28, vertical: 24)
+      : const EdgeInsets.fromLTRB(
+          TavliSpacing.large,
+          TavliSpacing.small,
+          TavliSpacing.large,
+          TavliSpacing.large,
+        );
+
+  /// Razmak između elemenata strane.
+  static double spacing({required bool wide}) =>
+      wide ? 16 : TavliSpacing.medium;
+
   final List<Widget> children;
   final bool wide;
   final double? maxWidth;
@@ -43,7 +57,7 @@ class TavliPage extends StatelessWidget {
     }
     Widget content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: wide ? 16 : TavliSpacing.medium,
+      spacing: spacing(wide: wide),
       children: children,
     );
     final maxWidth = this.maxWidth;
@@ -56,14 +70,7 @@ class TavliPage extends StatelessWidget {
       );
     }
     return SingleChildScrollView(
-      padding: wide
-          ? const EdgeInsets.symmetric(horizontal: 28, vertical: 24)
-          : const EdgeInsets.fromLTRB(
-              TavliSpacing.large,
-              TavliSpacing.small,
-              TavliSpacing.large,
-              TavliSpacing.large,
-            ),
+      padding: padding(wide: wide),
       child: content,
     );
   }

@@ -41,10 +41,7 @@ RecipeAI _ai(_ScriptedClient client) => RecipeAI(
   AIRouter(
     config: () => const ChainConfig(vision: [_model], text: [_model]),
     client: client,
-    keys: LayeredKeySource(
-      InMemoryKeyStore({AIProvider.gemini: 'g-key'}),
-      const BuiltInKeys(),
-    ),
+    keys: OwnKeySource(InMemoryKeyStore({AIProvider.gemini: 'g-key'})),
     status: InMemoryModelStatusStore(),
     clock: () => DateTime.utc(2026, 11, 23, 12),
   ),

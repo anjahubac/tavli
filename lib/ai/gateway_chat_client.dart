@@ -72,14 +72,14 @@ class GatewayChatClient {
     return content;
   }
 
-  /// Embedding requests share the gateway's authenticated text quota and keep
-  /// the OpenAI key on the server.
-  Future<Map<String, Object?>> embed(List<Map<String, Object?>> inputs) =>
-      _request(
-        HttpMethod.post,
-        const Duration(seconds: 45),
-        body: {'task': 'recipe_embeddings', 'inputs': inputs},
-      );
+  Future<void> enableRecipeIndexing(String householdId) async {
+    final data = await _request(
+      HttpMethod.post,
+      const Duration(seconds: 15),
+      body: {'task': 'recipe_vector_consent', 'householdId': householdId},
+    );
+    if (data['enabled'] != true) throw const GatewayRequestRejected();
+  }
 
   Future<Map<String, Object?>> rankRecipes(
     String query,

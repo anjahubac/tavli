@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(29);
 select tests.create_user('vectors-a@test.local') as ua \gset
 select tests.create_user('vectors-b@test.local') as ub \gset
 select tests.household_of(:'ua') as ha \gset
@@ -27,8 +27,28 @@ select ok(not has_table_privilege('authenticated', 'private.recipe_vectors', 'se
 select ok(not has_table_privilege('service_role', 'private.recipe_vectors', 'update'),
   'worker writes only through the lease RPC');
 
+select ok(not has_function_privilege('anon',
+  'public.enable_recipe_vector_indexing(uuid)', 'execute'), 'anon cannot opt in');
+select ok(not has_table_privilege('authenticated', 'private.recipe_vector_consents', 'insert'),
+  'client cannot insert consent directly');
+set local role service_role;
+select is((select count(*) from public.claim_recipe_vectors()
+  where recipe_id in ('vector-soup','vector-bread','vector-other')), 0::bigint,
+  'worker cannot claim any recipe before household consent');
+reset role;
+
+select tests.authenticate_as(:'ua');
+select ok(not public.enable_recipe_vector_indexing(:'hb'), 'cannot opt in another household');
+select ok(public.enable_recipe_vector_indexing(:'ha'), 'member can opt in their household');
+select ok(public.enable_recipe_vector_indexing(:'ha'), 'repeated opt-in is idempotent');
+select tests.clear_auth();
+select is((select count(*) from private.recipe_vector_consents where household_id = :'ha'),
+  1::bigint, 'opt-in is recorded once');
+
 set local role service_role;
 create temp table claimed_recipe_vectors as select * from public.claim_recipe_vectors();
+select is((select count(*) from claimed_recipe_vectors where recipe_id = 'vector-other'),
+  0::bigint, 'worker skips the household which has not opted in');
 select * from claimed_recipe_vectors where recipe_id = 'vector-soup' \gset soup_
 select ok(:'soup_content' like '%Čorba%' and :'soup_content' like '%sočivo%'
   and :'soup_content' like '%dinner%' and :'soup_content' like '%light%', 'embedding input includes title, ingredients and labels');
@@ -56,9 +76,15 @@ select ok(not public.complete_recipe_vector('vector-bread',
   'a retry replaces the expired lease');
 select ok(public.complete_recipe_vector('vector-bread', :'retry_lease', :'v2'),
   'the retry is saved by the new lease');
-select ok(public.complete_recipe_vector('vector-other',
-  (select lease from claimed_recipe_vectors where recipe_id = 'vector-other'), :'v1'),
-  'the other household indexes independently');
+reset role;
+
+select tests.authenticate_as(:'ub');
+select ok(public.enable_recipe_vector_indexing(:'hb'), 'second household can independently opt in');
+select tests.clear_auth();
+set local role service_role;
+select * from public.claim_recipe_vectors() where recipe_id = 'vector-other' \gset other_
+select ok(public.complete_recipe_vector('vector-other', :'other_lease', :'v1'),
+  'the other household indexes only after its opt-in');
 reset role;
 
 select tests.authenticate_as(:'ua');

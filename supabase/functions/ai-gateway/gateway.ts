@@ -2,10 +2,8 @@ import {
   BodyTooLarge,
   boundedJson,
   type Completion,
-  type EmbeddingRequest,
   maxBodyBytes,
   parseCompletion,
-  parseEmbeddingRequest,
   record,
 } from "./input.ts";
 import {
@@ -19,12 +17,11 @@ import {
   parseImageRequest,
 } from "./image.ts";
 import {
-  chains,
-  embeddingModel,
   type Env,
   type Kind,
   modelId,
-  resolveEmbedding,
+  orderedChain,
+  providerOrder,
   resolveModel,
 } from "./providers.ts";
 
@@ -36,7 +33,7 @@ import {
   RecipeVectorProviderError,
 } from "./recipe_vectors.ts";
 
-const maxProviderResponseBytes = 800_000;
+const maxProviderResponseBytes = 256_000;
 
 type QuotaLimit = "daily" | "global" | "minute" | "concurrent";
 
@@ -66,6 +63,10 @@ interface GatewayDependencies {
     file: string,
     jpeg: Uint8Array,
   ): Promise<void>;
+  enableRecipeIndexing?: (
+    token: string,
+    householdId: string,
+  ) => Promise<boolean>;
   rankRecipes?: (
     token: string,
     embedding: number[],
@@ -146,7 +147,9 @@ async function complete(
         ...(model.provider === "openai"
           ? {}
           : { temperature: input.temperature }),
-        ...(model.name === "qwen/qwen3.6-27b"
+        // Lowest effort (contract D3): reasoning tokens count toward the
+        // 4096 limit and the deadline.
+        ...(model.provider === "openai" || model.name === "qwen/qwen3.6-27b"
           ? { reasoning_effort: "none" }
           : {}),
         messages: [
@@ -237,81 +240,6 @@ async function recipeImage(
   });
 }
 
-async function embed(
-  input: EmbeddingRequest,
-  selected: NonNullable<ReturnType<typeof resolveEmbedding>>,
-  send: typeof fetch,
-): Promise<Response> {
-  const signal = AbortSignal.timeout(30_000);
-  try {
-    const upstream = await send(selected.url, {
-      method: "POST",
-      redirect: "error",
-      signal,
-      headers: {
-        Authorization: "Bearer " + selected.key,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: selected.model,
-        input: input.inputs.map((item) => item.text),
-        dimensions: 768,
-        encoding_format: "float",
-      }),
-    });
-    if (!upstream.ok) {
-      await upstream.body?.cancel().catch(() => {});
-      if (upstream.status === 404) return failure(503, "model_unavailable");
-      if (upstream.status === 429) {
-        const retry = upstream.headers.get("Retry-After");
-        const seconds = retry && /^\d+$/.test(retry) ? Number(retry) : NaN;
-        return response(429, {
-          error: "provider_rate_limited",
-          ...(Number.isSafeInteger(seconds)
-            ? { retryAfterSeconds: seconds }
-            : {}),
-        });
-      }
-      return failure(502, "provider_error");
-    }
-    const payload = record(
-      await boundedJson(upstream.body, maxProviderResponseBytes),
-    );
-    if (
-      payload?.model !== selected.model || !Array.isArray(payload?.data) ||
-      payload.data.length !== input.inputs.length
-    ) {
-      return failure(502, "provider_error");
-    }
-    const vectors = new Array<number[]>(input.inputs.length);
-    const seen = new Set<number>();
-    for (const raw of payload.data) {
-      const item = record(raw);
-      const index = item?.index;
-      const values = item?.embedding;
-      if (
-        typeof index !== "number" || !Number.isSafeInteger(index) ||
-        index < 0 || index >= vectors.length || seen.has(index) ||
-        !Array.isArray(values) ||
-        values.length !== 768 ||
-        values.some((value) =>
-          typeof value !== "number" || !Number.isFinite(value)
-        )
-      ) return failure(502, "provider_error");
-      vectors[index] = values as number[];
-      seen.add(index);
-    }
-    if (seen.size !== vectors.length) {
-      return failure(502, "provider_error");
-    }
-    return response(200, { model: embeddingModel, embeddings: vectors });
-  } catch {
-    return signal.aborted
-      ? failure(504, "timeout")
-      : failure(502, "provider_error");
-  }
-}
-
 export function gateway(dependencies: GatewayDependencies) {
   const { env, authenticate, reserve, release, send } = dependencies;
   return async (request: Request): Promise<Response> => {
@@ -332,12 +260,17 @@ export function gateway(dependencies: GatewayDependencies) {
         return failure(503, "gateway_unavailable");
       }
       if (request.method === "GET") {
-        return response(200, {
-          text: chains.text.filter((candidate) => resolveModel(candidate, env))
-            .map(modelId),
-          vision: chains.vision.filter((candidate) =>
+        const { ignored } = providerOrder(env);
+        if (ignored.length > 0) {
+          console.warn("ai_provider_order_ignored " + ignored.join(","));
+        }
+        const available = (kind: Kind) =>
+          orderedChain(kind, env).filter((candidate) =>
             resolveModel(candidate, env)
-          ).map(modelId),
+          ).map(modelId);
+        return response(200, {
+          text: available("text"),
+          vision: available("vision"),
         });
       }
 
@@ -352,10 +285,25 @@ export function gateway(dependencies: GatewayDependencies) {
           ? failure(413, "too_large")
           : failure(400, "bad_request");
       }
-      if (record(raw)?.task === imageTask) {
+      const body = record(raw);
+      if (body?.task === imageTask) {
         return await recipeImage(raw, uid, dependencies);
       }
-      if (record(raw)?.task === "recipe_similarity_search") {
+      if (body?.task === "recipe_vector_consent") {
+        const householdId = body.householdId;
+        if (
+          Object.keys(body).length !== 2 || typeof householdId !== "string" ||
+          !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(householdId)
+        ) return failure(400, "bad_request");
+        if (!recipeVectorProvider(env) || !dependencies.enableRecipeIndexing) {
+          return failure(503, "model_unavailable");
+        }
+        if (!await dependencies.enableRecipeIndexing(token, householdId)) {
+          return failure(403, "forbidden");
+        }
+        return response(200, { enabled: true });
+      }
+      if (body?.task === "recipe_similarity_search") {
         const input = parseRecipeSearch(raw);
         if (!input) return failure(400, "bad_request");
         const provider = recipeVectorProvider(env);
@@ -386,27 +334,10 @@ export function gateway(dependencies: GatewayDependencies) {
           );
         }
       }
-      if (record(raw)?.task === "recipe_embeddings") {
-        const embeddingInput = parseEmbeddingRequest(raw);
-        if (!embeddingInput) return failure(400, "bad_request");
-        const selected = resolveEmbedding(env);
-        if (!selected) return failure(503, "model_unavailable");
-        const reservation = await reserve(uid, "text", limitsFor(env, "text"));
-        if ("limit" in reservation) return quotaResponse(reservation, "text");
-        try {
-          return await embed(embeddingInput, selected, send);
-        } finally {
-          try {
-            await release(reservation.id);
-          } catch {
-            console.warn("ai_gateway_release_failed");
-          }
-        }
-      }
       const input: Completion | undefined = parseCompletion(raw);
       if (!input) return failure(400, "bad_request");
 
-      const candidate = chains[input.kind].find((entry) =>
+      const candidate = orderedChain(input.kind, env).find((entry) =>
         modelId(entry) === input.model
       );
       if (!candidate) return failure(400, "bad_request");
@@ -420,7 +351,12 @@ export function gateway(dependencies: GatewayDependencies) {
       );
       if ("limit" in reservation) return quotaResponse(reservation, input.kind);
       try {
-        return await complete(input, selected, send);
+        const result = await complete(input, selected, send);
+        // Only the model id and status: no prompt, output, token or key.
+        console.info(
+          "ai_gateway_call model=" + input.model + " status=" + result.status,
+        );
+        return result;
       } finally {
         try {
           await release(reservation.id);
