@@ -60,6 +60,19 @@ identities. The offline checker validates every candidate/reference row and keep
 identity/allergen decisions on candidates only; USDA mapping approval may be
 recorded for either origin.
 
+## Approved reference foods
+
+`legacy-food-approvals.csv` lists the 171 historical reference foods that
+Uroš Milutinović approved on 2026-11-24, when he confirmed in chat that he had
+reviewed all catalog data, including each reference food's identity, base unit
+and aliases. The worksheet keeps these rows as `legacy_reference` without
+decisions; the approval file is the only source of the decision.
+`scripts/build_food_catalog_seed.py --legacy-approvals` builds an additive seed
+for them with the same deterministic IDs, nutrition only for complete
+owner-approved USDA records, and their historical aliases except the disputed
+pairs in `alias-correction-proposals.csv`. Their allergen status stays
+`unknown` until a named allergen review is recorded.
+
 ## Offline checks
 
 From the repository root:
