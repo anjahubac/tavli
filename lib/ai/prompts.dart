@@ -94,12 +94,16 @@ String recipeFromImagePrompt() => '''
 Read the recipe from this image (printed, handwritten or a screenshot) and
 return it in the recipe JSON schema. Keep the original quantities and write
 each unit word as it appears (translated to Serbian if needed): "čaša" stays
-"čaša", "dl" stays "dl"; do not convert units. If something is unreadable,
-make a sensible guess and mention it in that ingredient's "note".
+"čaša", "dl" stays "dl"; do not convert units. If a single ingredient line
+is unreadable, keep the recipe, write that ingredient with null quantity and
+a best-guess name, and say in its "note" that it was unreadable. Never invent
+quantities or ingredients you cannot see.
 If the recipe does not state servings, estimate them. List every ingredient
 the steps use. Copy only the steps that are written; if there are none, return
 an empty list. Leave out greetings and wishes such as "Prijatno!".
-If the image does not contain a recipe, return {"error": "not_a_recipe"}.''';
+If the image does not contain a recipe, or most of it is too blurred, cropped
+or faint to read (no legible title and fewer than three legible ingredient
+lines), return {"error": "not_a_recipe"} instead of guessing a recipe.''';
 
 String recipeFromNamePrompt(
   String dishName, {

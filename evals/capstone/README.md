@@ -33,6 +33,11 @@ on the commit before #69 and after it, without network or keys. The method and
 table are in `results.md`; the trace lines are in
 `traces/ev12-repair-before-after.jsonl`.
 
+The live cases through the gateway (signed-in user, no key in the app) are
+GW-01 to GW-04 in `test/evals/live_gateway_flow_test.dart`; the method, the
+before and after of the photo prompt and the limits are in `gateway-flow.md`,
+the trace lines in `traces/gateway-flow.jsonl`.
+
 ## Limits
 
 The deterministic cases prove the app-side decisions with a scripted model.
