@@ -92,6 +92,26 @@ void main() {
     );
   });
 
+  testWidgets('Android: polje za API ključ nema predloge ni kad je vidljivo', (
+    tester,
+  ) async {
+    adapter = FakeAdapter([]);
+    await pumpScreen(tester);
+
+    TextField field() => tester.widget<TextField>(keyField());
+    expect(field().obscureText, isTrue);
+
+    await tester.tap(find.bySemanticsLabel('Prikaži'));
+    await tester.pumpAndSettle();
+    expect(field().obscureText, isFalse);
+    expect(field().enableSuggestions, isFalse);
+
+    await tester.tap(find.bySemanticsLabel('Sakrij'));
+    await tester.pumpAndSettle();
+    expect(field().obscureText, isTrue);
+    expect(field().enableSuggestions, isFalse);
+  }, variant: const TargetPlatformVariant({TargetPlatform.android}));
+
   testWidgets('prepoznaje servis, proverava i dodaje ključ', (tester) async {
     adapter = FakeAdapter([modelsOk]);
     await pumpScreen(tester);

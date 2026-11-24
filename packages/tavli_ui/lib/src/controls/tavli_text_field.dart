@@ -85,6 +85,7 @@ class TavliTextField extends StatelessWidget {
     this.autofillHints,
     this.focusNode,
     this.autocorrect = true,
+    this.enableSuggestions = true,
     this.isCode = false,
     this.trailing,
     this.leading,
@@ -123,6 +124,9 @@ class TavliTextField extends StatelessWidget {
   /// `false` za e-poštu, kodove i nazive koje ne treba ispravljati.
   final bool autocorrect;
 
+  /// Da li Android tastatura prikazuje predloge za unos.
+  final bool enableSuggestions;
+
   /// Jednokratni kod iz poruke: veće cifre sa razmakom između njih.
   final bool isCode;
 
@@ -146,6 +150,7 @@ class TavliTextField extends StatelessWidget {
     final field = TextFormField(
       focusNode: focusNode,
       autocorrect: autocorrect,
+      enableSuggestions: enableSuggestions,
       controller: controller,
       initialValue: initialValue,
       onChanged: onChanged,

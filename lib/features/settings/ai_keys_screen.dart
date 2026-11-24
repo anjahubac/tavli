@@ -231,6 +231,7 @@ class _AiKeysScreenState extends ConsumerState<AiKeysScreen> {
                 controller: _input,
                 obscureText: _obscure,
                 autocorrect: false,
+                enableSuggestions: false,
                 onSubmitted: (_) => _add(),
                 trailing: TavliIconButton(
                   icon: _obscure
