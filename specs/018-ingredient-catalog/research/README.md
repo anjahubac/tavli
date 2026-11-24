@@ -75,9 +75,11 @@ pairs in `alias-correction-proposals.csv`.
 `legacy-allergen-proposals.csv` holds manual Annex II proposals for the same
 171 foods and is their allergen review record. Uroš Milutinović approved the
 137 rows marked `auto` (plain single ingredients or products with a fixed
-Annex II group) on 2026-11-24; `scripts/food_allergens.py seed-legacy` writes
-only decided rows. The 34 `needs_review` rows depend on the product (for
-example sausage, bread or ketchup) and stay `unknown`.
+Annex II group) and the 15 `needs_review` rows that name an allergen (for
+example bread → gluten) on 2026-11-24; `scripts/food_allergens.py seed-legacy`
+writes only decided rows. The other 19 `needs_review` rows (for example
+sausage, margarine or ketchup) would claim no allergen for products that often
+have one, so they stay `unknown`.
 
 ## Offline checks
 

@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 
 select is(
   (select count(*) from public.foods
@@ -46,14 +46,14 @@ select is(
   (select count(*) from public.foods
    where source like 'Uroš Milutinović confirmed%' and allergen_codes is not null
      and allergen_source_ref like '%(reviewed by Uroš Milutinović)'),
-  137::bigint,
-  'the 137 clear reference foods carry a named allergen review'
+  152::bigint,
+  'the 152 reviewed reference foods carry a named allergen review'
 );
 select is(
   (select count(*) from public.foods
    where source like 'Uroš Milutinović confirmed%' and allergen_codes is null),
-  34::bigint,
-  'product-dependent reference foods stay unknown'
+  19::bigint,
+  'products whose allergens depend on the label stay unknown'
 );
 select is(
   (select allergen_codes from public.foods where slug = 'losos'),
@@ -64,6 +64,11 @@ select is(
   (select allergen_codes from public.foods where slug = 'psenicno-brasno'),
   array['gluten'],
   'wheat flour contains gluten'
+);
+select is(
+  (select allergen_codes from public.foods where slug = 'hleb'),
+  array['gluten'],
+  'bread contains gluten'
 );
 select ok(
   (select allergen_codes is null from public.foods where slug = 'kobasica'),
