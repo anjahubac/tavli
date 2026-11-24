@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -122,13 +121,6 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
           action: 'Registruj se',
           onPressed: _toSignUp,
         ),
-        // Galerija UI biblioteke radi i bez prijave, samo u debug verziji.
-        if (kDebugMode)
-          TavliButton.text(
-            label: 'Komponente (samo za razvoj)',
-            icon: Icons.widgets_outlined,
-            onPressed: () => context.push(componentsPath),
-          ),
       ],
       children: [
         TavliTextField(

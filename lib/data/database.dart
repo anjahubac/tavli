@@ -792,8 +792,8 @@ class AppDatabase extends _$AppDatabase {
     await m.addColumn(table, c);
   }
 
-  /// v9: keš kataloga namirnica (samo dodaje). Ponovljen korak (vraćen
-  /// user_version) ne pada.
+  /// v9: keš kataloga namirnica. Ponovljen korak (vraćen user_version)
+  /// čuva tabele sa aktuelnom šemom.
   Future<void> _migrateToFoodCatalog(Migrator m) async {
     await _addMissingColumn(m, accounts, accounts.catalogStatus);
     final existing = {
@@ -803,7 +803,24 @@ class AppDatabase extends _$AppDatabase {
         r.read<String>('name'),
     };
     if (!existing.contains(foods.actualTableName)) await m.createTable(foods);
-    if (!existing.contains(foodAliases.actualTableName)) {
+    if (existing.contains(foodAliases.actualTableName)) {
+      // Keš kataloga: stara šema (bez alias_normalized) se odbacuje i pravi ponovo.
+      final columns = await customSelect(
+        'PRAGMA table_info("${foodAliases.actualTableName}")',
+      ).get();
+      if (!columns.any(
+        (r) => r.read<String>('name') == foodAliases.aliasNormalized.$name,
+      )) {
+        await customStatement('DROP TABLE "${foodAliases.actualTableName}"');
+        existing.remove(foodAliasesSharedActive.entityName);
+        await m.createTable(foodAliases);
+        // Kursor preuzimanja je inkrementalan: bez brisanja se stari aliasi
+        // ne bi vratili.
+        await (delete(
+          syncCursors,
+        )..where((t) => t.entity.equals('food_alias'))).go();
+      }
+    } else {
       await m.createTable(foodAliases);
     }
     if (!existing.contains(foodAliasesSharedActive.entityName)) {

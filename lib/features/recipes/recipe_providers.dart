@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../account/auth_controller.dart';
+import '../../ai/recipe_semantic_search.dart';
 import '../../data/photo_resize.dart';
 import '../../data/recipe_photo_store.dart';
 import '../../data/recipe_rating_repository.dart';
@@ -33,6 +34,13 @@ final recipeRepositoryProvider = Provider<RecipeRepository>(
     clock: ref.watch(clockProvider),
   ),
 );
+
+final recipeSemanticSearchServiceProvider =
+    Provider<IndexedRecipeSearchService?>((ref) {
+      final gateway = ref.watch(gatewayChatClientProvider);
+      if (gateway == null) return null;
+      return IndexedRecipeSearchService(gateway);
+    });
 
 final recipeRatingRepositoryProvider = Provider<RecipeRatingRepository>(
   (ref) => RecipeRatingRepository(

@@ -177,9 +177,15 @@ void main() {
   });
 
   testTavli('široki ekran i veliki tekst: sve staje', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await open(tester, books: const [readyBook], size: wide);
     expect(tester.takeException(), isNull);
     expect(find.text('Velika kuvarica'), findsOneWidget);
+    expect(find.text('Obradi ponovo'), findsOneWidget);
   });
 
   testTavli('iz menija „Dodaj recept“ se stiže do kuvarskih knjiga', (
@@ -223,7 +229,7 @@ void main() {
     expect(find.text('Knjiga je spremna.'), findsOneWidget);
   });
 
-  testTavli('spremna i neuspela knjiga nemaju „Nastavi obradu“', (
+  testTavli('spremna knjiga može ponovo u obradu bez otpremanja', (
     tester,
   ) async {
     await open(
@@ -240,6 +246,14 @@ void main() {
       ],
     );
     expect(find.text('Nastavi obradu'), findsNothing);
+    expect(find.text('Obradi ponovo'), findsOneWidget);
+
+    await tapButton(tester, 'Obradi ponovo');
+
+    expect(repo.resumes, [readyBook.id]);
+    expect(picker.calls, 0);
+    expect(repo.uploads, isEmpty);
+    expect(find.text('Knjiga je spremna.'), findsOneWidget);
   });
 
   testTavli('greška pri nastavku obrade se prikazuje', (tester) async {

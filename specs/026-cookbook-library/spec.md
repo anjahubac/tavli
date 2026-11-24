@@ -45,6 +45,8 @@ Private household storage, authorized book/chunk retrieval and resumable jobs. S
 ## Exact UI copy carried forward
 
 “Kuvari”, “Dodaj kuvar”, “Obrada je u toku”, “Sačuvaj kao recept”.
+“Obradi ponovo” sends the existing ready book for processing with the current
+embedding model. The server reuses the existing vectors when the model matches.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 
