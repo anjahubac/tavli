@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/app/router.dart';
 import 'package:tavli_ui/tavli_ui.dart';
@@ -7,33 +6,23 @@ import 'package:tavli_ui/tavli_ui.dart';
 import '../helpers/test_app.dart';
 
 void main() {
-  testTavli('Profil > Komponente otvara galeriju i vraća se nazad', (
-    tester,
-  ) async {
+  testTavli('Profil i prijava nemaju ulaz u galerije', (tester) async {
     await pumpTavli(tester, location: '/profile');
-    await tester.ensureVisible(find.text('Komponente'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Komponente'));
-    await tester.pumpAndSettle();
-    expect(find.byType(TavliGallery), findsOneWidget);
-
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-    expect(find.byType(TavliGallery), findsNothing);
-    expect(find.text('Profil'), findsOneWidget);
+    expect(find.text('Komponente'), findsNothing);
+    expect(find.text('Animacije'), findsNothing);
   });
 
-  testTavli('galerija se u debug verziji otvara i bez prijave', (tester) async {
+  testTavli('prijava nema dugme za galeriju', (tester) async {
     await pumpTavli(tester, location: '/plan', signedIn: false);
     expect(find.text('Prijava'), findsOneWidget);
+    expect(find.text('Komponente (samo za razvoj)'), findsNothing);
+  });
 
-    await tester.tap(find.text('Komponente (samo za razvoj)'));
-    await tester.pumpAndSettle();
+  testTavli('galerija se u debug verziji otvara direktnom adresom', (
+    tester,
+  ) async {
+    await pumpTavli(tester, location: componentsPath, signedIn: false);
     expect(find.byType(TavliGallery), findsOneWidget);
-
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-    expect(find.text('Prijava'), findsOneWidget);
   });
 
   test('bez alata za razvoj galerija traži prijavu i nema rutu', () {

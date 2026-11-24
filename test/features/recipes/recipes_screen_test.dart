@@ -1,12 +1,44 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:supabase/supabase.dart';
+import 'package:tavli/ai/gateway_chat_client.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/recipe_labels.dart';
+import 'package:tavli/providers.dart';
 import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/test_app.dart';
 
 void main() {
+  testTavli('otkazivanje AI pretrage ne šalje saglasnost', (tester) async {
+    final calls = <Map<String, Object?>?>[];
+    final gateway = GatewayChatClient(
+      accountId: () => 'account',
+      refresh: () async => false,
+      invoke: (_, body) async {
+        calls.add(body);
+        return const FunctionResponse(status: 200, data: {'enabled': true});
+      },
+    );
+    await pumpTavli(
+      tester,
+      recipes: [sampleRecipe('a', 'Pasulj')],
+      overrides: [gatewayChatClientProvider.overrideWithValue(gateway)],
+    );
+
+    await tester.tap(find.bySemanticsLabel('Pretraži po smislu'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pretraga preko Cloudflare-a'), findsOneWidget);
+    expect(find.textContaining('indeksiranje za domaćinstvo'), findsOneWidget);
+    await tester.tap(find.text('Otkaži'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pasulj'), findsOneWidget);
+    expect(calls, isEmpty);
+  });
+
   testTavli('prazna lista pokazuje poruku i dugme za dodavanje', (
     tester,
   ) async {
@@ -394,6 +426,96 @@ void main() {
       await tester.tap(find.text('Prikaži recepte'));
       await tester.pumpAndSettle();
     }
+
+    testTavli('bez mreže pretraga prelazi na naziv i zadržava filtere', (
+      tester,
+    ) async {
+      final tasks = <Object?>[];
+      var offline = true;
+      final gateway = GatewayChatClient(
+        accountId: () => 'account',
+        refresh: () async => false,
+        invoke: (_, body) async {
+          final task = body!['task'];
+          tasks.add(task);
+          if (offline) throw const SocketException('Network is unreachable');
+          if (task == 'recipe_vector_consent') {
+            expect(body['householdId'], isNot(isEmpty));
+            return const FunctionResponse(status: 200, data: {'enabled': true});
+          }
+          expect(task, 'recipe_similarity_search');
+          expect(body['recipeIds'], ['a']);
+          return const FunctionResponse(
+            status: 200,
+            data: {
+              'matches': [
+                {'recipe_id': 'a', 'distance': .12},
+              ],
+            },
+          );
+        },
+      );
+      final lunch = RecipeLabels.byUser(meals: {MealSuitability.lunch});
+      await pumpTavli(
+        tester,
+        location: '/recipes?posni=1',
+        recipes: [
+          sampleRecipe('a', 'Posna čorba').copyWith(labels: lunch),
+          sampleRecipe('b', 'Posna čorba od bundeve').copyWith(
+            labels: RecipeLabels.byUser(meals: {MealSuitability.dinner}),
+          ),
+          sampleRecipe('c', 'Čorba od šargarepe').copyWith(labels: lunch),
+        ],
+        overrides: [gatewayChatClientProvider.overrideWithValue(gateway)],
+      );
+      await openFilters(tester);
+      await tester.tap(find.text('Ručak'));
+      await tester.pumpAndSettle();
+      await close(tester);
+      final search = find.byType(TavliSearchField);
+      await tester.enterText(search, 'CORBA');
+      await tester.pumpAndSettle();
+
+      Future<void> enableSemanticSearch() async {
+        await tester.tap(find.bySemanticsLabel('Pretraži po smislu'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Dozvoli indeksiranje'));
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+      }
+
+      await enableSemanticSearch();
+      final notice = find.text(
+        'Veza sa AI pretragom nije dostupna. Pretražujemo po nazivu.',
+      );
+      expect(notice, findsOneWidget);
+      expect(find.bySemanticsLabel('Pretraži po smislu'), findsOneWidget);
+      expect(find.bySemanticsLabel('Filteri (1)'), findsOneWidget);
+      expect(find.text('Posni recepti'), findsOneWidget);
+      expect(find.text('Posna čorba'), findsOneWidget);
+      expect(find.text('Posna čorba od bundeve'), findsNothing);
+      expect(find.text('Čorba od šargarepe'), findsNothing);
+
+      await tester.enterText(search, 'večera od povrća');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(notice, findsOneWidget);
+      expect(find.text('Nema recepata za izabrane filtere.'), findsOneWidget);
+      expect(tasks, ['recipe_vector_consent']);
+
+      offline = false;
+      await enableSemanticSearch();
+      expect(notice, findsNothing);
+      expect(find.text('Posna čorba'), findsOneWidget);
+      expect(find.text('Posna čorba od bundeve'), findsNothing);
+      expect(find.text('Čorba od šargarepe'), findsNothing);
+      expect(tasks, [
+        'recipe_vector_consent',
+        'recipe_vector_consent',
+        'recipe_similarity_search',
+      ]);
+    });
 
     testTavli('izbor obroka i vremena sužava listu', (tester) async {
       await pumpTavli(tester, recipes: labelled());

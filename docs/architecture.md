@@ -1,20 +1,24 @@
 # Tavli application architecture
 
 Reviewed: 2026-11-13. Evidence baseline: `main` at `1eca2c3`, `dev` at
-`207c94c`. This describes **anjahubac/tavli**, not `tavli-next`.
+`207c94c`. Brought up to date with `dev` at `ebcd794` on 2026-11-24 (drift
+schema 14, 46 SQL migrations, 9 Edge Functions). This describes **anjahubac/tavli**, not `tavli-next`.
 Code presence is not a claim of production acceptance or a successful test run.
 See [review findings](development/review-2026-11-13.md) and
 [product plan](product-plan.md) for the accepted evolution.
 
 ## 1. Current stack and repository layout
 
-One Flutter application targets Android, iOS, macOS and Windows. The Windows x64
-runner and local MSIX packaging are documented in
-[Windows development](development/windows.md); public distribution is not yet
+One Flutter application targets Android, iOS, macOS and Windows; a Linux GTK
+runner also builds in CI ([Linux development](development/linux.md)). The Windows
+x64 runner, in-window title bar and menu, and local MSIX packaging are documented
+in [Windows development](development/windows.md); public distribution is not yet
 claimed. Dart's constraint is
 `^3.13.7` in `pubspec.yaml`; obtain exact packages from `pubspec.lock`, not this
 prose. Material 3, Riverpod, go_router, drift/SQLite, dio, the pure-Dart Supabase
-client, secure storage and image_picker are already used. No new framework,
+client, secure storage, image_picker, mobile_scanner (household QR), record
+(voice), qr_flutter, share_plus, app_links (`tavli://` links) and wakelock_plus are
+already used. No new framework,
 package layout or generic event bus is required by the team standards.
 
 | Existing path | Responsibility | Boundary |
@@ -24,23 +28,31 @@ package layout or generic event bus is required by the team standards.
 | `packages/tavli_ui/` | Local UI package: palettes, theme, semantic colors, spacing/radius/motion tokens, `TavliPlatform`, font | Depends only on Flutter; app imports `package:tavli_ui/tavli_ui.dart` only |
 | `lib/app/theme_controller.dart`, `lib/app/animations/` | Persisted appearance choice and reduced-motion painters | Reuse package tokens; no app logic in the package |
 | `lib/providers.dart` | Shared dependency wiring, auth scope, sync/router/client construction | Feature-level providers remain beside their features |
-| `lib/features/recipes/` | Recipe list/detail, inputs, AI preview/chat, original photo and versions | Compose reusable ingredient/personal/cooking widgets here |
+| `lib/features/recipes/` | Recipe list/detail, photo/name/voice/manual inputs, AI preview/chat, filters and labels, ratings and favorites, add to plan, "Šta da skuvam?", cooking mode with timers, AI images, original photo and versions | Compose reusable ingredient/personal/cooking widgets here |
+| `lib/features/home/` | Today's and tomorrow's meals, cook/undo, one prioritized notice, fasting status card | A view over the approved plan, not a separate store |
+| `lib/features/pantry/` | Ostava list, add/edit/remove, add from a photo | Uses `pantry_repository`; no expiry UI |
+| `lib/features/cookbooks/`, `lib/features/fasting/` | Household cookbook upload and questions; fasting and holiday questions | Server work happens in Edge Functions; UI only calls repositories |
 | `lib/features/planning/` | Setup, draft progress/preview, calendar and meal actions | Draft state is separate from accepted plan data |
 | `lib/features/shopping/` | Plan/recipe mode, list UI and providers | Reconciliation is in repositories/domain |
-| `lib/features/account/`, `settings/` | Auth screens, sync status, profile, appearance and keys | No direct backend calls in widgets |
+| `lib/features/account/`, `settings/` | Auth screens, household setup, invitation share/scan/join, sync status, profile, appearance, tastes and allergens, own AI keys | No direct backend calls in widgets |
 | `lib/domain/` | Pure Dart recipes, calendar dates, meal plans, demand, sources, sync and allocation calculations | No Flutter or network imports |
 | `lib/data/` | Account-scoped repositories, drift schema, photos, settings and cooldown persistence | Persistent business operations and transactions |
 | `lib/account/` | AuthGateway, AccountApi/Service, AuthController, AccountScope, SessionStore | Supabase hidden behind fakeable interfaces |
 | `lib/ai/` | Task facades, prompts, parsers, AIRouter, ChatClient, chains and credentials | All feature AI goes through AIRouter |
-| `lib/sync/` | SyncedWriter, registry, uploader/downloader, photos, legacy migration and scheduler | Network synchronization, not UI state |
-| `supabase/migrations/`, `tests/`, `functions/`, `templates/` | SQL/RLS, pgTAP, delete-account and email templates | Applied SQL immutable; hosted changes via reviewed deployment |
+| `lib/sync/` | SyncedWriter, registry, uploader/downloader, photos, legacy migration, scheduler and realtime signals | Network synchronization, not UI state |
+| `supabase/migrations/`, `tests/`, `functions/`, `templates/` | SQL/RLS, pgTAP, Edge Functions (`ai-gateway`, `voice-transcribe`, `planning-inputs`, `cookbook-process`, `cookbook-ask`, `household-invite`, `household-join`, `household-photo-cleanup`, `delete-account`) and email templates | Applied SQL immutable; hosted changes via reviewed deployment |
+| `site/`, `evals/` | Static email confirmation page (Cloudflare Pages); AI evaluation cases and traces | Page holds no keys; evals use recorded traces |
 | `test/`, `scripts/` | Mirrored tests, fake backend/AI, format/analyze and affected tests | Synthetic data, local services only |
 | `specs/`, `.specify/`, `.claude/skills/` | Acceptance, contracts, workflow templates and installed Spec Kit commands | Versioned product/engineering decisions |
 
 Pantry tables, `lib/data/pantry_repository.dart` and the Ostava screens in
-`lib/features/pantry/` exist (spec 022). Preferences UI, household invitation flow, Home
-screen, tracker, cookbooks and voice agent do not exist at this baseline.
-Create their feature files only when the relevant feature is specified.
+`lib/features/pantry/` exist (spec 022). So do the tastes and allergens screen,
+the household flow (setup, invitation by link, QR or code, join, departure and
+removal), the Home screen, cookbooks, fasting questions and the voice recipe
+agent. The nutrition diary and calorie strip, store prices, receipt QR, cycle
+hints and nutritionist plan import do not exist; nutrition has only
+reference values and per-recipe calculation (`lib/domain/recipe_nutrition.dart`)
+with no screen. Create the files of such features only when they are specified.
 
 ## 2. Dependency boundaries
 
@@ -73,7 +85,7 @@ shared providers stay in `lib/providers.dart`; do not invent a parallel DI layer
 ## 3. Account and data lifecycle
 
 An account is mandatory. Auth states (`Starting`, `SignedOut`, `CodeSent`,
-`ConfirmSent`, `NeedsName`, `SignedIn`) control route access and the one-time
+`ConfirmSent`, `NeedsName`, `NeedsHousehold`, `SignedIn`) control route access and the one-time
 name step. Sign-in (`/sign-in`) only sends a code to an existing account
 (`shouldCreateUser: false`, unknown address → `NoAccount`). Sign-up
 (`/sign-up`) creates the account and sends the confirmation email, which has a
@@ -89,7 +101,8 @@ for the current user and points it to the selected Debug or Release executable.
 Windows also registers the scheme when installing the MSIX package. On Windows
 the user can type the code from the email as well.
 The name is asked once: with no cached name the app checks the server profile
-before showing the name step. Apple/Google remain future work. Session tokens live
+before showing the name step. A mandatory "Tvoje domaćinstvo" step follows: the
+person names a household or joins one with an invitation code. Apple/Google remain future work. Session tokens live
 in secure storage, not drift or logs. Email OTP length, confirmation templates
 and redirect settings must agree for each local/dev/production environment;
 configure them explicitly rather than assuming the email template determines
@@ -119,20 +132,23 @@ explicit operation through `delete-account`, then local cleanup after success.
 
 Current scheduler pushes on start/login/resume/local change, debounces local
 writes for 1 s and retries offline at 5/10/30 s. Pull runs on start/login and
-resume when the 15-minute threshold has elapsed. This is **not** a claim that
-an active foreground polling timer or household realtime already exists.
-Last server write wins for record edits; deletion tombstones prevent resurrection.
-Future realtime is an authenticated invalidation signal that triggers the same
-pull path, with reconnect recovery. It never becomes an alternative UI database.
+resume when the 15-minute threshold has elapsed. While the app is in the
+foreground, `RealtimeSync` also listens to authenticated signal rows
+(`account_sync_signals`, `household_sync_signals`) and starts a pull after a signal;
+a 15-minute fallback timer and reconnect recovery cover a missed one. Signals
+carry no business data. They only trigger the same pull path and never become an
+alternative UI database. Last server write wins for record edits; deletion
+tombstones prevent resurrection.
 
-The ingredient catalog (`foods`, `food_aliases`, spec 018) downloads read-only
+The ingredient catalog (`foods`, `food_aliases`, spec 018; reviewed seed, nutrition
+reference values and allergen groups per food) downloads read-only
 after the household entities and before tombstones, through `catalogEntities`
 outside the generic `syncEntities` loop. A server without the tables or a
 denied household read never stops the rest of the download (`CatalogStatus`).
 `FoodCatalogReader` builds the matcher from the local cache. Household catalog
 writes are not implemented yet; when added they become ordinary outbox-backed
-writes. Shared prices remain planned as read-only reference data. Current theme/settings and AI
-keys remain device-local. Planned cycle data is a deliberate device-only secure
+writes. Shared prices remain planned as read-only reference data. Current theme/settings, the
+own-key order and AI keys remain device-local. Planned cycle data is a deliberate device-only secure
 exception; do not add it to the generic sync/export pipeline.
 
 ## 4. Existing planning and shopping invariants
@@ -142,14 +158,17 @@ persists through `MealPlanRepository`. `MealType` has breakfast, morning
 snack, lunch, afternoon snack and dinner in day order; a plan stores the chosen
 types as a list and each meal as its own entry, and an entry with a type this
 client does not know is skipped instead of shown as lunch.
-`CivilDate` already represents calendar days in domain code, while persisted
-calendar columns still need the planned server `date` migration.
+`CivilDate` represents calendar days in domain code; persisted plan and weekly-list
+days are server `date` columns since the `calendar_dates` migration (spec 016),
+while instants stay UTC timestamps.
 
-The baseline drift schema version is **5** (`lib/data/database.dart`). It already
+The drift schema version is **14** (`lib/data/database.dart`, 2026-11-24). It
 includes approved recipe snapshots/servings, source headers, contributions,
-supply allocations, pantry receipt provenance and weekly shopping periods.
-This is not permission to choose version 6 independently in four branches;
-check current `dev` and coordinate the next version before each schema PR.
+supply allocations, pantry receipts and consumptions, weekly shopping periods,
+cooked events, ratings, favorites, allergen selections, tastes and the catalog
+cache (foods, aliases, nutrition reference). Never pick the next version
+independently in parallel branches: check current `dev` and coordinate before
+each schema PR.
 
 - Plan entries reference the approved snapshot. Later library changes/deletion
   must not silently change shopping quantities or remove cooking information.
@@ -170,7 +189,8 @@ Test local rollback, duplicate event/retry, undo, account switch and deletion.
 
 ## 5. Runtime AI
 
-Current: `RecipeAI`/`MealPlanAI` → `AIRouter` → fakeable `ChatClient` (dio).
+Current: `RecipeAI`/`MealPlanAI`/`PantryAI`/`VoiceAgent` → `AIRouter` → fakeable
+`ChatClient` (dio).
 `ChainConfig` owns models/capabilities; `KeySource` supplies own keys
 (paid or free services first, `OwnKeyOrder`); the gateway comes after them. Model
 cooldown state persists in drift. Parsers throw
@@ -202,18 +222,39 @@ client configuration and passes its session token to the Edge Function. Older
 builds that shipped shared provider keys still need the cutover and rotation
 procedure in 015.
 
-Future cookbook/RAG processing uses private household storage and authorized
-retrieval, page/chunk provenance and resumable background jobs. Future voice uses
-validated allowlisted commands against a draft, then the same approval/mapping
-path. Future imported plans are reviewed, preserve exact quantities and protect
-locked meals. None of those workers/endpoints currently exists here.
+Server-side AI features beyond chat completion, all behind `verify_jwt` and the
+same `ai_reserve`/`ai_release` quota used by the gateway:
+
+- **Gateway** (`ai-gateway`): text and photo tasks plus `recipe_image`. The shared
+  chain is ordered by the optional `AI_PROVIDER_ORDER` secret; an OpenAI model is
+  first only when `AI_OPENAI_ENABLED` is `1`; `AI_GATEWAY_DISABLED=1` switches it
+  off. Provider keys are function secrets only. AI images need
+  `AI_IMAGES_ENABLED=1` and Cloudflare credentials; they are generated in the
+  background for AI recipes, stored under the
+  household's private path and never replace the person's own photo.
+- **Cookbooks** (`cookbook-process`, `cookbook-ask`): private household PDF/EPUB
+  with real text (scans are rejected); chunks are embedded, retrieval is filtered
+  to the caller's household books in the database, and every answer carries book
+  and page from the database, never from the model. The Home fasting card reuses
+  this path for questions answered from recipes and cookbooks.
+- **Voice** (`voice-transcribe`): press-to-talk recording is transcribed
+  server-side, then `VoiceAgent` turns the transcript into allowlisted actions on
+  a recipe draft that the person reviews in the manual form. Nothing is recorded in
+  the background.
+- **Planning inputs** (`planning-inputs`): returns the consent-filtered member
+  tastes and favorites the planner may use.
+
+Imported nutritionist plans do not exist yet; when added they are reviewed,
+preserve exact quantities and protect locked meals.
 
 ## 6. Accepted product evolution and privacy
 
 Target tabs: Plan, Nabavka, **Početna**, Recepti, Ostava; profile via avatar.
-Code has these five tabs (wide menu: Home first); empty `/home` is default.
+Code has these five tabs (wide menu: Home first); `/home` is default.
 Home, pantry and cooking extend existing planning/shopping repositories; they do
-not create a second plan store.
+not create a second plan store. Home (`/home`, the default) shows today's and
+tomorrow's meals, "Kuvaj" and "Skuvano" with undo, one notice (missing shopping
+today/tomorrow, then plan ending) and the "Post i praznici" card.
 Keep route compatibility and auth gates during the transition.
 
 Catalog: stable UUID + readable slug, aliases, base units, conversions and
@@ -221,13 +262,18 @@ nutrition provenance; do not copy `tavli-next` identifiers/schema blindly.
 Ingredient snapshots preserve original text and optional catalog mapping.
 Pantry has optional quantity, no expiry UX and no “use first” subsystem. Numeric
 stock is consumed once when cooked and restored on undo; unknown stock persists
-until removed. Those are future semantics to implement with a ledger contract.
+until removed. `CookingRepository` (cooked events) and `PantryRepository`
+(consumptions) implement this in one transaction with the outbox; the full
+ledger contract and its replay fixtures are still being completed.
 
 Household planning targets a consent-filtered aggregate of selected members'
 tastes, notes and favorites, defaulting to all current members. Personal profile
 and diary rows stay owner-only. The 2026-11-21 decision keeps participant
 allergen selections within the future server planner for candidate filtering and
-final checks. The current client planner does not implement this behavior. See
+final checks. The current planner does not apply allergen selections yet: the
+tastes screen stores them (`user_allergen_selections`) and the catalog carries
+allergen groups per food, but neither generation nor `planning-inputs` filters
+by them. See
 the [008 contract](../specs/008-household-members/contracts/member-planning-inputs.md)
 and [logic-first plan](../specs/008-household-members/plan.md). Cycle dates never
 leave the device; only an explicitly approved generic dietary hint can enter a request.
@@ -256,9 +302,10 @@ must follow the verified repository, never an imagined future folder tree.
 ## 8. Security boundaries and known gaps
 
 [Security assessment](development/security.md) records the source-level baseline:
-RLS/grants/private storage and secure session storage exist; provider credentials
-compiled into builds, unchecked photo paths, raw error propagation and missing
-SQL/function deployment gates need dedicated remediation. Environment/cache
+RLS/grants/private storage and secure session storage exist; shared provider
+credentials are no longer read by the client (server secrets only). Unchecked photo
+paths, raw error propagation and missing SQL/function deployment gates still need
+dedicated remediation. Environment/cache
 protection needs review before sensitive-data features. These are tracked in
 [012](../specs/012-security-baseline/spec.md); no architecture diagram or rule
 change constitutes a runtime fix. Server authorization remains mandatory even
