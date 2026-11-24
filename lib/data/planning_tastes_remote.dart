@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:supabase/supabase.dart';
 
+import '../domain/plan_safety.dart';
 import '../domain/planning_tastes.dart';
 
 /// Poziv funkcije `planning-inputs` sa telom zahteva.
@@ -87,4 +88,84 @@ class RemotePlanningTastes implements PlanningTastesSource {
   static Exception _error(int status) => status == 401 || status == 409
       ? const PlanningTastesDenied()
       : const PlanningTastesUnavailable();
+}
+
+/// Najviše recepata u jednoj proveri (isto kao `maxRecipeIds` na serveru).
+const maxSafetyRecipeIds = 1000;
+
+/// Provera bezbednosti recepata na serveru (TRELLO-43): ista funkcija
+/// `planning-inputs`, uz `recipeIds`. Server sam određuje članove i
+/// alergene; odgovor nosi samo da li ograničenja postoje i bezbedne
+/// recepte. Ništa se ne kešira.
+class RemotePlanSafety implements PlanSafetySource {
+  RemotePlanSafety({
+    required this.invoke,
+    required this.householdId,
+    this.timeout = const Duration(seconds: 10),
+  });
+
+  factory RemotePlanSafety.supabase(
+    SupabaseClient client, {
+    required String? Function() householdId,
+  }) => RemotePlanSafety(
+    householdId: householdId,
+    invoke: (body) {
+      final token = client.auth.currentSession?.accessToken;
+      if (token == null) throw const PlanningTastesDenied();
+      return client.functions.invoke(
+        'planning-inputs',
+        body: body,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+    },
+  );
+
+  final PlanningInputsInvoke invoke;
+  final String? Function() householdId;
+  final Duration timeout;
+
+  @override
+  Future<PlanSafety> check(Set<String> recipeIds) async {
+    final household = householdId();
+    // Bez domaćinstva nema ni članova sa alergijama.
+    if (household == null) return const PlanSafety.unrestricted();
+    if (recipeIds.length > maxSafetyRecipeIds) {
+      throw ArgumentError.value(recipeIds.length, 'recipeIds');
+    }
+    final Object? data;
+    try {
+      final response = await invoke({
+        'householdId': household,
+        'recipeIds': (recipeIds.toList()..sort()),
+      }).timeout(timeout);
+      if (response.status != 200) throw _safetyError(response.status);
+      data = response.data;
+    } on FunctionException catch (e) {
+      throw _safetyError(e.status);
+    } on PlanningTastesDenied {
+      rethrow;
+    } on PlanSafetyUnavailable {
+      rethrow;
+    } on Object {
+      // Mreža, istek vremena ili neispravan odgovor; detalji se ne loguju.
+      throw const PlanSafetyUnavailable();
+    }
+    if (data is! Map<String, Object?>) throw const PlanSafetyUnavailable();
+    try {
+      final safety = PlanSafety.fromJson(data);
+      // Server sme da vrati samo recepte koje smo pitali.
+      if (!recipeIds.containsAll(safety.safeRecipeIds)) {
+        throw const FormatException('Nepoznat recept');
+      }
+      return safety;
+    } on FormatException {
+      throw const PlanSafetyUnavailable();
+    }
+  }
+
+  // 401 i 409: plan staje kao kod ukusa. Ostalo: provera nije moguća, pa
+  // ni plan (ne zna se da li neko ima alergiju).
+  static Exception _safetyError(int status) => status == 401 || status == 409
+      ? const PlanningTastesDenied()
+      : const PlanSafetyUnavailable();
 }

@@ -1076,4 +1076,146 @@ void main() {
       expect(r[lunch]!.dishKind, isNull);
     });
   });
+
+  group('kandidati po obroku (TRELLO-45)', () {
+    final day = PlanRequest(
+      range: DateRange(monday, monday),
+      mealTypes: const {MealType.lunch, MealType.dinner},
+    );
+    final lunch = MealSlot(monday, MealType.lunch);
+
+    Recipe forMeals(String id, Set<MealSuitability> meals, {String? weight}) =>
+        libraryRecipe(id, id).copyWith(
+          labels: RecipeLabels(
+            meals: [for (final m in meals) m.wire],
+            weight: weight,
+            source: 'user',
+          ),
+        );
+
+    Map<String, List<String>> candidatesIn(AIRequest r) {
+      final m = RegExp(
+        r'^For each meal, use only these Library ids: (.*)$',
+        multiLine: true,
+      ).firstMatch(r.prompt);
+      return {
+        for (final e in (jsonDecode(m![1]!) as Map<String, dynamic>).entries)
+          e.key: (e.value as List<dynamic>).cast<String>(),
+      };
+    }
+
+    test('pogodnost i pravila mesta pre ograničenja broja', () async {
+      // 60 večera ispred jednog ručka: ručak ipak dobija svoj recept.
+      final library = [
+        for (var i = 0; i < maxLibraryInPrompt; i++)
+          forMeals('v$i', {MealSuitability.dinner}),
+        forMeals('pasulj', {MealSuitability.lunch}),
+        forMeals('teska', {MealSuitability.dinner}, weight: 'hearty'),
+        libraryRecipe('bez-oznaka', 'Bez oznaka'),
+      ];
+      await ai.propose(day, library: library);
+
+      final candidates = candidatesIn(client.requests.firstWhere(isOutline));
+      expect(candidates['lunch'], containsAll(['pasulj', 'bez-oznaka']));
+      expect(candidates['lunch'], isNot(contains('v0')));
+      // Jak recept ne ide za večeru; svaki obrok ima najviše pola mesta.
+      expect(candidates['dinner'], isNot(contains('teska')));
+      expect(candidates['dinner'], hasLength(maxLibraryInPrompt ~/ 2));
+      final offered = {for (final ids in candidates.values) ...ids};
+      expect(offered.length, lessThanOrEqualTo(maxLibraryInPrompt));
+    });
+
+    test('recept sa spiska drugog obroka se odbija', () {
+      Map<MealSlot, SlotProposal> parse(String id) => parseOutline(
+        {
+          'meals': [
+            {'date': monday.toString(), 'meal': 'lunch', 'recipeId': id},
+          ],
+        },
+        slots: [lunch],
+        library: const {'pasulj': 'Pasulj', 'supa': 'Supa'},
+        allowed: const {
+          MealType.lunch: {'pasulj'},
+          MealType.dinner: {'supa'},
+        },
+      );
+      expect(parse('pasulj')[lunch]!.libraryRecipeId, 'pasulj');
+      expect(() => parse('supa'), throwsFormatException);
+    });
+
+    test('rezervni recept je samo sa spiska tog obroka', () async {
+      // AI dva puta da jak ručak i jaku večeru; rezervni korak sme da
+      // uzme samo recept pogodan za večeru.
+      client.handler = (r) => isOutline(r)
+          ? jsonEncode({
+              'meals': [
+                for (final s in (jsonDecode(
+                  RegExp(
+                    r'^Slots: (.*)$',
+                    multiLine: true,
+                  ).firstMatch(r.prompt)![1]!,
+                ) as List<dynamic>).cast<Map<String, dynamic>>())
+                  {
+                    'date': s['date'],
+                    'meal': s['meal'],
+                    'recipeId': null,
+                    'title': 'Gulaš ${s['meal']}',
+                    'weight': 'hearty',
+                    'dishKind': 'cooked',
+                  },
+              ],
+            })
+          : goodAnswer(r);
+      final draft = await ai.propose(
+        day,
+        library: [
+          forMeals('dorucak', {MealSuitability.breakfast}, weight: 'light'),
+          forMeals('salata', {MealSuitability.dinner}, weight: 'light'),
+        ],
+      );
+      final dinner = MealSlot(monday, MealType.dinner);
+      expect(draft.proposals[dinner]!.libraryRecipeId, 'salata');
+    });
+
+    List<Recipe> manyRecipes(int n) => [
+      for (var i = 0; i < n; i++) libraryRecipe('r$i', 'Recept $i'),
+    ];
+
+    test('upit traži sačuvane recepte gde god odgovaraju', () async {
+      await ai.propose(day, library: manyRecipes(2));
+      expect(
+        client.requests.firstWhere(isOutline).prompt,
+        contains('use a listed recipe whenever one fits'),
+      );
+    });
+
+    test('sa 30 recepata bar pola nedelje je iz sačuvanih, bez '
+        'ponavljanja', () async {
+      // AI izmisli svih 7 jela (goodAnswer).
+      final draft = await ai.propose(
+        weekRequest(),
+        library: manyRecipes(minLibraryForPreference),
+      );
+      final fromLibrary = [
+        for (final p in draft.proposals.values) ?p.libraryRecipeId,
+      ];
+      expect(fromLibrary.length, greaterThanOrEqualTo(4));
+      expect(fromLibrary.toSet(), hasLength(fromLibrary.length));
+      expect(draft.isComplete, isTrue);
+    });
+
+    test('sa željama ili manje od 30 recepata AI bira sam', () async {
+      final withWish = await ai.propose(
+        weekRequest(wishes: 'posna jela'),
+        library: manyRecipes(minLibraryForPreference),
+      );
+      expect(withWish.proposals.values.every((p) => p.isNew), isTrue);
+
+      final small = await ai.propose(
+        weekRequest(),
+        library: manyRecipes(minLibraryForPreference - 1),
+      );
+      expect(small.proposals.values.every((p) => p.isNew), isTrue);
+    });
+  });
 }

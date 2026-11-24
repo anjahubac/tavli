@@ -274,6 +274,9 @@ class PlanGenerationController extends Notifier<PlanGenerationState> {
       wishes: wishes,
       pantryNames: base.pantryNames,
       only: {slot},
+      // Jela koja ostaju iz sačuvanog plana (ponovni predlog): pravila ih
+      // gledaju i pri zameni jednog jela.
+      kept: base.kept,
     );
     // Ostala jela idu kao već planirana, da se ne ponavljaju.
     final resume = PlanDraft(

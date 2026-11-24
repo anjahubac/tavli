@@ -31,6 +31,7 @@ not reassigns them. No additional feature is authorized merely by a technical se
 - **FR-103**: Snacks are light without cooked dishes. Locked/cooked/imported meals are preserved by regeneration; show restriction conflicts rather than silently rewrite a locked meal.
 - **FR-104**: For household-aware planning, the server planner filters candidate recipes before AI and revalidates proposed entries before returning a draft, including replacement. Unknown ingredient mappings are ineligible. The server retains member allergen data; the client and AI receive only the respective allowlisted results. Taste, notes and favorite counts use the 008 consent-filtered contract.
 - **FR-105**: In initial household-aware planning, the server verifies candidate eligibility and final placement before returning the draft. If the eligible saved pool is exhausted, return an incomplete draft. A later AI-invented candidate remains a draft until its ingredients are resolved and verified by the server.
+- **FR-104/FR-105 scope (2026-11-24, TRELLO-43, pending Matija's approval)**: the strict rule (verified saved recipes only, no invented dishes, empty slots on exhaustion) applies when at least one member has an allergy; households without one plan as before. See the [allergen-safe plans contract](contracts/plan-allergen-safety-contract.md).
 
 ## User scenarios and acceptance
 
