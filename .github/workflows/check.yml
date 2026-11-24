@@ -93,6 +93,28 @@ jobs:
       - run: flutter pub get
       - run: flutter build windows --release
 
+  web-build:
+    name: web-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Bez tajni: URL i ključ Supabase-a nisu potrebni da bi se web kompajlirao.
+      - run: flutter build web --wasm --release
+      - name: Testovi samo za web
+        run: flutter test --platform chrome test/data/indexed_db_recipe_photo_store_test.dart
+      - name: Instalacija zahteva drift fajlove i zaglavlja
+        run: |
+          test -f build/web/sqlite3.wasm
+          test -f build/web/drift_worker.js
+          test -f build/web/_headers
+
   docs:
     name: docs
     runs-on: ubuntu-latest
