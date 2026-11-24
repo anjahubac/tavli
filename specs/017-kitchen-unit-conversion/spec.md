@@ -58,8 +58,10 @@ Those fields must be included in Drift, generated code, synced entity
 serialization, outbox payloads, and migrations. Existing rows need a legacy
 version that preserves their stored micros and does not claim new provenance;
 replay must retain original snapshots, allocations, and pending outbox writes.
-`PlanTotal` and shopping UI then propagate the aggregate approximate marker and
-review state, rendering `~` and “Proveri količinu” at the display boundary.
+Plan totals keep a shared kitchen unit when all rows use it. Mixed volumes
+use millilitres, and the shopping UI marks each subtotal that used an
+approximate factor with `~`. Individual rows keep their original quantities
+and units. Unresolved amounts show “Proveri količinu”.
 Kitchen measure defaults are versioned as 200 ml per čaša, 250 ml per šolja,
 15 ml per kašika, and 5 ml per kašičica. Density/piece/package conversion stays
 approximate and is enabled only when trusted, visible food identity and

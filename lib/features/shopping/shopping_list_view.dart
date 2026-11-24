@@ -10,7 +10,6 @@ import '../../data/database.dart';
 import '../../domain/meal_plan.dart';
 import '../../domain/recipe.dart';
 import '../../domain/recipe_format.dart';
-import '../../domain/shopping_demand.dart';
 import '../../domain/shopping_source.dart';
 import '../../domain/shopping_sync.dart' show ingredientKey;
 import '../../providers.dart';
@@ -273,11 +272,7 @@ class ShoppingItemTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final amount = amountLabel(
-      item.quantity,
-      item.unit,
-      approximate: isApproximateKitchenMeasure(item.unit),
-    );
+    final amount = amountLabel(item.quantity, item.unit);
     final detail = [
       if (amount != null)
         amount

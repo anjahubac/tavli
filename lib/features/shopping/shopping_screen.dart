@@ -425,10 +425,15 @@ class _WholePlanState extends ConsumerState<_WholePlan> {
         if (byId[id] case final i? when i.isBought == bought) id,
     ];
 
-    String? amount(int micros, PlanTotal t) {
+    String? amount(PlanTotal t, {required bool bought}) {
+      final micros = bought ? t.boughtMicros : t.openMicros;
       if (micros == 0) return null;
       final a = displayAmount(micros, t.baseUnit);
-      return amountLabel(a.quantity, a.unit, approximate: t.approximate);
+      return amountLabel(
+        a.quantity,
+        a.unit,
+        approximate: bought ? t.boughtApproximate : t.openApproximate,
+      );
     }
 
     return LayoutBuilder(
@@ -448,8 +453,8 @@ class _WholePlanState extends ConsumerState<_WholePlan> {
           final isReceived =
               bought && ids(t, bought: true).every(received.contains);
           final detail = [
-            if (!bought) amount(t.openMicros, t) ?? quantityReviewNote,
-            if (amount(t.boughtMicros, t) case final b?) 'kupljeno $b',
+            if (!bought) amount(t, bought: false) ?? quantityReviewNote,
+            if (amount(t, bought: true) case final b?) 'kupljeno $b',
             if (isReceived) 'U ostavi',
           ].join(' · ');
           return TavliCheckRow(
@@ -490,9 +495,7 @@ class _WholePlanState extends ConsumerState<_WholePlan> {
               : ShoppingItemDetail(
                   key: ValueKey(_key(selected)),
                   name: selected.name,
-                  amount: selectedBought
-                      ? amount(selected.boughtMicros, selected)
-                      : amount(selected.openMicros, selected),
+                  amount: amount(selected, bought: selectedBought),
                   ids: ids(selected, bought: selectedBought),
                   bought: selectedBought,
                 ),
