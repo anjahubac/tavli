@@ -5,9 +5,9 @@ candidate foods; legacy rows remain references. This material supports D1-006 /
 FR-003 in [spec 018](../spec.md). It does not resolve the spec's separate schema,
 alias-scope or licensed-seed provenance decisions.
 
-On 2026-11-23, the project owner confirmed in chat that the candidate identities
-and proposed base units had been manually reviewed and approved. The individual
-reviewer for each row was not recorded, so the worksheet says so explicitly.
+On 2026-11-24, Uroš Milutinović confirmed in chat that he personally reviewed
+and approved the 167 candidate identities and proposed base units, as well as
+the candidate USDA mappings. The worksheet records him as the reviewer.
 Allergen review remains separate: only rows with their own evidence retain a
 reviewed allergen status; all other rows remain `unknown`. The svinjski but USDA
 record is an approximation for a whole leg with separable lean and fat, including
@@ -33,10 +33,10 @@ remains unknown.
 reference rows (338 rows total). The 167 candidate rows carry the owner-confirmed
 identity/base-unit decision. The 171 reference rows remain comparison material
 and are not new catalog identities or seed rows. The owner confirmed manual
-review of all 338 USDA mapping decisions on 2026-11-23; individual reviewers
-were not recorded. Of these, 312 have an approved FDC ID and 26 have no suitable
-match. The first eleven columns match `candidates.csv`; the rest add evidence
-and review details.
+review of all 338 USDA mapping decisions on 2026-11-23. The subsequent named
+review covers the candidate rows. Of the 338 rows, 312 have an approved FDC ID
+and 26 have no suitable match. The first eleven columns match
+`candidates.csv`; the rest add evidence and review details.
 
 | Column | Meaning |
 | --- | --- |
@@ -46,8 +46,8 @@ and review details.
 | `usda_basis` | How the record was found: keyword search, historical mapping, or no match. The owner separately confirmed each recorded mapping on 2026-11-23. |
 | `usda_alternates` | Other records the search found, for the reviewer to compare. |
 | `notes` | Known approximations, for example a cut of meat or a proxy species or product. |
-| `base_unit_reviewer` | Owner-confirmed manual review on 2026-11-23; individual reviewer unspecified for candidate rows. Empty for reference rows. |
-| `usda_reviewer` | Owner-authorized manual mapping review on 2026-11-23 for rows with an FDC ID; individual reviewer unspecified where not previously recorded. A blank ID means no match was selected. |
+| `base_unit_reviewer` | Uroš Milutinović for candidate rows. Empty for reference rows. |
+| `usda_reviewer` | Uroš Milutinović for candidates with an FDC ID. Historical rows retain their original review record. A blank FDC ID means no match was selected. |
 
 Of the 338 worksheet rows, all mapping outcomes were reviewed: 312 have an
 approved FDC mapping and 26 have no suitable match. No nutrition value is
@@ -84,9 +84,8 @@ is not evidence of the absence of an allergen or cross-contact.
 
 ## Before promotion
 
-Identity and base-unit approval for the 167 candidate rows is recorded as an
-owner-confirmed decision, with individual reviewers unspecified. USDA mapping
-approval is recorded separately. Allergen assessment requires its own evidence;
+Uroš Milutinović is the recorded identity, base-unit and USDA mapping reviewer
+for the candidate rows. Allergen assessment requires its own evidence;
 `unknown` remains unknown until supported. The 171 historical reference rows are
 not active identities. Recheck accepted candidate names against the actual current
 team catalog and resolve conflicts before a separate migration.

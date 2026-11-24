@@ -1,8 +1,8 @@
 # Nutrition reference and portion-calculation research
 
-**Status:** Candidate identity/base-unit review and USDA FDC mapping approval
-were confirmed by the project owner in chat on 2026-11-23; individual reviewers
-are unspecified where not recorded. The 167 candidate foods are eligible for a
+**Status:** Uroš Milutinović confirmed his review of the candidate identities,
+base units and USDA FDC mappings in chat on 2026-11-24. The worksheet records his
+name on the candidate decisions. The 167 candidate foods are eligible for a
 seed migration, while 171 legacy rows remain reference-only. This research does
 not ship a diary or nutrition-display feature; a pure per-portion calculator is
 implemented separately with incomplete coverage preserved.
