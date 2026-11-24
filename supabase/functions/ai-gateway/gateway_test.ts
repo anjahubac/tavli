@@ -202,7 +202,17 @@ Deno.test("lists only configured models and places opted-in OpenAI first for bot
       .status,
     200,
   );
-  equal(JSON.parse(String(on.calls[0].init?.body)).model, "fake-model");
+  const request = JSON.parse(String(on.calls[0].init?.body));
+  equal(request.model, "fake-model");
+  equal(request.reasoning_effort, "none");
+  equal("temperature" in request, false);
+});
+
+Deno.test("only reasoning models get the lowest effort", async () => {
+  const { handle, calls } = setup();
+  equal((await handle(post())).status, 200);
+  const request = JSON.parse(String(calls[0].init?.body));
+  equal("reasoning_effort" in request, false);
 });
 
 Deno.test("the gateway kill switch skips both quota and provider", async () => {
