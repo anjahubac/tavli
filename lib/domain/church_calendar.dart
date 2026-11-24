@@ -8,6 +8,9 @@ class ChurchCalendar {
   final DateTime today;
 
   static const source = 'Crkveni kalendar SPC';
+
+  /// Where the fixed slava dates come from (see [_slave]).
+  static const slavaSource = 'Kalendari krsnih slava (Danas, Religija.rs)';
   static const fastingGuide = 'Manastir Visoki Dečani, vodič „Post“';
 
   static DateTime easter(int year) {
@@ -303,17 +306,121 @@ class ChurchCalendar {
   /// no year: "Sveti Nikola (Nikoljdan) je 19. decembra." Only the movable
   /// Lazareva subota names a year; without an explicit one it is the next
   /// date from [today].
-  String? _slavaAnswer(String q, String? explicitYear) {
+  ({String text, String source})? _slavaAnswer(String q, String? explicitYear) {
     if (_lazarusKeys.any(q.contains)) {
       var year = explicitYear == null ? today.year : int.parse(explicitYear);
       if (explicitYear == null && _lazarus(year).isBefore(today)) year++;
       if (year > 2099) return null;
-      return 'Lazareva subota (Vrbica) je ${format(_lazarus(year))}';
+      return (
+        text: 'Lazareva subota (Vrbica) je ${format(_lazarus(year))}',
+        source: source,
+      );
     }
     for (final (keys, name, month, day) in _slave) {
-      if (keys.any(q.contains)) return '$name je $day. ${_months[month - 1]}.';
+      if (keys.any((key) => _keyMatches(q, key))) {
+        return (
+          text: '$name je $day. ${_months[month - 1]}.',
+          source: slavaSource,
+        );
+      }
     }
     return null;
+  }
+
+  /// A personal name alone is not a slava: "Kada je rođen Nikola Tesla?"
+  /// must not answer Nikoljdan. A name key therefore needs a slava context
+  /// in the question, and the word after it must not be another name
+  /// ("Sveti Jovan Vladimir" is not on the list, so it gets no date).
+  static final _slavaContext = RegExp(
+    r'slav|\bsvet|praznik|\p{L}+dan\b',
+    unicode: true,
+  );
+
+  /// Single-word keys that name a feast, not a person.
+  static const _feastKeys = {
+    'usekovanj',
+    'glavosek',
+    'glavosjek',
+    'zacec',
+    'verig',
+    'sretenj',
+    'mladenc',
+    'sevastij',
+    'pokrov',
+    'vozdvizenj',
+    'prepodobnomucenic',
+    'petkovic',
+    'vracev',
+    'mirotociv',
+    'bogoprim',
+    'bogoslov',
+    'milostiv',
+    'zlatoust',
+    'krstitelj',
+    'arandjel',
+    'arhangel',
+    'arhandjel',
+    'arhidjakon',
+    'djurdjic',
+    'nedeljic',
+  };
+
+  /// Words that may follow a saint's name in a slava question.
+  static const _afterName = {
+    'je',
+    'se',
+    'i',
+    'a',
+    'ove',
+    'ovog',
+    'sledece',
+    'sledeceg',
+    'godine',
+    'datum',
+    'dan',
+    'dana',
+    'slava',
+    'slavu',
+    'slavimo',
+    'slavi',
+    'slave',
+    'kada',
+    'kad',
+    'krstitelj',
+    'krstitelja',
+    'pretece',
+    'preteca',
+    'mirlikijski',
+    'cudotvorac',
+    'arhangel',
+    'apostol',
+    'prorok',
+    'velikomucenik',
+    'zimski',
+    'letnji',
+    'prvozvani',
+    'bogonosac',
+    'veliki',
+  };
+
+  static bool _keyMatches(String q, String key) {
+    final at = q.indexOf(key);
+    if (at < 0) return false;
+    final name =
+        key.startsWith('svet') ||
+        (!key.contains(' ') &&
+            !key.contains('dan') &&
+            !_feastKeys.contains(key));
+    if (!name) return true;
+    if (!_slavaContext.hasMatch(q)) return false;
+    final rest = q
+        .substring(at + key.length)
+        .replaceFirst(RegExp(r'^\p{L}*', unicode: true), '');
+    final next = RegExp(
+      r'^[^\p{L}]*(\p{L}+)',
+      unicode: true,
+    ).firstMatch(rest)?.group(1);
+    return next == null || _afterName.contains(next);
   }
 
   static DateTime _days(DateTime date, int days) =>
@@ -477,9 +584,7 @@ class ChurchCalendar {
     if ((asksDate || q.contains('slav')) &&
         !q.contains('post') &&
         !isFoodQuestion(q)) {
-      if (_slavaAnswer(q, explicit) case final text?) {
-        return (text: text, source: source);
-      }
+      if (_slavaAnswer(q, explicit) case final answer?) return answer;
     }
 
     if (asksDate) {

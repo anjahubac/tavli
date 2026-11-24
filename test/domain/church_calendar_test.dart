@@ -34,7 +34,23 @@ void main() {
       expect(ask('Kada je Aranđelovdan?'), endsWith('je 21. novembra.'));
       expect(
         calendar.answer('Kada je Mitrovdan?')?.source,
+        ChurchCalendar.slavaSource,
+      );
+      // Lazareva subota is computed from Pascha, not read from the lists.
+      expect(
+        calendar.answer('Kada je Lazareva subota?')?.source,
         ChurchCalendar.source,
+      );
+    });
+
+    test('people and unlisted saints get no slava date', () {
+      expect(ask('Kada je rođen Nikola Tesla?'), isNull);
+      expect(ask('Kada je Marina rođena?'), isNull);
+      expect(ask('Kada je Sveti Jovan Vladimir?'), isNull);
+      expect(ask('Kada je Sveti Nikola Tavelić?'), isNull);
+      expect(
+        ChurchCalendar.isCalendarQuestion('Kada je Sveti Jovan Vladimir?'),
+        isTrue,
       );
     });
 
