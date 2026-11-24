@@ -1,8 +1,8 @@
 name: release
 
 # Builds the installable packages linked from site/preuzmi/ (Android, Windows,
-# Linux, unsigned iOS) and attaches them
-# to a GitHub Release with fixed file names, so
+# Linux, unsigned iOS, ad-hoc signed macOS) and attaches them to a GitHub
+# Release with fixed file names, so
 # https://github.com/anjahubac/tavli/releases/latest/download/<file> always
 # points at the newest version.
 #
@@ -186,10 +186,47 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  macos:
+    name: macos-dmg
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Write build config
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" \
+            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: "https://welcome.tavli.workers.dev/potvrda/"}' \
+            > "$RUNNER_TEMP/release-config.json"
+      - run: flutter pub get
+      # No Developer ID yet: without Local.xcconfig the app is ad-hoc signed and
+      # not notarized, so Gatekeeper asks once ("Open Anyway"); site/preuzmi/ says how.
+      - run: flutter build macos --release --dart-define-from-file="$RUNNER_TEMP/release-config.json"
+      - name: Package
+        run: |
+          staging="$RUNNER_TEMP/dmg"
+          mkdir -p "$staging" dist
+          cp -R build/macos/Build/Products/Release/tavli.app "$staging/Tavli.app"
+          ln -s /Applications "$staging/Applications"
+          hdiutil create -volname Tavli -srcfolder "$staging" -format UDZO -ov dist/tavli-macos.dmg
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tavli-macos
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
     name: publish
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [android, linux, windows, ios]
+    needs: [android, linux, windows, ios, macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

@@ -9,7 +9,7 @@
 - `docs/ (release asset/link manifest)`
 - `site/preuzmi/` (new): static download page on the `welcome` Worker, no build step
 - `.github/workflows/release.yml` (new): builds the Android APK, unsigned iOS IPA,
-  Windows ZIP and Linux archive and attaches them to the GitHub Release for a `v*` tag
+  ad-hoc signed macOS DMG, Windows ZIP and Linux archive and attaches them to the GitHub Release for a `v*` tag
 - `scripts/generate_download_qr.dart` (new): writes the QR SVGs next to the page
 
 Dependency: `qr` as a dev dependency, only for the QR script; it is already in

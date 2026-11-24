@@ -6,7 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light">
 <title>Preuzmi Tavli</title>
-<meta name="description" content="Tavli za Android, iOS, Windows i Linux: recepti, plan obroka i lista za kupovinu.">
+<meta name="description" content="Tavli za Android, iOS, macOS, Windows i Linux: recepti, plan obroka i lista za kupovinu.">
 <link rel="icon" href="../potvrda/tavli-znak.png">
 <link rel="stylesheet" href="../potvrda/style.css">
 <link rel="stylesheet" href="preuzmi.css">
@@ -51,9 +51,11 @@
       <a class="dugme" href="https://github.com/anjahubac/tavli/releases/latest/download/tavli-ios.ipa">Preuzmi za iOS (IPA)</a>
     </section>
 
-    <section class="kartica platforma" aria-labelledby="uskoro">
-      <h2 id="uskoro">macOS</h2>
-      <p class="uskoro">Uskoro</p>
+    <!-- Bez Apple Developer ID-ja: ad-hoc potpis, Gatekeeper pita jednom. -->
+    <section class="kartica platforma" aria-labelledby="macos">
+      <h2 id="macos">macOS</h2>
+      <p>Otvori DMG i prevuci Tavli u Applications. Prvi put macOS kaže da ne može da proveri aplikaciju: otvori Podešavanja sistema → Privatnost i bezbednost i izaberi „Ipak otvori“. Potreban je macOS 12 ili noviji.</p>
+      <a class="dugme" href="https://github.com/anjahubac/tavli/releases/latest/download/tavli-macos.dmg">Preuzmi za macOS</a>
     </section>
 
     <p class="napomena"><a href="https://github.com/anjahubac/tavli/releases/latest">Sve verzije i SHA-256 provera fajlova</a></p>

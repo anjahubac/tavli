@@ -43,7 +43,7 @@ Static public release information only. Never expose keys, accounts or personal 
 
 “Preuzmi”, “Uskoro”, “Android”, “iOS”, “macOS”, “Windows”, “Linux”.
 Download page (`site/preuzmi/`): “Preuzmi Tavli”, “Recepti, plan obroka i lista za kupovinu.”,
-“Preuzmi za Android”, “Preuzmi za iOS (IPA)”, “Preuzmi za Windows”, “Preuzmi za Linux”,
+“Preuzmi za Android”, “Preuzmi za iOS (IPA)”, “Preuzmi za macOS”, “Preuzmi za Windows”, “Preuzmi za Linux”,
 “Sve verzije i SHA-256 provera fajlova” and the per-platform install hints in that file.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
@@ -71,7 +71,10 @@ Producer specs: [028](../028-windows-support/spec.md)
   (AltStore, Sideloadly; with a free Apple ID it runs for 7 days). The page says
   so and shows no iOS QR, because the IPA cannot be installed from the phone's
   browser. TestFlight replaces it once the account exists.
-- Store listings (Play, App Store) and the macOS download stay “Uskoro”.
+- **2026-11-24, Dev 1**: until the team has a Developer ID, macOS is an ad-hoc
+  signed, not notarized `tavli-macos.dmg`; Gatekeeper blocks the first launch
+  and the page explains “Ipak otvori” in Privacy & Security.
+- Store listings (Play, App Store, Mac App Store) are not part of this slice.
 
 Unresolved questions block their dependent code, not independent research/tests.
 Do not invent answers to linked proposals that were not provided. Before Ready,

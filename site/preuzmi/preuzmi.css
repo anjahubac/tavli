@@ -6,14 +6,6 @@
 .qr { flex-shrink: 0; width: 132px; height: 132px; border-radius: 12px; border: 1px solid var(--ivica); }
 /* Na telefonu QR ne pomaže (skenira se sa drugog ekrana), dugme je dovoljno. */
 @media (max-width: 719px) { .qr { display: none; } }
-.uskoro {
-  align-self: flex-start;
-  border-radius: 999px;
-  background: var(--tonalna);
-  color: var(--na-tonalnoj) !important;
-  font-weight: 700;
-  padding: 4px 12px;
-}
 code { font-size: 0.875em; }
 .napomena a { color: var(--na-tonalnoj); font-weight: 700; }
 .napomena a:focus-visible { outline: 3px solid var(--na-tonalnoj); outline-offset: 2px; }
