@@ -124,7 +124,30 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 child: Column(
                   children: [
                     const SyncBanner(),
-                    Expanded(child: widget.shell),
+                    Expanded(
+                      child: LayoutBuilder(
+                        // Isti vrh praznih stanja na svakom tabu.
+                        builder: (context, box) {
+                          final inset = wide
+                              ? 0.0
+                              : MediaQuery.paddingOf(context).top;
+                          // Nizak ekran i krupan tekst: viši vrh, da
+                          // dugmad stanu.
+                          final phone =
+                              _layout == _NavigationLayout.bottom &&
+                              box.maxHeight - inset >=
+                                  TavliEmptyArea.phoneMinHeight;
+                          return TavliEmptyAreaScope(
+                            height: box.maxHeight,
+                            anchor: phone
+                                ? TavliEmptyArea.phoneAnchor
+                                : TavliEmptyArea.anchor,
+                            inset: inset,
+                            child: widget.shell,
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),

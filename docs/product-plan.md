@@ -152,7 +152,7 @@ the rollout described in [031](../specs/031-external-ui-library/spec.md).
 
 [012 Security baseline](../specs/012-security-baseline/spec.md) adds remediation
 and verification across phases; it is separate from the original 87-task import.
-Prioritize photo-path containment, safe errors, gateway credential cutover and
+Prioritize photo-path containment, safe errors, gateway cutover release evidence and
 same-SHA SQL/function deployment gates. Device/environment isolation and storage
 protection gate diary/cycle rollout; membership and private retrieval tests gate
 household/RAG release. Dev 3 leads, with Dev 1 data, Dev 2 AI and Dev 4 platform

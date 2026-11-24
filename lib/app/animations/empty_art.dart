@@ -95,9 +95,11 @@ class EmptyArt extends StatelessWidget {
     final colors = EmptyArtColors.of(Theme.of(context).colorScheme);
     return LayoutBuilder(
       builder: (context, box) {
-        final size = box.hasBoundedWidth
+        final byWidth = box.hasBoundedWidth
             ? math.min(box.maxWidth * widthShare, maxSize)
             : maxSize;
+        // Na niskom ekranu (npr. ispod zaglavlja) ni preko date visine.
+        final size = math.min(byWidth, box.maxHeight);
         // Centriran i kad roditelj traži punu širinu.
         return Center(
           widthFactor: 1,

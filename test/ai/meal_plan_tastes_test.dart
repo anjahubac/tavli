@@ -83,10 +83,7 @@ void main() {
     AIRouter(
       config: () => const ChainConfig(vision: [model], text: [model]),
       client: client,
-      keys: LayeredKeySource(
-        InMemoryKeyStore({AIProvider.gemini: 'g-key'}),
-        const BuiltInKeys(),
-      ),
+      keys: OwnKeySource(InMemoryKeyStore({AIProvider.gemini: 'g-key'})),
       status: InMemoryModelStatusStore(),
       clock: () => DateTime.utc(2026, 11, 2, 12),
     ),

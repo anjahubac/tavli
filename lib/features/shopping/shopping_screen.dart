@@ -91,7 +91,7 @@ class _ShoppingScreenState extends ConsumerState<ShoppingScreen> {
       return Scaffold(
         appBar: const TabAppBar(),
         body: SafeArea(
-          child: _ScrollableState(
+          child: TavliEmptyArea(
             child: TavliEmptyState(
               art: const EmptyBasket(),
               title: 'Nabavka je prazna',

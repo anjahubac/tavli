@@ -1,4 +1,11 @@
 <!--
+Sync Impact Report — 2026-11-24
+- Version: 3.1.0 → 3.2.0 (MINOR: principles III and IV state how AI provider keys
+  are used in production; AI provider constraint allows personal paid keys).
+- Updated AGENTS.md, README.md, docs/architecture.md, docs/product-plan.md,
+  docs/development/security.md, docs/flutter-best-practices.md, scripts/check-docs.py and specs 002, 004, 012 and 015.
+- No hosted settings, credential or deployment change here.
+
 Sync Impact Report — 2026-11-19
 - Version: 3.0.1 → 3.1.0 (MINOR: principle VI expanded with the canonical design
   canvas and the no-fixed-sizes rule).
@@ -24,8 +31,8 @@ Sync Impact Report — 2026-11-14
 # Tavli Constitution
 
 Tavli is a Flutter app (Android, iOS, macOS) for recipes, meal planning,
-pantry and shopping lists, with AI help that runs on free provider tiers. Using
-the app requires an account; the user's data is stored on the server under that
+pantry and shopping lists, with AI help that runs on shared provider access or on
+the person's own keys. Using the app requires an account; the user's data is stored on the server under that
 account and cached on the device for offline use.
 
 ## Core Principles
@@ -90,11 +97,13 @@ a hard dependency on a single provider or model; model names live only in
 throws `FormatException` on schema mismatch. AI failures MUST degrade gracefully
 with a Serbian message (see `aiErrorText`), never a crash.
 
-Current code uses the client router and compatible HTTP transport. The planned
-gateway moves built-in provider credentials to a server function; BYOK stays in
-device secure storage. Preserve the router/facade boundary, bounded retries,
-structured schema/semantic validation and fakeable transport in that migration.
-Do not describe the gateway as deployed until code and operational evidence exist.
+Own keys (BYOK) call the selected provider directly from the device, before the
+shared access. Shared access goes only through authenticated server functions:
+the AI gateway (spec 015) and feature functions such as voice transcription.
+The order among own keys, paid or free services first, is the person's choice
+(spec 004). Preserve the router/facade boundary, bounded retries, structured
+schema/semantic validation and fakeable transport. Do not describe the gateway as
+deployed in an environment until code and operational evidence for it exist.
 
 **Rationale**: free tiers hit rate limits constantly and model names change; resilience is the product.
 
@@ -104,15 +113,26 @@ API keys and backend credentials MUST NEVER appear in the repository, logs, test
 fixtures, screenshots, or commit messages. User AI keys are stored in the
 platform secure store (Keychain on iOS/macOS, Keystore on Android) via
 `KeyStore`; the auth session (access/refresh tokens) is stored only in the same
-secure store. Current build-time values (built-in AI keys, Supabase URL and anon key)
+secure store. Current build-time values (Supabase URL and anon key)
 come from a gitignored `secrets.json` passed with `--dart-define-from-file`;
 `secrets.example.json` holds empty values only. The Supabase service-role key
 MUST NEVER be in the app or the repository. Tests use `InMemoryKeyStore` and
 fake backends with obviously fake values.
 
-Build-time injection does not make a distributed client a safe store for a
-shared provider secret. The accepted gateway migration moves built-in provider
-keys server-side; never add new shared provider keys to client features.
+AI provider keys, the same rule for every environment including production:
+
+- App builds MUST NOT contain a shared AI provider key. Build-time injection does
+  not make a distributed client a safe store for one.
+- Shared provider keys live only as secrets of the server functions of that
+  environment. An authorized person sets and rotates them; they are never in the
+  repository, CI logs, the app or an agent's input.
+- A signed-in app reaches shared access only through those functions, with its
+  session token. The server checks the caller and the limits before any provider call.
+- A person's own key stays in memory and secure storage on that device. It is sent
+  only to the provider it belongs to, never to server functions, sync or logs.
+- A production release that uses shared access requires those functions in
+  production and the key-free build evidence of spec 033. Keys compiled into older
+  distributed builds MUST be rotated.
 
 Security requirements in `docs/development/security.md` apply at trust boundaries:
 validate synced file paths, sanitize diagnostics, authenticate/limit endpoints
@@ -215,8 +235,10 @@ code or ticket count. Track remaining effort and integration risk per phase.
   started with `supabase start` in this repo (`supabase/config.toml`, ports
   5532x so it does not clash with other local Supabase projects); schema lives in
   `supabase/migrations/`, email templates in `supabase/templates/`.
-- AI providers: Gemini, Groq, OpenRouter — free tiers only — through one
-  OpenAI-compatible `/chat/completions` client.
+- AI providers: Gemini, Groq and OpenRouter free tiers for shared access, plus
+  OpenAI only when enabled on the server (spec 015). Own keys, free or paid, for
+  every service in the app's list (spec 004). All use OpenAI-compatible
+  `/chat/completions`.
 - New dependencies require a one-line justification in the feature's `plan.md`.
 
 ## Development Workflow
@@ -256,4 +278,4 @@ wording), and updating dependent templates and docs in the same commit. Every ne
 `plan.md` Constitution Check MUST evaluate principles I–X; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 3.1.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-19
+**Version**: 3.2.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-24

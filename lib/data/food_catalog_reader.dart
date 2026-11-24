@@ -1,6 +1,9 @@
 import 'package:drift/drift.dart';
 
+import '../domain/allergen_group.dart';
 import '../domain/food_matcher.dart';
+import '../domain/food_nutrition.dart';
+import '../domain/recipe_allergens.dart';
 import '../sync/catalog_status.dart';
 import 'database.dart';
 
@@ -49,6 +52,8 @@ class FoodCatalogReader {
           name: r.name,
           category: r.category,
           baseUnit: unit,
+          nutrition: _nutrition(r),
+          allergens: parseAllergens(r),
         ),
         householdId: r.householdId,
         withdrawn: r.withdrawnAt != null,
@@ -107,6 +112,8 @@ class FoodCatalogReader {
             name: byId[id]!.name,
             category: byId[id]!.category,
             baseUnit: unit,
+            nutrition: _nutrition(byId[id]!),
+            allergens: parseAllergens(byId[id]!),
           ),
     ];
     // Prvo one koje počinju upitom, pa po nazivu.
@@ -117,6 +124,128 @@ class FoodCatalogReader {
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
     return found.take(limit).toList();
+  }
+
+  /// Returns a catalog identity only for an active row visible in [scope].
+  /// Failed and unavailable server states fail closed; access-denied reads may
+  /// use shared rows only. This lookup is by exact immutable food ID and does
+  /// not attempt name matching.
+  Future<FoodIdentity?> visibleFoodById(
+    FoodLookupScope scope,
+    String foodId, {
+    required CatalogStatus status,
+  }) async {
+    if (foodId.isEmpty ||
+        (status != CatalogStatus.available &&
+            status != CatalogStatus.accessDenied)) {
+      return null;
+    }
+    final row = await (_db.select(
+      _db.foods,
+    )..where((food) => food.id.equals(foodId))).getSingleOrNull();
+    if (row == null || row.withdrawnAt != null) return null;
+    final sharedOnly = status == CatalogStatus.accessDenied;
+    final visible =
+        row.householdId == null ||
+        (!sharedOnly && row.householdId == scope.householdId);
+    if (!visible) return null;
+    final baseUnit = FoodBaseUnit.values.asNameMap()[row.baseUnit];
+    if (baseUnit == null) return null;
+    return FoodIdentity(
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      category: row.category,
+      baseUnit: baseUnit,
+      nutrition: _nutrition(row),
+      allergens: parseAllergens(row),
+    );
+  }
+
+  /// Reviewed allergen groups per food ID. A food that is missing, withdrawn,
+  /// unreviewed or has an unreadable value is absent from the map (unknown,
+  /// never safe). An empty set means reviewed with no allergen.
+  Future<Map<String, Set<AllergenGroup>>> reviewedAllergens(
+    Iterable<String> foodIds,
+  ) async {
+    final ids = foodIds.toSet();
+    if (ids.isEmpty) return const {};
+    final rows = await (_db.select(
+      _db.foods,
+    )..where((t) => t.id.isIn(ids) & t.withdrawnAt.isNull())).get();
+    return {for (final r in rows) r.id: ?parseAllergens(r)};
+  }
+
+  /// Allergens of a recipe from its ingredients' catalog links (null =
+  /// unresolved ingredient). Unreviewed or unresolved parts are flagged on the
+  /// result instead of being treated as allergen-free.
+  Future<RecipeAllergens> allergensForRecipe(
+    Iterable<String?> ingredientFoodIds,
+  ) async {
+    final ids = ingredientFoodIds.toList();
+    return RecipeAllergens.resolve(
+      ids,
+      await reviewedAllergens([
+        for (final id in ids)
+          if (id != null && id.trim().isNotEmpty) id,
+      ]),
+    );
+  }
+
+  /// Cache text -> groups. null (unknown) for a missing review or any code
+  /// this version does not know, so a bad value fails closed.
+  static Set<AllergenGroup>? parseAllergens(FoodRow row) {
+    final raw = row.allergenCodes;
+    if (raw == null || row.allergenReviewedAt == null) return null;
+    final byCode = {for (final g in AllergenGroup.values) g.code: g};
+    final groups = <AllergenGroup>{};
+    for (final code in raw.split(',')) {
+      if (code.isEmpty) continue;
+      final group = byCode[code];
+      if (group == null) return null;
+      groups.add(group);
+    }
+    return Set.unmodifiable(groups);
+  }
+
+  FoodNutrition? _nutrition(FoodRow row) {
+    final hasValues =
+        row.kcalPer100g != null ||
+        row.proteinGramsPer100g != null ||
+        row.fatGramsPer100g != null ||
+        row.carbsGramsPer100g != null;
+    if (!hasValues) return null;
+    final source = row.nutritionSource;
+    final version = row.nutritionSourceVersion;
+    final ref = row.nutritionSourceRef;
+    if (source == null ||
+        source.trim().isEmpty ||
+        version == null ||
+        version.trim().isEmpty ||
+        ref == null ||
+        ref.trim().isEmpty) {
+      return null;
+    }
+    final values = [
+      row.kcalPer100g,
+      row.proteinGramsPer100g,
+      row.fatGramsPer100g,
+      row.carbsGramsPer100g,
+    ];
+    if (values.any(
+      (value) => value != null && (!value.isFinite || value < 0),
+    )) {
+      return null;
+    }
+    return FoodNutrition(
+      kcalPer100g: row.kcalPer100g,
+      proteinGramsPer100g: row.proteinGramsPer100g,
+      fatGramsPer100g: row.fatGramsPer100g,
+      carbsGramsPer100g: row.carbsGramsPer100g,
+      source: source,
+      sourceVersion: version,
+      sourceRef: ref,
+    );
   }
 }
 

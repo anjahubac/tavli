@@ -1,7 +1,12 @@
-// Odgovor ide kroz isti tekstualni lanac kao AI gateway. Ključevi su samo u
-// zaglavljima; poruke i odgovori se ne loguju jer mogu sadržati tekst knjige.
+// Odgovor ide kroz isti tekstualni lanac kao AI gateway, u istom redosledu
+// (AI_PROVIDER_ORDER). Ključevi su samo u zaglavljima; poruke i odgovori se
+// ne loguju jer mogu sadržati tekst knjige.
 
-import { chains, type Env, resolveModel } from "../ai-gateway/providers.ts";
+import {
+  type Env,
+  orderedChain,
+  resolveModel,
+} from "../ai-gateway/providers.ts";
 
 export class GenerateError extends Error {
   constructor(public status: number | null, message: string) {
@@ -20,7 +25,7 @@ export function createGenerator(options: GeneratorOptions) {
   const doFetch = options.fetch ?? fetch;
   return async (system: string, prompt: string): Promise<string> => {
     let lastStatus: number | null = null;
-    for (const candidate of chains.text) {
+    for (const candidate of orderedChain("text", options.env)) {
       const selected = resolveModel(candidate, options.env);
       if (!selected) continue;
       let res: Response;

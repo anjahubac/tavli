@@ -1,164 +1,168 @@
 candidate_name,category_hint,proposed_base_unit,identity_status,identity_source,identity_reviewer,allergen_status,allergen_codes,allergen_source,allergen_reviewer,notes
-dunja,voće i povrće,,pending,,,unknown,unknown,,,
-nar,voće i povrće,,pending,,,unknown,unknown,,,
-mandarina,voće i povrće,,pending,,,unknown,unknown,,,
-grejpfrut,voće i povrće,,pending,,,unknown,unknown,,,
-mango,voće i povrće,,pending,,,unknown,unknown,,,
-ananas,voće i povrće,,pending,,,unknown,unknown,,,
-kivi,voće i povrće,,pending,,,unknown,unknown,,,
-višnja,voće i povrće,,pending,,,unknown,unknown,,,
-trešnja,voće i povrće,,pending,,,unknown,unknown,,,
-kupina,voće i povrće,,pending,,,unknown,unknown,,,
-ribizla,voće i povrće,,pending,,,unknown,unknown,,,
-sveža brusnica,voće i povrće,,pending,,,unknown,unknown,,,
-sveža smokva,voće i povrće,,pending,,,unknown,unknown,,,
-sveža urma,voće i povrće,,pending,,,unknown,unknown,,,
-dinja,voće i povrće,,pending,,,unknown,unknown,,,
-lubenica,voće i povrće,,pending,,,unknown,unknown,,,
-nektarina,voće i povrće,,pending,,,unknown,unknown,,,
-papaja,voće i povrće,,pending,,,unknown,unknown,,,
-marakuja,voće i povrće,,pending,,,unknown,unknown,,,
-kaki,voće i povrće,,pending,,,unknown,unknown,,,
-guava,voće i povrće,,pending,,,unknown,unknown,,,
-karambola,voće i povrće,,pending,,,unknown,unknown,,,
-liči,voće i povrće,,pending,,,unknown,unknown,,,
-kumkvat,voće i povrće,,pending,,,unknown,unknown,,,
-kelj,voće i povrće,,pending,,,unknown,unknown,,,
-prokelj,voće i povrće,,pending,,,unknown,unknown,,,
-crveni kupus,voće i povrće,,pending,,,unknown,unknown,,,
-kineski kupus,voće i povrće,,pending,,,unknown,unknown,,,
-bela rotkva,voće i povrće,,pending,,,unknown,unknown,,,
-crna rotkva,voće i povrće,,pending,,,unknown,unknown,,,
-paškanat,voće i povrće,,pending,,,unknown,unknown,,,
-koren peršuna,voće i povrće,,pending,,,unknown,unknown,,,
-batat,voće i povrće,,pending,,,unknown,unknown,,,
-čičoka,voće i povrće,,pending,,,unknown,unknown,,,
-bela repa,voće i povrće,,pending,,,unknown,unknown,,,
-korabica,voće i povrće,,pending,,,unknown,unknown,,,
-komorač,voće i povrće,,pending,,,unknown,unknown,,,
-artičoka,voće i povrće,,pending,,,unknown,unknown,,,
-špargla,voće i povrće,,pending,,,unknown,unknown,,,
-bamija,voće i povrće,,pending,,,unknown,unknown,,,
-endivija,voće i povrće,,pending,,,unknown,unknown,,,
-radič,voće i povrće,,pending,,,unknown,unknown,,,
-matovilac,voće i povrće,,pending,,,unknown,unknown,,,
-blitva,voće i povrće,,pending,,,unknown,unknown,,,
-potočarka,voće i povrće,,pending,,,unknown,unknown,,,
-list maslačka,voće i povrće,,pending,,,unknown,unknown,,,
-list korabice,voće i povrće,,pending,,,unknown,unknown,,,
-list cvekle,voće i povrće,,pending,,,unknown,unknown,,,
-cvet tikvice,voće i povrće,,pending,,,unknown,unknown,,,
-teleći file,meso i riba,,pending,,,unknown,unknown,,,
-svinjski file,meso i riba,,pending,,,unknown,unknown,,,
-pileća krilca,meso i riba,,pending,,,unknown,unknown,,,
-pileća džigerica,meso i riba,,pending,,,unknown,unknown,,,
-juneća džigerica,meso i riba,,pending,,,unknown,unknown,,,
-ćureći file,meso i riba,,pending,,,unknown,unknown,,,
-goveđi rep,meso i riba,,pending,,,unknown,unknown,,,
-pačje meso,meso i riba,,pending,,,unknown,unknown,,,
-guščje meso,meso i riba,,pending,,,unknown,unknown,,,
-zečetina,meso i riba,,pending,,,unknown,unknown,,,
-meso prepelice,meso i riba,,pending,,,unknown,unknown,,,
-jareće meso,meso i riba,,pending,,,unknown,unknown,,,
-srnetina,meso i riba,,pending,,,unknown,unknown,,,
-meso divlje svinje,meso i riba,,pending,,,unknown,unknown,,,
-fazan,meso i riba,,pending,,,unknown,unknown,,,
-pileća srca,meso i riba,,pending,,,unknown,unknown,,,
-smuđ,meso i riba,,pending,,,unknown,unknown,,,
-šaran,meso i riba,,pending,,,unknown,unknown,,,
-som,meso i riba,,pending,,,unknown,unknown,,,
-orada,meso i riba,,pending,,,unknown,unknown,,,
-brancin,meso i riba,,pending,,,unknown,unknown,,,
-grdobina,meso i riba,,pending,,,unknown,unknown,,,
-bakalar,meso i riba,,pending,,,unknown,unknown,,,
-haringa,meso i riba,,pending,,,unknown,unknown,,,
-inćun,meso i riba,,pending,,,unknown,unknown,,,
-papalina,meso i riba,,pending,,,unknown,unknown,,,
-dagnja,meso i riba,,pending,,,unknown,unknown,,,
-ostriga,meso i riba,,pending,,,unknown,unknown,,,
-jakobova kapica,meso i riba,,pending,,,unknown,unknown,,,
-hobotnica,meso i riba,,pending,,,unknown,unknown,,,
-sipa,meso i riba,,pending,,,unknown,unknown,,,
-rečni rak,meso i riba,,pending,,,unknown,unknown,,,
-proso,suvi proizvodi,,pending,,,unknown,unknown,,,
-raž,suvi proizvodi,,pending,,,unknown,unknown,,,
-raženo brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-speltino brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-pirinčano brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-ovseno brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-heljdino brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-leblebijino brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-bademovo brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-ječmeno brašno,suvi proizvodi,,pending,,,unknown,unknown,,,
-tapioka,suvi proizvodi,,pending,,,unknown,unknown,,,
-kuskus,suvi proizvodi,,pending,,,unknown,unknown,,,
-bulgur,suvi proizvodi,,pending,,,unknown,unknown,,,
-amarant,suvi proizvodi,,pending,,,unknown,unknown,,,
-mak,suvi proizvodi,,pending,,,unknown,unknown,,,
-seme lana,suvi proizvodi,,pending,,,unknown,unknown,,,
-seme bundeve,suvi proizvodi,,pending,,,unknown,unknown,,,
-seme suncokreta,suvi proizvodi,,pending,,,unknown,unknown,,,
-čija seme,suvi proizvodi,,pending,,,unknown,unknown,,,
-makadamija,suvi proizvodi,,pending,,,unknown,unknown,,,
-brazilski orah,suvi proizvodi,,pending,,,unknown,unknown,,,
-pekan orah,suvi proizvodi,,pending,,,unknown,unknown,,,
-pistać,suvi proizvodi,,pending,,,unknown,unknown,,,
-indijski orah,suvi proizvodi,,pending,,,unknown,unknown,,,
-zrno pšenice,suvi proizvodi,,pending,,,unknown,unknown,,,
-integralni pirinač,suvi proizvodi,,pending,,,unknown,unknown,,,
-divlji pirinač,suvi proizvodi,,pending,,,unknown,unknown,,,
-crni pasulj,suvi proizvodi,,pending,,,unknown,unknown,,,
-crveni pasulj,suvi proizvodi,,pending,,,unknown,unknown,,,
-crno sočivo,suvi proizvodi,,pending,,,unknown,unknown,,,
-žuti grašak,suvi proizvodi,,pending,,,unknown,unknown,,,
-mungo pasulj,suvi proizvodi,,pending,,,unknown,unknown,,,
-hranjivi kvasac,suvi proizvodi,,pending,,,unknown,unknown,,,
-ovčije mleko,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-kozje mleko,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-bivolje mleko,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-kefir,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-rikota,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-maskarpone,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-ementaler,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-gorgonzola,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-gauda,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-čedar,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-edamer,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-feta,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-halumi,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-skir,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-kozji sir,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-ovčiji sir,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-bivolji sir,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-provolone,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-grujer,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-mančego,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-pačje jaje,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-prepeličje jaje,mlečni proizvodi i jaja,,pending,,,unknown,unknown,,,
-kardamom,začini i sosovi,,pending,,,unknown,unknown,,,
-anis,začini i sosovi,,pending,,,unknown,unknown,,,
-zvezdasti anis,začini i sosovi,,pending,,,unknown,unknown,,,
-karanfilić,začini i sosovi,,pending,,,unknown,unknown,,,
-vanila štapić,začini i sosovi,,pending,,,unknown,unknown,,,
-seme korijandera,začini i sosovi,,pending,,,unknown,unknown,,,
-list korijandera,začini i sosovi,,pending,,,unknown,unknown,,,
-žalfija,začini i sosovi,,pending,,,unknown,unknown,,,
-estragon,začini i sosovi,,pending,,,unknown,unknown,,,
-nana,začini i sosovi,,pending,,,unknown,unknown,,,
-šafran,začini i sosovi,,pending,,,unknown,unknown,,,
-piment,začini i sosovi,,pending,,,unknown,unknown,,,
-sumak,začini i sosovi,,pending,,,unknown,unknown,,,
-sušeni đumbir,začini i sosovi,,pending,,,unknown,unknown,,,
-beli biber,začini i sosovi,,pending,,,unknown,unknown,,,
-zeleni biber,začini i sosovi,,pending,,,unknown,unknown,,,
-čili pahuljice,začini i sosovi,,pending,,,unknown,unknown,,,
-seme slačice,začini i sosovi,,pending,,,unknown,unknown,,,
-javorov sirup,začini i sosovi,,pending,,,unknown,unknown,,,
-susamovo ulje,začini i sosovi,,pending,,,unknown,unknown,,,
-laneno ulje,začini i sosovi,,pending,,,unknown,unknown,,,
-ulje od kikirikija,začini i sosovi,,pending,,,unknown,unknown,,,
-ulje avokada,začini i sosovi,,pending,,,unknown,unknown,,,
-pirinčano sirće,začini i sosovi,,pending,,,unknown,unknown,,,
-vinsko sirće,začini i sosovi,,pending,,,unknown,unknown,,,
-brašno t-400,suvi proizvodi,,pending,,,unknown,unknown,,,Separate identity proposed in spec 018
-brašno t-500,suvi proizvodi,,pending,,,unknown,unknown,,,Separate identity proposed in spec 018
+dunja,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+nar,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+mandarina,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+grejpfrut,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+mango,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ananas,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kivi,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+višnja,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+trešnja,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kupina,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ribizla,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+sveža brusnica,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+sveža smokva,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+sveža urma,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+dinja,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+lubenica,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+nektarina,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+papaja,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+marakuja,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kaki,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+guava,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+karambola,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+liči,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kumkvat,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kelj,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+prokelj,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+crveni kupus,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kineski kupus,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bela rotkva,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+crna rotkva,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+paškanat,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+koren peršuna,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+batat,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+čičoka,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bela repa,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+korabica,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+komorač,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+artičoka,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+špargla,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bamija,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+endivija,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+radič,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+matovilac,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+blitva,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+potočarka,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+list maslačka,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+list korabice,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+list cvekle,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+cvet tikvice,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+teleći file,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+svinjski file,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pileća krilca,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pileća džigerica,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+juneća džigerica,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ćureći file,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+goveđi rep,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pačje meso,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+guščje meso,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+zečetina,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+meso prepelice,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+jareće meso,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+srnetina,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+meso divlje svinje,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+fazan,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pileća srca,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+smuđ,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+šaran,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+som,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+orada,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+brancin,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+grdobina,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bakalar,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+haringa,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+inćun,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+papalina,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,fish,"Regulation (EU) No 1169/2011, Annex II; Annex II 4: fish and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+dagnja,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,molluscs,"Regulation (EU) No 1169/2011, Annex II; Annex II 14: molluscs and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ostriga,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,molluscs,"Regulation (EU) No 1169/2011, Annex II; Annex II 14: molluscs and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+jakobova kapica,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,molluscs,"Regulation (EU) No 1169/2011, Annex II; Annex II 14: molluscs and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+hobotnica,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,molluscs,"Regulation (EU) No 1169/2011, Annex II; Annex II 14: molluscs and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+sipa,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,molluscs,"Regulation (EU) No 1169/2011, Annex II; Annex II 14: molluscs and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+rečni rak,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,crustaceans,"Regulation (EU) No 1169/2011, Annex II; Annex II 2: crustaceans and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+proso,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+raž,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+raženo brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+speltino brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pirinčano brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ovseno brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+heljdino brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+leblebijino brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bademovo brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,nuts,"Regulation (EU) No 1169/2011, Annex II; Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ječmeno brašno,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+tapioka,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kuskus,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bulgur,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+amarant,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+mak,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+seme lana,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+seme bundeve,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+seme suncokreta,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+čija seme,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+makadamija,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,nuts,"Regulation (EU) No 1169/2011, Annex II; Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+brazilski orah,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,nuts,"Regulation (EU) No 1169/2011, Annex II; Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pekan orah,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,nuts,"Regulation (EU) No 1169/2011, Annex II; Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pistać,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,nuts,"Regulation (EU) No 1169/2011, Annex II; Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+indijski orah,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,nuts,"Regulation (EU) No 1169/2011, Annex II; Annex II 8: nuts (almond, macadamia, Brazil, pecan, pistachio, cashew)",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+zrno pšenice,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+integralni pirinač,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+divlji pirinač,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+crni pasulj,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+crveni pasulj,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+crno sočivo,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+žuti grašak,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+mungo pasulj,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+hranjivi kvasac,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+ovčije mleko,mlečni proizvodi i jaja,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kozje mleko,mlečni proizvodi i jaja,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bivolje mleko,mlečni proizvodi i jaja,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kefir,mlečni proizvodi i jaja,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+rikota,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+maskarpone,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ementaler,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+gorgonzola,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+gauda,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+čedar,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+edamer,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+feta,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+halumi,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+skir,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kozji sir,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ovčiji sir,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+bivolji sir,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+provolone,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+grujer,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+mančego,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,milk,"Regulation (EU) No 1169/2011, Annex II; Annex II 7: milk and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pačje jaje,mlečni proizvodi i jaja,kom,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,eggs,"Regulation (EU) No 1169/2011, Annex II; Annex II 3: eggs and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+prepeličje jaje,mlečni proizvodi i jaja,kom,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,eggs,"Regulation (EU) No 1169/2011, Annex II; Annex II 3: eggs and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+kardamom,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+anis,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+zvezdasti anis,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+karanfilić,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+vanila štapić,začini i sosovi,kom,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+seme korijandera,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+list korijandera,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+žalfija,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+estragon,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+nana,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+šafran,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+piment,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+sumak,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+sušeni đumbir,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+beli biber,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+zeleni biber,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+čili pahuljice,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+seme slačice,začini i sosovi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,mustard,"Regulation (EU) No 1169/2011, Annex II; Annex II 10: mustard and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+javorov sirup,začini i sosovi,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+susamovo ulje,začini i sosovi,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,sesame,"Regulation (EU) No 1169/2011, Annex II; Annex II 11: sesame seeds and products thereof",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+laneno ulje,začini i sosovi,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+ulje od kikirikija,začini i sosovi,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+ulje avokada,začini i sosovi,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"Regulation (EU) No 1169/2011, Annex II; none: raw single ingredient, no Annex II group",Matija Radulovic,Base unit owner-confirmed via chat on 2026-11-23.
+pirinčano sirće,začini i sosovi,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+vinsko sirće,začini i sosovi,ml,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,unknown,unknown,,,Base unit owner-confirmed via chat on 2026-11-23.
+brašno t-400,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Separate identity proposed in spec 018; Base unit owner-confirmed via chat on 2026-11-23.
+brašno t-500,suvi proizvodi,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,gluten,"Regulation (EU) No 1169/2011, Annex II; Annex II 1: cereals containing gluten",Matija Radulovic,Separate identity proposed in spec 018; Base unit owner-confirmed via chat on 2026-11-23.
+svinjski but,meso i riba,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"EU Regulation 1169/2011, Annex II; single-ingredient assessment; does not cover product cross-contact.",Uroš Milutinović,Approximation: USDA record is whole leg with separable lean and fat; not an exact boneless-cut match.; Base unit owner-confirmed via chat on 2026-11-23.
+svinjska mast,ostalo,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"EU Regulation 1169/2011, Annex II; single-ingredient assessment; does not cover product cross-contact.",Uroš Milutinović,Plain lard record; does not represent seasoned products or mixed cooking drippings.; Base unit owner-confirmed via chat on 2026-11-23.
+crveni luk,voće i povrće,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,none,"EU Regulation 1169/2011, Annex II; single-ingredient assessment; does not cover product cross-contact.",Uroš Milutinović,Distinct from generic crni luk; Foundation Foods record is outside the SR Legacy nutrition extract.; Base unit owner-confirmed via chat on 2026-11-23.
+žumance,mlečni proizvodi i jaja,g,reviewed,Uroš Milutinović confirmed personal review in chat on 2026-11-24.,Uroš Milutinović,reviewed,eggs,"EU Regulation 1169/2011, Annex II; single-ingredient assessment; does not cover product cross-contact.",Uroš Milutinović,Fresh raw yolk record; distinct from frozen or pasteurized yolk.; Base unit owner-confirmed via chat on 2026-11-23.

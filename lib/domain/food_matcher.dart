@@ -1,3 +1,5 @@
+import 'allergen_group.dart';
+import 'food_nutrition.dart';
 import 'shopping_sync.dart';
 
 /// Osnovna jedinica namirnice (ugovor o identitetu sastojka, verzija 1).
@@ -11,6 +13,8 @@ final class FoodIdentity {
     required this.name,
     required this.category,
     required this.baseUnit,
+    this.nutrition,
+    this.allergens,
   });
 
   final String id;
@@ -18,6 +22,11 @@ final class FoodIdentity {
   final String name;
   final String category;
   final FoodBaseUnit baseUnit;
+  final FoodNutrition? nutrition;
+
+  /// Reviewed allergen groups. null = unknown (never safe); an empty set is
+  /// reviewed absence.
+  final Set<AllergenGroup>? allergens;
 
   @override
   bool operator ==(Object other) => other is FoodIdentity && other.id == id;

@@ -1,6 +1,6 @@
 # Tasks: security baseline
 
-All implementation tasks remain open. These are additional security slices, not
+All implementation tasks remain open until their evidence and review are linked. These are additional security slices, not
 new completion claims or a rewrite of the original 87 Trello product tickets.
 Before Ready, attach Trello/PR, confirmed human reviewer, actual paths and an
 effort range for implementation + tests + integration. “Dev” denotes ownership.
@@ -15,6 +15,7 @@ effort range for implementation + tests + integration. “Dev” denotes ownersh
 - [ ] T008 [US4] Gate backend deployment on reviewed same-SHA security evidence; prove a failing check prevents deploy. Owner Dev 3; reviewer Anja; FR-009; depends T007.
 - [ ] T009 [US2] Link accepted gateway producer contract and exact limits/retry policy to security matrix; avoid duplicating Dev 2 gateway tickets. Owner Dev 2; reviewer Dev 3; FR-002; depends accepted AI-GATEWAY contract.
 - [ ] T010 [US2] Verify gateway invalid-token, forged-user, size/concurrency/quota/destination and cutover behavior; zero provider calls for rejected requests. Owner Dev 2; reviewer Dev 3; FR-002; depends T009 and gateway implementation.
+- [ ] T019 [US2] Own-key handling on the device: recognition, no unknown key saved or sent, storage cache, no own key in gateway requests. Owner Dev 2; reviewer Dev 3; FR-013; implementation and tests in [PR #157](https://github.com/anjahubac/tavli/pull/157), review pending; own-key-in-gateway and account-deletion evidence still to be linked.
 - [ ] T011 [US3] Record environment/account namespace and cache protection decision with migration and backup policy. Owner Dev 3; reviewers Dev 1/4; FR-006/007; no dependencies.
 - [ ] T012 [US3] Implement agreed isolation migration with fresh/upgrade/offline-outbox/account-switch tests and retained-data recovery. Owner Dev 3; reviewers Dev 1/4; FR-006; depends T011.
 - [ ] T013 [US3] Verify release platform storage, backup, screen/clipboard exposure and sensitive-data gate on supported devices. Owner Dev 4; reviewer Dev 3; FR-007; depends T011/T012.
@@ -25,4 +26,5 @@ effort range for implementation + tests + integration. “Dev” denotes ownersh
 - [ ] T018 [US4] Complete release risk review and local synthetic incident/restore exercise, link evidence and resolve High findings before affected release. Owner Anja; reviewers all domain owners; FR-012; depends applicable release tasks above.
 
 Ready now for detailed scoping: T001/T003/T005/T011. Implementation requires a
-separate branch and actual tests; this documentation change fixes none of SEC-01–08.
+separate branch and actual tests; this list fixes none of SEC-02–08 by itself.
+SEC-01 is closed in client source; T010 keeps its release evidence.

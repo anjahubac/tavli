@@ -658,6 +658,17 @@ void main() {
         category: 'Mlečni proizvodi i jaja',
         baseUnit: 'piece',
         source: const Value('pregled'),
+        kcalPer100g: const Value(143),
+        proteinGramsPer100g: const Value(12),
+        fatGramsPer100g: const Value(9.5),
+        carbsGramsPer100g: const Value(0.7),
+        nutritionSource: const Value('USDA FoodData Central'),
+        nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+        nutritionSourceRef: const Value('FDC 172184'),
+        allergenCodes: const Value('eggs'),
+        allergenSource: const Value('EU 1169/2011 Annex II'),
+        allergenSourceRef: const Value('eggs'),
+        allergenReviewedAt: Value(t),
         reviewedAt: Value(t),
         withdrawnAt: Value(t),
         createdAt: t,
@@ -667,6 +678,16 @@ void main() {
       (r) {
         expect(r['household_id'], isNull);
         expect(r['base_unit'], 'piece');
+        expect(r['kcal_per_100g'], 143);
+        expect(r['protein_grams_per_100g'], 12);
+        expect(r['fat_grams_per_100g'], 9.5);
+        expect(r['carbs_grams_per_100g'], 0.7);
+        expect(r['nutrition_source'], 'USDA FoodData Central');
+        expect(r['nutrition_source_version'], 'SR Legacy 2018-04');
+        expect(r['nutrition_source_ref'], 'FDC 172184');
+        expect(r['allergen_codes'], ['eggs']);
+        expect(r['allergen_source'], 'EU 1169/2011 Annex II');
+        expect(r['allergen_reviewed_at'], '2026-10-30T10:05:07.000Z');
         expect(r['withdrawn_at'], '2026-10-30T10:05:07.000Z');
       },
     );

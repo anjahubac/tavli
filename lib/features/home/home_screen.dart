@@ -112,16 +112,63 @@ class _HomeContent extends ConsumerWidget {
       builder: (context, constraints) {
         // Kao na platnu: napomena i sutrašnji obroci desno na širokom ekranu.
         final side = constraints.maxWidth >= TavliWidth.listDetail;
-        final today = day.today.isEmpty
-            ? _HomeEmptyState(hasPlans: day.hasPlans)
-            : _TodayMeals(
-                day: day,
-                columns: side ? TavliColumns.meals : 1,
-                wide: wide,
-              );
+        final today = _TodayMeals(
+          day: day,
+          columns: side ? TavliColumns.meals : 1,
+          wide: wide,
+        );
         final noticeCard = notice == null
             ? null
             : _HomeNoticeCard(notice: notice, date: day.date);
+        if (day.today.isEmpty) {
+          // Prazan dan: zaglavlje ostaje gore, a crtež je na istoj visini
+          // kao na ostalim tabovima (TavliEmptyArea).
+          return TavliEmptyArea(
+            padding: TavliPage.padding(wide: wide),
+            header: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: TavliPage.spacing(wide: wide),
+              children: [
+                if (side)
+                  Row(
+                    spacing: TavliSpacing.large,
+                    children: [
+                      Expanded(child: header),
+                      SizedBox(
+                        width: TavliWidth.side(constraints.maxWidth),
+                        child: fasting,
+                      ),
+                    ],
+                  )
+                else ...[
+                  header,
+                  fasting,
+                ],
+                if (side && (noticeCard != null || day.tomorrow.isNotEmpty))
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: SizedBox(
+                      width: TavliWidth.side(constraints.maxWidth),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: TavliSpacing.cardsWide,
+                        children: [
+                          ?noticeCard,
+                          if (day.tomorrow.isNotEmpty)
+                            _Tomorrow(meals: day.tomorrow, card: true),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (!side) ...[
+                  ?noticeCard,
+                  if (day.tomorrow.isNotEmpty) _Tomorrow(meals: day.tomorrow),
+                ],
+              ],
+            ),
+            child: _HomeEmptyState(hasPlans: day.hasPlans),
+          );
+        }
         return TavliPage(
           wide: wide,
           children: [

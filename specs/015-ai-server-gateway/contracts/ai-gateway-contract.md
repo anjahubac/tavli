@@ -2,8 +2,8 @@
 
 **Status**: Base contract approved in [PR #47](https://github.com/anjahubac/tavli/pull/47);
 quota reservation merged in [PR #124](https://github.com/anjahubac/tavli/pull/124).
-The local implementation adds authenticated model discovery, OpenAI opt-in and
-the Flutter transport. Persistence of client-side quota pauses and release
+Authenticated model discovery, OpenAI opt-in and the Flutter transport are merged
+to dev in [PR #127](https://github.com/anjahubac/tavli/pull/127). Persistence of client-side quota pauses and release
 verification remain open.
 **Author**: Dev 2 | **Reviewer**: Dev 4 (TRELLO-36: request and error format)
 **Date**: 2026-11-17 | **Builds on**: [spike-photo-timing.md](../spike-photo-timing.md)
@@ -231,6 +231,33 @@ remaining eligible models. Requests for an allowlisted
 model with missing credentials return `503 model_unavailable` before quota
 reservation.
 
+### Provider order (`AI_PROVIDER_ORDER`)
+
+The order of the built-in chains can be changed per project without a code
+change or app release, with the optional secret `AI_PROVIDER_ORDER`: a
+comma-separated list of provider names (`openai`, `gemini`, `groq`,
+`openrouter`), for example `openai,gemini,groq,openrouter`.
+
+- Unset or empty (or no known name in it): the chains above, unchanged. This
+  is the `tavli-dev` setting.
+- Set: models are grouped by provider in the listed order; each provider keeps
+  its own model order from the chains above. Providers that are not listed
+  follow in their default order, so a short list never removes a model. To
+  turn a provider off, remove its key instead.
+- Names are trimmed and case-insensitive; duplicates are ignored. Unknown
+  names are ignored and logged as `ai_provider_order_ignored <names>` on
+  `GET`, so a typo is visible in the function logs.
+- A provider without its key (or OpenAI without `AI_OPENAI_ENABLED=1` and
+  `OPENAI_MODEL`) is skipped, so the next provider in the list comes first.
+- The same order is used by `GET` (the list the app walks), by the `POST`
+  allowlist and by the server-side `cookbook-ask` text chain.
+
+Verification on a real project: the `GET` response lists the effective order,
+and every `POST` answer carries `model` and logs one line
+`ai_gateway_call model=<provider>/<model> status=<status>` (no prompt, output,
+token or key), visible in the dashboard under Edge Functions → `ai-gateway` →
+Logs.
+
 ### Deadlines
 
 Each allowlisted model has one timeout, the same value on both sides: the
@@ -326,6 +353,7 @@ print them.
 | `OPENAI_API_KEY` | OpenAI models (D3) | optional | optional, when enabling OpenAI |
 | `OPENAI_MODEL` | model behind `openai/default` (D3) | with the OpenAI key | with the OpenAI key |
 | `AI_OPENAI_ENABLED` | opts in to OpenAI when set to `1` | unset initially | unset initially |
+| `AI_PROVIDER_ORDER` | built-in provider order, comma-separated (see Provider order) | unset (default order) | `openai,gemini,groq,openrouter` |
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` come from the platform, as for
 `delete-account`. Rotation: replace the secret in the dashboard; no deploy or
@@ -350,8 +378,8 @@ deleted after 2 days.
 - `GatewayQuotaError` and `GatewayAuthError` with the router handling in
   Gateway errors in `AIRouter`, the per-account, per-kind pause store, the
   gateway deadline from Deadlines, and support for `openai/default`.
-- Cutover (FR-104): built-in keys are removed from `BuiltInKeys`,
-  `secrets.example.json` and the build; a check proves the built app contains
+- Cutover (FR-104): `BuiltInKeys` and the key entries of `secrets.example.json`
+  are removed ([PR #157](https://github.com/anjahubac/tavli/pull/157)); still open: a check proves the built app contains
   no provider key.
 
 ## Delivery slices
@@ -380,6 +408,7 @@ returns text.
 | --- | --- | --- | --- |
 | D1 | Who builds prompts | The app sends `system`/`prompt`; the gateway checks task, model, size and quota. Server-side prompt templates would stop arbitrary prompts but move all prompt code to TypeScript; deferred. Accepted risk: a signed-in user can send any prompt within their quota. | Dev 2, review Dev 4 |
 | D2 | Limits | Values in Limits above | Dev 2 + Dev 4 |
-| D3 | Paid provider and model | OpenAI as `openai/default`, one model for vision and text, resolved from `OPENAI_MODEL` on the server. Choice: a fast small (mini-class) multimodal model, picked by running the TRELLO-35 photo set, a few dish-name recipes and one plan through 2–3 candidates once the key exists (errors, time, cost per request). Reasoning models only at their lowest effort, because of the 60 s deadline. The app needs no OpenAI client, because only the gateway calls it. | team (2026-11-17), model pick pending the test |
+| D3 | Paid provider and model | OpenAI as `openai/default`, one model for vision and text, resolved from `OPENAI_MODEL` on the server. Choice: a fast small (mini-class) multimodal model, picked by running the TRELLO-35 photo set, a few dish-name recipes and one plan through 2–3 candidates once the key exists (errors, time, cost per request). Reasoning models only at their lowest effort, because of the 60 s deadline: the gateway sends `reasoning_effort: none` to OpenAI, so `OPENAI_MODEL` must accept it (a model without it, e.g. `gpt-4o-mini`, would reject the request). The app needs no OpenAI client, because only the gateway calls it. | team (2026-11-17), model pick pending the test |
 | D4 | Free keys | Stay available for testing as gateway secrets on `tavli-dev`; removed from the app build at cutover | team (2026-11-17) |
+| D6 | Personal keys (free or paid) | Personal keys never go through the gateway: they stay on the device and are called directly, before the shared gateway path, in the order of spec 004 (paid first by default, a toggle on the key list changes it). The gateway's own paid OpenAI key and its limits apply only to built-in access. A personal OpenAI key needs a model id on the device (the gateway's `openai/default` is server-side): one model id in the chain config, `gpt-6-luna`, at its lowest reasoning effort (`none`) and without `temperature`; a trial with a real key is pending. This changes D3's "the app needs no OpenAI client": personal keys are called by the app's own OpenAI-compatible client. | team (2026-11-23), model by Anja (2026-11-24) |
 | D5 | Sync vs queue | Synchronous, one model attempt per call (spike decision A) | team (Q2) |

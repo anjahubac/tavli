@@ -352,6 +352,20 @@ class Foods extends Table {
   /// `piece`, `gram` ili `milliliter` (čuva se kako je stiglo).
   TextColumn get baseUnit => text()();
   TextColumn get source => text().nullable()();
+  RealColumn get kcalPer100g => real().nullable()();
+  RealColumn get proteinGramsPer100g => real().nullable()();
+  RealColumn get fatGramsPer100g => real().nullable()();
+  RealColumn get carbsGramsPer100g => real().nullable()();
+  TextColumn get nutritionSource => text().nullable()();
+  TextColumn get nutritionSourceVersion => text().nullable()();
+  TextColumn get nutritionSourceRef => text().nullable()();
+
+  /// Reviewed EU allergen groups, comma-separated. null = unknown (never
+  /// safe), '' = reviewed with no allergen, 'milk,eggs' = reviewed groups.
+  TextColumn get allergenCodes => text().nullable()();
+  TextColumn get allergenSource => text().nullable()();
+  TextColumn get allergenSourceRef => text().nullable()();
+  DateTimeColumn get allergenReviewedAt => dateTime().nullable()();
   DateTimeColumn get reviewedAt => dateTime().nullable()();
   DateTimeColumn get withdrawnAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
@@ -572,7 +586,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -600,6 +614,8 @@ class AppDatabase extends _$AppDatabase {
           () => _addMissingColumn(m, accounts, accounts.householdReady),
         );
       }
+      if (from < 13) await transaction(() => _migrateToFoodNutrition(m));
+      if (from < 14) await transaction(() => _migrateToFoodAllergens(m));
     },
   );
 
@@ -622,6 +638,43 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _migrateToMemberPlanning(Migrator m) async {
     await m.createTable(userAllergenSelections);
     await m.createTable(userFavorites);
+  }
+
+  /// v13: attributed nutrition reference values on shared foods. Existing
+  /// catalog rows stay unknown until reviewed values are loaded.
+  Future<void> _migrateToFoodNutrition(Migrator m) async {
+    final foodsExists = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'foods'",
+    ).getSingleOrNull();
+    if (foodsExists == null) return;
+    for (final column in [
+      foods.kcalPer100g,
+      foods.proteinGramsPer100g,
+      foods.fatGramsPer100g,
+      foods.carbsGramsPer100g,
+      foods.nutritionSource,
+      foods.nutritionSourceVersion,
+      foods.nutritionSourceRef,
+    ]) {
+      await _addMissingColumn(m, foods, column);
+    }
+  }
+
+  /// v14: reviewed allergen groups on shared foods. Existing rows stay
+  /// unknown until the next catalog download brings reviewed values.
+  Future<void> _migrateToFoodAllergens(Migrator m) async {
+    final foodsExists = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'foods'",
+    ).getSingleOrNull();
+    if (foodsExists == null) return;
+    for (final column in [
+      foods.allergenCodes,
+      foods.allergenSource,
+      foods.allergenSourceRef,
+      foods.allergenReviewedAt,
+    ]) {
+      await _addMissingColumn(m, foods, column);
+    }
   }
 
   /// v6: oznake recepta. Postojeći recepti ostaju neoznačeni (null).

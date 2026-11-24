@@ -56,10 +56,7 @@ VoiceAgent agentWith(ScriptedModel client) => VoiceAgent(
   AIRouter(
     config: () => const ChainConfig(vision: [model], text: [model]),
     client: client,
-    keys: LayeredKeySource(
-      InMemoryKeyStore({AIProvider.gemini: 'k'}),
-      const BuiltInKeys(),
-    ),
+    keys: OwnKeySource(InMemoryKeyStore({AIProvider.gemini: 'k'})),
     status: InMemoryModelStatusStore(),
   ),
 );

@@ -7,7 +7,6 @@ import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../app/animations/empty_fridge.dart';
 import '../../app/home_shell.dart' show wideLayoutWidth;
-import '../../app/placeholder_screen.dart' show EmptyStateBody;
 import '../../app/tab_app_bar.dart';
 import '../../data/pantry_repository.dart';
 import '../recipes/cook_from_pantry_screen.dart' show cookFromPantryPath;
@@ -120,10 +119,12 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
               title: 'Ostava nije učitana.',
             ),
           ),
-          AsyncData() when !hasItems => const EmptyStateBody(
-            art: EmptyFridge(),
-            title: 'Još nema unetih namirnica',
-            body: 'Ovde ćeš pratiti namirnice koje imaš kod kuće.',
+          AsyncData() when !hasItems => const TavliEmptyArea(
+            child: TavliEmptyState(
+              art: EmptyFridge(),
+              title: 'Još nema unetih namirnica',
+              message: 'Ovde ćeš pratiti namirnice koje imaš kod kuće.',
+            ),
           ),
           AsyncData() => _PantryContent(
             wide: wide,

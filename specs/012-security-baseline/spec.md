@@ -13,7 +13,10 @@ checks part of delivery. This spec coordinates security slices; it does not
 replace the product gateway/household specs, create a new service architecture,
 or authorize production probing, key rotation, deployment or a database wipe.
 The 87 source product tasks are unchanged; 012 is additional cross-cutting work.
-See [security assessment](../../docs/development/security.md) for evidence SEC-01–08.
+See [security assessment](../../docs/development/security.md) for evidence SEC-02–08.
+SEC-01 (provider keys compiled into the client) is closed in source: spec 015 moved
+shared access to the gateway and the client key layer is removed (2026-11-24).
+Its release evidence stays required by FR-002.
 
 ## User scenarios and acceptance
 
@@ -27,8 +30,9 @@ Revoked membership cannot upload queued old-household writes after reconnect.
 ### US2 — Login and AI cannot expose credentials or abuse quota (P1)
 
 Expired/replayed OTP and invalid tokens are rejected. Invalid/over-limit gateway
-requests cause zero provider calls. A release after gateway cutover contains
-no built-in provider secrets. Provider replies containing synthetic secrets or
+requests cause zero provider calls. No app build contains a shared provider
+secret. A person's own key goes only to its provider; an unrecognized key is
+neither saved nor sent. Provider replies containing synthetic secrets or
 personal text do not appear in UI, logs or error serialization.
 
 ### US3 — Synced content cannot escape its data boundary (P1)
@@ -49,8 +53,11 @@ security control implemented.
 
 - **FR-001**: Preserve server-enforced least-privilege grants/RLS and private storage;
   cover forged ownership, RPCs, parent references and personal/household isolation.
-- **FR-002**: Complete the planned authenticated gateway cutover for built-in AI
-  secrets with bounded cost/size/concurrency and no arbitrary provider destinations.
+- **FR-002**: Shared AI access uses only authenticated server functions, with bounded
+  cost/size/concurrency and no arbitrary provider destinations. Provider keys are
+  server function secrets in every environment, production included. Before a
+  production release: prove a key-free artifact and rotate keys that older
+  distributed builds contained.
 - **FR-003**: Replace raw provider/error propagation with safe typed categories in
   UI/diagnostics; verify synthetic-sensitive fixture redaction end to end.
 - **FR-004**: Validate photo paths and containment for all filesystem operations,
@@ -72,6 +79,10 @@ security control implemented.
   their feature contracts; untrusted content never executes arbitrary actions.
 - **FR-012**: Maintain risk ownership, containment/recovery runbook and explicit
   residual-risk decisions; do not equate code presence with proven protection.
+- **FR-013**: Keep a person's own AI key in memory and secure storage on the device.
+  Send it only to the provider recognized from the service list (spec 004), never
+  to server functions, sync, logs or UI (only its last 4 characters are shown). A failed
+  secure-storage read or write is not cached; deleting the account deletes the keys.
 
 ## UI and product constraints
 
@@ -87,7 +98,7 @@ No runtime UI strings change in the documentation delivery.
   accounts, and include membership/account/environment transitions.
 - **SC-002**: Traversal inputs perform no filesystem operation outside the test root;
   synthetic secrets never reach errors/UI/log sinks.
-- **SC-003**: Post-cutover release has no compiled built-in AI secrets; rejected
+- **SC-003**: A release has no compiled shared AI secrets; rejected
   gateway cases invoke no provider work, including concurrent limit attempts.
 - **SC-004**: A deliberately failing security check prevents same-SHA deployment;
   reviewer and release evidence are recorded without credentials.
@@ -97,6 +108,6 @@ No runtime UI strings change in the documentation delivery.
 ## Decisions before dependent implementation
 
 Agree environment/cache migration, OS-only versus DB encryption, recent-auth UX,
-gateway budgets/rotation, retained-file policy and actual hosted controls. They
+gateway budgets, retained-file policy and actual hosted controls. They
 block only dependent slices. New dependencies and schema changes require plan
 updates and applicable migrations/tests, not blanket permission from this spec.

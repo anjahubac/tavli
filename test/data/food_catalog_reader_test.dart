@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/food_catalog_reader.dart';
+import 'package:tavli/domain/allergen_group.dart';
 import 'package:tavli/domain/food_matcher.dart';
 import 'package:tavli/domain/shopping_sync.dart';
 import 'package:tavli/sync/catalog_status.dart';
@@ -70,6 +71,81 @@ void main() {
     await alias('a1', 'f-jaje', ingredientKey('Jaja'));
     expect(matchedId(await find('Jaja')), 'f-jaje');
   });
+
+  test('čita nutritivnu referencu samo uz poreklo izvora', () async {
+    await db
+        .into(db.foods)
+        .insert(
+          FoodsCompanion.insert(
+            id: 'f-nutrition',
+            slug: 'krompir',
+            name: 'krompir',
+            category: 'voće i povrće',
+            baseUnit: 'gram',
+            kcalPer100g: const Value(77),
+            proteinGramsPer100g: const Value(2),
+            fatGramsPer100g: const Value(0.1),
+            carbsGramsPer100g: const Value(17),
+            nutritionSource: const Value('USDA FoodData Central'),
+            nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+            nutritionSourceRef: const Value('FDC 170026'),
+            createdAt: t,
+            updatedAt: t,
+          ),
+        );
+    final matched = await find('krompir') as Matched;
+    expect(matched.food.nutrition?.kcalPer100g, 77);
+    expect(matched.food.nutrition?.sourceVersion, 'SR Legacy 2018-04');
+
+    for (final sourceRef in [null, '  ']) {
+      final name = sourceRef == null ? 'nepoznato poreklo' : 'prazno poreklo';
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: name,
+              slug: name,
+              name: name,
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(1),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: Value(sourceRef),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      final unattributed = await find(name) as Matched;
+      expect(unattributed.food.nutrition, isNull);
+    }
+  });
+
+  test(
+    'zanemaruje neispravnu nutritivnu referencu umesto da obori matcher',
+    () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'f-infinite',
+              slug: 'beskonacno',
+              name: 'beskonacno',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(double.infinity),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: const Value('FDC 1'),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+
+      final matched = await find('beskonacno') as Matched;
+      expect(matched.food.nutrition, isNull);
+    },
+  );
 
   test('tuđe domaćinstvo i nepoznata jedinica se ne vide', () async {
     await food('f-tudja', household: 'h2');
@@ -154,6 +230,115 @@ void main() {
     );
   });
 
+  group('visibleFoodById', () {
+    FoodCatalogReader reader() => FoodCatalogReader(db);
+
+    test(
+      'returns only active exact-ID food visible to scope and status',
+      () async {
+        await food('shared');
+        await food('own', household: 'h1');
+        await food('other', household: 'h2');
+        final shared = await reader().visibleFoodById(
+          home,
+          'shared',
+          status: CatalogStatus.available,
+        );
+        expect(shared?.id, 'shared');
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.available,
+          ))?.id,
+          'own',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'other',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.accessDenied,
+          ))?.id,
+          'shared',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.accessDenied,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.failed,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.notOnServer,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'missing',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test('rejects withdrawn and unknown-unit rows', () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'withdrawn',
+              slug: 'withdrawn',
+              name: 'Povučena',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              withdrawnAt: Value(t),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      await food('unknown-unit', unit: 'bushel');
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'withdrawn',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'unknown-unit',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('search', () {
     Future<void> named(
       String id,
@@ -222,6 +407,78 @@ void main() {
     test('nepoznata osnovna jedinica se preskače', () async {
       await named('a', 'Pavlaka', unit: 'bushel');
       expect(await names('pavl'), isEmpty);
+    });
+  });
+
+  group('allergens', () {
+    Future<void> reviewed(
+      String id,
+      String? codes, {
+      bool review = true,
+    }) async {
+      await food(id);
+      await (db.update(db.foods)..where((f) => f.id.equals(id))).write(
+        FoodsCompanion(
+          allergenCodes: Value(codes),
+          allergenReviewedAt: Value(review ? t : null),
+        ),
+      );
+    }
+
+    test('unknown, reviewed none and reviewed groups stay distinct', () async {
+      await food('unknown');
+      await reviewed('none', '');
+      await reviewed('dairy', 'milk,eggs');
+      final map = await FoodCatalogReader(db)
+          .reviewedAllergens(['unknown', 'none', 'dairy', 'missing']);
+      expect(map.keys, unorderedEquals(['none', 'dairy']));
+      expect(map['none'], isEmpty);
+      expect(map['dairy'], {AllergenGroup.milk, AllergenGroup.eggs});
+    });
+
+    test('unreadable or half-reviewed values fail closed', () async {
+      await reviewed('bad', 'milk,unobtainium');
+      await reviewed('nodate', 'milk', review: false);
+      expect(
+        await FoodCatalogReader(db).reviewedAllergens(['bad', 'nodate']),
+        isEmpty,
+      );
+    });
+
+    test('recipe result lists groups and flags incomplete data', () async {
+      await reviewed('flour', 'gluten');
+      await reviewed('egg', 'eggs');
+      await food('mystery');
+      final reader = FoodCatalogReader(db);
+
+      final ok = await reader.allergensForRecipe(['flour', 'egg']);
+      expect(ok.groups, {AllergenGroup.gluten, AllergenGroup.eggs});
+      expect(ok.isComplete, isTrue);
+
+      final partial = await reader.allergensForRecipe([
+        'flour',
+        'mystery',
+        null,
+      ]);
+      expect(partial.groups, {AllergenGroup.gluten});
+      expect(partial.hasUnreviewedMapping, isTrue);
+      expect(partial.hasUnresolvedIngredient, isTrue);
+      expect(partial.isComplete, isFalse);
+    });
+
+    test('withdrawn foods are not reviewed', () async {
+      await reviewed('old', 'fish');
+      await (db.update(db.foods)..where((f) => f.id.equals('old'))).write(
+        FoodsCompanion(withdrawnAt: Value(t)),
+      );
+      expect(await FoodCatalogReader(db).reviewedAllergens(['old']), isEmpty);
+    });
+
+    test('identity from the matcher carries the reviewed groups', () async {
+      await reviewed('milk1', 'milk');
+      await alias('a1', 'milk1', 'namirnica milk1');
+      final result = await find('namirnica milk1');
+      expect((result as Matched).food.allergens, {AllergenGroup.milk});
     });
   });
 }

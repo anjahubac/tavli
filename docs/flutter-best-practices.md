@@ -132,8 +132,8 @@ Binding for humans and AI agents. The constitution
 ## 12. Security
 
 - No secrets in code, tests, fixtures, logs, screenshots, commit messages.
-- Own keys and the auth session: Keychain/Keystore. Built-in AI keys and the
-  Supabase URL/anon key: gitignored `secrets.json` via `--dart-define-from-file`;
+- Own keys and the auth session: Keychain/Keystore. Supabase URL/anon key:
+  gitignored `secrets.json` via `--dart-define-from-file`;
   `secrets.example.json` holds empty values only. The service-role key never
   enters the app or the repo.
 - Never log request headers, full request bodies, keys, or personal data
@@ -245,8 +245,8 @@ English; preserve Serbian Latin UI copy and surrounding code-comment conventions
   Unknown pantry quantity is not zero or an unlimited confirmed supply.
 - Domain/AI parsing/router/error changes are test-first, not optional. New AI
   contracts validate types and semantics; use bounded repair and fake transports.
-- Built-in AI keys currently come from build configuration. The future gateway
-  moves them server-side; BYOK stays secure on device. A doc is not a deployment.
+- The app build contains no AI keys: shared access goes through the server
+  gateway; BYOK stays secure on device. A doc is not a deployment.
 - Human review is required across ownership boundaries. Reserve schema versions,
   name exact shared paths, and merge producer contracts before consumer branches.
 - Coverage targets are goals, not currently enforced CI thresholds. New SQL,

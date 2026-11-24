@@ -202,7 +202,17 @@ Deno.test("lists only configured models and places opted-in OpenAI first for bot
       .status,
     200,
   );
-  equal(JSON.parse(String(on.calls[0].init?.body)).model, "fake-model");
+  const request = JSON.parse(String(on.calls[0].init?.body));
+  equal(request.model, "fake-model");
+  equal(request.reasoning_effort, "none");
+  equal("temperature" in request, false);
+});
+
+Deno.test("only reasoning models get the lowest effort", async () => {
+  const { handle, calls } = setup();
+  equal((await handle(post())).status, 200);
+  const request = JSON.parse(String(calls[0].init?.body));
+  equal("reasoning_effort" in request, false);
 });
 
 Deno.test("the gateway kill switch skips both quota and provider", async () => {
@@ -214,4 +224,55 @@ Deno.test("the gateway kill switch skips both quota and provider", async () => {
   equal(await result.json(), { error: "gateway_unavailable" });
   equal(reserved.length, 0);
   equal(calls.length, 0);
+});
+
+Deno.test("GET lists models in the AI_PROVIDER_ORDER order and warns about unknown names", async () => {
+  const authGet = new Request("http://local.test/ai-gateway", {
+    headers: { Authorization: "Bearer test-session" },
+  });
+  const warnings: string[] = [];
+  const warn = console.warn;
+  console.warn = (message: string) => warnings.push(message);
+  try {
+    const { handle, reserved, calls } = setup({
+      env: {
+        AI_PROVIDER_ORDER: "openai,gemini,groq,openrouter,open ai",
+        OPENAI_API_KEY: "fake-openai",
+        OPENAI_MODEL: "fake-model",
+        AI_OPENAI_ENABLED: "1",
+        OPENROUTER_API_KEY: "fake-openrouter",
+      },
+    });
+    const body = await (await handle(authGet)).json();
+    equal(body.text, [
+      "openai/default",
+      "gemini/gemini-pro-latest",
+      "gemini/gemini-flash-latest",
+      "gemini/gemini-flash-lite-latest",
+      "groq/openai/gpt-oss-120b",
+      "groq/llama-3.3-70b-versatile",
+      "openrouter/google/gemma-3-27b-it:free",
+    ]);
+    equal(body.vision[0], "openai/default");
+    equal(body.vision[1], "gemini/gemini-flash-latest");
+    equal(warnings, ["ai_provider_order_ignored open ai"]);
+    equal(reserved.length, 0);
+    equal(calls.length, 0);
+  } finally {
+    console.warn = warn;
+  }
+});
+
+Deno.test("each answered call logs only the model id and status", async () => {
+  const lines: string[] = [];
+  const info = console.info;
+  console.info = (message: string) => lines.push(message);
+  try {
+    const { handle } = setup({ env: { AI_PROVIDER_ORDER: "groq,gemini" } });
+    const result = await handle(post());
+    equal(await result.json(), { content: "{}", model: textModel });
+    equal(lines, ["ai_gateway_call model=" + textModel + " status=200"]);
+  } finally {
+    console.info = info;
+  }
 });

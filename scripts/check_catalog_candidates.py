@@ -195,8 +195,12 @@ def validate_worksheet(worksheet, catalog, candidates):
             errors.append(f'{label}: usda_fdc_id must be a number')
         if fdc and not description:
             errors.append(f'{label}: usda_description is required with usda_fdc_id')
+        if fdc and not row['usda_reviewer'].strip():
+            errors.append(f'{label}: reviewed FDC mapping requires an approval record')
         if not fdc and description:
             errors.append(f'{label}: usda_description must be empty without usda_fdc_id')
+        if not fdc and row['usda_reviewer'].strip():
+            errors.append(f'{label}: USDA approval requires an FDC ID')
         if is_candidate:
             source = candidate_rows[name]
             for key in REVIEW_FIELDS:
@@ -205,10 +209,8 @@ def validate_worksheet(worksheet, catalog, candidates):
             if source['identity_status'] == 'reviewed':
                 if not row['base_unit_reviewer'].strip():
                     errors.append(f'{label}: base_unit_reviewer is required for a reviewed food')
-                if fdc and not row['usda_reviewer'].strip():
-                    errors.append(f'{label}: usda_reviewer is required for a reviewed food')
         elif any(row[key] != UNREVIEWED[key] for key in REVIEW_FIELDS):
-            errors.append(f'{label}: a reference row cannot carry review decisions')
+            errors.append(f'{label}: a reference row cannot carry identity or allergen decisions')
     for name in sorted((candidate_rows.keys() | catalog_rows.keys()) - seen):
         errors.append(f'missing from worksheet: {name}')
     return errors

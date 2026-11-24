@@ -8,8 +8,9 @@ precedence; this file explains how to follow them day to day.
 
 Tavli is a Flutter app (Android, iOS, macOS) for recipes, meal plans, pantry
 and shopping lists. AI turns a photo or a dish name into a recipe and edits
-recipes via chat. AI runs on free tiers of Gemini, Groq and OpenRouter through
-one OpenAI-compatible client and a router with fallback chains.
+recipes via chat. AI runs through one OpenAI-compatible client and a router with fallback chains.
+Built-in access uses free tiers of Gemini, Groq and OpenRouter; a person can also
+add their own key, free or paid, for any service in the service list (spec 004).
 
 **An account is required.** After the intro the user signs in (email with a
 one-time code; Apple/Google later) and synced business data is stored on
@@ -31,8 +32,8 @@ default. Planning and linked/standalone shopping code exist, while 010
 acceptance remains partial.
 Početna content (today's meals, notices) is still planned. Pantry stays simple:
 no expiry dates or “use first” UI, optional quantity.
-The gateway, food catalog, household invitations, nutrition diary, voice,
-cookbooks and Windows remain planned. Read the
+Gateway rollout, food catalog, household invitations, nutrition diary, voice,
+cookbooks and Windows are not released; check `dev` for merged parts. Read the
 [010 overlay](specs/010-plan-and-shopping/current-direction.md) for superseded
 requirements; never rewrite historical checked tasks to imply new work shipped.
 
@@ -99,7 +100,7 @@ flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
 flutter run -d macos
-flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend + built-in AI keys (see secrets.example.json)
+flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend (see secrets.example.json)
 flutter run -d macos --dart-define-from-file=secrets.json       # local stack (`supabase start`) or your own config
 scripts/check.sh                                            # format check + analyze (fast, no tests)
 scripts/test-changed.sh                                     # tests affected by staged changes
@@ -260,7 +261,7 @@ An independent human review and merged PR are required for delivery Done.
   docs, commit messages, or chat output.
 - User keys and the auth session live only in secure storage (`SecureKeyStore`,
   Keychain/Keystore). Tests use `InMemoryKeyStore` and fake backends with fake values.
-- Current build-time values (Supabase URL and anon key, built-in AI keys) go in the
+- Current build-time values (Supabase URL and anon key) go in the
   gitignored `secrets.json` passed via `--dart-define-from-file`;
   `secrets.example.json` has empty placeholders only; never read them in tests.
 - The Supabase service-role key never goes into the app, the repo or chat output.
@@ -268,8 +269,9 @@ An independent human review and merged PR are required for delivery Done.
 - Don't add logging of request headers or full request bodies.
 - Agents must not edit, rotate or test real keys unless the user explicitly asks.
 
-Built-in provider credentials will move behind the planned AI gateway. This is
-not deployed yet; preserve `AIRouter` and fakeable transport during migration.
+Built-in provider credentials live only as secrets of the server functions; app
+builds have none (constitution IV). The gateway code is on `dev`, not on `main`
+(2026-11-24). Preserve `AIRouter` and fakeable transport.
 
 Spec Kit state caveat: the installed `get_feature_paths` persists an explicit
 `SPECIFY_FEATURE_DIRECTORY` into the current checkout's `.specify/feature.json`, even
@@ -283,7 +285,7 @@ helper read-only. Serialize writers in the same checkout. Do not overwrite anoth
 Read [security baseline](docs/development/security.md) and the
 [012 specification](specs/012-security-baseline/spec.md). Existing source-level
 gaps are recorded there, not fixed by these rules. No shared provider secrets in
-new client features; gateway cutover is required before wider distribution.
+the client; release evidence of gateway cutover is required before wider distribution.
 Validate synced file names/root containment; never display/log raw provider
 bodies or exception strings. Server grants/RLS and private storage enforce
 ownership independently of UI. New remote endpoints have auth/limits and negative

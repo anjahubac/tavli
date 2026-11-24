@@ -880,6 +880,22 @@ class FoodEntity extends SyncEntity<$FoodsTable, FoodRow> {
     'category': r.category,
     'base_unit': r.baseUnit,
     'source': r.source,
+    'kcal_per_100g': r.kcalPer100g,
+    'protein_grams_per_100g': r.proteinGramsPer100g,
+    'fat_grams_per_100g': r.fatGramsPer100g,
+    'carbs_grams_per_100g': r.carbsGramsPer100g,
+    'nutrition_source': r.nutritionSource,
+    'nutrition_source_version': r.nutritionSourceVersion,
+    'nutrition_source_ref': r.nutritionSourceRef,
+    'allergen_codes': r.allergenCodes == null
+        ? null
+        : [
+            for (final c in r.allergenCodes!.split(','))
+              if (c.isNotEmpty) c,
+          ],
+    'allergen_source': r.allergenSource,
+    'allergen_source_ref': r.allergenSourceRef,
+    'allergen_reviewed_at': _tsOrNull(r.allergenReviewedAt),
     'reviewed_at': _tsOrNull(r.reviewedAt),
     'withdrawn_at': _tsOrNull(r.withdrawnAt),
     'created_at': _ts(r.createdAt),
@@ -894,12 +910,30 @@ class FoodEntity extends SyncEntity<$FoodsTable, FoodRow> {
     category: Value(j['category']! as String),
     baseUnit: Value(j['base_unit']! as String),
     source: Value(j['source'] as String?),
+    kcalPer100g: Value((j['kcal_per_100g'] as num?)?.toDouble()),
+    proteinGramsPer100g: Value(
+      (j['protein_grams_per_100g'] as num?)?.toDouble(),
+    ),
+    fatGramsPer100g: Value((j['fat_grams_per_100g'] as num?)?.toDouble()),
+    carbsGramsPer100g: Value((j['carbs_grams_per_100g'] as num?)?.toDouble()),
+    nutritionSource: Value(j['nutrition_source'] as String?),
+    nutritionSourceVersion: Value(j['nutrition_source_version'] as String?),
+    nutritionSourceRef: Value(j['nutrition_source_ref'] as String?),
+    allergenCodes: Value(_allergenCodes(j['allergen_codes'])),
+    allergenSource: Value(j['allergen_source'] as String?),
+    allergenSourceRef: Value(j['allergen_source_ref'] as String?),
+    allergenReviewedAt: Value(_dateOrNull(j['allergen_reviewed_at'])),
     reviewedAt: Value(_dateOrNull(j['reviewed_at'])),
     withdrawnAt: Value(_dateOrNull(j['withdrawn_at'])),
     createdAt: Value(_date(j['created_at'])),
     updatedAt: Value(_date(j['updated_at'] ?? j['created_at'])),
   );
 }
+
+/// Server array -> cache text. null stays unknown; an empty array is a
+/// reviewed "no allergen" and is stored as ''.
+String? _allergenCodes(Object? raw) =>
+    raw is List<Object?> ? raw.whereType<String>().join(',') : null;
 
 /// Alias namirnice (018). Samo se preuzima, kao i [FoodEntity].
 class FoodAliasEntity extends SyncEntity<$FoodAliasesTable, FoodAliasRow> {

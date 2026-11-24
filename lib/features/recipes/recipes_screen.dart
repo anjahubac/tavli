@@ -191,8 +191,8 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
           ),
           data: (all) {
             if (all.isEmpty) {
-              return const _ScrollableMessage(
-                TavliEmptyState(
+              return const TavliEmptyArea(
+                child: TavliEmptyState(
                   art: EmptyCookbook(),
                   title: 'Još nema recepata',
                   message:
