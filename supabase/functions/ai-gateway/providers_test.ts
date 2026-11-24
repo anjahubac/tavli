@@ -47,7 +47,7 @@ Deno.test("the prod order groups models by provider in the given order", () => {
     "gemini/gemini-flash-latest",
     "gemini/gemini-pro-latest",
     "gemini/gemini-flash-lite-latest",
-    "groq/qwen/qwen3.6-27b",
+    "groq/qwen/qwen3.8-27b",
     "openrouter/google/gemma-3-27b-it:free",
   ]);
 });

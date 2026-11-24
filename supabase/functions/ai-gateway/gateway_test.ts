@@ -3,7 +3,7 @@ import { gateway, type Reservation } from "./gateway.ts";
 import { maxBodyBytes } from "./input.ts";
 
 const textModel = "gemini/gemini-pro-latest";
-const imageModel = "groq/qwen/qwen3.6-27b";
+const imageModel = "groq/qwen/qwen3.8-27b";
 const typedRequest = {
   task: "recipe_from_name",
   model: textModel,
@@ -212,7 +212,7 @@ Deno.test("accepts image input and sends it to the allowlisted Groq vision model
   equal(result.status, 200);
   equal(calls[0].url, "https://api.groq.com/openai/v1/chat/completions");
   const request = JSON.parse(String(calls[0].init?.body));
-  equal(request.model, "qwen/qwen3.6-27b");
+  equal(request.model, "qwen/qwen3.8-27b");
   equal(request.max_completion_tokens, 4096);
   equal(request.messages[1].content[1].image_url.url, png);
   equal((reserved[0] as { kind: string }).kind, "vision");
