@@ -58,7 +58,7 @@ class ChainConfig {
   );
   static const _groqVision = ModelSpec(
     provider: AIProvider.groq,
-    model: 'qwen/qwen3.6-27b',
+    model: 'qwen/qwen3.8-27b',
     label: 'Groq Qwen 3.6 27B',
     supportsVision: true,
   );
