@@ -6,8 +6,8 @@ precedence; this file explains how to follow them day to day.
 
 ## Project overview
 
-Tavli is a Flutter app (Android, iOS, macOS) for recipes, meal plans, pantry
-and shopping lists. AI turns a photo or a dish name into a recipe and edits
+Tavli is a Flutter app (Android, iOS, macOS, Windows; a Linux runner builds in CI)
+for recipes, meal plans, pantry and shopping lists. AI turns a photo or a dish name into a recipe and edits
 recipes via chat. AI runs through one OpenAI-compatible client and a router with fallback chains.
 Built-in access uses free tiers of Gemini, Groq and OpenRouter; a person can also
 add their own key, free or paid, for any service in the service list (spec 004).
@@ -27,13 +27,16 @@ existing comments are mostly Serbian — match the surrounding file.
 
 Read [docs/product-design.md](docs/product-design.md),
 [docs/product-plan.md](docs/product-plan.md) and the active spec before planning.
-Tabs: Plan, Nabavka, Početna, Recepti, Ostava; empty Početna (`/home`) is the
-default. Planning and linked/standalone shopping code exist, while 010
-acceptance remains partial.
-Početna content (today's meals, notices) is still planned. Pantry stays simple:
-no expiry dates or “use first” UI, optional quantity.
-Gateway rollout, food catalog, household invitations, nutrition diary, voice,
-cookbooks and Windows are not released; check `dev` for merged parts. Read the
+Tabs: Plan, Nabavka, Početna, Recepti, Ostava; Početna (`/home`) is the default
+and shows today's and tomorrow's meals with cook/undo and one notice. Planning
+and linked/standalone shopping code exist, while 010 acceptance remains partial.
+Pantry (Ostava) is implemented and stays simple: no expiry dates or “use first”
+UI, optional quantity. On `dev` (2026-11-24) the AI gateway, ingredient catalog,
+household invitations, ratings, tastes, cookbooks, voice recipe drafting, fasting
+questions and the Windows target are built, but none is a released or accepted
+feature until its spec's evidence says so. The nutrition diary, store prices,
+receipt QR, cycle hints, plan import and public distribution are not built; the
+spec index (`specs/README.md`) has the per-spec status. Read the
 [010 overlay](specs/010-plan-and-shopping/current-direction.md) for superseded
 requirements; never rewrite historical checked tasks to imply new work shipped.
 
@@ -46,7 +49,7 @@ Serbian Latin. Architecture evidence and current paths are in
 ```
 lib/
   main.dart               ProviderScope + TavliApp
-  providers.dart          Riverpod wiring (db, key store, chain config, router, RecipeAI, MealPlanAI)
+  providers.dart          Riverpod wiring (db, key store, chain config, router, RecipeAI, MealPlanAI, sync, realtime)
   app/                    MaterialApp, go_router config, responsive HomeShell, placeholders
     theme_controller.dart   ThemeController (saved theme choice → TavliMotif)
     animations/             reduced-motion aware CustomPainter animations (MotionBuilder)
@@ -62,21 +65,33 @@ lib/
     prompts.dart            system prompt + recipe JSON schema + task prompts
     recipe_ai.dart          RecipeAI: fromImage, fromDishName, refine
     meal_plan_ai.dart       MealPlanAI and planning schema
-  account/                Supabase config/client, AuthGateway (email code), SessionStore
-                          (Keychain), AccountApi, AccountService, AuthController + AccountScope
+    gateway_chat_client.dart shared-access transport (ai-gateway Edge Function)
+    ai_response_validator.dart strict recipe/summary checks, repair_prompt.dart bounded repair
+    pantry_ai.dart, voice_agent.dart, recipe_image_client.dart   photo-to-pantry, voice drafts, AI recipe images
+  account/                Supabase config/client, AuthGateway (email code, email confirmation), SessionStore
+                          (Keychain), AccountApi, AccountService, AuthController + AccountScope,
+                          household invitation codes
   sync/                   entity registry, SyncedWriter (outbox), Supabase SyncRemote/PhotoRemote,
-                          Uploader, Downloader, PhotoSync, LegacyMover, SyncEngine
+                          Uploader, Downloader, PhotoSync, LegacyMover, SyncEngine, RealtimeSync
+                          (invalidation signals only)
   data/                   drift database (all tables, per-account cache + outbox),
-                          DriftModelStatusStore, RecipeRepository, RecipePhotoStore, photo downscaling
-  domain/                 pure Dart models (Recipe, Ingredient, Account, ids)
+                          DriftModelStatusStore, repositories (recipes, plans, shopping, pantry, cooking,
+                          ratings, cookbooks, catalog reader), RecipePhotoStore, photo downscaling
+  domain/                 pure Dart models and rules (Recipe, meal plan, shopping demand, catalog matcher,
+                          church calendar, nutrition calculation, ids)
   features/<feature>/     screens, widgets and feature providers
-                          (recipes/, planning/, shopping/, settings/, account/)
+                          (home/, recipes/, planning/, shopping/, pantry/, cookbooks/, fasting/,
+                          settings/, account/)
 packages/tavli_ui/        local UI package (pub workspace member): palettes, buildTavliTheme,
                           TavliColors, tokens (TavliSpacing, TavliRadius, TavliMotion),
                           TavliPlatform, MotionBuilder, Plus Jakarta Sans font.
                           The app imports only package:tavli_ui/tavli_ui.dart, never src/.
 supabase/                 config.toml, migrations/ (schema, RLS, grants, storage),
-                          tests/ (pgTAP: `supabase test db`), functions/delete-account/, templates/
+                          tests/ (pgTAP: `supabase test db`), templates/, functions/ (ai-gateway,
+                          voice-transcribe, planning-inputs, cookbook-process, cookbook-ask,
+                          household-invite, household-join, household-photo-cleanup, delete-account)
+site/                     static email confirmation page (Cloudflare Pages)
+evals/                    AI evaluation cases and recorded traces
 test/                     mirrors lib/; helpers/fake_adapter.dart fakes dio,
                           helpers/fake_backend.dart fakes Supabase (auth, tables, storage),
                           helpers/test_app.dart pumps the whole app signed in (testTavli/pumpTavli)

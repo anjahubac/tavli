@@ -23,7 +23,10 @@ widget tests have no network, keys or production data. Explicit local-backend
 integration is isolated and guarded; AI stays fake in every automated lane.
 A fake cannot prove RLS, nor can a widget test prove a native permission dialog.
 
-Current baseline: 64 Dart test files and 7 SQL suites, no integration_test harness.
+Current baseline (2026-11-24): 138 Dart test files in `test/`, 23 in
+`packages/tavli_ui/test` (with golden images compared on Linux only), 35 pgTAP files
+in `supabase/tests`, 14 Deno test files for Edge Functions, and no integration_test
+harness. CI runs the Dart and Deno tests; pgTAP runs locally with `supabase test db`.
 See the [quickstart](../../specs/013-testing-strategy/quickstart.md) for actual
 commands and [journey matrix](../../specs/013-testing-strategy/contracts/journey-matrix.md)
 for required outcomes. Record failures/limits, don't infer correctness from counts.

@@ -87,6 +87,7 @@ class TavliTextField extends StatelessWidget {
     this.autocorrect = true,
     this.isCode = false,
     this.trailing,
+    this.leading,
     this.textCapitalization = TextCapitalization.none,
     this.tall = false,
   }) : assert(controller == null || initialValue == null),
@@ -127,6 +128,10 @@ class TavliTextField extends StatelessWidget {
 
   /// Dugme na desnom kraju polja, npr. `TavliIconButton` „Prikaži“.
   final Widget? trailing;
+
+  /// Ukrasna ikonica 20 na početku polja, npr. oblačić sa upitnikom u polju
+  /// za pitanje (kanvas: razmak 16 do ivice i 10 do teksta).
+  final Widget? leading;
 
   /// npr. [TextCapitalization.words] za ime.
   final TextCapitalization textCapitalization;
@@ -169,6 +174,20 @@ class TavliTextField extends StatelessWidget {
         hint: hint,
         error: errorText,
         enabled: enabled,
+        prefix: leading == null
+            ? null
+            : Padding(
+                padding: const EdgeInsetsDirectional.only(start: 16, end: 10),
+                child: ExcludeSemantics(
+                  child: IconTheme.merge(
+                    data: IconThemeData(
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    child: leading!,
+                  ),
+                ),
+              ),
         // Svoj čvor za čitač ekrana: bez njega dugme u polju koje je
         // izašlo iz vidnog dela liste ostaje kao nevidljiv čvor.
         suffix: trailing == null

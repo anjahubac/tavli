@@ -126,6 +126,36 @@ void main() {
     );
   });
 
+  // SEC-03: telo odgovora provajdera može da nosi deo prompta, ključa ili
+  // naloga; poruka greške ide u UI i u zapis pokušaja, pa sadrži samo status.
+  test('poruka greške ne sadrži telo odgovora provajdera', () async {
+    const sentinel = 'SENTINEL-sk-test-0123456789';
+    Future<AIError> statusError(int status, String body) async {
+      final (client, _) = clientWith([(status, body, {}), (status, body, {})]);
+      return client
+          .complete(model, request, apiKey: 'k')
+          .then<AIError>(
+            (_) => throw StateError('expected an error'),
+            onError: (Object e) => e as AIError,
+          );
+    }
+
+    for (final (status, body) in [
+      (400, '{"error":"bad param $sentinel"}'),
+      (400, '{"error":"API key not valid $sentinel"}'),
+      (401, '{"error":"$sentinel"}'),
+      (403, '{"error":{"code":"model_not_found","m":"$sentinel"}}'),
+      (404, '{"error":"$sentinel"}'),
+      (429, '{"error":"$sentinel"}'),
+      (500, '{"error":"$sentinel"}'),
+    ]) {
+      final error = await statusError(status, body);
+      expect(error.message, isNot(contains(sentinel)), reason: '$status');
+      expect(error.toString(), isNot(contains(sentinel)), reason: '$status');
+      expect(error.message, contains('HTTP $status'), reason: '$status');
+    }
+  });
+
   test('5xx: jedan ponovni pokušaj pa uspeh', () async {
     final (client, adapter) = clientWith([
       (503, '{}', {}),

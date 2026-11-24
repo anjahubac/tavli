@@ -1,8 +1,10 @@
 # tavli_ui
 
 Local UI library for the Tavli app: theme, palettes, tokens, platform helpers,
-motion and (as the library cards land) shared components. It is a workspace
-member of this repository with a path dependency, no versions and no releases.
+motion, icons, shell and navigation parts (including the Windows title bar and
+menu bar), controls, content cards and rows, overlays (dialog, sheet, menus,
+messages) and a debug gallery. More components land with the library cards. It is
+a workspace member of this repository with a path dependency, no versions and no releases.
 
 ## Design source and rules
 
