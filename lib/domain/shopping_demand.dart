@@ -154,9 +154,9 @@ List<DemandLine> demandFor(DemandSource source) {
     final known = q != null && q.isFinite && q >= 0;
     final key = (
       sourceId: source.id,
-      ingredient: linkedFood == null
-          ? ingredientKey(i.name)
-          : 'food:${linkedFood.id}',
+      // A verified link groups by the catalog name, so differently worded
+      // ingredients merge and still meet pantry stock and items keyed by name.
+      ingredient: ingredientKey(linkedFood?.name ?? i.name),
       unitGroup: known ? unit.group : unknownGroup,
     );
     final micros = known

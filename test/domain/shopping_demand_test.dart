@@ -242,7 +242,7 @@ void main() {
       );
 
       expect(lines, hasLength(1));
-      expect(lines.single.key.ingredient, 'food:${butter.id}');
+      expect(lines.single.key.ingredient, ingredientKey(butter.name));
       expect(lines.single.name, 'Maslac');
       expect(lines.single.micros, toMicros(300));
     });

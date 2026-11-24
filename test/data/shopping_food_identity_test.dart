@@ -110,11 +110,47 @@ void main() {
       );
       final contributions = await db.select(db.shoppingContributions).get();
       expect(
-        contributions.where((c) => c.ingredientKey == 'food:shared'),
+        contributions.where((c) => c.ingredientKey == ingredientKey('Maslac')),
         hasLength(1),
       );
     },
   );
+
+  test('pantry stock under the catalog name covers linked demand', () async {
+    await catalogStatus(CatalogStatus.available);
+    await food('shared');
+    await db
+        .into(db.pantryItems)
+        .insert(
+          PantryItemsCompanion.insert(
+            id: 'pantry-butter',
+            name: 'maslac',
+            quantity: const Value(100),
+            unit: const Value('g'),
+            category: 'mlečni proizvodi i jaja',
+            addedAt: _now,
+            confirmedAt: Value(_now),
+            householdId: Value(_scope.householdId),
+          ),
+        );
+
+    await repository.addRecipePreparation(
+      snapshot: RecipeSnapshot(
+        title: 'Test',
+        baseServings: 2,
+        ingredients: [
+          linked('maslac domaći', 100, 'shared'),
+          linked('putar', 150, 'shared'),
+        ],
+      ),
+      servings: 2,
+      originKey: 'pantry-covered',
+    );
+
+    final item = (await db.select(db.shoppingItems).get()).single;
+    expect(item.name, 'Maslac');
+    expect(item.quantity, 150);
+  });
 
   test('catalog failure never merges by an unverified link', () async {
     await catalogStatus(CatalogStatus.failed);
@@ -136,7 +172,7 @@ void main() {
     expect(await db.select(db.shoppingItems).get(), hasLength(2));
     expect(
       (await db.select(db.shoppingContributions).get()).every(
-        (c) => !c.ingredientKey.startsWith('food:'),
+        (c) => c.ingredientKey != ingredientKey('Maslac'),
       ),
       isTrue,
     );
