@@ -497,4 +497,68 @@ void main() {
     await show(tester, 'Novo 5');
     expect(find.text('Ručak 5.11.'), findsNothing);
   });
+
+  testTavli('zamena jednog jela u ponovnom predlogu vidi zaključan obrok', (
+    tester,
+  ) async {
+    // Danas je sreda: 4. zaključavamo, menjaju se 5–8, pa se 5. zamenjuje.
+    final app = await pumpPlan(
+      tester,
+      size: wide,
+      ai: [
+        aiAnswer({
+          'meals': [
+            for (var d = 5; d <= 8; d++)
+              {
+                'date': '2026-11-0$d',
+                'meal': 'lunch',
+                'recipeId': null,
+                'title': 'Novo $d',
+              },
+          ],
+        }),
+        aiAnswer({
+          'recipes': [for (var d = 5; d <= 7; d++) recipeJson('Novo $d')],
+        }),
+        aiAnswer({
+          'recipes': [recipeJson('Novo 8')],
+        }),
+        aiAnswer({
+          'meals': [
+            {
+              'date': '2026-11-05',
+              'meal': 'lunch',
+              'recipeId': null,
+              'title': 'Zamena 5',
+            },
+          ],
+        }),
+        aiAnswer({
+          'recipes': [recipeJson('Zamena 5')],
+        }),
+      ],
+    );
+    await tapText(tester, 'Ručak 4.11.');
+    await tapText(tester, 'Zaključaj');
+    await backToPlan(tester);
+    await tapText(tester, 'Ponovo predloži');
+    final before = app.adapter.requests.length;
+
+    final replace = iconButton('Zameni jelo').first;
+    await tester.ensureVisible(replace);
+    await tester.pumpAndSettle();
+    await tester.tap(replace);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Predloži drugo'));
+    await tester.pumpAndSettle();
+
+    final outline = app.adapter.requests[before].data.toString();
+    final slots = RegExp(r'Slots: (\[[^\]]*\])').firstMatch(outline)![1]!;
+    expect(slots, contains('2026-11-05'));
+    expect(slots, isNot(contains('2026-11-04')));
+    // Zaključan obrok iz sačuvanog plana ide kao jelo koje ostaje.
+    final around = RegExp(r'These meals stay in the plan[^\n]*')
+        .firstMatch(outline)![0]!;
+    expect(around, contains('2026-11-04'));
+  });
 }

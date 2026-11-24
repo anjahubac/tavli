@@ -1,4 +1,5 @@
 import '../ai/ai_units.dart';
+import 'food_matcher.dart';
 import 'recipe.dart';
 import 'shopping_sync.dart';
 
@@ -44,6 +45,10 @@ const _kitchenVolume = <String, int>{
   'kašičica': 5,
 };
 
+/// Da li je jedinica jedna od približnih kuhinjskih mera iz specifikacije 017.
+bool isApproximateKitchenMeasure(String? unit) =>
+    _kitchenVolume.containsKey(canonicalUnit(unit));
+
 String _unitText(String? unit) =>
     (unit ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
@@ -88,12 +93,17 @@ class DemandSource {
     required this.servings,
     required this.ingredients,
     this.kitchenMeasures = false,
+    this.visibleFoods = const {},
   });
 
   final String id;
   final int baseServings;
   final int servings;
   final List<Ingredient> ingredients;
+
+  /// Catalog foods already verified as active and visible to this household.
+  /// Recipe links are ignored unless their matched key still matches the text.
+  final Map<String, FoodIdentity> visibleFoods;
 
   /// Ne uključivati u sačuvanim izvorima bez kompatibilnog zapisa konverzije.
   final bool kitchenMeasures;
@@ -140,11 +150,17 @@ List<DemandLine> demandFor(DemandSource source) {
   final merged = <DemandKey, DemandLine>{};
   for (final i in source.ingredients) {
     final unit = normalizeUnit(i.unit, kitchenMeasures: source.kitchenMeasures);
+    final link = i.link;
+    final linkedFood = link != null && link.matchedKey == ingredientKey(i.name)
+        ? source.visibleFoods[link.foodId]
+        : null;
     final q = i.quantity;
     final known = q != null && q.isFinite && q >= 0;
     final key = (
       sourceId: source.id,
-      ingredient: ingredientKey(i.name),
+      // A verified link groups by the catalog name, so differently worded
+      // ingredients merge and still meet pantry stock and items keyed by name.
+      ingredient: ingredientKey(linkedFood?.name ?? i.name),
       unitGroup: known ? unit.group : unknownGroup,
     );
     final micros = known
@@ -157,8 +173,8 @@ List<DemandLine> demandFor(DemandSource source) {
     final prev = merged[key];
     merged[key] = DemandLine(
       key: key,
-      name: prev?.name ?? i.name.trim(),
-      category: prev?.category ?? i.category,
+      name: prev?.name ?? linkedFood?.name ?? i.name.trim(),
+      category: prev?.category ?? linkedFood?.category ?? i.category,
       micros: prev == null
           ? micros
           : (micros == null ? null : prev.micros! + micros),

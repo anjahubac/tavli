@@ -383,4 +383,48 @@ void main() {
       },
     );
   });
+
+  test('odbijanje tokom ponovnog upita u pravilima zaustavlja plan', () async {
+    final day = PlanRequest(
+      range: DateRange(monday, monday),
+      mealTypes: const {MealType.lunch, MealType.dinner},
+    );
+    // Dva jaka jela: večera krši pravilo, pa ide ponovni upit samo za nju.
+    client.handler = (r) => isOutline(r)
+        ? jsonEncode({
+            'meals': [
+              for (final s in slotsIn(r))
+                {
+                  ...s,
+                  'recipeId': null,
+                  'title': s['meal'] == 'lunch' ? 'Gulaš' : 'Sarma',
+                  'weight': 'hearty',
+                  'dishKind': 'cooked',
+                },
+            ],
+          })
+        : goodAnswer(r);
+
+    await expectLater(
+      // Posle odbijanja sledeće čitanje bi uspelo: plan ipak ne sme da
+      // nastavi sa podacima pročitanim pre odbijanja.
+      planner(
+        FakeTastes([
+          PlanningTastes.none,
+          const PlanningTastesDenied(),
+          PlanningTastes.none,
+        ]),
+      ).propose(day),
+      throwsA(
+        isA<PlanGenerationFailed>().having(
+          (e) => e.error,
+          'error',
+          isA<PlanningTastesDenied>(),
+        ),
+      ),
+    );
+    // Posle odbijanja nema ni novog rasporeda ni recepata.
+    expect(client.requests.where(isOutline), hasLength(1));
+    expect(client.requests.where((r) => !isOutline(r)), isEmpty);
+  });
 }

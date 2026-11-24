@@ -53,6 +53,7 @@ Attributed nutrition values on reference foods are separate from owner-only inta
 ## Exact UI copy carried forward
 
 “Ishrana”, “Samo pratim”, “Ručno”, “Kalkulator”, “Izvori i metoda”, “Sakrij kalorije”, “Jela sam”.
+Recipe detail estimate: “Po porciji ~{kcal} kcal · proteini {g} g · masti {g} g · ugljeni hidrati {g} g” and “Računato za {covered} od {total} sastojaka.”; hidden when no ingredient is covered.
 Additional screen/error/consent copy must be finalized in Serbian Latin before
 that UI task becomes Ready. English is used for engineering documents only.
 

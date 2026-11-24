@@ -1,4 +1,5 @@
 import 'recipe_labels.dart';
+import 'shopping_sync.dart';
 
 enum RecipeSource { photo, ai, manual }
 
@@ -88,6 +89,7 @@ class Ingredient {
     this.category = 'ostalo',
     this.note,
     this.link,
+    this.unlinkedKey,
   });
 
   final String name;
@@ -99,6 +101,10 @@ class Ingredient {
   /// Veza sa katalogom; `null` = nepovezan sastojak (važeće stanje).
   final IngredientLink? link;
 
+  /// Ingredient key for which the user explicitly removed a catalog link.
+  /// This prevents a later sync merge from restoring that same link.
+  final String? unlinkedKey;
+
   /// Izmena koja zadržava vezu. Ako se promeni naziv, veza prestaje da važi
   /// sama ([IngredientLink.matchedKey] se više ne poklapa).
   Ingredient copyWith({
@@ -107,13 +113,26 @@ class Ingredient {
     String? unit,
     String? category,
     String? note,
+    bool clearLink = false,
+    String? unlinkedKey,
   }) => Ingredient(
     name: name ?? this.name,
     quantity: quantity ?? this.quantity,
     unit: unit ?? this.unit,
     category: category ?? this.category,
     note: note ?? this.note,
-    link: link,
+    link: clearLink ? null : link,
+    unlinkedKey: unlinkedKey ?? this.unlinkedKey,
+  );
+
+  /// Records an intentional unlink against the ingredient's current identity.
+  Ingredient unlink() => Ingredient(
+    name: name,
+    quantity: quantity,
+    unit: unit,
+    category: category,
+    note: note,
+    unlinkedKey: ingredientKey(name),
   );
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
@@ -127,6 +146,7 @@ class Ingredient {
       category: ingredientCategories.contains(category) ? category! : 'ostalo',
       note: _blankToNull(json['note']),
       link: IngredientLink.fromJson(json),
+      unlinkedKey: _blankToNull(json['unlinkedKey']),
     );
   }
 
@@ -137,6 +157,7 @@ class Ingredient {
     'category': category,
     'note': note,
     ...?link?.toJson(),
+    if (unlinkedKey != null) 'unlinkedKey': unlinkedKey,
   };
 }
 

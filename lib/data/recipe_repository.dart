@@ -3,12 +3,16 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../account/auth_controller.dart';
+import '../domain/food_matcher.dart';
 import '../domain/ids.dart';
+import '../domain/ingredient_links.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
 import '../domain/recipe_version.dart';
 import '../domain/shopping_source.dart';
+import '../domain/shopping_sync.dart';
 import '../sync/entities.dart';
+import '../sync/recipe_link_rollout.dart';
 import '../sync/synced_writer.dart';
 import 'database.dart';
 import 'recipe_image_jobs.dart';
@@ -24,6 +28,7 @@ class RecipeRepository {
     this._photos, {
     required this._writer,
     required this._scope,
+    this._recipeLinkRollout = recipeLinkRollout,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
@@ -31,6 +36,7 @@ class RecipeRepository {
   final RecipePhotoStore _photos;
   final SyncedWriter _writer;
   final AccountScope _scope;
+  final RecipeLinkRollout _recipeLinkRollout;
   final DateTime Function() _clock;
 
   static const _recipe = 'recipe';
@@ -64,6 +70,77 @@ class RecipeRepository {
 
   Future<Recipe?> get(String id) =>
       _one(id).getSingleOrNull().then(_fromRowOrNull);
+
+  /// Idempotently attaches unambiguous catalog matches to existing recipe
+  /// ingredients. Writes stay disabled until both rollout guards are open.
+  /// Original ingredient names and approved meal snapshots are untouched.
+  Future<int> backfillCatalogLinks(FoodMatcher matcher) async {
+    if (!_recipeLinkRollout.enabled) return 0;
+    final rows = await _all().get();
+    var linked = 0;
+    for (final row in rows) {
+      final ingredients = _ingredientsFromJson(row.ingredientsJson);
+      var changed = false;
+      final next = <Ingredient>[];
+      for (final ingredient in ingredients) {
+        final key = ingredientKey(ingredient.name);
+        if (ingredient.link != null || ingredient.unlinkedKey == key) {
+          next.add(ingredient);
+          continue;
+        }
+        final result = await matcher.findByName(
+          originalText: ingredient.name,
+          scope: FoodLookupScope(householdId: _scope.householdId),
+        );
+        if (result case Matched(:final food)) {
+          next.add(
+            Ingredient(
+              name: ingredient.name,
+              quantity: ingredient.quantity,
+              unit: ingredient.unit,
+              category: ingredient.category,
+              note: ingredient.note,
+              link: IngredientLink(
+                foodId: food.id,
+                matchedKey: key,
+                linkSource: LinkSource.matched,
+              ),
+              unlinkedKey: ingredient.unlinkedKey,
+            ),
+          );
+          changed = true;
+        } else {
+          next.add(ingredient);
+        }
+      }
+      if (!changed) continue;
+      final encoded = jsonEncode([for (final i in next) i.toJson()]);
+      final applied = await _db.transaction(() async {
+        final updated =
+            await (_db.update(_db.recipes)..where(
+                  (t) =>
+                      t.id.equals(row.id) &
+                      t.householdId.equals(_scope.householdId) &
+                      t.ingredientsJson.equals(row.ingredientsJson),
+                ))
+                .write(
+                  RecipesCompanion(
+                    ingredientsJson: Value(encoded),
+                    updatedAt: Value(_clock()),
+                  ),
+                );
+        if (updated == 0) return false;
+        await _writer.upsert(_recipe, row.id);
+        return true;
+      });
+      if (applied) {
+        linked +=
+            next.where((i) => i.link != null).length -
+            ingredients.where((i) => i.link != null).length;
+      }
+    }
+    return linked;
+  }
 
   /// Čuva nov recept. Slika koja stiže sa receptom je slika korisnika.
   /// AI recept bez slike ulazi u lokalni red za AI sliku (TRELLO-130).
@@ -147,6 +224,10 @@ class RecipeRepository {
         next.copyWith(
           labels: labels,
           imageDescription: current.imageDescription,
+          ingredients: carryIngredientLinks(
+            from: current.ingredients,
+            to: next.ingredients,
+          ),
         ),
         imageSource,
       ),
@@ -490,10 +571,7 @@ class RecipeRepository {
     title: row.title,
     servings: row.servings,
     prepMinutes: row.prepMinutes,
-    ingredients: [
-      for (final i in jsonDecode(row.ingredientsJson) as List<dynamic>)
-        Ingredient.fromJson(i as Map<String, dynamic>),
-    ],
+    ingredients: _ingredientsFromJson(row.ingredientsJson),
     steps: [
       for (final s in jsonDecode(row.stepsJson) as List<dynamic>) s as String,
     ],
@@ -505,6 +583,11 @@ class RecipeRepository {
     imageDescription: row.imageDescription,
     imageSource: RecipeImageSource.tryParse(row.imageSource),
   );
+
+  static List<Ingredient> _ingredientsFromJson(String json) => [
+    for (final i in jsonDecode(json) as List<dynamic>)
+      Ingredient.fromJson(i as Map<String, dynamic>),
+  ];
 
   static RecipeVersion? _versionFromRow(RecipeVersionRow row) {
     try {

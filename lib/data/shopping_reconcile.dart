@@ -21,6 +21,12 @@ mixin _ShoppingReconcile on _ShoppingBase {
               .get())
         e.id: e,
     };
+    final account = await (_db.select(
+      _db.accounts,
+    )..where((t) => t.userId.equals(_scope.userId))).getSingleOrNull();
+    final catalogStatus =
+        CatalogStatus.values.asNameMap()[account?.catalogStatus] ??
+        CatalogStatus.failed;
 
     // 1. Doprinosi: jedan po izvoru + sastojku + grupi jedinica. Zatvoreni i
     // zamenjeni izvori se ne preračunavaju.
@@ -38,7 +44,11 @@ mixin _ShoppingReconcile on _ShoppingBase {
         for (final c in contributions.values)
           if (c.sourceId == s.id) (c.ingredientKey, c.unitGroup): c,
       };
-      for (final line in _demand(s, entries)) {
+      for (final line in await _demand(
+        s,
+        entries,
+        catalogStatus: catalogStatus,
+      )) {
         final key = (line.key.ingredient, line.key.unitGroup);
         final prev = existing.remove(key);
         final notes = jsonEncode(line.notes);

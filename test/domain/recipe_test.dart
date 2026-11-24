@@ -220,5 +220,13 @@ void main() {
       expect(changed.name, 'Jaja');
       expect(changed.link, i.link);
     });
+
+    test('namerno uklanjanje veze čuva ključ kroz serijalizaciju', () {
+      final unlinked = Ingredient.fromJson(Map.of(stored)).unlink();
+      expect(unlinked.link, isNull);
+      expect(unlinked.unlinkedKey, 'jaja');
+      expect(Ingredient.fromJson(unlinked.toJson()).unlinkedKey, 'jaja');
+      expect(unlinked.copyWith(quantity: 3).unlinkedKey, 'jaja');
+    });
   });
 }

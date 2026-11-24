@@ -4,10 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/recipe_repository.dart';
+import 'package:tavli/domain/food_matcher.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/recipe_labels.dart';
 import 'package:tavli/domain/recipe_version.dart';
 import 'package:tavli/sync/entities.dart';
+import 'package:tavli/sync/recipe_link_rollout.dart';
 import 'package:tavli/sync/synced_writer.dart';
 
 import '../helpers/fake_photo_store.dart';
@@ -23,6 +25,22 @@ Recipe recipe(String id, {String title = 'Sarma', DateTime? createdAt}) =>
       createdAt: createdAt ?? DateTime.utc(2026),
     );
 
+class MatchingFoodMatcher implements FoodMatcher {
+  MatchingFoodMatcher(this.food);
+
+  final FoodIdentity food;
+  int calls = 0;
+
+  @override
+  Future<FoodMatchResult> findByName({
+    required String originalText,
+    required FoodLookupScope scope,
+  }) async {
+    calls++;
+    return Matched(food);
+  }
+}
+
 void main() {
   late AppDatabase db;
   late FakePhotoStore photos;
@@ -30,11 +48,15 @@ void main() {
   var now = DateTime.utc(2026, 10, 30, 12);
   const scope = AccountScope(userId: 'u1', householdId: 'h1');
 
-  RecipeRepository repoFor(AccountScope s) => RecipeRepository(
+  RecipeRepository repoFor(
+    AccountScope s, {
+    RecipeLinkRollout rollout = recipeLinkRollout,
+  }) => RecipeRepository(
     db,
     photos,
     writer: SyncedWriter(db, accountId: s.userId, clock: () => now),
     scope: s,
+    recipeLinkRollout: rollout,
     clock: () => now,
   );
 
@@ -64,6 +86,104 @@ void main() {
     expect(list.map((r) => r.title), ['Sarma', 'Pasulj']);
     expect((await repo.get('a'))!.ingredients.single.name, 'kupus');
     expect(await repo.get('nema'), isNull);
+  });
+
+  test('backfill stays closed by default without outbox writes', () async {
+    await repo.create(recipe('a'));
+    await clearOutbox();
+    final matcher = MatchingFoodMatcher(
+      const FoodIdentity(
+        id: 'food-kupus',
+        slug: 'kupus',
+        name: 'Kupus',
+        category: 'voće i povrće',
+        baseUnit: FoodBaseUnit.gram,
+      ),
+    );
+
+    expect(await repo.backfillCatalogLinks(matcher), 0);
+    expect(matcher.calls, 0);
+    expect(await outbox(), isEmpty);
+    expect((await repo.get('a'))!.ingredients.single.link, isNull);
+  });
+
+  test('backfill matches idempotently and preserves ingredient text', () async {
+    await repo.create(recipe('a'));
+    await clearOutbox();
+    final matcher = MatchingFoodMatcher(
+      const FoodIdentity(
+        id: 'food-kupus',
+        slug: 'kupus',
+        name: 'Kupus',
+        category: 'voće i povrće',
+        baseUnit: FoodBaseUnit.gram,
+      ),
+    );
+    repo = repoFor(
+      scope,
+      rollout: const RecipeLinkRollout(
+        allDevicesAtCompatibleBuild: true,
+        oldOutboxesDrained: true,
+      ),
+    );
+
+    expect(await repo.backfillCatalogLinks(matcher), 1);
+    expect(await repo.backfillCatalogLinks(matcher), 0);
+    final ingredient = (await repo.get('a'))!.ingredients.single;
+    expect(ingredient.name, 'kupus');
+    expect(ingredient.link?.foodId, 'food-kupus');
+    expect(ingredient.link?.linkSource, LinkSource.matched);
+    expect(await outbox(withIds: true), ['recipe:a:upsert']);
+  });
+
+  test('ordinary recipe edit carries a still-valid catalog link', () async {
+    const link = IngredientLink(
+      foodId: 'food-kupus',
+      matchedKey: 'kupus',
+      linkSource: LinkSource.confirmed,
+    );
+    await repo.create(
+      recipe('a').copyWith(
+        ingredients: const [Ingredient(name: 'kupus', link: link)],
+      ),
+    );
+    final current = (await repo.get('a'))!;
+
+    await repo.update(
+      current.copyWith(
+        title: 'Nova sarma',
+        ingredients: const [Ingredient(name: 'kupus', quantity: 2)],
+      ),
+      kind: ChangeKind.manual,
+    );
+
+    final edited = (await repo.get('a'))!;
+    expect(edited.title, 'Nova sarma');
+    expect(edited.ingredients.single.quantity, 2);
+    expect(edited.ingredients.single.link, link);
+  });
+
+  test('ordinary edit keeps an intentional catalog unlink', () async {
+    const link = IngredientLink(
+      foodId: 'food-kupus',
+      matchedKey: 'kupus',
+      linkSource: LinkSource.confirmed,
+    );
+    await repo.create(
+      recipe('a').copyWith(
+        ingredients: const [Ingredient(name: 'kupus', link: link)],
+      ),
+    );
+    final unlinked = (await repo.get('a'))!.ingredients.single.unlink();
+
+    await repo.update(
+      (await repo.get('a'))!.copyWith(ingredients: [unlinked]),
+      kind: ChangeKind.manual,
+    );
+
+    final editedIngredient = (await repo.get('a'))!.ingredients.single;
+    expect(editedIngredient.link, isNull);
+    expect(editedIngredient.unlinkedKey, 'kupus');
   });
 
   test('undo kopiranog recepta koristi originalni redosled verzija', () async {

@@ -53,6 +53,9 @@ abstract interface class SyncRemote {
   /// Read only the household-visible recipe rating aggregates.
   Future<List<Map<String, Object?>>> fetchHouseholdRecipeRatingSummaries();
 
+  /// Read one household-visible recipe before a guarded recipe upload.
+  Future<Map<String, Object?>?> fetchRecipe(String id, String householdId);
+
   /// Redovi posle (since, afterId), redom po ([timeColumn], [idColumn]).
   Future<List<Map<String, Object?>>> fetchSince(
     String table, {
@@ -169,6 +172,17 @@ class SupabaseSyncRemote implements SyncRemote {
           results.addAll(rows.cast<Map<String, Object?>>());
           if (rows.length < pageSize) return results;
         }
+      });
+
+  @override
+  Future<Map<String, Object?>?> fetchRecipe(String id, String householdId) =>
+      _guard(() async {
+        final row = await _from('recipes')
+            .select()
+            .eq('id', id)
+            .eq('household_id', householdId)
+            .maybeSingle();
+        return row == null ? null : Map<String, Object?>.of(row);
       });
 
   @override

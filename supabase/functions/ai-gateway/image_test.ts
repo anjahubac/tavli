@@ -16,6 +16,11 @@ const description =
 // Najmanji JPEG oblik koji provera prihvata (SOI ... EOI).
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x00, 0xff, 0xd9]);
 
+// `Uint8Array.prototype.toBase64` is missing on the edge runtime (Deno 2.1).
+function base64(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes));
+}
+
 function equal(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(
@@ -28,7 +33,7 @@ function equal(actual: unknown, expected: unknown) {
 function setup({
   env = {},
   reservation = { id: "res", householdId: household },
-  upstream = () => Response.json({ result: { image: jpeg.toBase64() } }),
+  upstream = () => Response.json({ result: { image: base64(jpeg) } }),
 }: {
   env?: Record<string, string>;
   reservation?: ImageReservation;
@@ -233,7 +238,7 @@ Deno.test("maps Cloudflare errors to typed errors without provider bodies", asyn
     [
       () =>
         Response.json({
-          result: { image: new Uint8Array([1, 2, 3, 4, 5]).toBase64() },
+          result: { image: base64(new Uint8Array([1, 2, 3, 4, 5])) },
         }),
       502,
       { error: "provider_error" },
