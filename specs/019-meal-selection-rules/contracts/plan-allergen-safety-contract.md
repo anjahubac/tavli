@@ -69,6 +69,16 @@ matches the Dart function; both sides test the shared fixture
   rules. Each meal type in the request gets an equal share of the cap. The AI
   must choose a recipe from that meal's list, and the rules fallback uses the
   same list.
+- **Saved recipes first (TRELLO-45).** The prompt asks the model to use a
+  listed recipe whenever one fits, and to propose a new dish only where none
+  fits. With at least 30 saved recipes (`minLibraryForPreference`), a new plan
+  with no wishes, outside single-meal replacement and regeneration, gets at
+  least half of its slots from saved recipes. After the rules step, the planner
+  replaces new dishes with fitting saved recipes. It uses only recipes that
+  are not already in the plan and that nobody dislikes, and only when no rule
+  breaks. Wishes such as fasting are excluded because a saved recipe may not
+  match them. Smaller libraries rely on the prompt alone, so the plan does not
+  repeat a few recipes.
 - **Final check.** Before the draft is returned, the planner checks every
   proposed saved recipe again. If the household is restricted, every proposal
   that is not safe now (including a new AI dish) is removed, and its slot stays
@@ -119,7 +129,9 @@ Recorded for review; not solved in this slice.
   unsafe IDs, final-check removal, unavailable check stops before AI, and
   replacement.
 - `test/ai/meal_plan_ai_test.dart` (group "kandidati po obroku"): filtering
-  before the cap, per-meal ID check, fallback from the meal's list.
+  before the cap, per-meal ID check, fallback from the meal's list, at
+  least half of a week from 30 saved recipes without repeats, and no
+  replacement with wishes or a smaller library.
 - `test/data/plan_safety_remote_test.dart`: request body, status mapping,
   timeout, malformed bodies, unknown returned ID, no call without a household.
 - `test/domain/ingredient_key_fixture_test.dart`: Dart side of the shared fixture.

@@ -15,6 +15,10 @@ import 'meal_plan_prompts.dart';
 /// Najviše novih recepata u jednom zahtevu.
 const recipeSummaryBatch = 3;
 
+/// Od ovoliko sačuvanih recepata bar pola novog plana je iz njih
+/// (TRELLO-45). Sa manje bibliotekom AI-ju se samo kaže da ih koristi.
+const minLibraryForPreference = 30;
+
 /// Najviše recepata u jednoj proveri bezbednosti (granica servera).
 const maxSafetyRecipes = 1000;
 
@@ -310,6 +314,17 @@ class MealPlanAI {
         retry: (slots, rejected) => outline(slots, rejected: rejected),
         candidates: (type) => candidatesFor([type])[type]!,
         favorites: () => tastes.favoriteCounts.keys.toSet(),
+        // TRELLO-45: bar pola novog plana iz sačuvanih recepata kad ih ima.
+        // Ne kod zamene jednog jela, ponovnog predloga i posebnih želja
+        // (npr. posna jela), gde sačuvan recept može da ne odgovara.
+        minLibrary:
+            request.only == null &&
+                (request.wishes?.trim().isEmpty ?? true) &&
+                !safety.restricted &&
+                eligible.length >= minLibraryForPreference
+            ? (proposedNow.length + 1) ~/ 2
+            : 0,
+        avoid: (r) => tastes.dislikes(r),
       );
       if (!identical(before, draft.proposals)) onProgress?.call(draft);
     }
@@ -365,7 +380,10 @@ class MealPlanAI {
   /// 2. za mesta koja i dalje ne prolaze jedan novi AI zahtev, samo za njih;
   /// 3. ako ni to ne prođe, odgovarajući sačuvan recept sa poznatim
   ///    oznakama;
-  /// 4. inače jelo ostaje (bez poruke korisniku).
+  /// 4. inače jelo ostaje (bez poruke korisniku);
+  /// 5. dok je manje od [minLibrary] mesta iz sačuvanih recepata, novo jelo
+  ///    se menja odgovarajućim sačuvanim receptom koji još nije u planu (i
+  ///    nije iz [avoid]), ako time ne krši pravila (TRELLO-45).
   /// Menjaju se samo [movable] mesta; jela koja ostaju u planu se ne diraju.
   Future<void> _applyRules({
     required Set<MealSlot> movable,
@@ -379,6 +397,8 @@ class MealPlanAI {
     retry,
     required List<Recipe> Function(MealType type) candidates,
     Set<String> Function()? favorites,
+    int minLibrary = 0,
+    bool Function(Recipe recipe)? avoid,
   }) async {
     Map<MealSlot, Set<MealRule>> breaksOf(Map<MealSlot, MealFacts> meals) =>
         mealRuleBreaks(
@@ -400,40 +420,64 @@ class MealPlanAI {
       put({lunch: current[dinner]!, dinner: current[lunch]!});
     }
 
-    var bad = broken();
-    if (bad.isEmpty) return;
-    try {
-      final current = proposals();
-      put(await retry(bad, [for (final s in bad) current[s]!.title]));
-    } on PlanGenerationFailed catch (e) {
-      // Odbijen zahtev (drugo domaćinstvo, istekla prijava) zaustavlja plan;
-      // ne nastavlja se sa podacima pročitanim pre odbijanja.
-      if (e.error is PlanningTastesDenied) rethrow;
-      // Inače novi predlog nije uspeo: ostaje prvi, pa ide rezervni korak.
+    SlotProposal fromLibrary(Recipe r) => SlotProposal(
+      title: r.title,
+      libraryRecipeId: r.id,
+      weight: r.labels.weightValue,
+      dishKind: r.labels.dishKindValue,
+    );
+
+    // Recept na [slot] prolazi pravila i nijedno drugo mesto ne gubi.
+    bool fitsAt(MealSlot slot, SlotProposal candidate) {
+      final before = breaksOf(facts());
+      final after = breaksOf({...facts(), slot: candidate.facts});
+      return (after[slot]?.isEmpty ?? true) &&
+          after.entries.every(
+            (e) =>
+                e.key == slot ||
+                (before[e.key] ?? const {}).containsAll(e.value),
+          );
     }
 
-    bad = broken();
-    for (final slot in bad) {
-      final before = breaksOf(facts());
+    var bad = broken();
+    if (bad.isNotEmpty) {
+      try {
+        final current = proposals();
+        put(await retry(bad, [for (final s in bad) current[s]!.title]));
+      } on PlanGenerationFailed catch (e) {
+        // Odbijen zahtev (drugo domaćinstvo, istekla prijava) zaustavlja
+        // plan; ne nastavlja se sa podacima pročitanim pre odbijanja.
+        if (e.error is PlanningTastesDenied) rethrow;
+        // Inače novi predlog nije uspeo: ostaje prvi, pa rezervni korak.
+      }
+
+      bad = broken();
+      for (final slot in bad) {
+        for (final r in candidates(slot.type)) {
+          // Rezervni recept mora imati poznatu težinu (pravila ga proveravaju).
+          if (r.labels.weightValue == null) continue;
+          final candidate = fromLibrary(r);
+          if (fitsAt(slot, candidate)) {
+            put({slot: candidate});
+            break;
+          }
+        }
+      }
+    }
+
+    var short =
+        minLibrary -
+        movable.where((s) => proposals()[s]?.libraryRecipeId != null).length;
+    for (final slot in movable.toList()..sort()) {
+      if (short <= 0) break;
+      if (proposals()[slot]?.isNew != true) continue;
+      final used = {for (final p in proposals().values) ?p.libraryRecipeId};
       for (final r in candidates(slot.type)) {
-        final weight = r.labels.weightValue;
-        if (weight == null) continue;
-        final candidate = SlotProposal(
-          title: r.title,
-          libraryRecipeId: r.id,
-          weight: weight,
-          dishKind: r.labels.dishKindValue,
-        );
-        final after = breaksOf({...facts(), slot: candidate.facts});
-        final fits =
-            (after[slot]?.isEmpty ?? true) &&
-            after.entries.every(
-              (e) =>
-                  e.key == slot ||
-                  (before[e.key] ?? const {}).containsAll(e.value),
-            );
-        if (fits) {
+        if (used.contains(r.id) || (avoid?.call(r) ?? false)) continue;
+        final candidate = fromLibrary(r);
+        if (fitsAt(slot, candidate)) {
           put({slot: candidate});
+          short--;
           break;
         }
       }

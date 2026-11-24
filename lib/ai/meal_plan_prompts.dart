@@ -93,7 +93,7 @@ String planOutlinePrompt({
 Plan one dish for EVERY slot below, and nothing else: no extra or missing slots.
 The household eats $servings servings per meal.
 ${lines.join('\n')}
-${allowNew ? 'You may reuse the household\'s own saved recipes by their "id"; never invent ids.' : 'Use ONLY the household\'s saved recipes by their "id"; never invent ids or new dishes.\nIf no listed recipe fits a slot, return that slot with "recipeId": null and "title": "".'}
+${allowNew ? 'Prefer the household\'s own saved recipes by their "id": use a listed recipe whenever one fits the slot and the rules, and propose a new dish only for a slot where none fits. Never invent ids.' : 'Use ONLY the household\'s saved recipes by their "id"; never invent ids or new dishes.\nIf no listed recipe fits a slot, return that slot with "recipeId": null and "title": "".'}
 Library: $libraryJson
 ${candidatesLine}Slots: $slotsJson
 Return:

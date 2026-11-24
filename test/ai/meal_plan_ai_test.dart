@@ -1176,5 +1176,46 @@ void main() {
       final dinner = MealSlot(monday, MealType.dinner);
       expect(draft.proposals[dinner]!.libraryRecipeId, 'salata');
     });
+
+    List<Recipe> manyRecipes(int n) => [
+      for (var i = 0; i < n; i++) libraryRecipe('r$i', 'Recept $i'),
+    ];
+
+    test('upit traži sačuvane recepte gde god odgovaraju', () async {
+      await ai.propose(day, library: manyRecipes(2));
+      expect(
+        client.requests.firstWhere(isOutline).prompt,
+        contains('use a listed recipe whenever one fits'),
+      );
+    });
+
+    test('sa 30 recepata bar pola nedelje je iz sačuvanih, bez '
+        'ponavljanja', () async {
+      // AI izmisli svih 7 jela (goodAnswer).
+      final draft = await ai.propose(
+        weekRequest(),
+        library: manyRecipes(minLibraryForPreference),
+      );
+      final fromLibrary = [
+        for (final p in draft.proposals.values) ?p.libraryRecipeId,
+      ];
+      expect(fromLibrary.length, greaterThanOrEqualTo(4));
+      expect(fromLibrary.toSet(), hasLength(fromLibrary.length));
+      expect(draft.isComplete, isTrue);
+    });
+
+    test('sa željama ili manje od 30 recepata AI bira sam', () async {
+      final withWish = await ai.propose(
+        weekRequest(wishes: 'posna jela'),
+        library: manyRecipes(minLibraryForPreference),
+      );
+      expect(withWish.proposals.values.every((p) => p.isNew), isTrue);
+
+      final small = await ai.propose(
+        weekRequest(),
+        library: manyRecipes(minLibraryForPreference - 1),
+      );
+      expect(small.proposals.values.every((p) => p.isNew), isTrue);
+    });
   });
 }
