@@ -53,7 +53,7 @@ class PlanScreen extends ConsumerWidget {
             final view = ref.watch(planViewProvider);
             final plan = selectedPlan(list, view, ref.watch(clockProvider)());
             if (plan == null) {
-              return _Scrollable(
+              return TavliEmptyArea(
                 child: TavliEmptyState(
                   art: const EmptyWeek(),
                   title: 'Još nemaš plan',
