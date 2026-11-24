@@ -38,9 +38,9 @@ select is((select count(*) from public.claim_recipe_vectors()
 reset role;
 
 select ok(not has_function_privilege('anon',
-  'public.can_search_recipe_vectors(text[])', 'execute'), 'anon cannot check search consent');
+  'public.can_search_recipe_vectors()', 'execute'), 'anon cannot check search consent');
 select tests.authenticate_as(:'ua');
-select ok(not public.can_search_recipe_vectors(array['vector-soup']),
+select ok(not public.can_search_recipe_vectors(),
   'search is refused before household consent');
 select tests.authenticate_as(:'ua');
 select ok(not public.enable_recipe_vector_indexing(:'hb'), 'cannot opt in another household');
@@ -48,16 +48,16 @@ select ok(public.enable_recipe_vector_indexing(:'ha'), 'member can opt in their 
 select ok(public.enable_recipe_vector_indexing(:'ha'), 'repeated opt-in is idempotent');
 select tests.clear_auth();
 select tests.authenticate_as(:'ua');
-select ok(public.can_search_recipe_vectors(array['vector-soup']),
+select ok(public.can_search_recipe_vectors(),
   'a member of the consenting household may search');
-select ok(not public.can_search_recipe_vectors(array[]::text[]),
-  'an empty candidate list is refused');
+select ok(exists (select 1 from public.rank_recipe_vectors(:'v1', array['not-synced-yet'])) is false,
+  'unsynced candidates simply rank nothing');
 select tests.clear_auth();
 select tests.authenticate_as(:'ub');
-select ok(not public.can_search_recipe_vectors(array['vector-soup']),
-  'another household cannot search consenting recipes');
-select ok(not public.can_search_recipe_vectors(array['vector-other']),
-  'a household without consent cannot search its own recipes');
+select ok(not public.can_search_recipe_vectors(),
+  'a household without consent cannot search');
+select ok(not exists (select 1 from public.rank_recipe_vectors(:'v1', array['vector-soup'])),
+  'another household cannot rank consenting recipes');
 select tests.clear_auth();
 select is((select count(*) from private.recipe_vector_consents where household_id = :'ha'),
   1::bigint, 'opt-in is recorded once');

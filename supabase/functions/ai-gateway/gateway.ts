@@ -72,8 +72,8 @@ interface GatewayDependencies {
     embedding: number[],
     recipeIds: string[],
   ) => Promise<RankedRecipe[]>;
-  /** True only when the caller belongs to a consenting household of these recipes. */
-  canSearchRecipes?: (token: string, recipeIds: string[]) => Promise<boolean>;
+  /** True only when the caller belongs to a household that opted in. */
+  canSearchRecipes?: (token: string) => Promise<boolean>;
   send: typeof fetch;
 }
 
@@ -316,7 +316,7 @@ export function gateway(dependencies: GatewayDependencies) {
         }
         // Consent is checked before quota or provider work, so a query from a
         // household that never opted in is not sent to Cloudflare.
-        if (!await allowed(token, input.recipeIds)) {
+        if (!await allowed(token)) {
           return failure(403, "forbidden");
         }
         const reservation = await reserve(uid, "text", limitsFor(env, "text"));

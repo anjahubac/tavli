@@ -42,7 +42,7 @@ function setup({
     vector: number[],
     ids: string[],
   ) => Promise<RankedRecipe[]>;
-  canSearchRecipes?: (token: string, ids: string[]) => Promise<boolean>;
+  canSearchRecipes?: (token: string) => Promise<boolean>;
 } = {}) {
   const reserved: unknown[] = [];
   const released: string[] = [];
@@ -370,17 +370,17 @@ Deno.test("disabled, unauthorized, malformed and quota-denied search skip provid
 });
 
 Deno.test("search without household consent never reaches the provider", async () => {
-  const checked: [string, string[]][] = [];
+  const checked: string[] = [];
   const search = setup({
     env: recipeVectorEnv,
-    canSearchRecipes: (token, ids) => {
-      checked.push([token, ids]);
+    canSearchRecipes: (token) => {
+      checked.push(token);
       return Promise.resolve(false);
     },
     rankRecipes: () => Promise.reject(new Error("unexpected SQL call")),
   });
   equal((await search.handle(post(recipeSearch))).status, 403);
-  equal(checked, [["test-session", ["own-recipe"]]]);
+  equal(checked, ["test-session"]);
   equal(search.calls.length, 0);
   equal(search.reserved.length, 0);
 });

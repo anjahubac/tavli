@@ -64,11 +64,11 @@ Deno.serve(gateway({
     }
     return await result.json() === true;
   },
-  async canSearchRecipes(token, recipeIds) {
+  async canSearchRecipes(token) {
     const result = await platform(
       "/rest/v1/rpc/can_search_recipe_vectors",
       token,
-      { p_recipe_ids: recipeIds },
+      {},
     );
     if (!result.ok) {
       await result.body?.cancel().catch(() => {});

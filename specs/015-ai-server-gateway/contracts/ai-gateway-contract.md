@@ -113,7 +113,7 @@ The app can then rank synced recipe vectors through the authenticated gateway:
 The gateway accepts up to 500 UTF-16 units and 256 candidate IDs per
 request. Before reserving quota or calling the provider it asks Postgres
 (`can_search_recipe_vectors`, with the caller's session) whether the caller
-belongs to an opted-in household of those recipes; otherwise it returns
+belongs to an opted-in household; otherwise it returns
 `403 {"error": "forbidden"}` and the query is not sent. It then embeds only
 the query and reserves one text quota slot. It calls
 Postgres with the caller's session. Postgres verifies household membership
