@@ -7,7 +7,13 @@
 ## Existing boundaries and proposed files
 
 - `docs/ (release asset/link manifest)`
-- `website checkout (location must be verified; not part of this Flutter tree)`
+- `site/preuzmi/` (new): static download page on the `welcome` Worker, no build step
+- `.github/workflows/release.yml` (new): builds the Android APK, Windows ZIP and
+  Linux archive and attaches them to the GitHub Release for a `v*` tag
+- `scripts/generate_download_qr.dart` (new): writes the QR SVGs next to the page
+
+Dependency: `qr` as a dev dependency, only for the QR script; it is already in
+the lock file through `qr_flutter`, so no new code ships in the app.
 
 Items marked new/proposed/external do not exist at baseline. Verify exact existing
 files and consumers before editing; new files remain in current feature/domain/

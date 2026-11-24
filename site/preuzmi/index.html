@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<title>Preuzmi Tavli</title>
+<meta name="description" content="Tavli za Android, Windows i Linux: recepti, plan obroka i lista za kupovinu.">
+<link rel="icon" href="../potvrda/tavli-znak.png">
+<link rel="stylesheet" href="../potvrda/style.css">
+<link rel="stylesheet" href="preuzmi.css">
+</head>
+<body>
+<div class="strana">
+  <div class="panel">
+  <header class="zaglavlje"><img class="znak" src="../potvrda/tavli-znak.png" alt="Tavli" width="64" height="64"></header>
+  <main>
+    <div class="uvod">
+      <h1>Preuzmi Tavli</h1>
+      <p>Recepti, plan obroka i lista za kupovinu.</p>
+    </div>
+
+    <!-- Linkovi vode na poslednji GitHub Release; imena fajlova pravi .github/workflows/release.yml.
+         QR je isti URL kao dugme (scripts/generate_download_qr.dart). -->
+    <section class="kartica platforma" aria-labelledby="android">
+      <h2 id="android">Android</h2>
+      <div class="sa-qr">
+        <img class="qr" src="qr-android.svg" width="132" height="132" alt="QR kod: preuzmi Tavli za Android">
+        <p>Skeniraj kamerom telefona ili dodirni dugme. Telefon će pitati da li dozvoljavaš instalaciju iz pregledača.</p>
+      </div>
+      <a class="dugme" href="https://github.com/anjahubac/tavli/releases/latest/download/tavli-android.apk">Preuzmi za Android</a>
+    </section>
+
+    <section class="kartica platforma" aria-labelledby="windows">
+      <h2 id="windows">Windows</h2>
+      <p>Raspakuj ZIP i pokreni <code>tavli.exe</code>. Ako Windows upozori, izaberi „Više informacija“, pa „Ipak pokreni“.</p>
+      <a class="dugme" href="https://github.com/anjahubac/tavli/releases/latest/download/tavli-windows-x64.zip">Preuzmi za Windows</a>
+    </section>
+
+    <section class="kartica platforma" aria-labelledby="linux">
+      <h2 id="linux">Linux</h2>
+      <p>Raspakuj arhivu i pokreni <code>./tavli</code>. Potrebni su GTK 3 i libsecret.</p>
+      <a class="dugme" href="https://github.com/anjahubac/tavli/releases/latest/download/tavli-linux-x64.tar.gz">Preuzmi za Linux</a>
+    </section>
+
+    <section class="kartica platforma" aria-labelledby="uskoro">
+      <h2 id="uskoro">iOS i macOS</h2>
+      <p class="uskoro">Uskoro</p>
+    </section>
+
+    <p class="napomena"><a href="https://github.com/anjahubac/tavli/releases/latest">Sve verzije i SHA-256 provera fajlova</a></p>
+  </main>
+  </div>
+</div>
+</body>
+</html>
