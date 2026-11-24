@@ -117,12 +117,49 @@ which contradicted D1-009.
 - A recipe-only confirmation dropped that way needs the person to confirm it
   again.
 
+## Operating the switch (review of #168)
+
+These points answer the #168 review. They are proposals until the decision
+owners below record them.
+
+- **Who runs the backfill.** Nothing in `lib/` calls `backfillCatalogLinks`
+  yet, so the shipped code stays dormant. Proposal (Dev 1): the build that
+  opens the switch also runs the backfill once per account at startup, after
+  the first successful sync. A second trigger is not needed because the
+  backfill is idempotent.
+- **A compile-time switch and the "all devices" condition.** `recipeLinkRollout`
+  is a `const`, so opening it needs a new build. That fits the floor: the floor
+  for understanding the link fields is the build that includes #100. Before
+  opening the switch, verify that every syncing device also protects links
+  when uploading a stale recipe and uses the same shopping key rules. A build
+  that understands links but keeps the switch closed can still upload a stale
+  recipe without carrying server links forward and reconcile shopping by
+  text. Drain old outboxes as in step 3 and keep the switch closed until the
+  team agrees how to prevent mixed behavior across devices.
+- **Unreadable server ingredients.** When the server row's `ingredients` cannot
+  be read, the uploader rejects that outbox entry (`recipe_ingredients_invalid`)
+  and goes on with the next ones. A transient error here would retry forever
+  and hold up the whole outbox. The server row is left unchanged, so no link is
+  overwritten. The rejected entry is not retried. After the server row is
+  repaired, the recipe needs to be saved again to queue another upload.
+- **Fetch and upsert are not atomic.** A link written by another device between
+  the uploader's read and its upsert can still be overwritten. The window is
+  the time between the read and the write. Backfill may resolve a lost match
+  from an alias, but cannot recover a recipe-only confirmation. The decision
+  owners need to accept this risk before enabling the switch. A server-side
+  merge would remove the client-side race.
+- **`updatedAt` and ordering.** Backfill sets `updatedAt` on every recipe it
+  links. Recipe lists are ordered by `createdAt` (`RecipeRepository._all`) and
+  no list in `lib/` orders by `updatedAt`, so one backfill does not reorder the
+  user's recipes. It does make every linked recipe sync again once.
+
 ## Decisions required
 
 - Dev 3: whether a server-side minimum client version is wanted, or the
   agreement in steps 1 to 3 is enough while the team is small.
 - Dev 4: whether the "read the server row before upload" rule is accepted for
   recipe uploads, including the extra read.
+- Dev 3: whether the backfill trigger above (once at startup of the build that opens the switch) is accepted.
 - Dev 1 and Dev 4: agree the build number that becomes the floor (the current version is `1.0.0+1` in every build), and bump it in a separate change.
 
 ## Acceptance for the first code slice

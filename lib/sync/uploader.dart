@@ -276,7 +276,9 @@ class Uploader {
           if (server != null) {
             final rawIngredients = server['ingredients'];
             if (rawIngredients is! List) {
-              throw const TransientSyncError('recipe_read');
+              // Retrying cannot repair server data, and a transient error
+              // would hold up every later outbox entry: park this entry only.
+              throw const PermanentSyncError('recipe_ingredients_invalid');
             }
             try {
               final rawLocal = payload['ingredients'];
@@ -286,11 +288,10 @@ class Uploader {
               final rawLocalIngredients = rawLocal;
               final localIngredients = [
                 for (final item in rawLocalIngredients)
-                  Ingredient.fromJson(_ingredientJson(item)),
+                  _parseRecipeIngredient(item),
               ];
               final serverIngredients = [
-                for (final item in rawIngredients)
-                  Ingredient.fromJson(_ingredientJson(item)),
+                for (final item in rawIngredients) _parseRecipeIngredient(item),
               ];
               payload['ingredients'] = _mergeRecipeIngredientJson(
                 rawLocalIngredients,
@@ -299,8 +300,10 @@ class Uploader {
               );
             } on FormatException {
               // Never send a recipe when its server ingredient state cannot be
-              // safely inspected for links to preserve.
-              throw const TransientSyncError('recipe_read');
+              // safely inspected for links to preserve. Unreadable data does
+              // not heal by retrying, so reject this entry instead of
+              // blocking the outbox; the server row stays as it is.
+              throw const PermanentSyncError('recipe_ingredients_invalid');
             }
           }
         }
@@ -364,6 +367,16 @@ class Uploader {
           merged[i],
         ),
     ];
+  }
+
+  Ingredient _parseRecipeIngredient(Object? value) {
+    final json = _ingredientJson(value);
+    final name = json['name'];
+    final category = json['category'];
+    if (name is! String || (category != null && category is! String)) {
+      throw const FormatException('ingredient field type');
+    }
+    return Ingredient.fromJson(json);
   }
 
   Map<String, dynamic> _ingredientJson(Object? value) {
