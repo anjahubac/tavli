@@ -121,7 +121,7 @@ Deno.serve(gateway({
           "Content-Type": "image/jpeg",
           "x-upsert": "false",
         },
-        body: jpeg,
+        body: jpeg.slice().buffer as ArrayBuffer,
         redirect: "error",
         signal: AbortSignal.timeout(15000),
       },
