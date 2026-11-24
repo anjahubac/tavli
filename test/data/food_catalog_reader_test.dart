@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
 import 'package:tavli/data/database.dart';
 import 'package:tavli/data/food_catalog_reader.dart';
+import 'package:tavli/domain/allergen_group.dart';
 import 'package:tavli/domain/food_matcher.dart';
 import 'package:tavli/domain/shopping_sync.dart';
 import 'package:tavli/sync/catalog_status.dart';
@@ -406,6 +407,78 @@ void main() {
     test('nepoznata osnovna jedinica se preskače', () async {
       await named('a', 'Pavlaka', unit: 'bushel');
       expect(await names('pavl'), isEmpty);
+    });
+  });
+
+  group('allergens', () {
+    Future<void> reviewed(
+      String id,
+      String? codes, {
+      bool review = true,
+    }) async {
+      await food(id);
+      await (db.update(db.foods)..where((f) => f.id.equals(id))).write(
+        FoodsCompanion(
+          allergenCodes: Value(codes),
+          allergenReviewedAt: Value(review ? t : null),
+        ),
+      );
+    }
+
+    test('unknown, reviewed none and reviewed groups stay distinct', () async {
+      await food('unknown');
+      await reviewed('none', '');
+      await reviewed('dairy', 'milk,eggs');
+      final map = await FoodCatalogReader(db)
+          .reviewedAllergens(['unknown', 'none', 'dairy', 'missing']);
+      expect(map.keys, unorderedEquals(['none', 'dairy']));
+      expect(map['none'], isEmpty);
+      expect(map['dairy'], {AllergenGroup.milk, AllergenGroup.eggs});
+    });
+
+    test('unreadable or half-reviewed values fail closed', () async {
+      await reviewed('bad', 'milk,unobtainium');
+      await reviewed('nodate', 'milk', review: false);
+      expect(
+        await FoodCatalogReader(db).reviewedAllergens(['bad', 'nodate']),
+        isEmpty,
+      );
+    });
+
+    test('recipe result lists groups and flags incomplete data', () async {
+      await reviewed('flour', 'gluten');
+      await reviewed('egg', 'eggs');
+      await food('mystery');
+      final reader = FoodCatalogReader(db);
+
+      final ok = await reader.allergensForRecipe(['flour', 'egg']);
+      expect(ok.groups, {AllergenGroup.gluten, AllergenGroup.eggs});
+      expect(ok.isComplete, isTrue);
+
+      final partial = await reader.allergensForRecipe([
+        'flour',
+        'mystery',
+        null,
+      ]);
+      expect(partial.groups, {AllergenGroup.gluten});
+      expect(partial.hasUnreviewedMapping, isTrue);
+      expect(partial.hasUnresolvedIngredient, isTrue);
+      expect(partial.isComplete, isFalse);
+    });
+
+    test('withdrawn foods are not reviewed', () async {
+      await reviewed('old', 'fish');
+      await (db.update(db.foods)..where((f) => f.id.equals('old'))).write(
+        FoodsCompanion(withdrawnAt: Value(t)),
+      );
+      expect(await FoodCatalogReader(db).reviewedAllergens(['old']), isEmpty);
+    });
+
+    test('identity from the matcher carries the reviewed groups', () async {
+      await reviewed('milk1', 'milk');
+      await alias('a1', 'milk1', 'namirnica milk1');
+      final result = await find('namirnica milk1');
+      expect((result as Matched).food.allergens, {AllergenGroup.milk});
     });
   });
 }

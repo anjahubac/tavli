@@ -665,6 +665,10 @@ void main() {
         nutritionSource: const Value('USDA FoodData Central'),
         nutritionSourceVersion: const Value('SR Legacy 2018-04'),
         nutritionSourceRef: const Value('FDC 172184'),
+        allergenCodes: const Value('eggs'),
+        allergenSource: const Value('EU 1169/2011 Annex II'),
+        allergenSourceRef: const Value('eggs'),
+        allergenReviewedAt: Value(t),
         reviewedAt: Value(t),
         withdrawnAt: Value(t),
         createdAt: t,
@@ -681,6 +685,9 @@ void main() {
         expect(r['nutrition_source'], 'USDA FoodData Central');
         expect(r['nutrition_source_version'], 'SR Legacy 2018-04');
         expect(r['nutrition_source_ref'], 'FDC 172184');
+        expect(r['allergen_codes'], ['eggs']);
+        expect(r['allergen_source'], 'EU 1169/2011 Annex II');
+        expect(r['allergen_reviewed_at'], '2026-10-30T10:05:07.000Z');
         expect(r['withdrawn_at'], '2026-10-30T10:05:07.000Z');
       },
     );
