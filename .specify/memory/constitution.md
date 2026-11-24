@@ -1,4 +1,10 @@
 <!--
+Sync Impact Report — 2026-11-24 (spec 036, proposed; needs independent review)
+- Version: 3.2.0 → 3.3.0 (MINOR: web/PWA target added; principle IV gets a bounded
+  exception for the web session; no own AI keys on the web).
+- Updated docs/architecture.md, AGENTS.md and specs/036-pwa-web.
+- No hosted settings, credential or deployment change here.
+
 Sync Impact Report — 2026-11-24
 - Version: 3.1.0 → 3.2.0 (MINOR: principles III and IV state how AI provider keys
   are used in production; AI provider constraint allows personal paid keys).
@@ -128,6 +134,10 @@ AI provider keys, the same rule for every environment including production:
   repository, CI logs, the app or an agent's input.
 - A signed-in app reaches shared access only through those functions, with its
   session token. The server checks the caller and the limits before any provider call.
+- Web exception (spec 036): the browser has no Keychain/Keystore. The web app stores
+  only the auth session, in encrypted storage of the Tavli origin; its protection is
+  origin isolation and a strict Content Security Policy, not encryption at rest. The
+  web app never stores or reads own AI keys, and loads no third-party scripts.
 - A person's own key stays in memory and secure storage on that device. It is sent
   only to the provider it belongs to, never to server functions, sync or logs.
 - A production release that uses shared access requires those functions in
@@ -226,7 +236,9 @@ code or ticket count. Track remaining effort and integration risk per phase.
 
 - Flutter/Dart versions are defined in `pubspec.yaml` and the lockfile; Material 3.
   Existing targets: Android, iOS, macOS. Windows is planned and needs platform
-  scaffolding, plugin/security validation and CI before it is supported.
+  scaffolding, plugin/security validation and CI before it is supported. The web
+  target (spec 036) serves the same code as an installable PWA for iPhone/iPad and
+  Mac where signed native bundles are unavailable; native targets stay supported.
 - State: Riverpod (`flutter_riverpod`); routing: `go_router` with a
   `StatefulShellRoute`; local cache: drift; HTTP: dio; keys and session:
   `flutter_secure_storage`.
@@ -278,4 +290,4 @@ wording), and updating dependent templates and docs in the same commit. Every ne
 `plan.md` Constitution Check MUST evaluate principles I–X; violations go in
 its Complexity Tracking table with justification.
 
-**Version**: 3.2.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-24
+**Version**: 3.3.0 | **Ratified**: 2026-10-30 | **Last Amended**: 2026-11-24

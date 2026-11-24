@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'recipe_providers.dart';
+import 'recipe_photo_image.dart';
 
 /// Sačuvana slika recepta; kad fajla nema, prikazuje ikonicu.
 class RecipePhoto extends ConsumerWidget {
@@ -33,22 +33,15 @@ class RecipePhoto extends ConsumerWidget {
       image: true,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(size == null ? 12 : 8),
-        child: ref
-            .watch(recipePhotoFileProvider(path))
-            .when(
-              data: (file) => file == null
-                  ? placeholder
-                  : Image.file(
-                      file,
-                      width: width ?? double.infinity,
-                      height: h,
-                      fit: BoxFit.cover,
-                      cacheWidth: cacheWidth,
-                      errorBuilder: (_, _, _) => placeholder,
-                    ),
-              loading: () => SizedBox(width: width, height: h),
-              error: (_, _) => placeholder,
-            ),
+        child: recipePhotoImage(
+          ref,
+          path,
+          width: width ?? double.infinity,
+          height: h,
+          cacheWidth: cacheWidth,
+          placeholder: placeholder,
+          loading: SizedBox(width: width, height: h),
+        ),
       ),
     );
   }

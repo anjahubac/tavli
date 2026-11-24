@@ -1,15 +1,14 @@
-import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
+
+// Fajl varijanta (dart:io) postoji svuda osim na webu (spec 036).
+export 'file_recipe_photo_store.dart'
+    if (dart.library.js_interop) 'file_recipe_photo_store_web.dart';
 
 /// Slike recepata na disku. U bazi se čuva relativna putanja jer se
 /// putanja kontejnera na iOS-u menja posle ažuriranja aplikacije.
 abstract class RecipePhotoStore {
   /// Čuva JPEG i vraća relativnu putanju.
   Future<String> save(Uint8List jpeg);
-
-  /// Fajl slike ili null ako ga nema.
-  Future<File?> file(String relativePath);
 
   Future<void> delete(String relativePath);
 
@@ -32,62 +31,3 @@ final _safePhotoPath = RegExp(
 /// svake operacije nad fajlom (bez `..`, apsolutnih putanja i podfoldera).
 bool isSafeRecipePhotoPath(String relativePath) =>
     _safePhotoPath.hasMatch(relativePath) && !relativePath.contains('..');
-
-class FileRecipePhotoStore implements RecipePhotoStore {
-  FileRecipePhotoStore(this._baseDir);
-
-  final Future<Directory> Function() _baseDir;
-  final _random = Random();
-
-  static const _folder = 'recipe_photos';
-
-  /// Fajl unutar osnovnog foldera ili null za nebezbednu putanju.
-  Future<File?> _resolve(String relativePath) async {
-    if (!isSafeRecipePhotoPath(relativePath)) return null;
-    return File('${(await _baseDir()).path}/$relativePath');
-  }
-
-  @override
-  Future<String> save(Uint8List jpeg) async {
-    final name =
-        '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}'
-        '${_random.nextInt(1 << 32).toRadixString(36)}.jpg';
-    final relative = '$_folder/$name';
-    final file = (await _resolve(relative))!;
-    await file.parent.create(recursive: true);
-    await file.writeAsBytes(jpeg, flush: true);
-    return relative;
-  }
-
-  @override
-  Future<File?> file(String relativePath) async {
-    final f = await _resolve(relativePath);
-    return f != null && await f.exists() ? f : null;
-  }
-
-  @override
-  Future<void> delete(String relativePath) async {
-    final f = await _resolve(relativePath);
-    if (f != null && await f.exists()) await f.delete();
-  }
-
-  @override
-  Future<bool> exists(String relativePath) async =>
-      await (await _resolve(relativePath))?.exists() ?? false;
-
-  @override
-  Future<Uint8List?> read(String relativePath) async {
-    final f = await _resolve(relativePath);
-    return f != null && await f.exists() ? f.readAsBytes() : null;
-  }
-
-  @override
-  Future<void> write(String relativePath, Uint8List jpeg) async {
-    final file = await _resolve(relativePath);
-    if (file == null) {
-      throw ArgumentError.value('<redacted>', 'relativePath', 'unsafe path');
-    }
-    await file.parent.create(recursive: true);
-    await file.writeAsBytes(jpeg, flush: true);
-  }
-}

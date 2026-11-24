@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
 
 import '../sync/sync_remote.dart';
+import 'socket_exception.dart';
 
 /// Owner consent for using structured tastes and favorites in shared plans.
 class PlanningSharing {

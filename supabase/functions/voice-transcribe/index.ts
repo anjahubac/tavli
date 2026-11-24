@@ -5,6 +5,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 import { type Deps, handle } from "./transcribe.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const admin = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -54,4 +55,4 @@ const deps: Deps = {
   now: () => Date.now(),
 };
 
-Deno.serve((req) => handle(req, deps));
+Deno.serve(withCors((req) => handle(req, deps)));

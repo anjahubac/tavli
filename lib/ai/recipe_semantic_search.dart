@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'dart:math' show min;
 
 import 'package:http/http.dart' as http;
 
+import '../data/socket_exception.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_search.dart';
 import 'ai_errors.dart';
