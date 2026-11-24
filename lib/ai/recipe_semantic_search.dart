@@ -136,7 +136,8 @@ class IndexedRecipeSearchService {
     final hits = <String, double>{};
     final boundedQuery = String.fromCharCodes(normalizedQuery.runes.take(250));
     final ids = byId.keys.toList(growable: false);
-    const batchSize = 2048;
+    // Keep each request within the rank_recipe_vectors SQL limit.
+    const batchSize = 256;
     try {
       for (var start = 0; start < ids.length; start += batchSize) {
         final batch = ids.sublist(start, min(start + batchSize, ids.length));

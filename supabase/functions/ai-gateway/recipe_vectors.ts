@@ -25,7 +25,7 @@ export function parseRecipeSearch(raw: unknown) {
   if (
     typeof query !== "string" || !query.trim() || query.length > 500 ||
     !Array.isArray(recipeIds) || recipeIds.length === 0 ||
-    recipeIds.length > 2048 ||
+    recipeIds.length > 256 ||
     !recipeIds.every((id) =>
       typeof id === "string" && id.length > 0 && id.length <= 64
     )

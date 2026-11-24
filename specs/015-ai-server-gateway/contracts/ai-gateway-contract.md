@@ -126,13 +126,15 @@ The app can rank synced recipe vectors through the authenticated gateway:
 }
 ```
 
-The gateway accepts up to 500 UTF-16 units and 2,048 unique candidate IDs per
+The gateway accepts up to 500 UTF-16 units and 256 candidate IDs per
 request, embeds only the query and reserves one text quota slot. It calls
 Postgres with the caller's session. Postgres verifies household membership
 and returns the closest eligible recipes by cosine distance. Flutter applies
 its current labels, preparation-time and fasting filters before sending the
-candidate IDs. It shows title matches first, then up to 24 additional ranked
-results. Recipes waiting for sync or indexing remain available by title.
+candidate IDs. Larger candidate sets use batches of up to 256 IDs. Flutter
+combines the batches by distance and shows title matches first, then up to 24
+additional ranked results. Recipes waiting for sync or indexing remain
+available by title.
 For recipes without embeddings and during an outage, the title search uses
 the same local data and filters.
 

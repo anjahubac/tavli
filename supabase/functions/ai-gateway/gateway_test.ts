@@ -338,6 +338,20 @@ const recipeSearch = {
   recipeIds: ["own-recipe", "own-recipe"],
 };
 
+Deno.test("server recipe search rejects candidates beyond the SQL limit", async () => {
+  const search = setup({
+    env: recipeVectorEnv,
+    rankRecipes: () => Promise.resolve([]),
+  });
+  const result = await search.handle(post({
+    ...recipeSearch,
+    recipeIds: Array.from({ length: 257 }, (_, i) => `recipe-${i}`),
+  }));
+  equal(result.status, 400);
+  equal(search.calls.length, 0);
+  equal(search.reserved.length, 0);
+});
+
 Deno.test("server recipe search embeds the query and ranks as the caller", async () => {
   const vector = Array<number>(1024).fill(0.25);
   const matches = [{ recipe_id: "own-recipe", distance: 0.125 }];

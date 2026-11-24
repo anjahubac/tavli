@@ -19,6 +19,37 @@ Recipe _recipe(String id, String title) => Recipe(
 );
 
 void main() {
+  test('server ranking searches beyond the 256-candidate SQL limit', () async {
+    final recipes = [
+      for (var i = 0; i < 257; i++) _recipe('recipe-$i', 'Jelo $i'),
+    ];
+    final batches = <List<String>>[];
+    final gateway = GatewayChatClient(
+      accountId: () => 'account',
+      refresh: () async => false,
+      invoke: (_, body) async {
+        final ids = (body!['recipeIds'] as List<Object?>).cast<String>();
+        batches.add(ids);
+        return FunctionResponse(
+          status: 200,
+          data: {
+            'matches': [
+              {'recipe_id': ids.first, 'distance': ids.length == 1 ? 0.1 : 0.4},
+            ],
+          },
+        );
+      },
+    );
+    final hits = await IndexedRecipeSearchService(gateway).search(
+      query: 'večera sa povrćem',
+      recipes: recipes,
+      filter: const RecipeFilter(query: 'večera sa povrćem'),
+    );
+    expect(batches.map((ids) => ids.length), [256, 1]);
+    expect(batches.expand((ids) => ids), recipes.map((recipe) => recipe.id));
+    expect(hits.map((recipe) => recipe.id), ['recipe-256', 'recipe-0']);
+  });
+
   test('server ranking merges title hits and filters candidate IDs', () async {
     final title = _recipe('title', 'Čorba od sočiva').copyWith(prepMinutes: 10);
     final titleWithoutVector = _recipe(
