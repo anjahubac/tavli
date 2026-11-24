@@ -2,8 +2,8 @@
 
 **Status**: Base contract approved in [PR #47](https://github.com/anjahubac/tavli/pull/47);
 quota reservation merged in [PR #124](https://github.com/anjahubac/tavli/pull/124).
-The local implementation adds authenticated model discovery, OpenAI opt-in and
-the Flutter transport. Persistence of client-side quota pauses and release
+Authenticated model discovery, OpenAI opt-in and the Flutter transport are merged
+to dev in [PR #127](https://github.com/anjahubac/tavli/pull/127). Persistence of client-side quota pauses and release
 verification remain open.
 **Author**: Dev 2 | **Reviewer**: Dev 4 (TRELLO-36: request and error format)
 **Date**: 2026-11-17 | **Builds on**: [spike-photo-timing.md](../spike-photo-timing.md)
@@ -350,8 +350,8 @@ deleted after 2 days.
 - `GatewayQuotaError` and `GatewayAuthError` with the router handling in
   Gateway errors in `AIRouter`, the per-account, per-kind pause store, the
   gateway deadline from Deadlines, and support for `openai/default`.
-- Cutover (FR-104): built-in keys are removed from `BuiltInKeys`,
-  `secrets.example.json` and the build; a check proves the built app contains
+- Cutover (FR-104): `BuiltInKeys` and the key entries of `secrets.example.json`
+  are removed ([PR #157](https://github.com/anjahubac/tavli/pull/157)); still open: a check proves the built app contains
   no provider key.
 
 ## Delivery slices

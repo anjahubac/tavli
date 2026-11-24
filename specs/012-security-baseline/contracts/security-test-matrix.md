@@ -7,7 +7,7 @@ access is not correct. Use synthetic data and local services, never hosted probe
 | Requirement / risk | Allowed case | Denied / failure cases | Evidence owner |
 | --- | --- | --- | --- |
 | FR-001 / SEC-06 | Member uses own household data; user sees own personal row | anon; other household; forged parent ID; ownership UPDATE; private row by co-member; RPC execute; object rename across households | Dev 3 + Dev 1, pgTAP |
-| FR-002 / SEC-01 | Valid user sends allowed bounded task; authenticated model discovery consumes no quota | missing/invalid token; supplied other uid; arbitrary URL/model; oversized input; quota race; cancel/retry budget; account switch during refresh; shared credentials absent from the release artifact | Dev 2, fake provider + local gateway + [015 release checks](../../015-ai-server-gateway/plan.md#verification-rollout-and-risks) |
+| FR-002 | Valid user sends allowed bounded task; authenticated model discovery consumes no quota | missing/invalid token; supplied other uid; arbitrary URL/model; oversized input; quota race; cancel/retry budget; account switch during refresh; shared credentials absent from the release artifact | Dev 2, fake provider + local gateway + [015 release checks](../../015-ai-server-gateway/plan.md#verification-rollout-and-risks) |
 | FR-003 / SEC-03 | Serbian category/action shown | provider body, token-shaped fixture, recipe/email or raw exception in UI/attempt/toString/log | Dev 2 + Dev 3, unit/widget |
 | FR-004 / SEC-02 | Valid recipe photo read/write/delete/sync | ../, absolute names, alternate separators, invalid snapshot name, encoded traversal, symlink escape, oversized/corrupt image | Dev 1 + Dev 4, temp files and sync fixtures |
 | FR-005 / SEC-05 | Valid current OTP creates session | expired/replayed/wrong code; throttled resend/verify; malicious redirect; callback for wrong environment; expired/revoked session | Dev 3, fake auth + local stack; operator settings evidence |
@@ -17,6 +17,7 @@ access is not correct. Use synthetic data and local services, never hosted probe
 | FR-009 / SEC-08 | Reviewed same-SHA checks pass then deploy | failed/missing/stale check still deploys; untrusted fork gains secrets | Dev 3 + Anja, credential-free CI proof |
 | FR-010 / SEC-08 | Reviewed locked/signed build | injected dependency/secret fixture misses scanner; unreviewed action update; wrong environment artifact | Dev 3 + Dev 4, redacted build evidence |
 | FR-011 | Authorized book/document/draft operation | cross-household chunk retrieval; prompt instructions execute command; deleted book still retrieved; raw upload retained | Feature owner + Dev 3, later feature fixtures |
+| FR-013 | Recognized own key is checked with its provider, saved and used before shared access | unknown or `sk-ant-` key is not saved or sent; own key in a gateway request; value in UI/toString/log; failed storage read/write cached; keys left after account deletion | Dev 2 + Dev 3, unit/widget with fake client and storage |
 | FR-012 | Operators follow containment/restore checklist | missing owner, inaccessible kill switch, no recovery evidence or secrets in incident ticket | Anja + team, local tabletop |
 
 Record command/fixture, tested SHA/platform, expected/actual result, reviewer,

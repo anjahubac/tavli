@@ -32,8 +32,8 @@ default. Planning and linked/standalone shopping code exist, while 010
 acceptance remains partial.
 Početna content (today's meals, notices) is still planned. Pantry stays simple:
 no expiry dates or “use first” UI, optional quantity.
-The gateway, food catalog, household invitations, nutrition diary, voice,
-cookbooks and Windows remain planned. Read the
+Gateway rollout, food catalog, household invitations, nutrition diary, voice,
+cookbooks and Windows are not released; check `dev` for merged parts. Read the
 [010 overlay](specs/010-plan-and-shopping/current-direction.md) for superseded
 requirements; never rewrite historical checked tasks to imply new work shipped.
 
@@ -269,8 +269,9 @@ An independent human review and merged PR are required for delivery Done.
 - Don't add logging of request headers or full request bodies.
 - Agents must not edit, rotate or test real keys unless the user explicitly asks.
 
-Built-in provider credentials will move behind the planned AI gateway. This is
-not deployed yet; preserve `AIRouter` and fakeable transport during migration.
+Built-in provider credentials live only as secrets of the server functions; app
+builds have none (constitution IV). The gateway code is on `dev`, not on `main`
+(2026-11-24). Preserve `AIRouter` and fakeable transport.
 
 Spec Kit state caveat: the installed `get_feature_paths` persists an explicit
 `SPECIFY_FEATURE_DIRECTORY` into the current checkout's `.specify/feature.json`, even
@@ -284,7 +285,7 @@ helper read-only. Serialize writers in the same checkout. Do not overwrite anoth
 Read [security baseline](docs/development/security.md) and the
 [012 specification](specs/012-security-baseline/spec.md). Existing source-level
 gaps are recorded there, not fixed by these rules. No shared provider secrets in
-new client features; gateway cutover is required before wider distribution.
+the client; release evidence of gateway cutover is required before wider distribution.
 Validate synced file names/root containment; never display/log raw provider
 bodies or exception strings. Server grants/RLS and private storage enforce
 ownership independently of UI. New remote endpoints have auth/limits and negative

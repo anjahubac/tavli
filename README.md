@@ -17,7 +17,7 @@ Spec 010 has implemented code and remaining acceptance work; this is not a
 claim that every planned behavior or platform release has shipped.
 
 The next direction adds central Početna, a simple pantry without expiry tracking,
-a food catalog, household collaboration and richer planning. The AI gateway,
+a food catalog, household collaboration and richer planning. Release of the AI gateway,
 optional nutrition diary, cookbooks and voice are future work. Windows has a
 locally validated target; public signing and distribution remain release work. See
 [product plan](docs/product-plan.md) and [roadmap](docs/roadmap.md).
