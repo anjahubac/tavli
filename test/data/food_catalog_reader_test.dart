@@ -71,6 +71,81 @@ void main() {
     expect(matchedId(await find('Jaja')), 'f-jaje');
   });
 
+  test('čita nutritivnu referencu samo uz poreklo izvora', () async {
+    await db
+        .into(db.foods)
+        .insert(
+          FoodsCompanion.insert(
+            id: 'f-nutrition',
+            slug: 'krompir',
+            name: 'krompir',
+            category: 'voće i povrće',
+            baseUnit: 'gram',
+            kcalPer100g: const Value(77),
+            proteinGramsPer100g: const Value(2),
+            fatGramsPer100g: const Value(0.1),
+            carbsGramsPer100g: const Value(17),
+            nutritionSource: const Value('USDA FoodData Central'),
+            nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+            nutritionSourceRef: const Value('FDC 170026'),
+            createdAt: t,
+            updatedAt: t,
+          ),
+        );
+    final matched = await find('krompir') as Matched;
+    expect(matched.food.nutrition?.kcalPer100g, 77);
+    expect(matched.food.nutrition?.sourceVersion, 'SR Legacy 2018-04');
+
+    for (final sourceRef in [null, '  ']) {
+      final name = sourceRef == null ? 'nepoznato poreklo' : 'prazno poreklo';
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: name,
+              slug: name,
+              name: name,
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(1),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: Value(sourceRef),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      final unattributed = await find(name) as Matched;
+      expect(unattributed.food.nutrition, isNull);
+    }
+  });
+
+  test(
+    'zanemaruje neispravnu nutritivnu referencu umesto da obori matcher',
+    () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'f-infinite',
+              slug: 'beskonacno',
+              name: 'beskonacno',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              kcalPer100g: const Value(double.infinity),
+              nutritionSource: const Value('USDA FoodData Central'),
+              nutritionSourceVersion: const Value('SR Legacy 2018-04'),
+              nutritionSourceRef: const Value('FDC 1'),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+
+      final matched = await find('beskonacno') as Matched;
+      expect(matched.food.nutrition, isNull);
+    },
+  );
+
   test('tuđe domaćinstvo i nepoznata jedinica se ne vide', () async {
     await food('f-tudja', household: 'h2');
     await alias('a1', 'f-tudja', 'ajvar', household: 'h2');
@@ -152,6 +227,115 @@ void main() {
         expect(await find(CatalogStatus.notOnServer), isA<Unresolved>());
       },
     );
+  });
+
+  group('visibleFoodById', () {
+    FoodCatalogReader reader() => FoodCatalogReader(db);
+
+    test(
+      'returns only active exact-ID food visible to scope and status',
+      () async {
+        await food('shared');
+        await food('own', household: 'h1');
+        await food('other', household: 'h2');
+        final shared = await reader().visibleFoodById(
+          home,
+          'shared',
+          status: CatalogStatus.available,
+        );
+        expect(shared?.id, 'shared');
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.available,
+          ))?.id,
+          'own',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'other',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+        expect(
+          (await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.accessDenied,
+          ))?.id,
+          'shared',
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'own',
+            status: CatalogStatus.accessDenied,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.failed,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'shared',
+            status: CatalogStatus.notOnServer,
+          ),
+          isNull,
+        );
+        expect(
+          await reader().visibleFoodById(
+            home,
+            'missing',
+            status: CatalogStatus.available,
+          ),
+          isNull,
+        );
+      },
+    );
+
+    test('rejects withdrawn and unknown-unit rows', () async {
+      await db
+          .into(db.foods)
+          .insert(
+            FoodsCompanion.insert(
+              id: 'withdrawn',
+              slug: 'withdrawn',
+              name: 'Povučena',
+              category: 'ostalo',
+              baseUnit: 'gram',
+              withdrawnAt: Value(t),
+              createdAt: t,
+              updatedAt: t,
+            ),
+          );
+      await food('unknown-unit', unit: 'bushel');
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'withdrawn',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+      expect(
+        await reader().visibleFoodById(
+          home,
+          'unknown-unit',
+          status: CatalogStatus.available,
+        ),
+        isNull,
+      );
+    });
   });
 
   group('search', () {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/account/auth_controller.dart';
@@ -109,6 +110,51 @@ void main() {
       expect(row.householdName, 'Kuća');
     });
   }
+
+  test(
+    'v12 to v13 preserves catalog foods and adds nutrition columns',
+    () async {
+      final db = AppDatabase(
+        NativeDatabase.memory(
+          setup: (raw) {
+            raw.execute('''
+            CREATE TABLE foods (
+              id TEXT PRIMARY KEY NOT NULL, household_id TEXT,
+              slug TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL,
+              base_unit TEXT NOT NULL, source TEXT, reviewed_at INTEGER,
+              withdrawn_at INTEGER, created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+            raw.execute('''
+            INSERT INTO foods
+              (id, slug, name, category, base_unit, created_at, updated_at)
+            VALUES ('food', 'krompir', 'Krompir', 'ostalo', 'gram', 1, 1)
+          ''');
+            raw.execute('PRAGMA user_version = 12');
+          },
+        ),
+      );
+      addTearDown(db.close);
+
+      final original = await db.select(db.foods).getSingle();
+      expect(original.id, 'food');
+      expect(original.name, 'Krompir');
+      expect(original.kcalPer100g, isNull);
+      expect(original.nutritionSourceRef, isNull);
+      await db
+          .update(db.foods)
+          .write(
+            const FoodsCompanion(
+              kcalPer100g: Value(77),
+              nutritionSourceRef: Value('FDC 170026'),
+            ),
+          );
+      final updated = await db.select(db.foods).getSingle();
+      expect(updated.kcalPer100g, 77);
+      expect(updated.nutritionSourceRef, 'FDC 170026');
+    },
+  );
 
   test('v7 to v9 keeps the latest rating and creates both caches', () async {
     final db = AppDatabase(
@@ -364,7 +410,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 12);
+    expect(db.schemaVersion, 13);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));

@@ -127,7 +127,8 @@ class WorksheetChecks(unittest.TestCase):
             'usda_fdc_id': '169105',
             'usda_description': 'Tangerines, (mandarin oranges), raw',
             'usda_basis': 'keyword search of SR Legacy descriptions (proposal)',
-            'usda_alternates': '', 'base_unit_reviewer': '', 'usda_reviewer': '',
+            'usda_alternates': '', 'base_unit_reviewer': '',
+            'usda_reviewer': 'owner-authorized mapping review',
         }
         self.worksheet = [
             {**self.candidate, **self.extra, 'proposed_base_unit': 'g'},
@@ -137,6 +138,7 @@ class WorksheetChecks(unittest.TestCase):
                 'proposed_base_unit': 'kom', 'usda_fdc_id': '',
                 'usda_description': '',
                 'usda_basis': 'no SR Legacy mapping in historical map',
+                'usda_reviewer': '',
             },
         ]
 
@@ -197,12 +199,21 @@ class WorksheetChecks(unittest.TestCase):
         self.worksheet[0]['identity_status'] = 'reviewed'
         self.assertError('differs from candidates.csv')
 
-    def test_reference_rows_cannot_carry_review_decisions(self):
+    def test_reference_rows_cannot_carry_identity_or_allergen_decisions(self):
         self.worksheet[1]['identity_status'] = 'reviewed'
         self.assertError('reference row')
         self.setUp()
         self.worksheet[1]['allergen_codes'] = 'none'
         self.assertError('reference row')
+
+    def test_reference_row_may_record_owner_approved_fdc_mapping(self):
+        reference = self.worksheet[1]
+        reference.update({
+            'usda_fdc_id': '172183',
+            'usda_description': 'Egg, whole, raw, fresh',
+            'usda_reviewer': 'owner-authorized mapping review',
+        })
+        self.assertEqual(self.errors(), [])
 
     def test_reviewed_candidate_needs_the_worksheet_reviewers(self):
         reviewed = {
@@ -221,8 +232,9 @@ class WorksheetChecks(unittest.TestCase):
         })
         self.assertError('base_unit_reviewer')
         self.worksheet[0]['base_unit_reviewer'] = 'reviewer'
-        self.assertError('usda_reviewer')
-        self.worksheet[0]['usda_reviewer'] = 'reviewer'
+        self.worksheet[0]['usda_reviewer'] = ''
+        self.assertError('approval record')
+        self.worksheet[0]['usda_reviewer'] = 'owner-authorized mapping review'
         self.assertEqual(self.errors(), [])
 
 

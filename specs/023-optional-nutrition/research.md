@@ -1,9 +1,13 @@
 # Nutrition reference and portion-calculation research
 
-**Status:** Independent research, not an approved source mapping or shipped
-feature. Dev 1 evidence for D1-011, D1-015 and D1-016 / FR-001–003 in
-[spec 023](spec.md). No nutrition data, diary record or application code is
-added by this report.
+**Status:** Uroš Milutinović confirmed his review of the candidate identities,
+base units and USDA FDC mappings in chat on 2026-11-24. The worksheet records his
+name on the candidate decisions. The 167 candidate foods are eligible for a
+seed migration, while 171 legacy rows remain reference-only. This research does
+not ship a diary or nutrition-display feature; a pure per-portion calculator is
+implemented separately with incomplete coverage preserved.
+Dev 1 evidence for D1-011, D1-015 and D1-016 / FR-001–003 in
+[spec 023](spec.md).
 
 ## Reference-source observations
 
@@ -20,6 +24,38 @@ describes reuse under an Open Licence and conditions including preserving
 meaning and identifying source and version. No Ciqual data was imported here;
 the relevant team reviewer must assess source terms and version before any use.
 No claim is made that either source provides personalized dietary advice.
+
+## SR Legacy extraction
+
+The review worksheet's proposed FDC IDs were joined to the official
+[FoodData Central SR Legacy April 2018 CSV release](https://fdc.nal.usda.gov/download-datasets/).
+The reproducible extraction command is:
+
+```sh
+python3 scripts/build_nutrition_reference_csv.py \
+  specs/018-ingredient-catalog/research/catalog-review-worksheet.csv \
+  /path/to/FoodData_Central_sr_legacy_food_csv_2018-04.zip \
+  specs/023-optional-nutrition/research/nutrition-values-sr-legacy-2018.csv
+```
+
+Observed result: 338 worksheet rows; 311 rows (92.0%) have all four requested
+nutrients (energy kcal, protein, total fat and carbohydrate). The remaining 27
+have no complete SR Legacy record and stay unknown. Three of the four newly
+reviewed foods (pork leg, lard and fresh egg yolk) have complete SR Legacy
+records. Red onion uses USDA Foundation Foods and stays without values in this
+SR Legacy-only extract. Values are copied by exact FDC ID
+from the dataset's nutrient records, not inferred from food names. The generated
+[review artifact](research/nutrition-values-sr-legacy-2018.csv) records the source,
+release, FDC reference and CC0 1.0 for complete rows. The artifact does not
+alter the worksheet's identity or source review state and is not an application
+seed. It does not include Ciqual values.
+
+The extractor test uses a synthetic two-food archive to prove ID-based joining,
+unknown preservation and source attribution. Coverage is measured against 338 worksheet rows; 311 have complete values in
+this extract and 27 do not. Candidate seed rows require the recorded owner identity/base-unit approval
+and USDA mapping approval before their attributed values are emitted. Legacy
+reference rows are not seed identities. No allergen data is inferred from
+nutrition values; unknown stays unknown unless separately reviewed.
 
 ## Earlier prototype evidence
 
@@ -102,4 +138,6 @@ as verified. The stored fixture does not satisfy that gate.
   on the actual team implementation. No clinical accuracy or personalized
   target calculation is established by synthetic unit tests.
 
-No source approval, team review or task completion is asserted by this report.
+The recorded owner approvals cover candidate identity/base units and FDC
+mappings only. They do not resolve optional calculator review, display rounding,
+conversion factors, or Dev 3 diary/target decisions.
