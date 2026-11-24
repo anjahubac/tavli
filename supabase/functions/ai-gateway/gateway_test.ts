@@ -1,5 +1,6 @@
 import { gateway, type Reservation } from "./gateway.ts";
 import { maxBodyBytes } from "./input.ts";
+import type { RankedRecipe } from "./recipe_vectors.ts";
 
 const textModel = "gemini/gemini-pro-latest";
 const imageModel = "groq/qwen/qwen3.6-27b";
@@ -24,11 +25,17 @@ function equal(actual: unknown, expected: unknown) {
 function setup({
   env = {},
   reservation = { id: "fake-reservation" },
+  rankRecipes,
   upstream = () => Response.json({ choices: [{ message: { content: "{}" } }] }),
 }: {
   env?: Record<string, string>;
   reservation?: Reservation;
   upstream?: () => Response;
+  rankRecipes?: (
+    token: string,
+    vector: number[],
+    ids: string[],
+  ) => Promise<RankedRecipe[]>;
 } = {}) {
   const reserved: unknown[] = [];
   const released: string[] = [];
@@ -50,6 +57,7 @@ function setup({
       released.push(id);
       return Promise.resolve();
     },
+    rankRecipes,
     reserveImage: () => Promise.reject(new Error("unexpected")),
     storeImage: () => Promise.reject(new Error("unexpected")),
     send: (url: string | URL | Request, init?: RequestInit) => {
@@ -316,4 +324,78 @@ Deno.test("embedding quota rejection makes no OpenAI call", async () => {
   equal(reserved.length, 1);
   equal(released.length, 0);
   equal(calls.length, 0);
+});
+
+const recipeVectorEnv = {
+  AI_RECIPE_VECTORS_ENABLED: "1",
+  AI_RECIPE_VECTOR_ACCOUNT: "0".repeat(32),
+  AI_RECIPE_VECTOR_TOKEN: "fake-workers-ai",
+};
+
+const recipeSearch = {
+  task: "recipe_similarity_search",
+  query: "nešto lagano za večeru",
+  recipeIds: ["own-recipe", "own-recipe"],
+};
+
+Deno.test("server recipe search embeds the query and ranks as the caller", async () => {
+  const vector = Array<number>(1024).fill(0.25);
+  const matches = [{ recipe_id: "own-recipe", distance: 0.125 }];
+  const search = setup({
+    env: recipeVectorEnv,
+    upstream: () => Response.json({ data: [{ index: 0, embedding: vector }] }),
+    rankRecipes: (token, embedding, ids) => {
+      equal(token, "test-session");
+      equal(embedding, vector);
+      equal(ids, ["own-recipe"]);
+      return Promise.resolve(matches);
+    },
+  });
+  const result = await search.handle(post(recipeSearch));
+  equal(result.status, 200);
+  equal(await result.json(), { matches });
+  equal(search.calls.length, 1);
+  const body = JSON.parse(String(search.calls[0].init?.body));
+  equal(
+    search.calls[0].url,
+    "https://api.cloudflare.com/client/v4/accounts/" + "0".repeat(32) +
+      "/ai/v1/embeddings",
+  );
+  equal(body, { model: "@cf/baai/bge-m3", input: [recipeSearch.query] });
+  equal(search.reserved.length, 1);
+  equal(search.released, ["fake-reservation"]);
+});
+
+Deno.test("disabled, unauthorized, malformed and quota-denied search skip provider work", async () => {
+  const rankRecipes = () => Promise.reject(new Error("unexpected SQL call"));
+  const disabled = setup({ rankRecipes });
+  equal((await disabled.handle(post(recipeSearch))).status, 503);
+  const denied = setup({
+    rankRecipes,
+    env: recipeVectorEnv,
+    reservation: { limit: "daily", retryAfterSeconds: 60 },
+  });
+  equal((await denied.handle(post(recipeSearch, "invalid"))).status, 401);
+  equal(
+    (await denied.handle(post({ ...recipeSearch, owner: "forged" }))).status,
+    400,
+  );
+  equal((await denied.handle(post(recipeSearch))).status, 429);
+  equal(denied.reserved.length, 1);
+  equal(denied.calls.length, 0);
+  equal(disabled.reserved.length, 0);
+  equal(disabled.calls.length, 0);
+});
+
+Deno.test("server search rejects a zero-length direction and releases quota", async () => {
+  const search = setup({
+    env: recipeVectorEnv,
+    upstream: () =>
+      Response.json({
+        data: [{ index: 0, embedding: Array<number>(1024).fill(0) }],
+      }),
+    rankRecipes: () => Promise.reject(new Error("unexpected SQL call")),
+  });
+  equal((await search.handle(post(recipeSearch))).status, 502);
+  equal(search.released, ["fake-reservation"]);
 });

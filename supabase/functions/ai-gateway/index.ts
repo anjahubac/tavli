@@ -1,5 +1,6 @@
 import { gateway } from "./gateway.ts";
 import { record } from "./input.ts";
+import type { RankedRecipe } from "./recipe_vectors.ts";
 
 const env = (name: string) => Deno.env.get(name);
 const url = env("SUPABASE_URL");
@@ -48,6 +49,24 @@ Deno.serve(gateway({
     return typeof user?.id === "string" && user.is_anonymous !== true
       ? user.id
       : null;
+  },
+  async rankRecipes(token, embedding, recipeIds) {
+    const matches: RankedRecipe[] = [];
+    const packedEmbedding = JSON.stringify(embedding);
+    for (let offset = 0; offset < recipeIds.length; offset += 256) {
+      const result = await platform("/rest/v1/rpc/rank_recipe_vectors", token, {
+        p_embedding: packedEmbedding,
+        p_recipe_ids: recipeIds.slice(offset, offset + 256),
+      });
+      if (!result.ok) {
+        await result.body?.cancel().catch(() => {});
+        throw new Error("recipe_vector_rank_failed");
+      }
+      matches.push(...await result.json() as RankedRecipe[]);
+    }
+    return matches.sort((a, b) =>
+      a.distance - b.distance || a.recipe_id.localeCompare(b.recipe_id)
+    );
   },
   async reserve(uid, kind, limits) {
     const result = await rpc("ai_reserve", {

@@ -28,6 +28,14 @@ import {
   resolveModel,
 } from "./providers.ts";
 
+import {
+  embedRecipeVectors,
+  parseRecipeSearch,
+  type RankedRecipe,
+  recipeVectorProvider,
+  RecipeVectorProviderError,
+} from "./recipe_vectors.ts";
+
 const maxProviderResponseBytes = 800_000;
 
 type QuotaLimit = "daily" | "global" | "minute" | "concurrent";
@@ -58,6 +66,11 @@ interface GatewayDependencies {
     file: string,
     jpeg: Uint8Array,
   ): Promise<void>;
+  rankRecipes?: (
+    token: string,
+    embedding: number[],
+    recipeIds: string[],
+  ) => Promise<RankedRecipe[]>;
   send: typeof fetch;
 }
 
@@ -341,6 +354,37 @@ export function gateway(dependencies: GatewayDependencies) {
       }
       if (record(raw)?.task === imageTask) {
         return await recipeImage(raw, uid, dependencies);
+      }
+      if (record(raw)?.task === "recipe_similarity_search") {
+        const input = parseRecipeSearch(raw);
+        if (!input) return failure(400, "bad_request");
+        const provider = recipeVectorProvider(env);
+        const rank = dependencies.rankRecipes;
+        if (!provider || !rank) {
+          return failure(503, "model_unavailable");
+        }
+        const reservation = await reserve(uid, "text", limitsFor(env, "text"));
+        if ("limit" in reservation) return quotaResponse(reservation, "text");
+        try {
+          const [embedding] = await embedRecipeVectors(
+            [input.query],
+            provider,
+            send,
+          );
+          const matches = await rank(token, embedding, input.recipeIds);
+          return response(200, { matches });
+        } catch (error) {
+          if (
+            error instanceof RecipeVectorProviderError && error.status === 429
+          ) {
+            return failure(429, "provider_rate_limited");
+          }
+          return failure(502, "provider_error");
+        } finally {
+          await release(reservation.id).catch(() =>
+            console.warn("ai_gateway_release_failed")
+          );
+        }
       }
       if (record(raw)?.task === "recipe_embeddings") {
         const embeddingInput = parseEmbeddingRequest(raw);

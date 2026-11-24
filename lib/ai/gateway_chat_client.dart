@@ -81,6 +81,19 @@ class GatewayChatClient {
         body: {'task': 'recipe_embeddings', 'inputs': inputs},
       );
 
+  Future<Map<String, Object?>> rankRecipes(
+    String query,
+    List<String> recipeIds,
+  ) => _request(
+    HttpMethod.post,
+    const Duration(seconds: 75),
+    body: {
+      'task': 'recipe_similarity_search',
+      'query': query,
+      'recipeIds': recipeIds,
+    },
+  );
+
   Future<Map<String, Object?>> _request(
     HttpMethod method,
     Duration timeout, {

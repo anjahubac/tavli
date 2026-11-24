@@ -19,6 +19,50 @@ Recipe _recipe(String id, String title) => Recipe(
 );
 
 void main() {
+  test('server ranking merges title hits and filters candidate IDs', () async {
+    final title = _recipe('title', 'Čorba od sočiva').copyWith(prepMinutes: 10);
+    final titleWithoutVector = _recipe(
+      'unindexed',
+      'Čorba od povrća',
+    ).copyWith(prepMinutes: 20);
+    final nearby = _recipe('nearby', 'Krem supa').copyWith(prepMinutes: 15);
+    final distant = _recipe('distant', 'Salata').copyWith(prepMinutes: 5);
+    final filtered = _recipe(
+      'filtered',
+      'Čorba od mesa',
+    ).copyWith(prepMinutes: 90);
+    final gateway = GatewayChatClient(
+      accountId: () => 'account',
+      refresh: () async => false,
+      invoke: (_, body) async {
+        expect(body!['query'], 'corba');
+        expect(body['recipeIds'], ['title', 'unindexed', 'nearby', 'distant']);
+        return const FunctionResponse(
+          status: 200,
+          data: {
+            'matches': [
+              {'recipe_id': 'distant', 'distance': 0.5},
+              {'recipe_id': 'nearby', 'distance': 0.2},
+              {'recipe_id': 'title', 'distance': 0.1},
+              {'recipe_id': 'filtered', 'distance': 0.0},
+            ],
+          },
+        );
+      },
+    );
+    final hits = await IndexedRecipeSearchService(gateway).search(
+      query: 'corba',
+      recipes: [title, titleWithoutVector, nearby, distant, filtered],
+      filter: const RecipeFilter(query: 'corba', maxPrepMinutes: 30),
+    );
+    expect(hits.map((recipe) => recipe.id), [
+      'title',
+      'unindexed',
+      'nearby',
+      'distant',
+    ]);
+  });
+
   test(
     'combines title hits and semantic hits once, with shared filters',
     () async {

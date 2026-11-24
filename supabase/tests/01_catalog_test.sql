@@ -85,7 +85,7 @@ select is(
     'public.get_household_recipe_rating_summaries', 'public.household_invite_token',
     'public.household_members_overview', 'public.household_realtime_eligible',
     'public.prepare_new_household', 'public.preview_household_join',
-    'public.regenerate_household_invite', 'public.remove_household_member',
+    'public.rank_recipe_vectors', 'public.regenerate_household_invite', 'public.remove_household_member',
     'public.rename_household',
     'public.saved_recipe_question_candidates', 'public.set_planning_preferences_sharing', 'public.take_household_removal'
   ],

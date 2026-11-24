@@ -177,10 +177,10 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Pretraga preko OpenAI-ja'),
+        title: const Text('Pretraga preko Cloudflare-a'),
         content: const Text(
-          'Upit i tekst recepata biće poslati OpenAI-ju radi pretrage. '
-          'Nastavi samo sa sadržajem koji želiš da pošalješ.',
+          'Cloudflare obrađuje tvoj upit radi pretrage sačuvanih recepata. '
+          'Za indeksiranje se obrađuju nazivi, sastojci i oznake recepata.',
         ),
         actions: [
           TextButton(
@@ -254,7 +254,9 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
       }
       setState(() {
         _semanticLoading = false;
-        if (error is EmbeddingConnectionException) {
+        if (error is EmbeddingConnectionException ||
+            error is ModelNotFoundError ||
+            error is GatewayUnavailableError) {
           _semanticSearch = false;
           _showOfflineSearchNotice = true;
           _semanticResults = null;
@@ -366,7 +368,7 @@ class _RecipesBodyState extends ConsumerState<_RecipesBody> {
                     'Pretraga preko AI-ja trenutno nije dostupna.',
                   GatewayQuotaError() =>
                     'AI limit je dostignut. Pokušaj kasnije.',
-                  RateLimitError() => 'OpenAI je trenutno ograničio broj zahteva. Pokušaj kasnije.',
+                  RateLimitError() => 'Cloudflare je trenutno ograničio broj zahteva. Pokušaj kasnije.',
                   GatewayAuthError() => 'Sesija je istekla. Prijavi se ponovo.',
                   GatewayUnavailableError() =>
                     'Pretraga preko AI-ja trenutno nije dostupna.',

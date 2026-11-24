@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase/supabase.dart';
-import 'package:tavli/ai/embedding_client.dart';
 import 'package:tavli/ai/gateway_chat_client.dart';
 import 'package:tavli/domain/recipe.dart';
 import 'package:tavli/domain/recipe_labels.dart';
@@ -21,8 +20,11 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Pretraži po smislu'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pretraga preko OpenAI-ja'), findsOneWidget);
-    expect(find.textContaining('biće poslati OpenAI-ju'), findsOneWidget);
+    expect(find.text('Pretraga preko Cloudflare-a'), findsOneWidget);
+    expect(
+      find.textContaining('Cloudflare obrađuje tvoj upit'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Otkaži'));
     await tester.pumpAndSettle();
     expect(find.text('Pasulj'), findsOneWidget);
@@ -427,14 +429,13 @@ void main() {
         invoke: (_, body) async {
           requests++;
           if (offline) throw const SocketException('Network is unreachable');
-          final inputs = body!['inputs'] as List<Object?>;
-          return FunctionResponse(
+          expect(body!['task'], 'recipe_similarity_search');
+          expect(body['recipeIds'], ['a']);
+          return const FunctionResponse(
             status: 200,
             data: {
-              'model': recipeEmbeddingModel,
-              'embeddings': [
-                for (final _ in inputs)
-                  List<double>.filled(recipeEmbeddingDimensions, 1),
+              'matches': [
+                {'recipe_id': 'a', 'distance': .12},
               ],
             },
           );
