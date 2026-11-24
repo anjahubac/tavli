@@ -34,6 +34,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.50.0'
+  AUTH_CONFIRM_PAGE_URL: https://welcome.tavli.workers.dev/potvrda/
 
 jobs:
   android:
@@ -56,8 +57,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" \
-            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: "https://welcome.tavli.workers.dev/potvrda/"}' \
+          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" --arg confirm "$AUTH_CONFIRM_PAGE_URL" \
+            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: $confirm}' \
             > "$RUNNER_TEMP/release-config.json"
       - run: flutter pub get
       # Release builds are still signed with the debug key (android/app/build.gradle.kts).
@@ -92,8 +93,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" \
-            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: "https://welcome.tavli.workers.dev/potvrda/"}' \
+          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" --arg confirm "$AUTH_CONFIRM_PAGE_URL" \
+            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: $confirm}' \
             > "$RUNNER_TEMP/release-config.json"
       - run: flutter pub get
       - run: flutter build linux --release --dart-define-from-file="$RUNNER_TEMP/release-config.json"
@@ -131,7 +132,7 @@ jobs:
           @{
             SUPABASE_URL = "$env:SUPABASE_URL"
             SUPABASE_ANON_KEY = "$env:SUPABASE_ANON_KEY"
-            AUTH_CONFIRM_PAGE_URL = 'https://welcome.tavli.workers.dev/potvrda/'
+            AUTH_CONFIRM_PAGE_URL = "$env:AUTH_CONFIRM_PAGE_URL"
           } | ConvertTo-Json | Set-Content -Encoding utf8NoBOM "$env:RUNNER_TEMP\release-config.json"
       - run: flutter pub get
       - run: flutter build windows --release "--dart-define-from-file=$env:RUNNER_TEMP\release-config.json"
@@ -142,6 +143,11 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           $staging = Join-Path $env:RUNNER_TEMP 'tavli'
           Copy-Item -Recurse build\windows\x64\runner\Release $staging
+          # Flutter does not bundle the Visual C++ runtime; without these DLLs
+          # tavli.exe fails on a PC that has no VC++ redistributable installed.
+          foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+            Copy-Item (Join-Path $env:WINDIR "System32\$dll") $staging
+          }
           Compress-Archive -Path $staging -DestinationPath dist\tavli-windows-x64.zip
       - uses: actions/upload-artifact@v7
         with:
@@ -166,8 +172,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" \
-            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: "https://welcome.tavli.workers.dev/potvrda/"}' \
+          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" --arg confirm "$AUTH_CONFIRM_PAGE_URL" \
+            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: $confirm}' \
             > "$RUNNER_TEMP/release-config.json"
       - run: flutter pub get
       # No Apple Developer account yet: the IPA is unsigned and is installed by
@@ -202,8 +208,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" \
-            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: "https://welcome.tavli.workers.dev/potvrda/"}' \
+          jq -n --arg url "$SUPABASE_URL" --arg key "$SUPABASE_ANON_KEY" --arg confirm "$AUTH_CONFIRM_PAGE_URL" \
+            '{SUPABASE_URL: $url, SUPABASE_ANON_KEY: $key, AUTH_CONFIRM_PAGE_URL: $confirm}' \
             > "$RUNNER_TEMP/release-config.json"
       - run: flutter pub get
       # No Developer ID yet: without Local.xcconfig the app is ad-hoc signed and
@@ -223,22 +229,46 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Runs on every trigger, so a PR proves the release bundle, not only the builds.
+  checksums:
+    name: release-bundle
+    needs: [android, linux, windows, ios, macos]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          pattern: tavli-*
+          merge-multiple: true
+      - name: Check file names and write checksums
+        working-directory: dist
+        run: |
+          for f in tavli-android.apk tavli-ios.ipa tavli-macos.dmg tavli-windows-x64.zip tavli-linux-x64.tar.gz; do
+            test -s "$f" || { echo "::error::missing $f"; exit 1; }
+          done
+          sha256sum tavli-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-bundle
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
     name: publish
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [android, linux, windows, ios, macos]
+    needs: [checksums]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
+          name: release-bundle
           path: dist
-          merge-multiple: true
-      - name: Checksums
-        working-directory: dist
-        run: sha256sum tavli-* > SHA256SUMS.txt && cat SHA256SUMS.txt
       - name: Create or update the release
         env:
           GH_TOKEN: ${{ github.token }}
