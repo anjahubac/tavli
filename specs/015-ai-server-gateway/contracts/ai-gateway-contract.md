@@ -89,6 +89,79 @@ user and the recipe ID, and rows expire after 2 days.
 The app attaches an AI image only to an AI recipe without an image. A database
 trigger also refuses an AI image over any image that is not itself from AI.
 
+### Supabase-backed recipe search (Trello 104 and 105)
+
+Before activating semantic search, the app asks a signed-in member to allow
+indexing for the current household. It submits the household UUID as
+`{ "task": "recipe_vector_consent", "householdId": "…" }`. The database
+checks current membership and records the first consent. The app waits for
+`{ "enabled": true }` before enabling semantic search. A failed confirmation
+keeps local title search available. The household opt-in persists when the
+user disables semantic search on their device and ends when the household
+is deleted.
+
+The app can then rank synced recipe vectors through the authenticated gateway:
+
+```json
+{
+  "task": "recipe_similarity_search",
+  "query": "nešto lagano za večeru",
+  "recipeIds": ["eligible-local-recipe-id"]
+}
+```
+
+The gateway accepts up to 500 UTF-16 units and 256 candidate IDs per
+request. Before reserving quota or calling the provider it asks Postgres
+(`can_search_recipe_vectors`, with the caller's session) whether the caller
+belongs to an opted-in household; otherwise it returns
+`403 {"error": "forbidden"}` and the query is not sent. It then embeds only
+the query and reserves one text quota slot. It calls
+Postgres with the caller's session. Postgres verifies household membership
+and returns the closest eligible recipes by cosine distance. Flutter applies
+its current labels, preparation-time and fasting filters before sending the
+candidate IDs. Larger candidate sets use batches of up to 256 IDs. Flutter
+combines the batches by distance and shows title matches first, then up to 24
+additional ranked results. Recipes waiting for sync or indexing remain
+available by title.
+For recipes without embeddings and during an outage, the title search uses
+the same local data and filters.
+
+The proposed pinned model for this path is Cloudflare Workers AI
+[`@cf/baai/bge-m3`](https://developers.cloudflare.com/workers-ai/models/bge-m3/),
+with 1,024 dense dimensions. It is multilingual, supports zero data retention
+and is available within the [Workers AI Free allocation](https://developers.cloudflare.com/workers-ai/platform/pricing/).
+Use a Free plan account to avoid metered overage. It is a different embedding
+space from the current cookbook vectors.
+A future cookbook integration should query this recipe index with the same
+model and must reindex its own corpus before comparing its vectors to these.
+A replacement model requires a migration and full rebuild of the recipe index.
+
+The Supabase migration tracks recipe and household IDs as pending rows.
+The scheduler and worker skip households without recorded consent. The
+claim operation returns recipe text only for an opted-in household.
+Changes to names, ingredients, label values or preparation time invalidate the
+previous vector, and deletion removes the row. The indexer claims up to 16
+pending recipes per invocation and sends titles, ingredient names, labels and
+preparation minutes only. It excludes ownership IDs, steps and photos from
+the provider request. The indexer retries unfinished work after the ten-minute
+lease expires. An edit during indexing invalidates the in-flight lease.
+
+Rollout requires project owner review of the provider/data processing choice.
+Configure `AI_RECIPE_VECTOR_ACCOUNT` and a Workers AI scoped
+`AI_RECIPE_VECTOR_TOKEN` in Edge Function Secrets. Set matching dedicated
+`RECIPE_VECTOR_INDEX_TOKEN` (Edge secret) and `recipe_vector_index_token`
+(Vault), plus `recipe_vector_index_url` (the project base URL in Vault).
+The scheduled worker stays inactive without the Vault entries and the shared
+`AI_RECIPE_VECTORS_ENABLED=1` Edge switch. Disabling the switch stops both
+indexing and semantic queries and preserves the queue for a restart. The
+global `AI_GATEWAY_DISABLED=1` switch also stops provider work. Verify on
+synthetic dev recipes before enabling the real backfill. Provider responses,
+recipe text and tokens are excluded from diagnostic logs.
+
+Serbian UI strings include “Pretraga preko Cloudflare-a”, “Dozvoli indeksiranje” and “Cloudflare je trenutno ograničio broj zahteva.
+Pokušaj kasnije.” Offline search displays “Veza sa AI pretragom nije dostupna.
+Pretražujemo po nazivu.”
+
 ### Proposed extension for spec 035
 
 `fasting_question` is a text task with a task-specific body:
@@ -167,6 +240,7 @@ or a provider endpoint (spec 015 SC-001).
 | 429 | `{"error": "busy", "retryAfterSeconds": n}` | `GatewayQuotaError` (too many calls at once): same as `minute` | same as above |
 | 429 | `{"error": "provider_rate_limited", "retryAfterSeconds": n?}` | `RateLimitError` for this model, next model | — |
 | 502 | `{"error": "provider_error"}` | `TransientError`, next model | — |
+| 502 | `{"error": "invalid_model_output"}` (`recipe_from_image` only: the answer is not a JSON recipe with title, 1–99 servings, 1–60 named ingredients and optional steps, or `{"error": "not_a_recipe"}`) | `TransientError`, next model | — |
 | 503 | `{"error": "model_unavailable"}` | `ModelNotFoundError`, next model | — |
 | 503 | `{"error": "gateway_unavailable"}` (proposed for the emergency stop) | Skip gateway models for this request. Direct user-key attempts remain eligible for tasks that support them. | existing AI-unavailable message if no eligible attempt succeeds |
 | 504 | `{"error": "timeout"}` | `TransientError(isTimeout: true)`, next model | — |

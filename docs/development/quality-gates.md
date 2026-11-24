@@ -33,13 +33,15 @@ come from the explicit `material_ui` dependency, following the
 Keep analyzer diagnostics enabled; do not mix legacy Flutter Material types with
 standalone package types.
 
-Current `.github/workflows/check.yml` runs format/analyze and full Flutter tests;
+Current `.github/workflows/check.yml` runs format/analyze, full Flutter tests
+(app and `packages/tavli_ui`, including its image tests), Deno tests of the Edge
+Functions (`deno test supabase/functions`) and a Linux debug build;
 `pr-conventions.yml` checks names and PR titles; `deploy-supabase.yml` deploys
 on supported `dev`/`main` changes. The docs job added with 011 validates active
 Markdown/registry consistency; the separate scripts job runs every script
 regression test (`scripts/test_*.py`). The Windows job verifies an x64 release
-compilation; it does not duplicate the full tests or retain build output. macOS
-and SQL/pgTAP checks are not silently claimed to be current CI jobs: each needs
+compilation; it does not duplicate the full tests or retain build output; the Linux
+job uploads its debug bundle for seven days. macOS and SQL/pgTAP checks are not silently claimed to be current CI jobs: each needs
 a dedicated setup task.
 
 Dev 3 records actual repository plan/ruleset availability and required checks

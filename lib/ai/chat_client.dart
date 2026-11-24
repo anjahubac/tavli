@@ -134,12 +134,15 @@ AIError mapDioException(DioException e) {
       break;
   }
   final status = e.response?.statusCode;
+  // Telo služi samo za prepoznavanje vrste greške. U poruku ide samo status:
+  // telo provajdera može da nosi deo prompta ili naloga, a poruka stiže do
+  // UI-ja i zapisa pokušaja (SEC-03).
   final body = e.response?.data?.toString() ?? '';
-  final short = body.length > 300 ? '${body.substring(0, 300)}…' : body;
+  final statusText = 'HTTP $status';
 
   if (status == 429) {
     return RateLimitError(
-      'HTTP 429: $short',
+      statusText,
       retryAfter: parseRetryAfter(
         e.response?.headers.value('retry-after'),
         body,
@@ -149,18 +152,18 @@ AIError mapDioException(DioException e) {
   }
   // OpenAI za projekat bez pristupa modelu vraća 403: ključ je ispravan.
   if (status == 403 && body.contains('model_not_found')) {
-    return ModelNotFoundError('HTTP 403: $short');
+    return ModelNotFoundError(statusText);
   }
-  if (status == 401 || status == 403) return AuthError('HTTP $status: $short');
+  if (status == 401 || status == 403) return AuthError(statusText);
   // Gemini za nevažeći ključ vraća 400 "API key not valid".
   if (status == 400 && body.toLowerCase().contains('api key')) {
-    return AuthError('HTTP 400: $short');
+    return AuthError(statusText);
   }
-  if (status == 404) return ModelNotFoundError('HTTP 404: $short');
+  if (status == 404) return ModelNotFoundError(statusText);
   if (status != null && status >= 500) {
-    return TransientError('HTTP $status: $short');
+    return TransientError(statusText);
   }
-  return BadRequestError('HTTP $status: $short');
+  return BadRequestError(statusText);
 }
 
 /// Čita `Retry-After` zaglavlje (sekunde) ili Gemini `"retryDelay": "34s"`.
