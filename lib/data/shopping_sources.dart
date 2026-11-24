@@ -274,10 +274,11 @@ mixin _ShoppingSources on _ShoppingBase {
   /// Potrebe izvora iz odobrenog recepta i porcija; prazno kad recept nije
   /// čitljiv.
   @override
-  List<DemandLine> _demand(
+  Future<List<DemandLine>> _demand(
     ShoppingSourceRow s,
-    Map<String, MealPlanEntryRow> entries,
-  ) {
+    Map<String, MealPlanEntryRow> entries, {
+    required CatalogStatus catalogStatus,
+  }) async {
     final entry = entries[s.planEntryId];
     final json = s.planEntryId == null
         ? s.recipeSnapshotJson
@@ -292,6 +293,21 @@ mixin _ShoppingSources on _ShoppingBase {
       return const [];
     }
     final servings = (s.planEntryId == null ? s.servings : entry?.servings);
+    final validLinks = <String>{
+      for (final ingredient in snapshot.ingredients)
+        if (ingredient.link case final link?
+            when link.matchedKey == ingredientKey(ingredient.name))
+          link.foodId,
+    };
+    final visibleFoods = <String, FoodIdentity>{};
+    for (final foodId in validLinks) {
+      final food = await _catalogReader.visibleFoodById(
+        FoodLookupScope(householdId: _scope.householdId),
+        foodId,
+        status: catalogStatus,
+      );
+      if (food != null) visibleFoods[food.id] = food;
+    }
     return demandFor(
       DemandSource(
         id: s.id,
@@ -301,6 +317,7 @@ mixin _ShoppingSources on _ShoppingBase {
           maxServings,
         ),
         ingredients: snapshot.ingredients,
+        visibleFoods: visibleFoods,
       ),
     );
   }

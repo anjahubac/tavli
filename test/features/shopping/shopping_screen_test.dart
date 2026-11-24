@@ -361,6 +361,28 @@ void main() {
     });
   }
 
+  testTavli('kašike ostaju u originalnoj meri u nedelji i celom planu', (
+    tester,
+  ) async {
+    await pumpShopping(
+      tester,
+      setup: (db) => seedPlan(
+        db,
+        twoWeeks,
+        salt: const Ingredient(
+          name: 'so',
+          quantity: 1,
+          unit: 'kašike',
+          category: 'začini i sosovi',
+        ),
+      ),
+    );
+
+    expect(find.text('7 kašika'), findsOneWidget);
+    await tapIn(tester, find.text('Ceo plan'));
+    expect(find.text('14 kašika'), findsOneWidget);
+  });
+
   testTavli('stavka pokazuje za koje obroke je', (tester) async {
     await pumpShopping(tester);
     expect(find.byTooltip('Za koje obroke'), findsNothing);

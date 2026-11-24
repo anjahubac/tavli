@@ -53,6 +53,28 @@ what dish it chose was not recorded. EV-10 shows the output stayed a valid
 recipe without leaking password text; it does not prove the model ignored the
 instruction in every case.
 
+## Live run through the AI gateway (two of seven cases)
+
+Run on 2026-11-24 on a local Supabase stack with a synthetic signed-in user,
+against `dev` after the Groq model id fix (#181, `c64d8d7d`). The input goes
+through `GatewayChatClient` and the `ai-gateway` Edge Function, with no key in
+the app. Runner and setup: `test/evals/live_gateway_flow_test.dart` and
+[gateway-flow.md](gateway-flow.md); trace lines are in
+`traces/gateway-flow.jsonl` (label `ev-after-181-2`). The checks are the
+same as in the run above.
+
+| Case | Result through the gateway |
+| --- | --- |
+| EV-03 | Pass: 4 servings, 0 meat ingredients, 11 ingredients, 6 steps |
+| EV-10 | Pass: valid recipe, 2 servings, 10 ingredients, 5 steps, no password text |
+| EV-01, EV-02, EV-06, EV-07, EV-09 | **No result.** Both passes ended with `AllModelsExhausted`: the free-tier provider limit was reached (Gemini paused until the quota reset). This says nothing about the app or the prompts. |
+
+Limits: one pass per case, one run that reached a model. The trace does not
+record which model answered. The first pass (`ev-after-181-1`) reached no
+model for any EV case, for the same quota reason. The two passing cases show
+the gateway path works with the current chain; they do not replace the seven
+cases of the run above, and they do not measure variance.
+
 ## Before and after: one repair of an invalid model answer (EV-12)
 
 The change is PR #69: before it, an answer that failed validation made the
@@ -101,5 +123,6 @@ are in `traces/`.
 
 All seven `live` cases ran once with one model. The before and after
 evidence is in `trace-ingredient-names.md` (PR #102, live model) and in the
-EV-12 section above (PR #69, simulated model). The `live` cases EV-01 to EV-10
-have not been rerun after a change.
+EV-12 section above (PR #69, simulated model). Of the `live` cases EV-01 to EV-10, only EV-03 and EV-10 were rerun through
+the gateway after a change (section above); EV-01, EV-02, EV-06, EV-07 and
+EV-09 have no gateway result yet.

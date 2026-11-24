@@ -152,7 +152,7 @@ async function complete(
           : { temperature: input.temperature }),
         // Lowest effort (contract D3): reasoning tokens count toward the
         // 4096 limit and the deadline.
-        ...(model.provider === "openai" || model.name === "qwen/qwen3.6-27b"
+        ...(model.provider === "openai" || model.name === "qwen/qwen3.8-27b"
           ? { reasoning_effort: "none" }
           : {}),
         messages: [
