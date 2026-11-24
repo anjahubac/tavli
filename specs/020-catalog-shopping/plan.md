@@ -35,6 +35,11 @@ error/retry/undo, ownership, compatibility and producer/consumer fixtures. If da
 changes, add data-model.md with current→target columns and a reviewed migration;
 allocate drift version only after preceding schema merges. New SQL is additive
 where possible, with RLS/grants and local two-account tests. Applied SQL is immutable.
+
+The proposed contract for Trello #25/#26 is
+[shopping food identity and catalog entry](contracts/shopping-food-identity-contract.md).
+It is intentionally not accepted yet; T001 remains open pending Dev 4 and the
+listed schema/compatibility decisions.
 If no schema change is needed, explicitly record that decision in the slice PR.
 
 ## Delivery slices

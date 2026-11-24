@@ -1,3 +1,4 @@
+import { decodeBase64 } from "./base64.ts";
 import type { Kind } from "./providers.ts";
 
 export const maxBodyBytes = 1_500_000;
@@ -17,6 +18,7 @@ export const tasks: ReadonlyMap<string, Kind> = new Map([
 ]);
 
 export interface Completion {
+  task: string;
   kind: Kind;
   model: string;
   system: string;
@@ -109,9 +111,7 @@ function validImage(value: string): boolean {
   );
   if (!match) return false;
   try {
-    const raw = Uint8Array.fromBase64(match[2], {
-      lastChunkHandling: "strict",
-    });
+    const raw = decodeBase64(match[2]);
     const bytes = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
     if (match[1] === "jpeg") return jpegDimensions(bytes);
     return bytes.byteLength >= 33 &&
@@ -148,11 +148,19 @@ export function parseCompletion(value: unknown): Completion | undefined {
   ) return;
   if (kind === "text") {
     if (images.length !== 0) return;
-    return { kind, model, system, prompt, temperature };
+    return { task: task as string, kind, model, system, prompt, temperature };
   }
   if (
     images.length !== 1 || typeof images[0] !== "string" ||
     !validImage(images[0])
   ) return;
-  return { kind, model, system, prompt, temperature, image: images[0] };
+  return {
+    task: task as string,
+    kind,
+    model,
+    system,
+    prompt,
+    temperature,
+    image: images[0],
+  };
 }

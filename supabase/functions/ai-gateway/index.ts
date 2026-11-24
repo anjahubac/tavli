@@ -1,5 +1,6 @@
 import { gateway } from "./gateway.ts";
 import { record } from "./input.ts";
+import type { RankedRecipe } from "./recipe_vectors.ts";
 
 const env = (name: string) => Deno.env.get(name);
 const url = env("SUPABASE_URL");
@@ -48,6 +49,43 @@ Deno.serve(gateway({
     return typeof user?.id === "string" && user.is_anonymous !== true
       ? user.id
       : null;
+  },
+  async enableRecipeIndexing(token, householdId) {
+    const result = await platform(
+      "/rest/v1/rpc/enable_recipe_vector_indexing",
+      token,
+      {
+        p_household_id: householdId,
+      },
+    );
+    if (!result.ok) {
+      await result.body?.cancel().catch(() => {});
+      throw new Error("recipe_vector_consent_failed");
+    }
+    return await result.json() === true;
+  },
+  async canSearchRecipes(token) {
+    const result = await platform(
+      "/rest/v1/rpc/can_search_recipe_vectors",
+      token,
+      {},
+    );
+    if (!result.ok) {
+      await result.body?.cancel().catch(() => {});
+      throw new Error("recipe_vector_consent_check_failed");
+    }
+    return await result.json() === true;
+  },
+  async rankRecipes(token, embedding, recipeIds) {
+    const result = await platform("/rest/v1/rpc/rank_recipe_vectors", token, {
+      p_embedding: JSON.stringify(embedding),
+      p_recipe_ids: recipeIds,
+    });
+    if (!result.ok) {
+      await result.body?.cancel().catch(() => {});
+      throw new Error("recipe_vector_rank_failed");
+    }
+    return await result.json() as RankedRecipe[];
   },
   async reserve(uid, kind, limits) {
     const result = await rpc("ai_reserve", {
@@ -121,7 +159,7 @@ Deno.serve(gateway({
           "Content-Type": "image/jpeg",
           "x-upsert": "false",
         },
-        body: jpeg,
+        body: jpeg.slice().buffer as ArrayBuffer,
         redirect: "error",
         signal: AbortSignal.timeout(15000),
       },

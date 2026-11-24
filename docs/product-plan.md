@@ -32,17 +32,21 @@ five main destinations. The [product UX decisions](product-design.md) and
 [UI standard](development/ui-standard.md) specify behavior and acceptance.
 
 At `origin/dev` `28fa253`, five-tab navigation and the default `/home` route
-are in place ([#59](https://github.com/anjahubac/tavli/pull/59)). Home and the
-Pantry tab still show placeholders. Plan and both shopping modes exist.
+were in place ([#59](https://github.com/anjahubac/tavli/pull/59)) and Home and the
+Pantry tab were placeholders. By `ebcd794` (2026-11-24) both are implemented:
+Home shows today's and tomorrow's meals with cook/undo and one notice, and Ostava
+lists, adds, edits and removes items, including from a photo. Plan and both
+shopping modes exist.
 Shopping now opens “Po receptu” when there are recipe items and no plan
 ([#49](https://github.com/anjahubac/tavli/pull/49)) and has switch regression
 coverage ([#70](https://github.com/anjahubac/tavli/pull/70)). The local
 `tavli_ui` package and debug gallery exist
 ([#60](https://github.com/anjahubac/tavli/pull/60),
-[#71](https://github.com/anjahubac/tavli/pull/71)). The application still uses
-its existing shell. Linux has a merged GTK scaffold
-([#67](https://github.com/anjahubac/tavli/pull/67)), with its build and device
-evidence tracked separately. Windows remains planned.
+[#71](https://github.com/anjahubac/tavli/pull/71)); the Home, Plan, Profile and
+recipe screens now use its components. Linux has a merged GTK scaffold
+([#67](https://github.com/anjahubac/tavli/pull/67)) and a CI build job, with
+device evidence tracked separately. Windows has a runner, title bar, MSIX
+packaging and a CI build job; public distribution is not claimed.
 
 1. **Phase 1 — navigation in narrow windows.** Before adopting the gallery
    shell in the app, preserve the five destinations, auth redirects and deep

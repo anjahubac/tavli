@@ -270,10 +270,15 @@ class _BookTile extends StatelessWidget {
                     LinearProgressIndicator(value: progress),
                   ],
                   if (book.status == CookbookStatus.uploaded ||
-                      book.status == CookbookStatus.processing)
+                      book.status == CookbookStatus.processing ||
+                      book.status == CookbookStatus.ready)
                     TextButton(
                       onPressed: busy ? null : () => onResume(book),
-                      child: const Text('Nastavi obradu'),
+                      child: Text(
+                        book.status == CookbookStatus.ready
+                            ? 'Obradi ponovo'
+                            : 'Nastavi obradu',
+                      ),
                     ),
                 ],
               ),

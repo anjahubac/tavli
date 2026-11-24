@@ -108,10 +108,11 @@ are hidden. The fixture is not run in this repository: `dev` has no nutrition
 screen, `foods` has no nutrition columns, and CI does not execute `.dart.txt`
 files. The arithmetic (7 × 100 kcal / 2 servings = 350 kcal) was checked by
 hand. The fixture is written against a different API than `dev` has: it sets
-`Ingredient.foodId` and `foods.kcal100` and imports
-`features/foods/nutrition_line.dart`, while `dev` links an ingredient through
-`Ingredient.link` (`IngredientLink`, from #100) and has no nutrition source.
-Adapt those three places when the nutrition screen lands, then copy the fixture
+`Ingredient.foodId` and `foods.kcal100`, while `dev` links an ingredient
+through `Ingredient.link` (`IngredientLink`, from #100) and has no nutrition
+source. It reads the catalog through the recipe title, so the zero-coverage
+case does not depend on a hidden nutrition widget. Adapt those two places when
+the nutrition screen lands, then copy the fixture
 to `test/features/recipes/recipe_nutrition_display_test.dart` and run it with
 `flutter test`.
 

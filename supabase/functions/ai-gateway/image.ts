@@ -1,5 +1,6 @@
 // TRELLO-130: zadatak `recipe_image`. Aplikacija šalje samo id recepta i
 // opis jela; adresa provajdera, model, stil i ključevi su ovde.
+import { decodeBase64 } from "./base64.ts";
 import { boundedJson, record } from "./input.ts";
 import type { Env } from "./providers.ts";
 
@@ -150,7 +151,7 @@ export async function generateImage(
     if (typeof image !== "string" || !image) {
       return failure(502, "provider_error");
     }
-    const jpeg = Uint8Array.fromBase64(image);
+    const jpeg = decodeBase64(image);
     if (jpeg.byteLength > maxImageBytes || !isJpeg(jpeg)) {
       return failure(502, "provider_error");
     }

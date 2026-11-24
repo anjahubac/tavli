@@ -10,7 +10,9 @@ flutter build linux --debug
 flutter run -d linux
 ```
 
-The bundle is under `build/linux/<arch>/<mode>/bundle/`. Pass account
+The `linux-build` job in `.github/workflows/check.yml` builds the debug bundle
+on Ubuntu 24.04 and uploads it as an artifact for seven days; it does not run
+the app on a device. The bundle is under `build/linux/<arch>/<mode>/bundle/`. Pass account
 configuration with `--dart-define-from-file` as described in `AGENTS.md`.
 
 ## Email confirmation links (`tavli://`)
