@@ -276,7 +276,9 @@ class Uploader {
           if (server != null) {
             final rawIngredients = server['ingredients'];
             if (rawIngredients is! List) {
-              throw const TransientSyncError('recipe_read');
+              // Retrying cannot repair server data, and a transient error
+              // would hold up every later outbox entry: park this entry only.
+              throw const PermanentSyncError('recipe_ingredients_invalid');
             }
             try {
               final rawLocal = payload['ingredients'];
@@ -299,8 +301,10 @@ class Uploader {
               );
             } on FormatException {
               // Never send a recipe when its server ingredient state cannot be
-              // safely inspected for links to preserve.
-              throw const TransientSyncError('recipe_read');
+              // safely inspected for links to preserve. Unreadable data does
+              // not heal by retrying, so reject this entry instead of
+              // blocking the outbox; the server row stays as it is.
+              throw const PermanentSyncError('recipe_ingredients_invalid');
             }
           }
         }

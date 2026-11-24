@@ -117,12 +117,45 @@ which contradicted D1-009.
 - A recipe-only confirmation dropped that way needs the person to confirm it
   again.
 
+## Operating the switch (review of #168)
+
+These points answer the #168 review. They are proposals until the decision
+owners below record them.
+
+- **Who runs the backfill.** Nothing in `lib/` calls `backfillCatalogLinks`
+  yet, so the shipped code stays dormant. Proposal (Dev 1): the build that
+  opens the switch also runs the backfill once per account at startup, after
+  the first successful sync. A second trigger is not needed because the
+  backfill is idempotent.
+- **A compile-time switch and the "all devices" condition.** `recipeLinkRollout`
+  is a `const`, so opening it needs a new build. That fits the floor: the floor
+  is the build that already knows the link fields (#100), and the build that
+  flips the switch is a later build. A device still on the floor build keeps
+  the switch off and does not drop links, so only devices on the flip build
+  write them. The switch may be flipped only after the outboxes written by
+  builds older than the floor are drained (step 3).
+- **Unreadable server ingredients.** When the server row's `ingredients` cannot
+  be read, the uploader rejects that outbox entry (`recipe_ingredients_invalid`)
+  and goes on with the next ones. A transient error here would retry forever
+  and hold up the whole outbox. The server row is left unchanged, so no link is
+  overwritten. The local edit stays in the app but is not uploaded until the
+  server row is repaired and the recipe is saved again.
+- **Fetch and upsert are not atomic.** A link written by another device between
+  the uploader's read and its upsert can still be overwritten. The window is
+  one request; the link returns the next time that device saves or the backfill
+  runs. Accepted for the first slice; a server-side merge would remove it.
+- **`updatedAt` and ordering.** Backfill sets `updatedAt` on every recipe it
+  links. Recipe lists are ordered by `createdAt` (`RecipeRepository._all`) and
+  no list in `lib/` orders by `updatedAt`, so one backfill does not reorder the
+  user's recipes. It does make every linked recipe sync again once.
+
 ## Decisions required
 
 - Dev 3: whether a server-side minimum client version is wanted, or the
   agreement in steps 1 to 3 is enough while the team is small.
 - Dev 4: whether the "read the server row before upload" rule is accepted for
   recipe uploads, including the extra read.
+- Dev 3: whether the backfill trigger above (once at startup of the build that opens the switch) is accepted.
 - Dev 1 and Dev 4: agree the build number that becomes the floor (the current version is `1.0.0+1` in every build), and bump it in a separate change.
 
 ## Acceptance for the first code slice
