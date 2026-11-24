@@ -22,7 +22,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          # The Supabase edge runtime is compatible with Deno 2.1. Testing on
+          # the latest 2.x hid that Uint8Array.fromBase64 is missing there.
+          deno-version: 2.1.x
           cache: true
       - run: deno test supabase/functions
 
