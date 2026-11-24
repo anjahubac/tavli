@@ -3,9 +3,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:tavli/domain/cookbook.dart';
 import 'package:tavli/features/cookbooks/cookbook_providers.dart';
 import 'package:tavli/features/recipes/recipe_providers.dart';
+import 'package:tavli_ui/tavli_ui.dart';
 
 import '../../helpers/fake_cookbooks.dart';
 import '../../helpers/test_app.dart';
+
+final closePanel = find.byWidgetPredicate(
+  (w) => w is TavliIconButton && w.semanticLabel == 'Zatvori panel',
+);
 
 void main() {
   testTavli('Početna → kalendar → odgovor iz dva izvora', (tester) async {
@@ -28,9 +33,7 @@ void main() {
     await tester.ensureVisible(find.text('Post i praznici'));
     await tester.tap(find.text('Post i praznici'));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(ActionChip, 'Kada počinje Božićni post?'),
-    );
+    await tester.tap(find.text('Kada počinje Božićni post?'));
     await tester.pumpAndSettle();
     expect(find.textContaining('28. novembra 2026.'), findsOneWidget);
     expect(find.text('Izvor: Crkveni kalendar SPC'), findsOneWidget);
@@ -53,10 +56,55 @@ void main() {
     await pumpTavli(tester, location: '/home', size: const Size(1200, 760));
     await tester.tap(find.text('Post i praznici'));
     await tester.pumpAndSettle();
-    expect(find.byType(CloseButton), findsOneWidget);
-    await tester.tap(find.byType(CloseButton));
+    final close = closePanel;
+    expect(close, findsOneWidget);
+    // Panel se odvaja od Početne levom ivicom i senkom (dizajn MacPostPanel).
+    final edge = find.ancestor(
+      of: closePanel,
+      matching: find.byWidgetPredicate(
+        (w) =>
+            w is DecoratedBox &&
+            w.decoration is BoxDecoration &&
+            ((w.decoration as BoxDecoration).border as Border?)?.left.width ==
+                1 &&
+            (w.decoration as BoxDecoration).boxShadow?.single.offset ==
+                const Offset(-8, 0),
+      ),
+    );
+    expect(edge, findsOneWidget);
+    // Kanvas MacPostPanel: širina 400, naslov levo, X desno.
+    final panel = tester.getRect(edge);
+    expect(panel.width, 400);
+    expect(panel.right, 1200);
+    expect(
+      tester.getCenter(close).dx,
+      greaterThan(tester.getCenter(find.text('Post i praznici').last).dx),
+    );
+    await tester.tap(close);
     await tester.pumpAndSettle();
-    expect(find.byType(CloseButton), findsNothing);
+    expect(closePanel, findsNothing);
     expect(find.text('Post i praznici'), findsOneWidget);
   });
+
+  for (final (name, size) in const [
+    ('panel', Size(1200, 760)),
+    ('telefon', Size(390, 844)),
+  ]) {
+    testTavli('$name staje sa dvostrukim tekstom', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpTavli(tester, location: '/home', size: size);
+      final card = find.text('Post i praznici');
+      await tester.ensureVisible(card);
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final chip = find.text('Da li je sutra posno?');
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('ODGOVOR'), findsOneWidget);
+    });
+  }
 }
