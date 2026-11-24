@@ -433,4 +433,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testTavli('prazna Početna na 320×640: dugme nije uz donju navigaciju', (
+    tester,
+  ) async {
+    // Pravi font: test font je mnogo širi, pa bi tekst bio viši nego u
+    // aplikaciji.
+    await tester.runAsync(loadTavliFont);
+    await pumpTavli(
+      tester,
+      size: const Size(320, 640),
+      location: homeLocation,
+      overrides: [clockProvider.overrideWithValue(() => now)],
+    );
+    final gap =
+        tester.getRect(find.byType(TavliNavigation)).top -
+        tester.getRect(button('Napravi plan')).bottom;
+    expect(gap, greaterThanOrEqualTo(TavliSpacing.large));
+    expect(tester.takeException(), isNull);
+  });
 }

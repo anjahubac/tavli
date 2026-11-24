@@ -70,6 +70,33 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final (name, size, top, bottom) in const [
+    ('računar', Size(1200, 760), 0.0, 0.0),
+    ('telefon', Size(390, 844), 47.0, 34.0),
+  ]) {
+    testTavli('prazni tabovi, $name: crtež je svuda na istoj visini', (
+      tester,
+    ) async {
+      tester.view.padding = FakeViewPadding(top: top, bottom: bottom);
+      await tester.runAsync(loadTavliFont);
+      await pumpTavli(tester, size: size, location: '/home');
+      final tops = <String, double>{};
+      for (final label in ['Početna', 'Plan', 'Nabavka', 'Recepti', 'Ostava']) {
+        final tab = find.descendant(
+          of: find.byType(TavliNavigation),
+          matching: find.text(label),
+        );
+        await tester.tap(tab);
+        // Podaci taba stižu posle nekoliko kadrova.
+        for (var i = 0; i < 12; i++) {
+          await tester.pump(const Duration(milliseconds: 250));
+        }
+        tops[label] = tester.getTopLeft(find.byType(TavliEmptyState)).dy;
+      }
+      expect(tops.values.toSet(), hasLength(1), reason: '$tops');
+    });
+  }
+
   testTavli('širok ekran (macOS): bočni meni', (tester) async {
     await pumpTavli(tester, size: wide);
 
