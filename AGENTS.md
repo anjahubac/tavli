@@ -114,6 +114,8 @@ dart run build_runner build --delete-conflicting-outputs   # after drift table c
 flutter analyze                                             # must be clean
 flutter test                                                # must be green
 flutter build macos --debug                                 # smoke build
+flutter build web --wasm --release                          # web/PWA build (spec 036)
+flutter test --platform chrome test/data/indexed_db_recipe_photo_store_test.dart   # web-only test
 flutter run -d macos
 flutter run -d macos --dart-define-from-file=secrets.dev.json   # tavli-dev backend (see secrets.example.json)
 flutter run -d macos --dart-define-from-file=secrets.json       # local stack (`supabase start`) or your own config

@@ -1,13 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../account/auth_controller.dart';
 import '../../ai/recipe_semantic_search.dart';
 import '../../data/photo_resize.dart';
 import '../../data/recipe_photo_store.dart';
+import '../../data/recipe_photo_store_platform.dart';
 import '../../data/recipe_rating_repository.dart';
 import '../../data/recipe_repository.dart';
 import '../../domain/recipe.dart';
@@ -20,7 +18,7 @@ import 'photo_picker.dart';
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final recipePhotoStoreProvider = Provider<RecipePhotoStore>(
-  (ref) => FileRecipePhotoStore(getApplicationDocumentsDirectory),
+  (ref) => createRecipePhotoStore(),
 );
 
 /// Recepti prijavljenog naloga. Bez naloga (ne bi trebalo da se desi iza
@@ -90,11 +88,6 @@ final recipeRatingSummariesProvider =
     StreamProvider.autoDispose<Map<String, RecipeRatingSummary>>(
       (ref) =>
           ref.watch(recipeRatingRepositoryProvider).watchHouseholdSummaries(),
-    );
-
-final recipePhotoFileProvider = FutureProvider.autoDispose
-    .family<File?, String>(
-      (ref, path) => ref.watch(recipePhotoStoreProvider).file(path),
     );
 
 /// Naziv i filteri za listu recepata; ostaju i kad se prozor raširi.

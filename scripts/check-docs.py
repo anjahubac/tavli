@@ -189,7 +189,7 @@ def check(root):
         errors.append(f"Cannot validate task register: {exc}")
     errors.extend(sibling_checkout_errors(root))
     constitution = (root / ".specify/memory/constitution.md").read_text()
-    if "**Version**: 3.2.0" not in constitution or "### X." not in constitution:
+    if "**Version**: 3.3.0" not in constitution or "### X." not in constitution:
         errors.append("Update the checker alongside a deliberate constitution version change")
     tasks_template = (root / ".specify/templates/tasks-template.md").read_text()
     if "mandatory" not in tasks_template or "test-first" not in tasks_template:

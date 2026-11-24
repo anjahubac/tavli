@@ -5,6 +5,7 @@ import {
   tasteFoodIds,
 } from "./planning.ts";
 import type { FoodRow, RecipeRow } from "./plan_eligibility.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const env = (name: string) => Deno.env.get(name);
 const url = env("SUPABASE_URL");
@@ -54,7 +55,7 @@ const rows = (value: unknown) =>
     )
     : [];
 
-Deno.serve(planningInputs({
+Deno.serve(withCors(planningInputs({
   async authenticate(token) {
     const result = await platform("/auth/v1/user", token);
     if (result.status === 401 || result.status === 403) {
@@ -149,4 +150,4 @@ Deno.serve(planningInputs({
   },
   // Plan čita ukuse i bezbednost pre svakog rasporeda i na kraju.
   allow: minuteLimiter(60),
-}));
+})));

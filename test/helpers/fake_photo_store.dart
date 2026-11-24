@@ -15,7 +15,6 @@ class FakePhotoStore implements RecipePhotoStore {
     return path;
   }
 
-  @override
   Future<File?> file(String relativePath) async => null;
 
   @override

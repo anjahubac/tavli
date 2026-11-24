@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -7,6 +6,7 @@ import 'package:supabase/supabase.dart';
 
 import '../domain/cookbook.dart';
 import '../domain/ids.dart';
+import 'socket_exception.dart';
 
 /// Zašto rad sa knjigama nije uspeo. Poruke za prikaz su u ekranu.
 sealed class CookbookFailure implements Exception {

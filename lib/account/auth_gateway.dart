@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart' as sb;
 
+import '../data/socket_exception.dart';
 import '../domain/account.dart';
 import 'supabase_client.dart';
 
@@ -103,6 +104,28 @@ const authEmailRedirectUrl = String.fromEnvironment(
   'AUTH_CONFIRM_PAGE_URL',
   defaultValue: authCallbackUrl,
 );
+
+/// Web (spec 036): adresa web aplikacije na koju vodi link iz mejla
+/// (`WEB_AUTH_REDIRECT_URL` u secrets.json; mora biti među Redirect URLs).
+/// Bez nje i na webu važi [authEmailRedirectUrl]; kod iz mejla radi u oba slučaja.
+const webAuthRedirectUrl = String.fromEnvironment('WEB_AUTH_REDIRECT_URL');
+
+/// Adresa za `emailRedirectTo`: na webu web adresa ako je zadata, inače [authEmailRedirectUrl].
+String get emailRedirectTarget => kIsWeb && webAuthRedirectUrl.isNotEmpty
+    ? webAuthRedirectUrl
+    : authEmailRedirectUrl;
+
+/// Web: kad je stranica otvorena iz mejla (`?code=` ili `?error=`), vraća isti
+/// povratak kao `tavli://auth-callback` da ga obradi postojeći tok; inače null.
+Uri? webAuthCallbackFrom(Uri pageUri) {
+  final q = pageUri.queryParameters;
+  if (!q.containsKey('code') &&
+      !q.containsKey('error') &&
+      !q.containsKey('error_code')) {
+    return null;
+  }
+  return Uri(scheme: 'tavli', host: 'auth-callback', queryParameters: q);
+}
 
 /// Da li je [uri] povratak iz mejla za potvrdu.
 bool isAuthCallback(Uri uri) =>
@@ -210,7 +233,7 @@ class SupabaseAuthGateway implements AuthGateway {
         email: e,
         shouldCreateUser: false,
         // Nepotvrđenoj adresi server šalje mejl za potvrdu, sa linkom.
-        emailRedirectTo: authEmailRedirectUrl,
+        emailRedirectTo: emailRedirectTarget,
       ),
     );
     _sentAt[e] = _clock();
@@ -225,7 +248,7 @@ class SupabaseAuthGateway implements AuthGateway {
         // Prijava je samo kodom ili linkom; lozinku server traži za nalog,
         // a ovu niko ne zna niti čuva.
         password: _unusedPassword(),
-        emailRedirectTo: authEmailRedirectUrl,
+        emailRedirectTo: emailRedirectTarget,
       ),
     );
     final session = res.session;
@@ -246,7 +269,7 @@ class SupabaseAuthGateway implements AuthGateway {
       () => _auth.resend(
         type: sb.OtpType.signup,
         email: e,
-        emailRedirectTo: authEmailRedirectUrl,
+        emailRedirectTo: emailRedirectTarget,
       ),
     );
     _sentAt[e] = _clock();

@@ -1,13 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:win32/win32.dart' show WindowsException;
 
 import 'ai_models.dart';
+import 'secret_storage_errors.dart';
 
 /// Počeci ključeva servisa koje Tavli ne podržava, a liče na podržane.
 const _foreignPrefixes = ['sk-ant-'];
@@ -134,21 +133,19 @@ class KeychainSecretStorage implements SecretStorage {
   Future<void> delete(String key) => guard(() => _storage.delete(key: key));
 
   /// Sistemske greške pretvara u [SecretStorageException]. Windows
-  /// implementacija (FFI, bez kanala) baca [WindowsException] i
-  /// [FileSystemException] umesto [PlatformException]. Poruke (putanje)
-  /// se ne prenose, samo kod.
+  /// implementacija (FFI, bez kanala) baca WindowsException i
+  /// FileSystemException umesto [PlatformException] (vidi
+  /// `secret_storage_errors_io.dart`). Poruke (putanje) se ne prenose, samo kod.
   @visibleForTesting
   static Future<T> guard<T>(Future<T> Function() action) async {
     try {
       return await action();
     } on PlatformException catch (e) {
       throw SecretStorageException(e.code);
-    } on WindowsException catch (e) {
-      throw SecretStorageException(
-        'windows:0x${(e.hr & 0xFFFFFFFF).toRadixString(16)}',
-      );
-    } on FileSystemException catch (e) {
-      throw SecretStorageException('fs:${e.osError?.errorCode ?? 'unknown'}');
+    } catch (e) {
+      final code = nativeSecretStorageErrorCode(e);
+      if (code == null) rethrow;
+      throw SecretStorageException(code);
     }
   }
 }
@@ -280,6 +277,25 @@ class SecureKeyStore implements KeyStore {
 
   Future<void> _write(List<StoredKey> keys) =>
       _storage.write(_listKey, jsonEncode([for (final k in keys) k.toJson()]));
+}
+
+/// Web: sopstveni ključevi se ne čuvaju u pregledaču (spec 036, D2). Lista je
+/// uvek prazna, a pristup ide samo preko servera.
+class NoOwnKeyStore implements KeyStore {
+  const NoOwnKeyStore();
+
+  @override
+  Future<List<StoredKey>> list() async => const [];
+
+  @override
+  Future<StoredKey> add(AIProvider provider, String value) =>
+      throw UnsupportedError('Sopstveni ključevi ne rade u pregledaču.');
+
+  @override
+  Future<void> remove(String id) async {}
+
+  @override
+  Future<void> clear() async {}
 }
 
 /// Za testove. Početni ključevi dobijaju id = naziv servisa.

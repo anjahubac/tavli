@@ -70,7 +70,8 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       refresh: _authChanges,
       menuPopups: _menuPopups,
     );
-    _observesMacosWindow = defaultTargetPlatform == TargetPlatform.macOS;
+    _observesMacosWindow =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
     if (_observesMacosWindow) {
       _macosWindow.setMethodCallHandler((call) async {
         if (call.arguments case final bool fullScreen
@@ -81,7 +82,8 @@ class _TavliAppState extends ConsumerState<TavliApp> {
       });
       unawaited(_readMacosFullScreen());
     }
-    _observesWindowsWindow = defaultTargetPlatform == TargetPlatform.windows;
+    _observesWindowsWindow =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
     if (_observesWindowsWindow) {
       _windowsWindow.setMethodCallHandler((call) async {
         if (call.arguments case final bool maximized
