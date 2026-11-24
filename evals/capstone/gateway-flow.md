@@ -92,6 +92,20 @@ that cannot be read.
 | Plan | **Dodaj u plan**: Tuesday 24 November, Ručak, 4 portions → "Dodato u plan: utorak, ručak. Nabavka je osvežena." The day view shows "Ručak — Palačinke" |
 | Shopping list | **Nabavka → Po planu**: jaje 3 kom, mleko 750 ml, brašno 500 g, so "Proveri količinu", ulje 2 kašike. After the same recipe was also planned for Tuesday's Večera: jaje 6 kom, mleko 1,5 l, brašno 1 kg |
 
+### Gateway log for the run
+
+The owner pasted the output of `supabase functions serve` for the same time
+window (UTC, an hour behind the screens' clock). It has three photo requests,
+at 15:17, 15:18 and 15:19, matching the readable, one-unreadable-line and
+blurred cards. In all three the first model in the chain,
+`gemini/gemini-flash-latest`, answered status 502 and the call went on to
+`groq/qwen/qwen3.8-27b`, which answered status 200. The log lines carry the
+model and status only; they do not show the answer, so that the blurred card
+got "Na slici nije pronađen recept." from a 200 answer is what the screen
+showed, not something the log proves. The same log ends with a wall-clock
+warning for an idle isolate at 15:20, after the last request; it was not
+investigated.
+
 ### What GW-05 does not show
 
 - A total of **mixed units** such as 200 g + 0,5 kg = 700 g. The manual field
@@ -104,8 +118,7 @@ that cannot be read.
   for a quantity-less ingredient of the saved recipe.
 - AI plan generation (**Predloži plan**), recipe by dish name, a second
   household member, and any platform other than the iOS Simulator.
-- Which provider or model answered the photo requests: the photo review does
-  not show it. One pass per card, so this is no measured rate.
+- A measured rate: one pass per card.
 - The hosted backend. The run says nothing about hosted configuration.
 
 The screenshots (26) and no recording are kept outside the repository. No link
