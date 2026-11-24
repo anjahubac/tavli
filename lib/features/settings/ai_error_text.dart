@@ -1,6 +1,7 @@
 import '../../ai/ai_errors.dart';
 import '../../ai/pantry_ai.dart';
 import '../../ai/recipe_ai.dart';
+import '../../domain/plan_safety.dart';
 import '../../domain/planning_tastes.dart';
 import '../../domain/recipe_format.dart';
 
@@ -33,6 +34,9 @@ String aiErrorText(Object error) => switch (error) {
   NotARecipeException() => 'Na slici nije pronađen recept.',
   PlanningTastesDenied() =>
     'Ukusi domaćinstva nisu mogli da se provere. Pokušaj ponovo.',
+  PlanSafetyUnavailable() =>
+    'Ograničenja domaćinstva trenutno ne mogu da se provere, pa plan nije '
+        'napravljen. Pokušaj ponovo.',
   NoFoodOnPhotoException() => 'Na slici nisu prepoznate namirnice.',
   _ => 'Nešto nije u redu: $error',
 };

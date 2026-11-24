@@ -80,6 +80,14 @@ The AI response is untrusted. After parsing and before display or storage the pl
 - **Post-check.** After parsing, the server re-checks every plan entry (including single-meal replacement) against the union and rejects violations. The response and error say only that a plan could not be produced within the household's restrictions: no allergen, no person.
 - **Accepted residual risk.** A member who repeatedly requests plans for another member could infer allergens from what is excluded. The household is a trusted group (decision above); the endpoint is authenticated, membership-checked and rate limited, and no extra anti-inference measure is required.
 
+**Implementation (2026-11-24, TRELLO-43, pending review).** The
+`planning-inputs` function checks recipe safety for the planner; see the
+[019 allergen-safe plans contract](../../019-meal-selection-rules/contracts/plan-allergen-safety-contract.md).
+Proposed amendment, which needs the contract owner's approval: the closed
+output and the reviewed-mapping requirement apply when the union is
+non-empty. An empty union keeps today's planning, including new AI dishes.
+That contract also records the known limits of the client-orchestrated slice.
+
 ### Guards that keep allergens away from the AI
 
 1. **Type boundary.** The AI prompt builder accepts only `AiPlanningContext`, an allowlisted type with no allergen field. Participant allergen access and the union stay server-only. The app has a separate owner-settings repository and the shared code vocabulary. The `ai/` layer and prompt builder cannot import either settings type.

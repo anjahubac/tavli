@@ -203,6 +203,14 @@ class PlanPreviewScreen extends ConsumerWidget {
               'Ukusi članova trenutno nisu dostupni, pa ovaj predlog ne '
               'uzima u obzir šta ko voli.',
         ),
+      if (draft.householdRestricted &&
+          draft.missingSlots.isNotEmpty &&
+          phase == GenerationPhase.ready)
+        const TavliNotice(
+          message:
+              'Za neke obroke nema recepta koji odgovara ograničenjima '
+              'domaćinstva.',
+        ),
       if (phase == GenerationPhase.cancelled)
         TavliNotice(
           message:

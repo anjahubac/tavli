@@ -6,7 +6,20 @@
 // za planiranje, i za sopstvene podatke, jer rezultat ide AI-ju. Odgovor ima
 // šest nizova ukusa i broj članova po omiljenom receptu (TRELLO-44): bez
 // članova, imena i alergena.
+//
+// Isti endpoint uz `recipeIds` proverava bezbednost recepata za plan
+// (spec 019 FR-104/105, ugovor 008 "Allergen protection", TRELLO-43): server
+// čita uniju alergena svih članova i kaže samo koji od datih recepata smeju
+// u plan. Alergeni i članovi nikad ne idu u odgovor.
 // Ništa se ne kešira i ne loguje.
+
+import {
+  foodIdsToRead,
+  type FoodRow,
+  isRecipeSafe,
+  parseUnion,
+  type RecipeRow,
+} from "./plan_eligibility.ts";
 
 export const tasteKeys = [
   "likedFoodIds",
@@ -39,13 +52,31 @@ export interface PlanningDependencies {
     string[]
   >;
   advisory(request: AdvisoryRequest): Promise<unknown>;
+  /** Unija alergena [participants] (RPC `planning_allergen_codes`). */
+  allergenUnion(request: Omit<AdvisoryRequest, "visibleFoodIds">): Promise<
+    unknown
+  >;
+  /** Recepti [household] sa datim id-jevima (ostali se ne vraćaju). */
+  recipes(household: string, ids: string[]): Promise<RecipeRow[]>;
+  /** Namirnice sa datim id-jevima, sa pregledom alergena. */
+  foods(ids: string[]): Promise<FoodRow[]>;
   /** Ograničenje zahteva po korisniku; false znači 429. */
   allow(uid: string): boolean;
 }
 
-const maxBodyBytes = 1024;
+const maxBodyBytes = 80_000;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const maxItems = 500;
+
+/** Najviše recepata u jednoj proveri bezbednosti. */
+export const maxRecipeIds = 1000;
+const recipeId = /^[A-Za-z0-9_-]{1,64}$/;
+
+export interface PlanningRequest {
+  household: string;
+  /** Recepti za proveru bezbednosti; bez njih zahtev traži ukuse. */
+  recipeIds?: string[];
+}
 
 const headers = {
   "Content-Type": "application/json",
@@ -61,8 +92,15 @@ function respond(status: number, body: unknown, extra?: HeadersInit) {
 
 const failure = (status: number, error: string) => respond(status, { error });
 
-/** Čita `{"householdId": uuid}`; sve ostalo je nevažeće. */
-export async function parseRequest(request: Request): Promise<string | null> {
+/**
+ * Čita `{"householdId": uuid}` (ukusi) ili `{"householdId": uuid,
+ * "recipeIds": [...]}` (bezbednost); sve ostalo je nevažeće. Id recepta
+ * koji nije u dozvoljenom obliku se izostavlja: nije poznat, pa nije ni
+ * bezbedan.
+ */
+export async function parseRequest(
+  request: Request,
+): Promise<PlanningRequest | null> {
   if (Number(request.headers.get("Content-Length")) > maxBodyBytes) return null;
   const text = await request.text();
   if (new TextEncoder().encode(text).length > maxBodyBytes) return null;
@@ -76,10 +114,50 @@ export async function parseRequest(request: Request): Promise<string | null> {
     return null;
   }
   const keys = Object.keys(body);
-  const id = (body as Record<string, unknown>).householdId;
-  return keys.length === 1 && typeof id === "string" && uuid.test(id)
-    ? id
-    : null;
+  const { householdId: id, recipeIds } = body as Record<string, unknown>;
+  if (typeof id !== "string" || !uuid.test(id)) return null;
+  if (keys.length === 1) return { household: id };
+  if (
+    keys.length !== 2 || !Array.isArray(recipeIds) ||
+    recipeIds.length > maxRecipeIds ||
+    !recipeIds.every((r) => typeof r === "string")
+  ) {
+    return null;
+  }
+  return {
+    household: id,
+    recipeIds: [...new Set(recipeIds as string[])].filter((r) =>
+      recipeId.test(r)
+    ).sort(),
+  };
+}
+
+/**
+ * Bezbednost recepata za plan. Bez alergena u domaćinstvu plan je kao
+ * ranije (`restricted: false`). Inače samo recepti čiji su svi sastojci
+ * povezani sa pregledanim namirnicama bez alergena iz unije.
+ */
+export async function planSafety(
+  deps: PlanningDependencies,
+  request: Omit<AdvisoryRequest, "visibleFoodIds">,
+  recipeIds: string[],
+): Promise<{ restricted: boolean; safeRecipeIds?: string[] }> {
+  const union = parseUnion(await deps.allergenUnion(request));
+  if (union.size === 0) return { restricted: false };
+  const recipes = recipeIds.length === 0
+    ? []
+    : await deps.recipes(request.household, recipeIds);
+  const foodIds = foodIdsToRead(recipes);
+  const foods = new Map(
+    (foodIds.length === 0 ? [] : await deps.foods(foodIds)).map((
+      f,
+    ) => [f.id, f]),
+  );
+  const wanted = new Set(recipeIds);
+  const safe = recipes
+    .filter((r) => wanted.has(r.id) && isRecipeSafe(r, foods, union))
+    .map((r) => r.id);
+  return { restricted: true, safeRecipeIds: [...new Set(safe)].sort() };
 }
 
 /** Šest nizova kratkih tekstova i omiljeni (id recepta → broj članova). */
@@ -138,8 +216,9 @@ export function planningInputs(deps: PlanningDependencies) {
       if (!deps.allow(uid)) {
         return failure(429, "rate_limited");
       }
-      const expected = await parseRequest(request);
-      if (!expected) return failure(400, "bad_request");
+      const parsed = await parseRequest(request);
+      if (!parsed) return failure(400, "bad_request");
+      const expected = parsed.household;
       // Domaćinstvo se promenilo usred zahteva: ukusi novog ne idu u plan
       // starog. Aplikacija tada staje i ne pravi plan sa tuđim podacima.
       const household = await deps.householdOf(uid);
@@ -147,6 +226,16 @@ export function planningInputs(deps: PlanningDependencies) {
       const participants = await deps.membersOf(household);
       if (!participants.includes(uid)) {
         return failure(409, "household_changed");
+      }
+      if (parsed.recipeIds) {
+        return respond(
+          200,
+          await planSafety(
+            deps,
+            { actor: uid, household, participants },
+            parsed.recipeIds,
+          ),
+        );
       }
       const visibleFoodIds = await deps.visibleTasteFoods(
         household,

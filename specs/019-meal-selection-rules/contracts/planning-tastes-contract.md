@@ -26,14 +26,14 @@ Recorded for team confirmation in the PR.
 
 | | |
 | --- | --- |
-| Request | `{"householdId": "<uuid>"}`. The household the app is using now. Any other field, a non-UUID or a body over 1 KiB is `400 bad_request`. |
+| Request | `{"householdId": "<uuid>"}`. The household the app is using now. Any other field or a non-UUID is `400 bad_request`. Adding `recipeIds` turns the request into the safety check in the [allergen-safe plans contract](plan-allergen-safety-contract.md) (body limit 80 kB). |
 | Auth | Bearer session. The function resolves the user from `/auth/v1/user`. Missing, invalid or anonymous sessions get `401 unauthorized`. |
 | Household | The server reads the caller's only household (`household_members_one_per_user_idx`). A different or missing household, or a caller who is no longer a member, gets `409 household_changed`. |
 | Participants | All current members of that household, read by the server. The client does not send member IDs in this slice. |
 | Food allowlist | Food IDs taken from the participants' taste profiles. They must exist in `foods`, not be withdrawn, and be shared or belong to this household. The server computes this list. |
 | Consent | Calls `planning_advisory_inputs(..., for_provider => true, ...)`. Only members with `user_planning_sharing.preferences = true` contribute. Because the result goes to an AI provider, this includes the caller's own tastes. |
 | Response `200` | `likedFoodIds`, `dislikedFoodIds`, `likedDishKinds`, `dislikedDishKinds`, `likedCuisineCodes`, `dislikedCuisineCodes`, each an array of strings. Also `favoriteRecipeCounts`: an object of recipe ID → number of participating members (integer 1–100, at most 500 entries, only recipes of this household). Other fields are dropped. There are no member IDs, names, notes or allergens. The response carries `Cache-Control: no-store`. |
-| Limits | 30 requests per user per minute in one function instance (`429 rate_limited`). This guards against app loops; it is not a durable quota (see Open items). |
+| Limits | 60 requests per user per minute in one function instance (`429 rate_limited`), shared with the safety check. This guards against app loops; it is not a durable quota (see Open items). |
 | Errors | `405`, `400`, `401`, `409`, `429`, `500 internal`. Error bodies carry no detail, and nothing is logged. |
 
 ## Client behaviour

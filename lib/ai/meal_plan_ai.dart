@@ -1,6 +1,7 @@
 import '../domain/meal_plan.dart';
 import '../domain/meal_rules.dart';
 import '../domain/plan_calendar.dart';
+import '../domain/plan_safety.dart';
 import '../domain/planning_tastes.dart';
 import '../domain/recipe.dart';
 import '../domain/recipe_labels.dart';
@@ -14,8 +15,29 @@ import 'meal_plan_prompts.dart';
 /// Najviše novih recepata u jednom zahtevu.
 const recipeSummaryBatch = 3;
 
+/// Najviše recepata u jednoj proveri bezbednosti (granica servera).
+const maxSafetyRecipes = 1000;
+
 /// Najviše recepata iz biblioteke koji se nude AI-ju u jednom rasporedu.
+/// Deli se na obroke iz rasporeda (obe užine su jedan obrok), pa svaki
+/// obrok dobija svoj spisak.
 const maxLibraryInPrompt = 60;
+
+/// Da li recept iz biblioteke sme na mesto obroka [type]: oznaka obroka
+/// (kad je ima) odgovara, a težina i vrsta jela ne krše pravila mesta.
+/// Nepoznata oznaka ne isključuje recept.
+bool fitsMeal(Recipe recipe, MealType type) {
+  final meals = recipe.labels.mealSet;
+  if (meals.isNotEmpty && !meals.contains(suitabilityFor(type))) return false;
+  return slotRuleBreaks(
+    type,
+    MealFacts(
+      recipeKey: recipe.id,
+      weight: recipe.labels.weightValue,
+      dishKind: recipe.labels.dishKindValue,
+    ),
+  ).isEmpty;
+}
 
 /// Osoba je prekinula generisanje. Proverava se između grupa, a router je
 /// proverava i pre svakog poziva modela (i pre popravke odgovora).
@@ -48,11 +70,17 @@ class PlanGenerationCancelled implements Exception {
 /// sa namirnicom ili vrstom jela koju neko ne voli nude se AI-ju poslednji
 /// (savet, ne zabrana). Kad ukusi nisu dostupni, plan se pravi bez njih i
 /// nacrt to beleži; kad ih server odbije (drugo domaćinstvo), plan staje.
+///
+/// Bezbednost (`safety`, TRELLO-43) proverava server pre svakog rasporeda i
+/// još jednom pre nego što se nacrt vrati. Kad neko u domaćinstvu ima
+/// alergiju, AI bira samo bezbedne sačuvane recepte i ne izmišlja jela;
+/// mesto bez takvog recepta ostaje prazno. Bez provere nema ni plana.
 class MealPlanAI {
-  MealPlanAI(this._router, {this._tastes});
+  MealPlanAI(this._router, {this._tastes, this._safety});
 
   final AIRouter _router;
   final PlanningTastesSource? _tastes;
+  final PlanSafetySource? _safety;
 
   /// Vraća pun nacrt. Kad grupa ne uspe baca [PlanGenerationFailed], a kad
   /// je [cancel] prekinut [PlanGenerationCancelled]; oba nose gotov deo,
@@ -73,29 +101,43 @@ class MealPlanAI {
         .toList();
     final byId = {for (final r in eligible) r.id: r};
     var tastes = PlanningTastes.none;
+    var safety = const PlanSafety.unrestricted();
 
     // Pre ograničenja broja: omiljeni prvi (više članova, više napred),
     // pa ostali, a recepti koje neko ne voli na kraj, i kad su omiljeni.
     // Unutar grupe redosled biblioteke ostaje.
-    List<Recipe> offeredFor(PlanningTastes t) {
+    List<Recipe> rankedFor(PlanningTastes t) {
       int favorite(Recipe r) => t.dislikes(r) ? 0 : t.favoriteCounts[r.id] ?? 0;
       // Stabilno: kod istog broja članova ostaje redosled biblioteke.
       final liked =
           [
             for (final (i, r) in eligible.indexed)
-              if (favorite(r) > 0) (i, r),
+              if (favorite(r) > 0 && safety.allows(r.id)) (i, r),
           ]..sort((a, b) {
             final byCount = favorite(b.$2).compareTo(favorite(a.$2));
             return byCount != 0 ? byCount : a.$1.compareTo(b.$1);
           });
       return [
         for (final (_, r) in liked) r,
-        ...eligible.where((r) => favorite(r) == 0 && !t.dislikes(r)),
-        ...eligible.where(t.dislikes),
-      ].take(maxLibraryInPrompt).toList();
+        ...eligible.where(
+          (r) => favorite(r) == 0 && !t.dislikes(r) && safety.allows(r.id),
+        ),
+        ...eligible.where((r) => t.dislikes(r) && safety.allows(r.id)),
+      ];
     }
 
-    var offered = offeredFor(tastes);
+    var ranked = rankedFor(tastes);
+
+    // Spisak po obroku: prvo se izbace recepti koji ne odgovaraju obroku,
+    // pa tek onda ograničenje broja, da 60 nepogodnih ne sakrije pogodan.
+    Map<MealType, List<Recipe>> candidatesFor(Iterable<MealType> types) {
+      final groups = {for (final t in types) suitabilityFor(t)};
+      final perGroup = groups.isEmpty ? 0 : maxLibraryInPrompt ~/ groups.length;
+      return {
+        for (final t in types)
+          t: ranked.where((r) => fitsMeal(r, t)).take(perGroup).toList(),
+      };
+    }
 
     Future<T> step<T>(Future<T> Function() run) async {
       if (cancel?.isCancelled ?? false) throw PlanGenerationCancelled(draft);
@@ -119,7 +161,24 @@ class MealPlanAI {
         tastes = PlanningTastes.none;
         draft = draft.copyWith(withoutTastes: true);
       }
-      offered = offeredFor(tastes);
+      ranked = rankedFor(tastes);
+    }
+
+    // Sveža provera bezbednosti; bez nje (mreža, server) plan staje.
+    Future<PlanSafety> checkSafety(Set<String> ids) async {
+      final source = _safety;
+      if (source == null) return const PlanSafety.unrestricted();
+      return step(() => source.check(ids));
+    }
+
+    Future<void> refreshSafety() async {
+      safety = await checkSafety({
+        for (final r in eligible.take(maxSafetyRecipes)) r.id,
+      });
+      if (safety.restricted) {
+        draft = draft.copyWith(householdRestricted: true);
+      }
+      ranked = rankedFor(tastes);
     }
 
     final requested = request.slots.toSet();
@@ -164,8 +223,18 @@ class MealPlanAI {
       List<String> rejected = const [],
     }) async {
       await refreshTastes();
+      await refreshSafety();
       final planned = {for (final p in draft.proposals.values) p.title};
-      final offeredNow = offered;
+      final candidates = candidatesFor({for (final s in slots) s.type});
+      final offeredIds = {
+        for (final list in candidates.values)
+          for (final r in list) r.id,
+      };
+      // Ceo spisak jednom, po rangu; po obroku samo id-jevi.
+      final offeredNow = [
+        for (final r in ranked)
+          if (offeredIds.contains(r.id)) r,
+      ];
       final result = await step(
         () => _router.run(
           AIRequest(
@@ -189,6 +258,11 @@ class MealPlanAI {
               wishes: request.wishes,
               pantry: request.usePantry ? request.pantryNames : const [],
               tastes: tastes,
+              candidates: {
+                for (final e in candidates.entries)
+                  e.key: [for (final r in e.value) r.id],
+              },
+              allowNew: !safety.restricted,
             ),
             temperature: 0.8,
           ),
@@ -196,6 +270,11 @@ class MealPlanAI {
             json,
             slots: slots,
             library: {for (final r in offeredNow) r.id: r.title},
+            allowed: {
+              for (final e in candidates.entries)
+                e.key: {for (final r in e.value) r.id},
+            },
+            allowNew: !safety.restricted,
           ),
           cancel: cancel,
         ),
@@ -229,10 +308,27 @@ class MealPlanAI {
         proposals: () => draft.proposals,
         put: put,
         retry: (slots, rejected) => outline(slots, rejected: rejected),
-        library: offered,
+        candidates: (type) => candidatesFor([type])[type]!,
         favorites: () => tastes.favoriteCounts.keys.toSet(),
       );
       if (!identical(before, draft.proposals)) onProgress?.call(draft);
+    }
+
+    // Završna provera na serveru, sa svežim podacima: recept izmenjen ili
+    // alergija dodata usred pravljenja plana. Ono što ne prođe ostaje
+    // prazno mesto.
+    if (_safety != null && draft.proposals.isNotEmpty) {
+      final ids = {for (final p in draft.proposals.values) ?p.libraryRecipeId};
+      final last = await checkSafety(ids);
+      if (last.restricted) {
+        final kept = {
+          for (final e in draft.proposals.entries)
+            if (e.value.libraryRecipeId case final id? when last.allows(id))
+              e.key: e.value,
+        };
+        draft = draft.copyWith(proposals: kept, householdRestricted: true);
+        onProgress?.call(draft);
+      }
     }
 
     final missingKeys = draft.missingRecipeKeys;
@@ -281,7 +377,7 @@ class MealPlanAI {
       List<String> rejected,
     )
     retry,
-    required List<Recipe> library,
+    required List<Recipe> Function(MealType type) candidates,
     Set<String> Function()? favorites,
   }) async {
     Map<MealSlot, Set<MealRule>> breaksOf(Map<MealSlot, MealFacts> meals) =>
@@ -309,14 +405,17 @@ class MealPlanAI {
     try {
       final current = proposals();
       put(await retry(bad, [for (final s in bad) current[s]!.title]));
-    } on PlanGenerationFailed {
-      // Novi predlog nije uspeo: ostaje prvi, pa ide rezervni korak.
+    } on PlanGenerationFailed catch (e) {
+      // Odbijen zahtev (drugo domaćinstvo, istekla prijava) zaustavlja plan;
+      // ne nastavlja se sa podacima pročitanim pre odbijanja.
+      if (e.error is PlanningTastesDenied) rethrow;
+      // Inače novi predlog nije uspeo: ostaje prvi, pa ide rezervni korak.
     }
 
     bad = broken();
     for (final slot in bad) {
       final before = breaksOf(facts());
-      for (final r in library) {
+      for (final r in candidates(slot.type)) {
         final weight = r.labels.weightValue;
         if (weight == null) continue;
         final candidate = SlotProposal(
@@ -344,16 +443,22 @@ class MealPlanAI {
 
 /// Čita raspored: tačno jedan predlog za svako od [slots]. Baca
 /// [FormatException] za mesto koje nedostaje, ponavlja se ili nije traženo,
-/// i za id recepta koji nije u [library] (id → naziv).
+/// za id recepta koji nije u [library] (id → naziv) i, kad je [allowed]
+/// dat, za id koji nije na spisku baš tog obroka. Bez [allowNew] (neko u
+/// domaćinstvu ima alergiju) novo jelo se ne prihvata: `recipeId: null`
+/// znači da ništa ne odgovara, pa to mesto ostaje prazno.
 Map<MealSlot, SlotProposal> parseOutline(
   Map<String, dynamic> json, {
   required List<MealSlot> slots,
   required Map<String, String> library,
+  Map<MealType, Set<String>>? allowed,
+  bool allowNew = true,
 }) {
   final meals = json['meals'];
   if (meals is! List) throw const FormatException('Nema rasporeda');
   final wanted = slots.toSet();
   final result = <MealSlot, SlotProposal>{};
+  final empty = <MealSlot>{};
   for (final raw in meals) {
     if (raw is! Map<String, dynamic>) {
       throw const FormatException('Pokvaren obrok');
@@ -365,7 +470,7 @@ Map<MealSlot, SlotProposal> parseOutline(
     if (!wanted.contains(slot)) {
       throw FormatException('Mesto nije traženo', '$slot');
     }
-    if (result.containsKey(slot)) {
+    if (result.containsKey(slot) || empty.contains(slot)) {
       throw FormatException('Mesto se ponavlja', '$slot');
     }
     // Nepoznata ili izostavljena oznaka je null: to jelo se po tom
@@ -376,12 +481,19 @@ Map<MealSlot, SlotProposal> parseOutline(
     if (id != null) {
       final title = id is String ? library[id] : null;
       if (title == null) throw const FormatException('Nepoznat recept');
+      if (allowed != null && !(allowed[type]?.contains(id) ?? false)) {
+        throw FormatException('Recept nije za taj obrok', '$slot');
+      }
       result[slot] = SlotProposal(
         title: title,
         libraryRecipeId: id as String,
         weight: weight,
         dishKind: dishKind,
       );
+      continue;
+    }
+    if (!allowNew) {
+      empty.add(slot);
       continue;
     }
     final title = aiTitle(raw['title']);
@@ -392,7 +504,7 @@ Map<MealSlot, SlotProposal> parseOutline(
       dishKind: dishKind,
     );
   }
-  if (result.length != wanted.length) {
+  if (result.length + empty.length != wanted.length) {
     throw const FormatException('Nedostaju mesta u rasporedu');
   }
   return result;

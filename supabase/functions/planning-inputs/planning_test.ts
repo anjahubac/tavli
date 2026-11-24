@@ -1,5 +1,6 @@
 import {
   type AdvisoryRequest,
+  maxRecipeIds,
   minuteLimiter,
   type PlanningDependencies,
   planningInputs,
@@ -47,6 +48,9 @@ function setup(over: Partial<PlanningDependencies> = {}) {
         extra: "dropped",
       });
     },
+    allergenUnion: () => Promise.resolve([]),
+    recipes: () => Promise.resolve([]),
+    foods: () => Promise.resolve([]),
     allow: () => true,
     ...over,
   });
@@ -194,4 +198,129 @@ Deno.test("taste food ids: only valid uuids from like and dislike lists", () => 
     ]),
     [household, fish].sort(),
   );
+});
+
+// --- Bezbednost recepata za plan (TRELLO-43) ---
+
+const peanut = "44444444-4444-4444-8444-444444444444";
+const salt = "55555555-5555-4555-8555-555555555555";
+const reviewedAt = "2026-11-24T00:00:00Z";
+
+function food(id: string, codes: string[] | null) {
+  return {
+    id,
+    household_id: null,
+    withdrawn_at: null,
+    allergen_codes: codes,
+    allergen_reviewed_at: codes === null ? null : reviewedAt,
+  };
+}
+
+const linked = (name: string, foodId: string) => ({
+  name,
+  quantity: 1,
+  unit: "kom",
+  foodId,
+  matchedKey: name,
+  linkSource: "confirmed",
+});
+
+const libraryRows = [
+  { id: "safe", ingredients: [linked("so", salt)] },
+  {
+    id: "satay",
+    ingredients: [linked("kikiriki", peanut), linked("so", salt)],
+  },
+  { id: "unlinked", ingredients: [{ name: "voda", quantity: 1 }] },
+  { id: "not-asked", ingredients: [linked("so", salt)] },
+];
+
+function safetySetup(union: unknown, over: Partial<PlanningDependencies> = {}) {
+  const reads: string[] = [];
+  const result = setup({
+    allergenUnion: (request) => {
+      reads.push("union:" + request.participants.join(","));
+      return Promise.resolve(union);
+    },
+    recipes: (_household, ids) => {
+      reads.push("recipes:" + ids.join(","));
+      return Promise.resolve(libraryRows);
+    },
+    foods: (ids) => {
+      reads.push("foods:" + ids.join(","));
+      return Promise.resolve([food(salt, []), food(peanut, ["peanuts"])]);
+    },
+    ...over,
+  });
+  return { ...result, reads };
+}
+
+const ask = (recipeIds: unknown) => post({ householdId: household, recipeIds });
+
+Deno.test("without household allergens the plan is unrestricted", async () => {
+  const { handle, reads, advisory } = safetySetup([]);
+  const response = await handle(ask(["safe", "satay"]));
+  equal(response.status, 200);
+  equal(await response.json(), { restricted: false });
+  // Samo unija svih članova; recepti i ukusi se ne čitaju.
+  equal(reads, ["union:user-a,user-b"]);
+  equal(advisory.length, 0);
+});
+
+Deno.test("with allergens only fully known safe recipes pass", async () => {
+  const { handle, reads } = safetySetup(["peanuts", "milk"]);
+  const response = await handle(ask(["unlinked", "satay", "safe", "safe"]));
+  equal(response.status, 200);
+  const text = await response.text();
+  equal(JSON.parse(text), { restricted: true, safeRecipeIds: ["safe"] });
+  // Odgovor ne nosi alergene ni članove.
+  for (const leak of ["peanuts", "milk", "user-a", "user-b"]) {
+    equal(text.includes(leak), false);
+  }
+  equal(reads, [
+    "union:user-a,user-b",
+    "recipes:safe,satay,unlinked",
+    `foods:${[peanut, salt].sort().join(",")}`,
+  ]);
+});
+
+Deno.test("recipe ids in an unexpected form are never safe", async () => {
+  const { handle, reads } = safetySetup(["peanuts"]);
+  const response = await handle(ask(["safe", "bad id", 'x",y', "é"]));
+  equal(await response.json(), { restricted: true, safeRecipeIds: ["safe"] });
+  equal(reads[1], "recipes:safe");
+});
+
+Deno.test("a malformed recipe list is rejected before any read", async () => {
+  const { handle, reads } = safetySetup(["peanuts"]);
+  for (
+    const body of [
+      { householdId: household, recipeIds: "safe" },
+      { householdId: household, recipeIds: [1] },
+      { householdId: household, recipeIds: [], extra: true },
+      {
+        householdId: household,
+        recipeIds: Array.from({ length: maxRecipeIds + 1 }, (_, i) => `r${i}`),
+      },
+    ]
+  ) {
+    equal((await handle(post(body))).status, 400);
+  }
+  equal(reads, []);
+});
+
+Deno.test("an unknown allergen code fails closed", async () => {
+  const { handle } = safetySetup(["peanuts", "unicorn"]);
+  const response = await handle(ask(["safe"]));
+  equal(response.status, 500);
+  equal(await response.json(), { error: "internal" });
+});
+
+Deno.test("a changed household stops the safety check", async () => {
+  const { handle, reads } = safetySetup(["peanuts"]);
+  equal(
+    (await handle(post({ householdId: other, recipeIds: ["safe"] }))).status,
+    409,
+  );
+  equal(reads, []);
 });

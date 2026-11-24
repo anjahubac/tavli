@@ -40,8 +40,14 @@ String planOutlinePrompt({
   String? wishes,
   List<String> pantry = const [],
   PlanningTastes? tastes,
+  Map<MealType, List<String>> candidates = const {},
+  bool allowNew = true,
 }) {
   final libraryIds = {for (final r in library) r.id};
+  final candidatesLine = candidates.isEmpty
+      ? ''
+      : 'For each meal, use only these Library ids: '
+            '${jsonEncode({for (final e in candidates.entries) e.key.name: e.value})}\n';
   final slotsJson = jsonEncode([
     for (final s in slots) {'date': s.date.toString(), 'meal': s.type.name},
   ]);
@@ -87,12 +93,12 @@ String planOutlinePrompt({
 Plan one dish for EVERY slot below, and nothing else: no extra or missing slots.
 The household eats $servings servings per meal.
 ${lines.join('\n')}
-You may reuse the household's own saved recipes by their "id"; never invent ids.
+${allowNew ? 'You may reuse the household\'s own saved recipes by their "id"; never invent ids.' : 'Use ONLY the household\'s saved recipes by their "id"; never invent ids or new dishes.\nIf no listed recipe fits a slot, return that slot with "recipeId": null and "title": "".'}
 Library: $libraryJson
-Slots: $slotsJson
+${candidatesLine}Slots: $slotsJson
 Return:
 {"meals": [{"date": "YYYY-MM-DD", "meal": $_mealValues,
-  "recipeId": string | null, // id from Library, or null for a new dish
+  "recipeId": string | null, // ${allowNew ? 'id from Library, or null for a new dish' : 'id from Library, or null when nothing fits'}
   "title": string,
   "weight": $_weightValues,
   "dishKind": $_dishKindValues}]}''';

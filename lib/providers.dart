@@ -30,6 +30,7 @@ import 'data/planning_tastes_remote.dart';
 import 'data/recipe_image_jobs.dart';
 import 'data/shopping_repository.dart';
 import 'data/taste_profile_repository.dart';
+import 'domain/plan_safety.dart';
 import 'domain/planning_tastes.dart';
 import 'features/planning/planning_providers.dart';
 import 'features/recipes/recipe_image_queue.dart';
@@ -340,10 +341,22 @@ final planningTastesProvider = Provider<PlanningTastesSource?>((ref) {
   );
 });
 
+/// Provera bezbednosti recepata za plan (TRELLO-43); bez Supabase klijenta
+/// nema domaćinstva ni provere.
+final planSafetyProvider = Provider<PlanSafetySource?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  return RemotePlanSafety.supabase(
+    client,
+    householdId: () => ref.read(accountScopeProvider)?.householdId,
+  );
+});
+
 final mealPlanAIProvider = Provider<MealPlanAI>(
   (ref) => MealPlanAI(
     ref.watch(aiRouterProvider),
     tastes: ref.watch(planningTastesProvider),
+    safety: ref.watch(planSafetyProvider),
   ),
 );
 
