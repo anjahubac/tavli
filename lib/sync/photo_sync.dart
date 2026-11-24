@@ -28,6 +28,8 @@ class PhotoSync {
   Future<int> fetchMissing() async {
     final missing = <String>[];
     for (final p in await _referenced()) {
+      // SEC-02: ime iz sinhronizovanog recepta je nepouzdano; preskoči ga.
+      if (!isSafeRecipePhotoPath(p)) continue;
       if (!await _store.exists(p)) missing.add(p);
     }
     var fetched = 0;
