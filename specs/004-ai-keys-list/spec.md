@@ -112,12 +112,12 @@ One list in the app is the only place that says which services exist. Each entry
 
 | Service | Prefixes | Class |
 | --- | --- | --- |
-| Gemini | `AIza` | free |
+| Gemini | `AIza`, `AQ.` | free |
 | Groq | `gsk_` | free |
 | OpenRouter | `sk-or-` | free |
 | OpenAI | `sk-` (checked after `sk-or-`; `sk-ant-` is not OpenAI) | paid |
 
-Every prefix is verified against the service's official documentation before it is added to the list. As of 2026-11-23 only `sk-or-` is stated on an official page; `AIza`, `gsk_` and `sk-` are not stated there. New Gemini keys created in Google AI Studio since 2026-05-28 are a different key type whose reported prefix (`AQ.`) is not in the list yet. A service without a stable prefix (e.g. Mistral) is not recognized until the app has another way to tell; it is not guessed by sending the key to several services. The class is per service, so a paid plan on a service marked `free` is treated as free.
+Every prefix is verified against the service's official documentation before it is added to the list. As of 2026-11-23 only `sk-or-` is stated on an official page; `AIza`, `gsk_` and `sk-` are not stated there. New Gemini keys created in Google AI Studio since 2026-05-28 are a different key type; `AQ.` is their reported prefix, added by owner decision (2026-11-24) without an official page. Some reports say these keys are rejected on the OpenAI-compatible address; the check then shows the key as rejected and it is not saved. A service without a stable prefix (e.g. Mistral) is not recognized until the app has another way to tell; it is not guessed by sending the key to several services. The class is per service, so a paid plan on a service marked `free` is treated as free.
 
 ## Key order
 

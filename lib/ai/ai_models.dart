@@ -7,7 +7,8 @@ enum AIProvider {
   gemini(
     'Gemini',
     'https://generativelanguage.googleapis.com/v1beta/openai/',
-    prefixes: ['AIza'],
+    // `AQ.` imaju noviji ključevi iz Google AI Studio.
+    prefixes: ['AIza', 'AQ.'],
   ),
   groq('Groq', 'https://api.groq.com/openai/v1/', prefixes: ['gsk_']),
   openRouter(

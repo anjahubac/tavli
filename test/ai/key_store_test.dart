@@ -88,6 +88,7 @@ void main() {
 
   test('servis se prepoznaje po početku ključa', () {
     expect(detectProvider('AIzaSyFAKE'), AIProvider.gemini);
+    expect(detectProvider(' AQ.fake-key'), AIProvider.gemini);
     expect(detectProvider('  gsk_fake'), AIProvider.groq);
     expect(detectProvider('sk-or-v1-fake'), AIProvider.openRouter);
     expect(detectProvider('sk-fake'), AIProvider.openAI);
@@ -98,7 +99,14 @@ void main() {
   });
 
   test('nepoznat ili nepodržan ključ nema servis', () {
-    for (final key in ['sk-ant-api03-fake', 'nepoznat', 'sk', '', '   ']) {
+    for (final key in [
+      'sk-ant-api03-fake',
+      'AQfake',
+      'nepoznat',
+      'sk',
+      '',
+      '   ',
+    ]) {
       expect(detectProvider(key), isNull, reason: key);
     }
   });
