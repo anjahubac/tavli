@@ -7931,6 +7931,51 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, FoodRow> {
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _allergenCodesMeta = const VerificationMeta(
+    'allergenCodes',
+  );
+  @override
+  late final GeneratedColumn<String> allergenCodes = GeneratedColumn<String>(
+    'allergen_codes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _allergenSourceMeta = const VerificationMeta(
+    'allergenSource',
+  );
+  @override
+  late final GeneratedColumn<String> allergenSource = GeneratedColumn<String>(
+    'allergen_source',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _allergenSourceRefMeta = const VerificationMeta(
+    'allergenSourceRef',
+  );
+  @override
+  late final GeneratedColumn<String> allergenSourceRef =
+      GeneratedColumn<String>(
+        'allergen_source_ref',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _allergenReviewedAtMeta =
+      const VerificationMeta('allergenReviewedAt');
+  @override
+  late final GeneratedColumn<DateTime> allergenReviewedAt =
+      GeneratedColumn<DateTime>(
+        'allergen_reviewed_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _reviewedAtMeta = const VerificationMeta(
     'reviewedAt',
   );
@@ -7991,6 +8036,10 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, FoodRow> {
     nutritionSource,
     nutritionSourceVersion,
     nutritionSourceRef,
+    allergenCodes,
+    allergenSource,
+    allergenSourceRef,
+    allergenReviewedAt,
     reviewedAt,
     withdrawnAt,
     createdAt,
@@ -8123,6 +8172,42 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, FoodRow> {
         ),
       );
     }
+    if (data.containsKey('allergen_codes')) {
+      context.handle(
+        _allergenCodesMeta,
+        allergenCodes.isAcceptableOrUnknown(
+          data['allergen_codes']!,
+          _allergenCodesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('allergen_source')) {
+      context.handle(
+        _allergenSourceMeta,
+        allergenSource.isAcceptableOrUnknown(
+          data['allergen_source']!,
+          _allergenSourceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('allergen_source_ref')) {
+      context.handle(
+        _allergenSourceRefMeta,
+        allergenSourceRef.isAcceptableOrUnknown(
+          data['allergen_source_ref']!,
+          _allergenSourceRefMeta,
+        ),
+      );
+    }
+    if (data.containsKey('allergen_reviewed_at')) {
+      context.handle(
+        _allergenReviewedAtMeta,
+        allergenReviewedAt.isAcceptableOrUnknown(
+          data['allergen_reviewed_at']!,
+          _allergenReviewedAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('reviewed_at')) {
       context.handle(
         _reviewedAtMeta,
@@ -8219,6 +8304,22 @@ class $FoodsTable extends Foods with TableInfo<$FoodsTable, FoodRow> {
         DriftSqlType.string,
         data['${effectivePrefix}nutrition_source_ref'],
       ),
+      allergenCodes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}allergen_codes'],
+      ),
+      allergenSource: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}allergen_source'],
+      ),
+      allergenSourceRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}allergen_source_ref'],
+      ),
+      allergenReviewedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}allergen_reviewed_at'],
+      ),
       reviewedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}reviewed_at'],
@@ -8261,6 +8362,13 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
   final String? nutritionSource;
   final String? nutritionSourceVersion;
   final String? nutritionSourceRef;
+
+  /// Reviewed EU allergen groups, comma-separated. null = unknown (never
+  /// safe), '' = reviewed with no allergen, 'milk,eggs' = reviewed groups.
+  final String? allergenCodes;
+  final String? allergenSource;
+  final String? allergenSourceRef;
+  final DateTime? allergenReviewedAt;
   final DateTime? reviewedAt;
   final DateTime? withdrawnAt;
   final DateTime createdAt;
@@ -8280,6 +8388,10 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
     this.nutritionSource,
     this.nutritionSourceVersion,
     this.nutritionSourceRef,
+    this.allergenCodes,
+    this.allergenSource,
+    this.allergenSourceRef,
+    this.allergenReviewedAt,
     this.reviewedAt,
     this.withdrawnAt,
     required this.createdAt,
@@ -8321,6 +8433,18 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
     }
     if (!nullToAbsent || nutritionSourceRef != null) {
       map['nutrition_source_ref'] = Variable<String>(nutritionSourceRef);
+    }
+    if (!nullToAbsent || allergenCodes != null) {
+      map['allergen_codes'] = Variable<String>(allergenCodes);
+    }
+    if (!nullToAbsent || allergenSource != null) {
+      map['allergen_source'] = Variable<String>(allergenSource);
+    }
+    if (!nullToAbsent || allergenSourceRef != null) {
+      map['allergen_source_ref'] = Variable<String>(allergenSourceRef);
+    }
+    if (!nullToAbsent || allergenReviewedAt != null) {
+      map['allergen_reviewed_at'] = Variable<DateTime>(allergenReviewedAt);
     }
     if (!nullToAbsent || reviewedAt != null) {
       map['reviewed_at'] = Variable<DateTime>(reviewedAt);
@@ -8367,6 +8491,18 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
       nutritionSourceRef: nutritionSourceRef == null && nullToAbsent
           ? const Value.absent()
           : Value(nutritionSourceRef),
+      allergenCodes: allergenCodes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(allergenCodes),
+      allergenSource: allergenSource == null && nullToAbsent
+          ? const Value.absent()
+          : Value(allergenSource),
+      allergenSourceRef: allergenSourceRef == null && nullToAbsent
+          ? const Value.absent()
+          : Value(allergenSourceRef),
+      allergenReviewedAt: allergenReviewedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(allergenReviewedAt),
       reviewedAt: reviewedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(reviewedAt),
@@ -8406,6 +8542,14 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
       nutritionSourceRef: serializer.fromJson<String?>(
         json['nutritionSourceRef'],
       ),
+      allergenCodes: serializer.fromJson<String?>(json['allergenCodes']),
+      allergenSource: serializer.fromJson<String?>(json['allergenSource']),
+      allergenSourceRef: serializer.fromJson<String?>(
+        json['allergenSourceRef'],
+      ),
+      allergenReviewedAt: serializer.fromJson<DateTime?>(
+        json['allergenReviewedAt'],
+      ),
       reviewedAt: serializer.fromJson<DateTime?>(json['reviewedAt']),
       withdrawnAt: serializer.fromJson<DateTime?>(json['withdrawnAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -8432,6 +8576,10 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
         nutritionSourceVersion,
       ),
       'nutritionSourceRef': serializer.toJson<String?>(nutritionSourceRef),
+      'allergenCodes': serializer.toJson<String?>(allergenCodes),
+      'allergenSource': serializer.toJson<String?>(allergenSource),
+      'allergenSourceRef': serializer.toJson<String?>(allergenSourceRef),
+      'allergenReviewedAt': serializer.toJson<DateTime?>(allergenReviewedAt),
       'reviewedAt': serializer.toJson<DateTime?>(reviewedAt),
       'withdrawnAt': serializer.toJson<DateTime?>(withdrawnAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -8454,6 +8602,10 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
     Value<String?> nutritionSource = const Value.absent(),
     Value<String?> nutritionSourceVersion = const Value.absent(),
     Value<String?> nutritionSourceRef = const Value.absent(),
+    Value<String?> allergenCodes = const Value.absent(),
+    Value<String?> allergenSource = const Value.absent(),
+    Value<String?> allergenSourceRef = const Value.absent(),
+    Value<DateTime?> allergenReviewedAt = const Value.absent(),
     Value<DateTime?> reviewedAt = const Value.absent(),
     Value<DateTime?> withdrawnAt = const Value.absent(),
     DateTime? createdAt,
@@ -8485,6 +8637,18 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
     nutritionSourceRef: nutritionSourceRef.present
         ? nutritionSourceRef.value
         : this.nutritionSourceRef,
+    allergenCodes: allergenCodes.present
+        ? allergenCodes.value
+        : this.allergenCodes,
+    allergenSource: allergenSource.present
+        ? allergenSource.value
+        : this.allergenSource,
+    allergenSourceRef: allergenSourceRef.present
+        ? allergenSourceRef.value
+        : this.allergenSourceRef,
+    allergenReviewedAt: allergenReviewedAt.present
+        ? allergenReviewedAt.value
+        : this.allergenReviewedAt,
     reviewedAt: reviewedAt.present ? reviewedAt.value : this.reviewedAt,
     withdrawnAt: withdrawnAt.present ? withdrawnAt.value : this.withdrawnAt,
     createdAt: createdAt ?? this.createdAt,
@@ -8522,6 +8686,18 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
       nutritionSourceRef: data.nutritionSourceRef.present
           ? data.nutritionSourceRef.value
           : this.nutritionSourceRef,
+      allergenCodes: data.allergenCodes.present
+          ? data.allergenCodes.value
+          : this.allergenCodes,
+      allergenSource: data.allergenSource.present
+          ? data.allergenSource.value
+          : this.allergenSource,
+      allergenSourceRef: data.allergenSourceRef.present
+          ? data.allergenSourceRef.value
+          : this.allergenSourceRef,
+      allergenReviewedAt: data.allergenReviewedAt.present
+          ? data.allergenReviewedAt.value
+          : this.allergenReviewedAt,
       reviewedAt: data.reviewedAt.present
           ? data.reviewedAt.value
           : this.reviewedAt,
@@ -8550,6 +8726,10 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
           ..write('nutritionSource: $nutritionSource, ')
           ..write('nutritionSourceVersion: $nutritionSourceVersion, ')
           ..write('nutritionSourceRef: $nutritionSourceRef, ')
+          ..write('allergenCodes: $allergenCodes, ')
+          ..write('allergenSource: $allergenSource, ')
+          ..write('allergenSourceRef: $allergenSourceRef, ')
+          ..write('allergenReviewedAt: $allergenReviewedAt, ')
           ..write('reviewedAt: $reviewedAt, ')
           ..write('withdrawnAt: $withdrawnAt, ')
           ..write('createdAt: $createdAt, ')
@@ -8559,7 +8739,7 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     householdId,
     slug,
@@ -8574,11 +8754,15 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
     nutritionSource,
     nutritionSourceVersion,
     nutritionSourceRef,
+    allergenCodes,
+    allergenSource,
+    allergenSourceRef,
+    allergenReviewedAt,
     reviewedAt,
     withdrawnAt,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8597,6 +8781,10 @@ class FoodRow extends DataClass implements Insertable<FoodRow> {
           other.nutritionSource == this.nutritionSource &&
           other.nutritionSourceVersion == this.nutritionSourceVersion &&
           other.nutritionSourceRef == this.nutritionSourceRef &&
+          other.allergenCodes == this.allergenCodes &&
+          other.allergenSource == this.allergenSource &&
+          other.allergenSourceRef == this.allergenSourceRef &&
+          other.allergenReviewedAt == this.allergenReviewedAt &&
           other.reviewedAt == this.reviewedAt &&
           other.withdrawnAt == this.withdrawnAt &&
           other.createdAt == this.createdAt &&
@@ -8618,6 +8806,10 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
   final Value<String?> nutritionSource;
   final Value<String?> nutritionSourceVersion;
   final Value<String?> nutritionSourceRef;
+  final Value<String?> allergenCodes;
+  final Value<String?> allergenSource;
+  final Value<String?> allergenSourceRef;
+  final Value<DateTime?> allergenReviewedAt;
   final Value<DateTime?> reviewedAt;
   final Value<DateTime?> withdrawnAt;
   final Value<DateTime> createdAt;
@@ -8638,6 +8830,10 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
     this.nutritionSource = const Value.absent(),
     this.nutritionSourceVersion = const Value.absent(),
     this.nutritionSourceRef = const Value.absent(),
+    this.allergenCodes = const Value.absent(),
+    this.allergenSource = const Value.absent(),
+    this.allergenSourceRef = const Value.absent(),
+    this.allergenReviewedAt = const Value.absent(),
     this.reviewedAt = const Value.absent(),
     this.withdrawnAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -8659,6 +8855,10 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
     this.nutritionSource = const Value.absent(),
     this.nutritionSourceVersion = const Value.absent(),
     this.nutritionSourceRef = const Value.absent(),
+    this.allergenCodes = const Value.absent(),
+    this.allergenSource = const Value.absent(),
+    this.allergenSourceRef = const Value.absent(),
+    this.allergenReviewedAt = const Value.absent(),
     this.reviewedAt = const Value.absent(),
     this.withdrawnAt = const Value.absent(),
     required DateTime createdAt,
@@ -8686,6 +8886,10 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
     Expression<String>? nutritionSource,
     Expression<String>? nutritionSourceVersion,
     Expression<String>? nutritionSourceRef,
+    Expression<String>? allergenCodes,
+    Expression<String>? allergenSource,
+    Expression<String>? allergenSourceRef,
+    Expression<DateTime>? allergenReviewedAt,
     Expression<DateTime>? reviewedAt,
     Expression<DateTime>? withdrawnAt,
     Expression<DateTime>? createdAt,
@@ -8710,6 +8914,11 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
         'nutrition_source_version': nutritionSourceVersion,
       if (nutritionSourceRef != null)
         'nutrition_source_ref': nutritionSourceRef,
+      if (allergenCodes != null) 'allergen_codes': allergenCodes,
+      if (allergenSource != null) 'allergen_source': allergenSource,
+      if (allergenSourceRef != null) 'allergen_source_ref': allergenSourceRef,
+      if (allergenReviewedAt != null)
+        'allergen_reviewed_at': allergenReviewedAt,
       if (reviewedAt != null) 'reviewed_at': reviewedAt,
       if (withdrawnAt != null) 'withdrawn_at': withdrawnAt,
       if (createdAt != null) 'created_at': createdAt,
@@ -8733,6 +8942,10 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
     Value<String?>? nutritionSource,
     Value<String?>? nutritionSourceVersion,
     Value<String?>? nutritionSourceRef,
+    Value<String?>? allergenCodes,
+    Value<String?>? allergenSource,
+    Value<String?>? allergenSourceRef,
+    Value<DateTime?>? allergenReviewedAt,
     Value<DateTime?>? reviewedAt,
     Value<DateTime?>? withdrawnAt,
     Value<DateTime>? createdAt,
@@ -8755,6 +8968,10 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
       nutritionSourceVersion:
           nutritionSourceVersion ?? this.nutritionSourceVersion,
       nutritionSourceRef: nutritionSourceRef ?? this.nutritionSourceRef,
+      allergenCodes: allergenCodes ?? this.allergenCodes,
+      allergenSource: allergenSource ?? this.allergenSource,
+      allergenSourceRef: allergenSourceRef ?? this.allergenSourceRef,
+      allergenReviewedAt: allergenReviewedAt ?? this.allergenReviewedAt,
       reviewedAt: reviewedAt ?? this.reviewedAt,
       withdrawnAt: withdrawnAt ?? this.withdrawnAt,
       createdAt: createdAt ?? this.createdAt,
@@ -8812,6 +9029,20 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
     if (nutritionSourceRef.present) {
       map['nutrition_source_ref'] = Variable<String>(nutritionSourceRef.value);
     }
+    if (allergenCodes.present) {
+      map['allergen_codes'] = Variable<String>(allergenCodes.value);
+    }
+    if (allergenSource.present) {
+      map['allergen_source'] = Variable<String>(allergenSource.value);
+    }
+    if (allergenSourceRef.present) {
+      map['allergen_source_ref'] = Variable<String>(allergenSourceRef.value);
+    }
+    if (allergenReviewedAt.present) {
+      map['allergen_reviewed_at'] = Variable<DateTime>(
+        allergenReviewedAt.value,
+      );
+    }
     if (reviewedAt.present) {
       map['reviewed_at'] = Variable<DateTime>(reviewedAt.value);
     }
@@ -8847,6 +9078,10 @@ class FoodsCompanion extends UpdateCompanion<FoodRow> {
           ..write('nutritionSource: $nutritionSource, ')
           ..write('nutritionSourceVersion: $nutritionSourceVersion, ')
           ..write('nutritionSourceRef: $nutritionSourceRef, ')
+          ..write('allergenCodes: $allergenCodes, ')
+          ..write('allergenSource: $allergenSource, ')
+          ..write('allergenSourceRef: $allergenSourceRef, ')
+          ..write('allergenReviewedAt: $allergenReviewedAt, ')
           ..write('reviewedAt: $reviewedAt, ')
           ..write('withdrawnAt: $withdrawnAt, ')
           ..write('createdAt: $createdAt, ')
@@ -19999,6 +20234,10 @@ typedef $$FoodsTableCreateCompanionBuilder = FoodsCompanion Function({
   Value<String?> nutritionSource,
   Value<String?> nutritionSourceVersion,
   Value<String?> nutritionSourceRef,
+  Value<String?> allergenCodes,
+  Value<String?> allergenSource,
+  Value<String?> allergenSourceRef,
+  Value<DateTime?> allergenReviewedAt,
   Value<DateTime?> reviewedAt,
   Value<DateTime?> withdrawnAt,
   required DateTime createdAt,
@@ -20020,6 +20259,10 @@ typedef $$FoodsTableUpdateCompanionBuilder = FoodsCompanion Function({
   Value<String?> nutritionSource,
   Value<String?> nutritionSourceVersion,
   Value<String?> nutritionSourceRef,
+  Value<String?> allergenCodes,
+  Value<String?> allergenSource,
+  Value<String?> allergenSourceRef,
+  Value<DateTime?> allergenReviewedAt,
   Value<DateTime?> reviewedAt,
   Value<DateTime?> withdrawnAt,
   Value<DateTime> createdAt,
@@ -20102,6 +20345,26 @@ class $$FoodsTableFilterComposer extends Composer<_$AppDatabase, $FoodsTable> {
 
   ColumnFilters<String> get nutritionSourceRef => $composableBuilder(
     column: $table.nutritionSourceRef,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get allergenCodes => $composableBuilder(
+    column: $table.allergenCodes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get allergenSource => $composableBuilder(
+    column: $table.allergenSource,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get allergenSourceRef => $composableBuilder(
+    column: $table.allergenSourceRef,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get allergenReviewedAt => $composableBuilder(
+    column: $table.allergenReviewedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20205,6 +20468,26 @@ class $$FoodsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get allergenCodes => $composableBuilder(
+    column: $table.allergenCodes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get allergenSource => $composableBuilder(
+    column: $table.allergenSource,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get allergenSourceRef => $composableBuilder(
+    column: $table.allergenSourceRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get allergenReviewedAt => $composableBuilder(
+    column: $table.allergenReviewedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get reviewedAt => $composableBuilder(
     column: $table.reviewedAt,
     builder: (column) => ColumnOrderings(column),
@@ -20293,6 +20576,26 @@ class $$FoodsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get allergenCodes => $composableBuilder(
+    column: $table.allergenCodes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get allergenSource => $composableBuilder(
+    column: $table.allergenSource,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get allergenSourceRef => $composableBuilder(
+    column: $table.allergenSourceRef,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get allergenReviewedAt => $composableBuilder(
+    column: $table.allergenReviewedAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get reviewedAt => $composableBuilder(
     column: $table.reviewedAt,
     builder: (column) => column,
@@ -20352,6 +20655,10 @@ class $$FoodsTableTableManager
                 Value<String?> nutritionSource = const Value.absent(),
                 Value<String?> nutritionSourceVersion = const Value.absent(),
                 Value<String?> nutritionSourceRef = const Value.absent(),
+                Value<String?> allergenCodes = const Value.absent(),
+                Value<String?> allergenSource = const Value.absent(),
+                Value<String?> allergenSourceRef = const Value.absent(),
+                Value<DateTime?> allergenReviewedAt = const Value.absent(),
                 Value<DateTime?> reviewedAt = const Value.absent(),
                 Value<DateTime?> withdrawnAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -20372,6 +20679,10 @@ class $$FoodsTableTableManager
                 nutritionSource: nutritionSource,
                 nutritionSourceVersion: nutritionSourceVersion,
                 nutritionSourceRef: nutritionSourceRef,
+                allergenCodes: allergenCodes,
+                allergenSource: allergenSource,
+                allergenSourceRef: allergenSourceRef,
+                allergenReviewedAt: allergenReviewedAt,
                 reviewedAt: reviewedAt,
                 withdrawnAt: withdrawnAt,
                 createdAt: createdAt,
@@ -20394,6 +20705,10 @@ class $$FoodsTableTableManager
                 Value<String?> nutritionSource = const Value.absent(),
                 Value<String?> nutritionSourceVersion = const Value.absent(),
                 Value<String?> nutritionSourceRef = const Value.absent(),
+                Value<String?> allergenCodes = const Value.absent(),
+                Value<String?> allergenSource = const Value.absent(),
+                Value<String?> allergenSourceRef = const Value.absent(),
+                Value<DateTime?> allergenReviewedAt = const Value.absent(),
                 Value<DateTime?> reviewedAt = const Value.absent(),
                 Value<DateTime?> withdrawnAt = const Value.absent(),
                 required DateTime createdAt,
@@ -20414,6 +20729,10 @@ class $$FoodsTableTableManager
                 nutritionSource: nutritionSource,
                 nutritionSourceVersion: nutritionSourceVersion,
                 nutritionSourceRef: nutritionSourceRef,
+                allergenCodes: allergenCodes,
+                allergenSource: allergenSource,
+                allergenSourceRef: allergenSourceRef,
+                allergenReviewedAt: allergenReviewedAt,
                 reviewedAt: reviewedAt,
                 withdrawnAt: withdrawnAt,
                 createdAt: createdAt,

@@ -156,6 +156,39 @@ void main() {
     },
   );
 
+  test('v13 to v14 keeps foods unknown and adds allergen columns', () async {
+    final db = AppDatabase(
+      NativeDatabase.memory(
+        setup: (raw) {
+          raw.execute('''
+            CREATE TABLE foods (
+              id TEXT PRIMARY KEY NOT NULL, household_id TEXT,
+              slug TEXT NOT NULL, name TEXT NOT NULL, category TEXT NOT NULL,
+              base_unit TEXT NOT NULL, source TEXT, reviewed_at INTEGER,
+              withdrawn_at INTEGER, created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+          raw.execute('''
+            INSERT INTO foods
+              (id, slug, name, category, base_unit, created_at, updated_at)
+            VALUES ('food', 'mleko', 'Mleko', 'mlečno', 'milliliter', 1, 1)
+          ''');
+          raw.execute('PRAGMA user_version = 13');
+        },
+      ),
+    );
+    addTearDown(db.close);
+
+    final original = await db.select(db.foods).getSingle();
+    expect(original.name, 'Mleko');
+    expect(original.allergenCodes, isNull);
+    await db
+        .update(db.foods)
+        .write(const FoodsCompanion(allergenCodes: Value('milk')));
+    expect((await db.select(db.foods).getSingle()).allergenCodes, 'milk');
+  });
+
   test('v7 to v9 keeps the latest rating and creates both caches', () async {
     final db = AppDatabase(
       NativeDatabase.memory(
@@ -410,7 +443,7 @@ void main() {
     final db = AppDatabase(executor);
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 13);
+    expect(db.schemaVersion, 14);
 
     final recipes = await db.select(db.recipes).get();
     expect(recipes.map((r) => r.id), unorderedEquals(['r1', 'r2']));

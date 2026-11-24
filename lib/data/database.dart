@@ -359,6 +359,13 @@ class Foods extends Table {
   TextColumn get nutritionSource => text().nullable()();
   TextColumn get nutritionSourceVersion => text().nullable()();
   TextColumn get nutritionSourceRef => text().nullable()();
+
+  /// Reviewed EU allergen groups, comma-separated. null = unknown (never
+  /// safe), '' = reviewed with no allergen, 'milk,eggs' = reviewed groups.
+  TextColumn get allergenCodes => text().nullable()();
+  TextColumn get allergenSource => text().nullable()();
+  TextColumn get allergenSourceRef => text().nullable()();
+  DateTimeColumn get allergenReviewedAt => dateTime().nullable()();
   DateTimeColumn get reviewedAt => dateTime().nullable()();
   DateTimeColumn get withdrawnAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
@@ -579,7 +586,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'tavli'));
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -608,6 +615,7 @@ class AppDatabase extends _$AppDatabase {
         );
       }
       if (from < 13) await transaction(() => _migrateToFoodNutrition(m));
+      if (from < 14) await transaction(() => _migrateToFoodAllergens(m));
     },
   );
 
@@ -647,6 +655,23 @@ class AppDatabase extends _$AppDatabase {
       foods.nutritionSource,
       foods.nutritionSourceVersion,
       foods.nutritionSourceRef,
+    ]) {
+      await _addMissingColumn(m, foods, column);
+    }
+  }
+
+  /// v14: reviewed allergen groups on shared foods. Existing rows stay
+  /// unknown until the next catalog download brings reviewed values.
+  Future<void> _migrateToFoodAllergens(Migrator m) async {
+    final foodsExists = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'foods'",
+    ).getSingleOrNull();
+    if (foodsExists == null) return;
+    for (final column in [
+      foods.allergenCodes,
+      foods.allergenSource,
+      foods.allergenSourceRef,
+      foods.allergenReviewedAt,
     ]) {
       await _addMissingColumn(m, foods, column);
     }

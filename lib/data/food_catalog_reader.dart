@@ -1,7 +1,9 @@
 import 'package:drift/drift.dart';
 
+import '../domain/allergen_group.dart';
 import '../domain/food_matcher.dart';
 import '../domain/food_nutrition.dart';
+import '../domain/recipe_allergens.dart';
 import '../sync/catalog_status.dart';
 import 'database.dart';
 
@@ -51,6 +53,7 @@ class FoodCatalogReader {
           category: r.category,
           baseUnit: unit,
           nutrition: _nutrition(r),
+          allergens: parseAllergens(r),
         ),
         householdId: r.householdId,
         withdrawn: r.withdrawnAt != null,
@@ -110,6 +113,7 @@ class FoodCatalogReader {
             category: byId[id]!.category,
             baseUnit: unit,
             nutrition: _nutrition(byId[id]!),
+            allergens: parseAllergens(byId[id]!),
           ),
     ];
     // Prvo one koje počinju upitom, pa po nazivu.
@@ -154,7 +158,54 @@ class FoodCatalogReader {
       category: row.category,
       baseUnit: baseUnit,
       nutrition: _nutrition(row),
+      allergens: parseAllergens(row),
     );
+  }
+
+  /// Reviewed allergen groups per food ID. A food that is missing, withdrawn,
+  /// unreviewed or has an unreadable value is absent from the map (unknown,
+  /// never safe). An empty set means reviewed with no allergen.
+  Future<Map<String, Set<AllergenGroup>>> reviewedAllergens(
+    Iterable<String> foodIds,
+  ) async {
+    final ids = foodIds.toSet();
+    if (ids.isEmpty) return const {};
+    final rows = await (_db.select(
+      _db.foods,
+    )..where((t) => t.id.isIn(ids) & t.withdrawnAt.isNull())).get();
+    return {for (final r in rows) r.id: ?parseAllergens(r)};
+  }
+
+  /// Allergens of a recipe from its ingredients' catalog links (null =
+  /// unresolved ingredient). Unreviewed or unresolved parts are flagged on the
+  /// result instead of being treated as allergen-free.
+  Future<RecipeAllergens> allergensForRecipe(
+    Iterable<String?> ingredientFoodIds,
+  ) async {
+    final ids = ingredientFoodIds.toList();
+    return RecipeAllergens.resolve(
+      ids,
+      await reviewedAllergens([
+        for (final id in ids)
+          if (id != null && id.trim().isNotEmpty) id,
+      ]),
+    );
+  }
+
+  /// Cache text -> groups. null (unknown) for a missing review or any code
+  /// this version does not know, so a bad value fails closed.
+  static Set<AllergenGroup>? parseAllergens(FoodRow row) {
+    final raw = row.allergenCodes;
+    if (raw == null || row.allergenReviewedAt == null) return null;
+    final byCode = {for (final g in AllergenGroup.values) g.code: g};
+    final groups = <AllergenGroup>{};
+    for (final code in raw.split(',')) {
+      if (code.isEmpty) continue;
+      final group = byCode[code];
+      if (group == null) return null;
+      groups.add(group);
+    }
+    return Set.unmodifiable(groups);
   }
 
   FoodNutrition? _nutrition(FoodRow row) {
