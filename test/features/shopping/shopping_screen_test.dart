@@ -34,7 +34,11 @@ Future<AccountScope> scopeOf(AppDatabase db) async {
 }
 
 /// Ručak svaki dan: 1 kg krompira i so bez količine.
-Future<String> seedPlan(AppDatabase db, DateRange range) async {
+Future<String> seedPlan(
+  AppDatabase db,
+  DateRange range, {
+  Ingredient? salt,
+}) async {
   final scope = await scopeOf(db);
   final writer = SyncedWriter(db, accountId: scope.userId);
   final repo = MealPlanRepository(
@@ -61,14 +65,14 @@ Future<String> seedPlan(AppDatabase db, DateRange range) async {
           key(s): RecipeSnapshot(
             title: 'Ručak ${s.date.day}.${s.date.month}.',
             baseServings: 2,
-            ingredients: const [
-              Ingredient(
+            ingredients: [
+              const Ingredient(
                 name: 'krompir',
                 quantity: 1,
                 unit: 'kg',
                 category: 'voće i povrće',
               ),
-              Ingredient(name: 'so', category: 'začini i sosovi'),
+              salt ?? const Ingredient(name: 'so', category: 'začini i sosovi'),
             ],
           ),
       },
@@ -292,6 +296,70 @@ void main() {
     // Nepoznata količina se ne izmišlja.
     expect(find.text('Proveri količinu'), findsOneWidget);
   });
+
+  for (final planned in [true, false]) {
+    final mode = planned ? 'Po planu' : 'Po receptu';
+    testTavli('$mode prikazuje prstohvat soli sa oznakom za proveru', (
+      tester,
+    ) async {
+      const salt = Ingredient(
+        name: 'so',
+        quantity: 1,
+        unit: 'prstohvata',
+        category: 'začini i sosovi',
+      );
+      final app = await pumpShopping(
+        tester,
+        size: planned ? wide : phone,
+        setup: (db) async {
+          if (planned) {
+            await seedPlan(db, twoWeeks, salt: salt);
+            return;
+          }
+          final scope = await scopeOf(db);
+          await ShoppingRepository(
+            db,
+            scope: scope,
+            writer: SyncedWriter(db, accountId: scope.userId),
+          ).addRecipePreparation(
+            snapshot: const RecipeSnapshot(
+              title: 'Supa',
+              baseServings: 2,
+              ingredients: [
+                salt,
+                Ingredient(name: 'so', quantity: 5, unit: 'g'),
+              ],
+            ),
+            servings: 2,
+            originKey: 'recipe:supa',
+          );
+        },
+      );
+
+      void expectReview(String amount) {
+        final pinchRow = find.widgetWithText(TavliCheckRow, amount);
+        expect(
+          find.descendant(
+            of: pinchRow,
+            matching: find.text('Proveri količinu'),
+          ),
+          findsOneWidget,
+        );
+      }
+
+      expectReview(planned ? '7 prstohvat' : '1 prstohvat');
+      expect(find.text(planned ? '7 kg' : '5 g'), findsOneWidget);
+      if (planned) {
+        await tapIn(tester, find.text('Ceo plan'));
+        expectReview('14 prstohvat');
+        expect(find.text('14 kg'), findsOneWidget);
+      }
+      final pinches = (await app.db.select(app.db.shoppingItems).get()).where(
+        (item) => item.unit == 'prstohvat',
+      );
+      expect(pinches.map((item) => item.quantity), planned ? [7, 7] : [1]);
+    });
+  }
 
   testTavli('stavka pokazuje za koje obroke je', (tester) async {
     await pumpShopping(tester);
