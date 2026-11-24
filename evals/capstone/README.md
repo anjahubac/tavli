@@ -7,7 +7,7 @@ expected outcome and the reason it exists.
 | Cases | Mode | How it runs |
 | --- | --- | --- |
 | EV-04, EV-05, EV-08, EV-11 to EV-16 | `deterministic` | `flutter test test/evals`: real `RecipeAI`, `AIRouter`, `AliasFoodMatcher`, shopping totals and outline validation with a scripted model. No network or keys. |
-| EV-01 to EV-03, EV-06, EV-07, EV-09, EV-10 | `live` | Need a real model. Run them by hand against the free-tier chain and record the result in `results.md`. |
+| EV-01 to EV-03, EV-06, EV-07, EV-09, EV-10 | `live` | Need a real model. Run them by hand against the free-tier chain, or through the gateway (below), and record the result in `results.md`. |
 
 ## Running the live cases
 
@@ -37,6 +37,14 @@ The live cases through the gateway (signed-in user, no key in the app) are
 GW-01 to GW-04 in `test/evals/live_gateway_flow_test.dart`; the method, the
 before and after of the photo prompt and the limits are in `gateway-flow.md`,
 the trace lines in `traces/gateway-flow.jsonl`.
+
+The seven `live` EV cases also have a run through the gateway with a signed-in
+account: `test/evals/live_gateway_cases_test.dart` (real `RecipeAI`, no personal
+key). It is skipped unless `EVAL_GATEWAY_URL`, `EVAL_ANON_KEY` and `EVAL_JWT` are
+set in the process environment (see the header of the file); credentials and
+provider keys never go into this folder. It is a separate runner from
+`live_gateway_flow_test.dart` (GW cases). Its recorded pass is in `results.md`
+and `traces/gateway-live-2026-11-24.jsonl`.
 
 ## Limits
 
