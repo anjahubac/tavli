@@ -81,7 +81,7 @@ select is(
   -- CHECK functions and the named RPCs need authenticated execute.
   array[
     'private.is_member', 'private.join_photo_is_published', 'private.recipe_meal_types_valid',
-    'private.valid_allergen_selection', 'public.confirm_household_join',
+    'private.valid_allergen_selection', 'public.can_search_recipe_vectors', 'public.confirm_household_join',
     'public.enable_recipe_vector_indexing', 'public.get_household_recipe_rating_summaries', 'public.household_invite_token',
     'public.household_members_overview', 'public.household_realtime_eligible',
     'public.prepare_new_household', 'public.preview_household_join',

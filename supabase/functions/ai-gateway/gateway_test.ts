@@ -27,6 +27,7 @@ function setup({
   reservation = { id: "fake-reservation" },
   enableRecipeIndexing,
   rankRecipes,
+  canSearchRecipes = () => Promise.resolve(true),
   upstream = () => Response.json({ choices: [{ message: { content: "{}" } }] }),
 }: {
   env?: Record<string, string>;
@@ -41,6 +42,7 @@ function setup({
     vector: number[],
     ids: string[],
   ) => Promise<RankedRecipe[]>;
+  canSearchRecipes?: (token: string, ids: string[]) => Promise<boolean>;
 } = {}) {
   const reserved: unknown[] = [];
   const released: string[] = [];
@@ -64,6 +66,7 @@ function setup({
     },
     enableRecipeIndexing,
     rankRecipes,
+    canSearchRecipes,
     reserveImage: () => Promise.reject(new Error("unexpected")),
     storeImage: () => Promise.reject(new Error("unexpected")),
     send: (url: string | URL | Request, init?: RequestInit) => {
@@ -364,6 +367,22 @@ Deno.test("disabled, unauthorized, malformed and quota-denied search skip provid
   equal(denied.calls.length, 0);
   equal(disabled.reserved.length, 0);
   equal(disabled.calls.length, 0);
+});
+
+Deno.test("search without household consent never reaches the provider", async () => {
+  const checked: [string, string[]][] = [];
+  const search = setup({
+    env: recipeVectorEnv,
+    canSearchRecipes: (token, ids) => {
+      checked.push([token, ids]);
+      return Promise.resolve(false);
+    },
+    rankRecipes: () => Promise.reject(new Error("unexpected SQL call")),
+  });
+  equal((await search.handle(post(recipeSearch))).status, 403);
+  equal(checked, [["test-session", ["own-recipe"]]]);
+  equal(search.calls.length, 0);
+  equal(search.reserved.length, 0);
 });
 
 Deno.test("server search rejects a zero-length direction and releases quota", async () => {

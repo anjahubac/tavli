@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(35);
 select tests.create_user('vectors-a@test.local') as ua \gset
 select tests.create_user('vectors-b@test.local') as ub \gset
 select tests.household_of(:'ua') as ha \gset
@@ -37,10 +37,27 @@ select is((select count(*) from public.claim_recipe_vectors()
   'worker cannot claim any recipe before household consent');
 reset role;
 
+select ok(not has_function_privilege('anon',
+  'public.can_search_recipe_vectors(text[])', 'execute'), 'anon cannot check search consent');
+select tests.authenticate_as(:'ua');
+select ok(not public.can_search_recipe_vectors(array['vector-soup']),
+  'search is refused before household consent');
 select tests.authenticate_as(:'ua');
 select ok(not public.enable_recipe_vector_indexing(:'hb'), 'cannot opt in another household');
 select ok(public.enable_recipe_vector_indexing(:'ha'), 'member can opt in their household');
 select ok(public.enable_recipe_vector_indexing(:'ha'), 'repeated opt-in is idempotent');
+select tests.clear_auth();
+select tests.authenticate_as(:'ua');
+select ok(public.can_search_recipe_vectors(array['vector-soup']),
+  'a member of the consenting household may search');
+select ok(not public.can_search_recipe_vectors(array[]::text[]),
+  'an empty candidate list is refused');
+select tests.clear_auth();
+select tests.authenticate_as(:'ub');
+select ok(not public.can_search_recipe_vectors(array['vector-soup']),
+  'another household cannot search consenting recipes');
+select ok(not public.can_search_recipe_vectors(array['vector-other']),
+  'a household without consent cannot search its own recipes');
 select tests.clear_auth();
 select is((select count(*) from private.recipe_vector_consents where household_id = :'ha'),
   1::bigint, 'opt-in is recorded once');

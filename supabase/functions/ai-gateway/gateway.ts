@@ -72,6 +72,8 @@ interface GatewayDependencies {
     embedding: number[],
     recipeIds: string[],
   ) => Promise<RankedRecipe[]>;
+  /** True only when the caller belongs to a consenting household of these recipes. */
+  canSearchRecipes?: (token: string, recipeIds: string[]) => Promise<boolean>;
   send: typeof fetch;
 }
 
@@ -308,8 +310,14 @@ export function gateway(dependencies: GatewayDependencies) {
         if (!input) return failure(400, "bad_request");
         const provider = recipeVectorProvider(env);
         const rank = dependencies.rankRecipes;
-        if (!provider || !rank) {
+        const allowed = dependencies.canSearchRecipes;
+        if (!provider || !rank || !allowed) {
           return failure(503, "model_unavailable");
+        }
+        // Consent is checked before quota or provider work, so a query from a
+        // household that never opted in is not sent to Cloudflare.
+        if (!await allowed(token, input.recipeIds)) {
+          return failure(403, "forbidden");
         }
         const reservation = await reserve(uid, "text", limitsFor(env, "text"));
         if ("limit" in reservation) return quotaResponse(reservation, "text");

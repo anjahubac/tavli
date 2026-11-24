@@ -159,6 +159,24 @@ revoke all on function public.rank_recipe_vectors(extensions.vector, text[])
 grant execute on function public.rank_recipe_vectors(extensions.vector, text[])
   to authenticated;
 
+-- Lets the gateway refuse a search before the query reaches the provider.
+create function public.can_search_recipe_vectors(p_recipe_ids text[])
+returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select cardinality(p_recipe_ids) between 1 and 256 and exists (
+    select 1 from private.recipe_vectors v
+    where v.recipe_id = any(p_recipe_ids)
+      and private.is_member(v.household_id)
+      and exists (
+        select 1 from private.recipe_vector_consents consent
+        where consent.household_id = v.household_id
+      )
+  );
+$$;
+revoke all on function public.can_search_recipe_vectors(text[]) from public, anon;
+grant execute on function public.can_search_recipe_vectors(text[]) to authenticated;
+
 -- Follow the Vault/pg_net convention used by household-photo-cleanup.
 select cron.schedule('recipe-vector-index', '* * * * *', $job$
   select net.http_post(

@@ -64,6 +64,18 @@ Deno.serve(gateway({
     }
     return await result.json() === true;
   },
+  async canSearchRecipes(token, recipeIds) {
+    const result = await platform(
+      "/rest/v1/rpc/can_search_recipe_vectors",
+      token,
+      { p_recipe_ids: recipeIds },
+    );
+    if (!result.ok) {
+      await result.body?.cancel().catch(() => {});
+      throw new Error("recipe_vector_consent_check_failed");
+    }
+    return await result.json() === true;
+  },
   async rankRecipes(token, embedding, recipeIds) {
     const result = await platform("/rest/v1/rpc/rank_recipe_vectors", token, {
       p_embedding: JSON.stringify(embedding),
