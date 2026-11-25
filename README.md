@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="#download">Download</a> ·
   <a href="#what-you-can-do">Features</a> ·
   <a href="#architecture">Architecture</a> ·
   <a href="#getting-started">Getting started</a> ·
@@ -25,8 +26,8 @@ Tavli answers "what are we eating, and what do we need to buy?" in one app. Save
 recipe from a photo, a dish name or your voice, turn your recipes into a weekly or
 monthly plan, and shop from a list that already knows what the plan needs.
 
-- **One Flutter codebase** for Android, iOS, macOS and Windows, with layouts for phones
-  and wide screens. A Linux build runs in CI.
+- **One Flutter codebase** for Android, iOS, macOS, Windows and Linux, plus a web
+  app, with layouts for phones and wide screens.
 - **Works offline.** Data is cached on the device and synced to your account. AI,
   cookbooks and account actions need a connection.
 - **Made for households.** Members share recipes, plans, shopping and the pantry.
@@ -38,6 +39,26 @@ The interface is in Serbian (Latin script); engineering documentation is in Engl
 > Tavli is in active development. This page describes the `dev` branch and is not a
 > claim that every feature is released or finished on every platform. See the
 > [roadmap](docs/roadmap.md) for what is built and what is still planned.
+
+## Download
+
+All platforms are listed on the download page: **<https://get.tavli.workers.dev/preuzmi>**.
+The links below are stable: a new release changes what they serve, not the URL, so
+buttons and printed QR codes keep working.
+
+| Platform | How | Link |
+|---|---|---|
+| Android | APK from the latest GitHub release | [tavli.apk](https://github.com/anjahubac/tavli/releases/latest/download/tavli.apk) |
+| Linux (x64) | `.deb` for Ubuntu, Debian and similar; `sudo apt install ./tavli_amd64.deb` | [/preuzmi/linux](https://get.tavli.workers.dev/preuzmi/linux) |
+| Windows 10/11 | Microsoft Store (in certification, not published yet) | [/preuzmi/windows](https://get.tavli.workers.dev/preuzmi/windows) |
+| iOS, iPadOS, macOS | Web app (PWA) added from the browser | [install guide](https://get.tavli.workers.dev/preuzmi/appleDevices) |
+| Web | Web app in the browser | [tavli-web.tavli.workers.dev](https://tavli-web.tavli.workers.dev/) |
+
+The website and its stable links live in the separate, private `tavli-web`
+repository. Packages are built
+as described in [Android](docs/development/android.md),
+[Linux](docs/development/linux.md) and [Windows](docs/development/windows.md).
+An account is required on every platform.
 
 ## What you can do
 
