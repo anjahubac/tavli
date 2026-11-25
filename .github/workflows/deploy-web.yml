@@ -48,7 +48,7 @@ jobs:
           WEB_AUTH_REDIRECT_URL: ${{ vars.WEB_AUTH_REDIRECT_URL }}
         run: |
           test -n "$SUPABASE_URL" && test -n "$SUPABASE_ANON_KEY" && test -n "$WEB_AUTH_REDIRECT_URL"
-          flutter build web --wasm --release \
+          flutter build web --wasm --release --no-web-resources-cdn \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=WEB_AUTH_REDIRECT_URL="$WEB_AUTH_REDIRECT_URL"
