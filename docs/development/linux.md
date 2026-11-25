@@ -119,22 +119,25 @@ the package.
 ## Hosting
 
 Published packages are assets of a GitHub Release on the public
-`anjahubac/tavli` repository, one release per app version (tag `v<version>` on
-the released `main` commit). The release build also writes
+`anjahubac/tavli` repository: one release per Linux version, tagged
+`linux-v<version>` on the released `main` commit (Android uses
+`android-v<version>`). The release build also writes
 `build/linux/deb/tavli_amd64.deb` and `tavli_amd64.deb.sha256`, a copy with a
-constant name; upload both to the release. The version stays inside the
-package metadata, so this URL always serves the newest release:
+constant name; upload both to the release. Create Linux releases with
+`--latest=false`: GitHub's `releases/latest` belongs to one release only, and
+platforms are released separately.
+
+The website's stable link `/preuzmi/linux` answers with a 302 redirect to the
+current release's file (`site/_redirects`, served by the `welcome` Worker), so
+the QR code does not change between releases:
 
 ```text
-https://github.com/anjahubac/tavli/releases/latest/download/tavli_amd64.deb
+https://github.com/anjahubac/tavli/releases/download/linux-v<version>/tavli_amd64.deb
 ```
 
-The website's stable link `/preuzmi/linux` answers with a 302 redirect to that
-URL (a line in `site/_redirects` on Cloudflare Pages), so the QR code does not
-change between releases. `latest` is the newest release that is not marked as a
-pre-release, so mark test builds as pre-releases or do not publish them.
-GitHub serves the file as `application/octet-stream`; browsers still save it
-as a `.deb`.
+For a new Linux release, upload the assets first, then change the tag in
+`site/_redirects` through a PR. GitHub serves the file as
+`application/octet-stream`; browsers still save it as a `.deb`.
 
 ## Email confirmation links (`tavli://`)
 
