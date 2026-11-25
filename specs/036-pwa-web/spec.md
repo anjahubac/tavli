@@ -152,7 +152,7 @@ or is hidden/replaced with a Serbian explanation; none crashes the app.
   native targets, without behaviour changes on Android, iOS, macOS, Windows and Linux.
 - **FR-002**: The web app MUST be installable: name “Tavli”, the approved Tavli icons
   (including iOS home-screen and maskable icons), theme/background colours from the
-  Tavli palette, standalone display and start page `/home`.
+  Tavli palette, standalone display and start page `/` (hash routes, so the app opens on its default tab).
 - **FR-003**: After one online visit, the installed app MUST start offline and show the
   signed-in account's cached data; changes MUST be kept and uploaded later through the
   existing outbox.
