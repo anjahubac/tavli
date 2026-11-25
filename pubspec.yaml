@@ -87,7 +87,7 @@ dev_dependencies:
 # paketa, da lokalni test-paket i dalje bude potpisan (docs/development/windows.md).
 # msix_version = verzija iz `version` + ".0"; Store traži da četvrti broj bude 0.
 msix_config:
-  display_name: Tavli
+  display_name: "Tavli – Planer obroka"
   publisher_display_name: Anja Hubac
   identity_name: AnjaHubac.TavliPlanerobroka
   publisher: CN=ACDAD467-7D67-47D3-9DA2-53263E3425B1

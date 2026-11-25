@@ -110,9 +110,9 @@ Apps and games → Tavli → Product management → Product identity:
 | `publisher` | `Package/Identity/Publisher` |
 | `publisher_display_name` | `Package/Properties/PublisherDisplayName` |
 
-These are public identity values, not secrets. `display_name` must match a name
-reserved for this app in Partner Center; reserve `Tavli` there or change the
-key to the reserved name. `capabilities` declares `internetClient` (Supabase and
+These are public identity values, not secrets. `display_name` must match the
+name reserved for this app in Partner Center exactly, including the en dash:
+`Tavli – Planer obroka`. Windows shows it in Start and in app settings. `capabilities` declares `internetClient` (Supabase and
 the AI gateway) and `microphone` (voice recipe drafting, spec 027, through the
 `record` plugin). The `msix` tool always adds `runFullTrust`. `languages` is
 `sr-latn`, so the Store listing is Serbian (Latin).
