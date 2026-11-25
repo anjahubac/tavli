@@ -1,0 +1,74 @@
+# Pravi Microsoft Store paket (MSIX) za Tavli na Windows serveru, za ručno
+# otpremanje u Partner Center (docs/development/windows.md). Ništa ne objavljuje.
+# Pokreće se samo ručno, sa grane main, uz odobrenje u okruženju "production".
+# Vrednosti žive u GitHub okruženju "production", ne u repou:
+#   variables: SUPABASE_URL, SUPABASE_ANON_KEY, AUTH_CONFIRM_PAGE_URL
+# Paket nije potpisan: Store ga potpisuje posle sertifikacije.
+name: windows-store
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-store
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: package (production)
+    if: github.ref_name == 'main'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build Windows (production values)
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          AUTH_CONFIRM_PAGE_URL: ${{ vars.AUTH_CONFIRM_PAGE_URL }}
+        run: |
+          if (-not $env:SUPABASE_URL -or -not $env:SUPABASE_ANON_KEY -or -not $env:AUTH_CONFIRM_PAGE_URL) {
+            throw 'Nedostaje promenljiva u okruženju production (SUPABASE_URL, SUPABASE_ANON_KEY, AUTH_CONFIRM_PAGE_URL).'
+          }
+          flutter build windows --release `
+            "--dart-define=SUPABASE_URL=$env:SUPABASE_URL" `
+            "--dart-define=SUPABASE_ANON_KEY=$env:SUPABASE_ANON_KEY" `
+            "--dart-define=AUTH_CONFIRM_PAGE_URL=$env:AUTH_CONFIRM_PAGE_URL"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Create Store MSIX
+        shell: pwsh
+        run: |
+          dart run msix:create --store --build-windows false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record checksum
+        id: checksum
+        shell: pwsh
+        run: |
+          $msix = 'build\windows\x64\runner\Release\tavli.msix'
+          $hash = (Get-FileHash -Algorithm SHA256 $msix).Hash.ToLower()
+          $version = (Select-String -Path pubspec.yaml -Pattern '^\s*msix_version:\s*(\S+)').Matches[0].Groups[1].Value
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "## Windows Store MSIX" >> $env:GITHUB_STEP_SUMMARY
+          "- Commit: ``$env:GITHUB_SHA``" >> $env:GITHUB_STEP_SUMMARY
+          "- msix_version: ``$version``" >> $env:GITHUB_STEP_SUMMARY
+          "- SHA-256: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
+          "$hash  tavli.msix" | Out-File -Encoding ascii build\windows\x64\runner\Release\tavli.msix.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tavli-store-${{ steps.checksum.outputs.version }}-${{ github.sha }}
+          path: |
+            build/windows/x64/runner/Release/tavli.msix
+            build/windows/x64/runner/Release/tavli.msix.sha256
+          if-no-files-found: error
+          retention-days: 30
