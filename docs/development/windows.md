@@ -147,6 +147,30 @@ first. Record the commit SHA and the package's SHA-256
 (`Get-FileHash build\windows\x64\runner\Release\tavli.msix`) as release
 evidence (spec 033 FR-106). Upload the `.msix` in Partner Center → Packages.
 
+### Build the submission in CI
+
+Without a Windows workstation, run the `windows-store` workflow
+(`.github/workflows/windows-store.yml`): GitHub → Actions → windows-store →
+Run workflow, on `main`. It runs only from `main`, waits for approval in the
+`production` environment, builds the Release bundle and the unsigned Store
+MSIX on `windows-latest`, and publishes nothing. The run summary records the
+commit SHA, `msix_version` and SHA-256; the artifact
+`tavli-store-<msix_version>-<sha>` contains `tavli.msix` and its checksum file
+and is kept for 30 days. Download it and upload `tavli.msix` in Partner Center.
+
+The workflow reads these `production` environment variables, the same values
+as `secrets.prod.json`:
+
+| Variable | Value |
+|---|---|
+| `SUPABASE_URL` | production project URL (shared with `deploy-web`) |
+| `SUPABASE_ANON_KEY` | production anon key (shared with `deploy-web`) |
+| `AUTH_CONFIRM_PAGE_URL` | the hosted confirmation page, `site/potvrda/`, with the trailing slash; it must be listed in the production Supabase redirect URLs |
+
+The workflow fails before building if any of them is empty. A workflow is
+dispatchable only after it reaches the default branch, so the first run is
+possible after the next `dev` → `main` release.
+
 ### Partner Center submission checklist
 
 - **Pricing and availability:** Free; choose markets; no in-app purchases.
@@ -182,8 +206,9 @@ release gate (Windows after 028 acceptance) follow spec 033.
 The `windows` job in `.github/workflows/check.yml` runs on `windows-latest`,
 pins Flutter 3.50.0 and verifies that the x64 release build compiles. The existing
 Ubuntu `check` job owns analysis and the full Flutter test suite, so the Windows
-job does not duplicate them. CI does not upload a bundle or publish an MSIX; Store packages are built on a
-Windows workstation as described above.
+job does not duplicate them. The `check` workflow does not upload a bundle or
+publish an MSIX; Store packages come from the manual `windows-store` workflow
+or a Windows workstation, as described above.
 
 Before merging Windows changes, record evidence for:
 
