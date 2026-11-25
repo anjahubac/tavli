@@ -9,6 +9,8 @@ third-party requests (fonts and the Tavli badge are local files).
   `error`/`error_code`) from the URL, removes it from the address bar and offers
   "Otvori Tavli" → `tavli://auth-callback?code=…`. Layout follows the design
   canvas boards `WebUspesnaRegistracija` and `WebUspesnaRegistracijaSiroko`.
+- `_redirects` — stable download links (`/preuzmi/linux`) answered with a
+  302 to the current GitHub Release asset, so the QR code never changes.
 - `_headers` — CSP (`'self'` only), `no-referrer`, `noindex` and `no-store` for
   `/potvrda/`.
 

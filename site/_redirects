@@ -1,0 +1,4 @@
+# Stabilni linkovi za preuzimanje (QR kod se ne menja); cilj je fajl iz
+# trenutnog GitHub Release-a. docs/development/linux.md
+/preuzmi/linux   https://github.com/anjahubac/tavli/releases/download/linux-v1.0.0/tavli_amd64.deb   302
+/preuzmi/linux/  https://github.com/anjahubac/tavli/releases/download/linux-v1.0.0/tavli_amd64.deb   302
