@@ -1,0 +1,13 @@
+Package: tavli
+Version: @VERSION@
+Architecture: amd64
+Maintainer: @MAINTAINER@
+Installed-Size: @INSTALLED_SIZE@
+Section: utils
+Priority: optional
+Depends: libgtk-3-0t64 | libgtk-3-0, libglib2.0-0t64 | libglib2.0-0, libsecret-1-0, libepoxy0
+Recommends: gnome-keyring | kwalletmanager, pulseaudio-utils, ffmpeg, xdg-utils
+Description: Tavli - planer obroka
+ Recepti, plan obroka, nabavka i ostava. Za prijavu je potreban nalog;
+ sesija se čuva u sistemskom keyring-u (Secret Service, npr. GNOME
+ Keyring ili KWallet). Diktiranje recepata koristi parecord i ffmpeg.

@@ -11,6 +11,7 @@ import {
 } from "../cookbook-process/embed.ts";
 import { ask, type AskDeps, type Hit } from "./ask.ts";
 import { createGenerator } from "./generate.ts";
+import { withCors } from "../_shared/cors.ts";
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -156,7 +157,7 @@ async function searchRecipes(
   }
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withCors(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   const token = (req.headers.get("Authorization") ?? "").replace(
     /^Bearer\s+/i,
@@ -216,4 +217,4 @@ Deno.serve(async (req: Request) => {
   } catch {
     return json(500, { error: "internal" });
   }
-});
+}));

@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:supabase/supabase.dart';
+
+import '../data/socket_exception.dart';
 
 /// Govor u tekst preko servera (`voice-transcribe`, ugovor
 /// `specs/027-voice-recipe-agent/contracts/voice-agent-contract.md`).

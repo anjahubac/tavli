@@ -24,6 +24,7 @@ import {
   registerBook,
   type RegisterDeps,
 } from "./register.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const BUCKET = "cookbooks";
 
@@ -251,7 +252,7 @@ const processDeps: ProcessDeps = {
   now: () => Date.now(),
 };
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withCors(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   const token = (req.headers.get("Authorization") ?? "").replace(
     /^Bearer\s+/i,
@@ -317,4 +318,4 @@ Deno.serve(async (req: Request) => {
     }
     return json(500, { error: "internal" });
   }
-});
+}));

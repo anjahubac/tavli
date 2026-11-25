@@ -90,6 +90,11 @@ placeholder publishing pipeline with access to production secrets.
 Dev 4 maintains `android/settings.gradle.kts`: pin Android Gradle Plugin 9.1.1
 to meet Flutter 3.50.0's minimum with the existing Gradle 9.3.1 wrapper.
 
+The Linux direct-download package is a `.deb` for Ubuntu 24.04 x86_64 built by
+`scripts/build-linux.sh` with the system `dpkg-deb` (no new dependency); desktop
+entry and package metadata live in `linux/packaging/`. CI builds it without
+credentials and publishes nothing; see `docs/development/linux.md`.
+
 Same-SHA CI gate is implemented once with 012 T007/T008 and 013 T010. Platform
 runner work remains in 013/028. Namespace migration remains 012 T011/T012.
 This spec owns the release sequence and evidence, avoiding parallel competing

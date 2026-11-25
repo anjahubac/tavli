@@ -48,14 +48,17 @@ static void my_application_create_window(MyApplication* self) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "tavli");
+    gtk_header_bar_set_title(header_bar, "Tavli");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "tavli");
+    gtk_window_set_title(window, "Tavli");
   }
 
   gtk_window_set_default_size(window, 1280, 720);
+  // Ikona iz hicolor teme koju instalira .deb paket (linux/packaging);
+  // bez paketa (flutter run) ostaje podrazumevana.
+  gtk_window_set_icon_name(window, APPLICATION_ID);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

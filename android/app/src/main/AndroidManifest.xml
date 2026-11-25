@@ -3,7 +3,7 @@
     <!-- Recept glasom (spec 027): snimanje samo na dugme „Govori“. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
-        android:label="tavli"
+        android:label="Tavli"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

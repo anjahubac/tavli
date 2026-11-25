@@ -31,24 +31,42 @@ jobs:
   linux-build:
     name: linux-build
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Build broj paketa je broj commitova (scripts/build-linux.sh).
+          fetch-depth: 0
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev
+          sudo apt-get install --yes clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev desktop-file-utils
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.50.0'
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build linux --debug
+      - run: desktop-file-validate linux/packaging/com.tavli.tavli.desktop
+      # Bez secrets: paket bez konfiguracije naloga, samo provera pakovanja.
+      - run: scripts/build-linux.sh --ci
+      - name: Install and inspect the package
+        run: |
+          deb=$(ls build/linux/deb/tavli_*_amd64.deb)
+          (cd build/linux/deb && sha256sum --check ./*.sha256)
+          dpkg-deb --info "$deb"
+          sudo apt-get install --yes --no-install-recommends "./$deb"
+          test -x /opt/tavli/tavli
+          test "$(readlink -f /usr/bin/tavli)" = /opt/tavli/tavli
+          test -f /usr/share/icons/hicolor/256x256/apps/com.tavli.tavli.png
+          grep -q 'x-scheme-handler/tavli=com.tavli.tavli.desktop' /usr/share/applications/mimeinfo.cache
+          if ldd /opt/tavli/tavli /opt/tavli/lib/*.so | grep 'not found'; then exit 1; fi
+          sudo apt-get remove --yes tavli
+          test ! -e /opt/tavli/tavli
       - uses: actions/upload-artifact@v7
         with:
-          name: tavli-linux-debug-bundle
-          path: build/linux/x64/debug/bundle/
+          name: tavli-linux-deb
+          path: build/linux/deb/
           if-no-files-found: error
           retention-days: 7
 
@@ -92,6 +110,31 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build windows --release
+
+  web-build:
+    name: web-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Bez tajni: URL i ključ Supabase-a nisu potrebni da bi se web kompajlirao.
+      - run: flutter build web --wasm --release --no-web-resources-cdn
+      - name: Testovi samo za web
+        run: flutter test --platform chrome test/data/indexed_db_recipe_photo_store_test.dart
+      - name: Instalacija zahteva drift fajlove i zaglavlja
+        run: |
+          test -f build/web/sqlite3.wasm
+          test -f build/web/drift_worker.js
+          test -f build/web/_headers
+          # CSP dozvoljava skripte samo sa našeg domena: engine mora biti lokalan.
+          grep -q '"useLocalCanvasKit":true' build/web/flutter_bootstrap.js
+          test -f build/web/canvaskit/skwasm.wasm
 
   docs:
     name: docs

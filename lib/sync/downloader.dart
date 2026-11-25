@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift/isolate.dart' show DriftRemoteException;
-import 'package:drift/native.dart' show SqliteException;
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:sqlite3/common.dart' show SqliteException;
 
 import '../account/auth_controller.dart';
 import '../data/database.dart';

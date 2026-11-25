@@ -20,5 +20,9 @@ The bundle includes Flutter and app/plugin libraries. The host needs GTK and
 `libsecret-1-0`; secure session/key storage also needs an active desktop keyring
 providing Secret Service (for example GNOME Keyring or KWallet). File picking
 uses the desktop file chooser. Camera capture is not supported on Linux.
+Voice recipe drafting runs `parecord` (`pulseaudio-utils`) and `ffmpeg`.
 
-This is a development bundle, not an installer or published release artifact.
+`packaging/` holds the desktop entry and Debian control template for the
+installable `.deb`, built by `scripts/build-linux.sh`. See
+[docs/development/linux.md](../docs/development/linux.md) for packaging,
+installation and `tavli://` links.

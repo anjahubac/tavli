@@ -49,6 +49,10 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   drift: ^2.35.4
   drift_flutter: ^0.3.1
+  # Samo `package:sqlite3/common.dart` (SqliteException bez dart:ffi, radi i na webu).
+  sqlite3: ^3.9.1
+  # Samo za web (spec 036): IndexedDB za slike recepata; već u lock-u (Flutter ga koristi).
+  web: ^1.1.1
   path_provider: ^2.1.6
   image_picker: ^1.2.4
   file_selector: ^1.0.3
@@ -80,12 +84,19 @@ dev_dependencies:
   # Samo za scripts/generate_download_qr.dart (već stiže preko qr_flutter).
   qr: ^3.0.3
 
+# Microsoft Store identitet (Partner Center → Product identity); javne vrednosti.
+# `store` namerno nije ovde: zadaje se kao `--store` pri pravljenju Store
+# paketa, da lokalni test-paket i dalje bude potpisan (docs/development/windows.md).
+# msix_version = verzija iz `version` + ".0"; Store traži da četvrti broj bude 0.
 msix_config:
-  display_name: Tavli
-  publisher_display_name: Tavli
-  identity_name: com.tavli.tavli
-  msix_version: 1.0.1.0
+  display_name: "Tavli – Planer obroka"
+  publisher_display_name: Anja Hubac
+  identity_name: AnjaHubac.TavliPlanerobroka
+  publisher: CN=ACDAD467-7D67-47D3-9DA2-53263E3425B1
+  msix_version: 1.0.0.0
   protocol_activation: tavli
+  capabilities: internetClient,microphone
+  languages: sr-latn
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -10,7 +10,10 @@ See [review findings](development/review-2026-11-13.md) and
 ## 1. Current stack and repository layout
 
 One Flutter application targets Android, iOS, macOS and Windows; a Linux GTK
-runner also builds in CI ([Linux development](development/linux.md)). The Windows
+runner also builds in CI ([Linux development](development/linux.md)). A web/PWA
+target (`web/`, [spec 036](../specs/036-pwa-web/spec.md)) serves the same code in
+Safari and Chrome; it has no own AI keys, keeps the session in browser storage and
+uses IndexedDB for recipe photos. It is not released or accepted yet. The Windows
 x64 runner, in-window title bar and menu, and local MSIX packaging are documented
 in [Windows development](development/windows.md); public distribution is not yet
 claimed. Dart's constraint is

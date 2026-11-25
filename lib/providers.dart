@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase/supabase.dart';
 
@@ -83,7 +84,9 @@ final authGatewayProvider = Provider<AuthGateway>((ref) {
 /// Linkovi kojima je aplikacija otvorena (tavli://auth-callback iz mejla
 /// za potvrdu), uključujući onaj kojim je pokrenuta; menja se u testovima.
 final appLinksProvider = Provider<Stream<Uri>>(
-  (ref) => AppLinks().uriLinkStream,
+  (ref) => kIsWeb
+      ? Stream<Uri>.fromIterable([?webAuthCallbackFrom(Uri.base)])
+      : AppLinks().uriLinkStream,
 );
 
 /// Vreme za prijavu (kada je poslat kod); menja se u testovima.
@@ -243,7 +246,9 @@ final syncPhaseProvider = StreamProvider<SyncPhase?>((ref) {
   return engine == null ? Stream.value(null) : engine.watchPhase();
 });
 
-final keyStoreProvider = Provider<KeyStore>((ref) => SecureKeyStore());
+final keyStoreProvider = Provider<KeyStore>(
+  (ref) => kIsWeb ? const NoOwnKeyStore() : SecureKeyStore(),
+);
 
 final keySourceProvider = Provider<KeySource>(
   (ref) => OwnKeySource(ref.watch(keyStoreProvider)),

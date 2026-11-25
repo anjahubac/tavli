@@ -10,13 +10,18 @@ third-party requests (fonts and the Tavli badge are local files).
   "Otvori Tavli" → `tavli://auth-callback?code=…`. Layout follows the design
   canvas boards `WebUspesnaRegistracija` and `WebUspesnaRegistracijaSiroko`.
 - `preuzmi/` — "Preuzmi Tavli": download buttons for Android, iOS (unsigned IPA
-  for sideloading), macOS (ad-hoc signed DMG), Windows and Linux. Every button points at
+  for sideloading), macOS (ad-hoc signed DMG), Windows and Linux. The Android,
+  iOS and macOS buttons point at
   `https://github.com/anjahubac/tavli/releases/latest/download/<file>`; the files
   are built and attached by `.github/workflows/release.yml` when a `v*` tag is
-  pushed. The Android QR code (and `qr-stranica.svg`, the page's own address for
-  slides and posters) are static SVGs made by
-  `dart run scripts/generate_download_qr.dart`; the QR always encodes the same
-  URL as its button. Reuses `potvrda/style.css`, fonts and badge.
+  pushed. The Windows and Linux buttons use the stable links `/preuzmi/windows`
+  (Microsoft Store, redirect added once the app is published) and
+  `/preuzmi/linux` (see `_redirects`). The Android QR code (and
+  `qr-stranica.svg`, the page's own address for slides and posters) are static
+  SVGs made by `dart run scripts/generate_download_qr.dart`; the QR always
+  encodes the same URL as its button. Reuses `potvrda/style.css`, fonts and badge.
+- `_redirects` — stable download links (`/preuzmi/linux`) answered with a
+  302 to the current GitHub Release asset, so the QR code never changes.
 - `_headers` — CSP (`'self'` only), `no-referrer`, `noindex` and `no-store` for
   `/potvrda/`.
 
