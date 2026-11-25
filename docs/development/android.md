@@ -29,26 +29,45 @@ CI; never publish it.
 
 ## Build
 
-Raise `version` in `pubspec.yaml` before every published build: the number
-after `+` is the Android `versionCode` and must grow, or Android refuses the
-update.
+The version shown to people (`1.0.0` in `version: 1.0.0+1` in `pubspec.yaml`)
+is raised by hand for a release. The build number after `+` is the Android
+`versionCode` and must grow, or Android refuses the update. The build script
+sets it to the commit count of `HEAD` (`git rev-list --count HEAD`) through
+`--build-number`, so `pubspec.yaml` is not edited for it. The count only grows
+on `main`, so published APKs are built from `main` only.
 
 ```bash
-flutter build apk --release --dart-define-from-file=secrets.prod.json
+scripts/build-android.sh
 ```
 
-The output is `build/app/outputs/flutter-apk/app-release.apk`. The
-`--dart-define-from-file` values are embedded in the APK and anyone can read
-them, so that file must hold only public client configuration.
+For a published build the script requires a clean `main` equal to
+`origin/main`, a full (not shallow) clone, `secrets.prod.json` and
+`android/key.properties`. It builds the release APK, copies it to
+`build/app/outputs/flutter-apk/tavli-<version>+<build>.apk`, prints the
+certificate's SHA-256 digest, fails on a debug signature and prints the file's
+SHA-256 checksum to publish next to the download link. Set
+`TAVLI_UPLOAD_CERT_SHA256` to the team certificate digest to make the script
+compare the signer as well.
 
-Confirm the signer before publishing; the SHA-256 certificate digest must match
-the team key:
+A test build from any branch against `tavli-dev` uses `--dev`; the debug key is
+allowed there with a warning, and such an APK is never published:
+
+```bash
+scripts/build-android.sh --dev
+```
+
+The `--dart-define-from-file` values are embedded in the APK and anyone can
+read them, so that file must hold only public client configuration.
+
+The same steps by hand:
+
+```bash
+flutter build apk --release --build-number=$(git rev-list --count HEAD) --dart-define-from-file=secrets.prod.json
+```
 
 ```bash
 "$ANDROID_HOME"/build-tools/<version>/apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk
 ```
-
-Publish the file's SHA-256 checksum next to the download link:
 
 ```bash
 shasum -a 256 build/app/outputs/flutter-apk/app-release.apk
@@ -57,7 +76,7 @@ shasum -a 256 build/app/outputs/flutter-apk/app-release.apk
 ## Install for testing
 
 ```bash
-adb install -r build/app/outputs/flutter-apk/app-release.apk
+adb install -r build/app/outputs/flutter-apk/tavli-<version>+<build>.apk
 ```
 
 A device that has a debug-signed Tavli installed must uninstall it first,
