@@ -6,6 +6,9 @@
   "name": "tavli-web",
   "compatibility_date": "2026-11-01",
   "assets": {
-    "directory": "./build/web"
+    "directory": "./build/web",
+    // Flutter uses hash routes (/#/home); a path without a file serves the app
+    // instead of an empty response.
+    "not_found_handling": "single-page-application"
   }
 }

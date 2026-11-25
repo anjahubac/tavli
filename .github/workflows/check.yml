@@ -106,7 +106,7 @@ jobs:
           cache: true
       - run: flutter pub get
       # Bez tajni: URL i ključ Supabase-a nisu potrebni da bi se web kompajlirao.
-      - run: flutter build web --wasm --release
+      - run: flutter build web --wasm --release --no-web-resources-cdn
       - name: Testovi samo za web
         run: flutter test --platform chrome test/data/indexed_db_recipe_photo_store_test.dart
       - name: Instalacija zahteva drift fajlove i zaglavlja
@@ -114,6 +114,9 @@ jobs:
           test -f build/web/sqlite3.wasm
           test -f build/web/drift_worker.js
           test -f build/web/_headers
+          # CSP dozvoljava skripte samo sa našeg domena: engine mora biti lokalan.
+          grep -q '"useLocalCanvasKit":true' build/web/flutter_bootstrap.js
+          test -f build/web/canvaskit/skwasm.wasm
 
   docs:
     name: docs
