@@ -1,0 +1,7 @@
+# Copy to android/key.properties (gitignored) and fill in locally.
+# Keep the keystore and passwords in the team password manager, never in the repo.
+# storeFile is relative to the android/ folder, or an absolute path.
+storeFile=/absolute/path/outside/the/repo/tavli-upload.jks
+storePassword=
+keyAlias=tavli-upload
+keyPassword=
