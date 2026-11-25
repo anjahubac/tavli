@@ -16,6 +16,7 @@ import '../../providers.dart';
 import '../planning/plan_format.dart';
 import 'shopping_frame.dart';
 import 'shopping_providers.dart';
+import 'store_price_summary.dart';
 
 const pantryQuantityNote = 'Imaš u ostavi, proveri';
 const quantityReviewNote = 'Proveri količinu';
@@ -242,6 +243,7 @@ class _ShoppingItemsListState extends ConsumerState<ShoppingItemsList> {
               text: theme.textTheme,
               colors: theme.colorScheme,
             ),
+            StorePriceSummary(items: items),
           ],
         );
       },
