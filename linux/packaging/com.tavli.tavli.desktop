@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Tavli
+GenericName=Planer obroka
+Comment=Recepti, plan obroka, nabavka i ostava
+Exec=/opt/tavli/tavli %u
+Icon=com.tavli.tavli
+Terminal=false
+Categories=Utility;
+Keywords=recepti;obroci;nabavka;ostava;kuvanje;
+MimeType=x-scheme-handler/tavli;
+StartupWMClass=com.tavli.tavli
+StartupNotify=true
